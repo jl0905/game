@@ -16,11 +16,10 @@ foreach ($tool in @("cmake", "git")) {
 
 # --- configure ---
 Write-Host ">>> Configuring..." -ForegroundColor Cyan
-if (-not (Test-Path build)) {
-    cmake -B build -DCMAKE_BUILD_TYPE=Release
-} else {
-    Write-Host "    build/ already exists, skipping configure (delete it to re-configure)"
-}
+# Always reconfigure — stale CMakeCache from WSL or a different generator
+# causes cryptic build errors.
+Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 
 if ($LASTEXITCODE -ne 0) { Write-Error "cmake configure failed"; exit 1 }
 
