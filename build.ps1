@@ -7,9 +7,9 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 # --- check prerequisites ---
-foreach (@("cmake", "git")) {
-    if (-not (Get-Command $_ -ErrorAction SilentlyContinue)) {
-        Write-Error "'$_' not found. Install it and make sure it is on PATH."
+foreach ($tool in @("cmake", "git")) {
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+        Write-Error "'$tool' not found. Install it and make sure it is on PATH."
         exit 1
     }
 }
