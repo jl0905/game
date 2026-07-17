@@ -18,6 +18,8 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(openwarband
     src/main.cpp
+    src/content.cpp
+    src/character.cpp
     src/campaign.cpp
     src/battle.cpp
 )

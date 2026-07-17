@@ -7,10 +7,11 @@ int main() {
     SetExitKey(KEY_NULL);   // ESC shouldn't insta-quit mid battle
 
     GameState gs;
+    LoadDefaultContent(gs.content);   // populate the data-driven catalogue
     CampaignInit(gs);
 
     while (!WindowShouldClose()) {
-        float dt = GetFrameTime();
+        const float dt = GetFrameTime();
         switch (gs.screen) {
             case Screen::Campaign:
             case Screen::BattleResult:

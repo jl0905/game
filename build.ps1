@@ -14,12 +14,25 @@ foreach ($tool in @("cmake", "git")) {
     }
 }
 
+# --- pick a generator ---
+# Prefer MSVC if available (cl on PATH), otherwise fall back to MinGW GCC.
+$genArgs = @()
+if (Get-Command cl -ErrorAction SilentlyContinue) {
+    Write-Host ">>> Using Visual Studio / MSVC toolchain" -ForegroundColor Cyan
+} elseif (Get-Command gcc -ErrorAction SilentlyContinue) {
+    Write-Host ">>> Using MinGW (GCC) toolchain" -ForegroundColor Cyan
+    $genArgs = @("-G", "MinGW Makefiles")
+} else {
+    Write-Error "No C++ compiler found. Install Visual Studio Build Tools or MSYS2/MinGW."
+    exit 1
+}
+
 # --- configure ---
 Write-Host ">>> Configuring..." -ForegroundColor Cyan
 # Always reconfigure — stale CMakeCache from WSL or a different generator
 # causes cryptic build errors.
 Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake -B build @genArgs -DCMAKE_BUILD_TYPE=Release
 
 if ($LASTEXITCODE -ne 0) { Write-Error "cmake configure failed"; exit 1 }
 

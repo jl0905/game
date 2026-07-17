@@ -4,8 +4,8 @@ events:
   -
     kind: "message-v1"
     backtrace:
-      - "/home/hambu/tools/cmake-3.30.5-linux-x86_64/share/cmake-3.30/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.4/Modules/CMakeDetermineSystem.cmake:218 (message)"
       - "CMakeLists.txt:16 (project)"
     message: |
-      The system is: Linux - 6.6.87.2-microsoft-standard-WSL2 - x86_64
+      The system is: Windows - 10.0.26200 - AMD64
 ...

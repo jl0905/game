@@ -8,9 +8,11 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/hambu/openwarband/src/battle.cpp" "CMakeFiles/openwarband.dir/src/battle.cpp.o" "gcc" "CMakeFiles/openwarband.dir/src/battle.cpp.o.d"
-  "/home/hambu/openwarband/src/campaign.cpp" "CMakeFiles/openwarband.dir/src/campaign.cpp.o" "gcc" "CMakeFiles/openwarband.dir/src/campaign.cpp.o.d"
-  "/home/hambu/openwarband/src/main.cpp" "CMakeFiles/openwarband.dir/src/main.cpp.o" "gcc" "CMakeFiles/openwarband.dir/src/main.cpp.o.d"
+  "C:/Users/hambu/projects/game/src/battle.cpp" "CMakeFiles/openwarband.dir/src/battle.cpp.obj" "gcc" "CMakeFiles/openwarband.dir/src/battle.cpp.obj.d"
+  "C:/Users/hambu/projects/game/src/campaign.cpp" "CMakeFiles/openwarband.dir/src/campaign.cpp.obj" "gcc" "CMakeFiles/openwarband.dir/src/campaign.cpp.obj.d"
+  "C:/Users/hambu/projects/game/src/character.cpp" "CMakeFiles/openwarband.dir/src/character.cpp.obj" "gcc" "CMakeFiles/openwarband.dir/src/character.cpp.obj.d"
+  "C:/Users/hambu/projects/game/src/content.cpp" "CMakeFiles/openwarband.dir/src/content.cpp.obj" "gcc" "CMakeFiles/openwarband.dir/src/content.cpp.obj.d"
+  "C:/Users/hambu/projects/game/src/main.cpp" "CMakeFiles/openwarband.dir/src/main.cpp.obj" "gcc" "CMakeFiles/openwarband.dir/src/main.cpp.obj.d"
   )
 
 # Targets to which this target links which contain Fortran sources.
