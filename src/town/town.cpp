@@ -247,6 +247,17 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         }
     }
 
+    // ---- ransom captives (flat gold a head; TODO(balance)) ----
+    if (TownAtTavern() && cin.ransom) {
+        int heads = 0;
+        for (int& n : gs.prisoners) { heads += n; n = 0; }
+        if (heads > 0) {
+            const int gold = heads * 10;
+            gs.gold += gold;
+            gs.resultText = TextFormat("Ransomed %d captives for %d gold.", heads, gold);
+        }
+    }
+
     // ---- villagers drift about ----
     for (Npc& n : T.npcs) {
         n.think -= dt;
@@ -363,9 +374,14 @@ void TownDraw(const GameState& gs) {
 
     if (TownAtTavern()) {
         const std::vector<int>& roster = c.factions[c.playerFaction].roster;
-        const int y = GetScreenHeight() - 60 - (int)roster.size() * 24;
+        int captives = 0;
+        for (int n : gs.prisoners) captives += n;
+        const int y = GetScreenHeight() - 60 - (int)roster.size() * 24 - (captives > 0 ? 24 : 0);
         DrawRectangle(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
         ui::Text("The tavern. Recruits wait for coin:", 10, y, 20, GOLD);
+        if (captives > 0)
+            ui::Text(TextFormat("[R] Ransom %d captives (%d gold)", captives, captives * 10),
+                     10, GetScreenHeight() - 54, 20, LIME);
         for (int slot = 0; slot < (int)roster.size(); ++slot) {
             const TroopDef& td = c.troops[roster[slot]];
             ui::Text(TextFormat("[%d] %s - %d gold  (have %d)", slot + 1, td.name.c_str(),

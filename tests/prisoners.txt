@@ -1,0 +1,14 @@
+# Prisoners: win a battle (captives = ~30% of enemy dead), carry them to the
+# Sargoth tavern, ransom for gold.
+seed 3
+hunt 120
+tick 90
+state
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+state
+ransom
+state
+leave
+state

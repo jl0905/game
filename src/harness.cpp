@@ -163,6 +163,9 @@ struct Harness {
                 std::printf(" %s=%d(xp%d)", c.troops[t].id.c_str(), gs.player.troopCounts[t],
                             t < (int)gs.troopXp.size() ? gs.troopXp[t] : 0);
         std::printf("\n");
+        int captives = 0;
+        for (int n : gs.prisoners) captives += n;
+        if (captives > 0) std::printf("captives=%d\n", captives);
         if (!gs.resultText.empty())
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
         for (int t = 0; t < (int)gs.towns.size(); ++t) {
@@ -328,6 +331,9 @@ int RunScript(const char* path) {
                 CampaignInput cin; cin.upgradeSlot = slot;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "ransom") {
+            CampaignInput cin; cin.ransom = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "save" || cmd == "load") {
             std::string p;
             if (!(ss >> p)) p = DefaultSavePath();

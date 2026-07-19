@@ -338,6 +338,7 @@ void CampaignInit(GameState& gs) {
     gs.lordRespawns.clear();
     gs.playerLosses.assign(c.troops.size(), 0);
     gs.troopXp.assign(c.troops.size(), 0);
+    gs.prisoners.assign(c.troops.size(), 0);
     const std::vector<int> roamers = RoamingFactions(c);
     for (int i = 0; i < 5; ++i)
         gs.parties.push_back(MakeParty(c, roamers[i % roamers.size()], RandomEdgePos()));
@@ -448,6 +449,19 @@ static void ApplyBattleResult(GameState& gs) {
                              : TextFormat("VICTORY!  Loot: %d gold", loot);
         if (enemy) enemy->alive = false;
 
+        // A share of the beaten foe yields rather than dies — captives to
+        // ransom at a friendly tavern. TODO(balance): the capture share.
+        if ((int)gs.prisoners.size() < gs.content.troops.size())
+            gs.prisoners.assign(gs.content.troops.size(), 0);
+        int captives = 0;
+        for (int t = 0; t < (int)gs.enemyLosses.size() && t < gs.content.troops.size(); ++t) {
+            const int took = gs.enemyLosses[t] > 0 ? (gs.enemyLosses[t] * 3 + 9) / 10 : 0;
+            gs.prisoners[t] += took;
+            captives += took;
+        }
+        if (captives > 0)
+            gs.resultText += TextFormat("   Captives: %d", captives);
+
         // Battlefield pickings: a fallen foe's gear sometimes ends up in the
         // bag. TODO(balance): drop chance.
         if (GetRandomValue(0, 99) < 50) {
@@ -490,6 +504,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             gs.content.factions[gs.content.playerFaction].roster;
         for (int slot = 0; slot < (int)roster.size(); ++slot)
             if (IsKeyPressed(KEY_ONE + slot)) in.recruitSlot = slot;
+        in.ransom = IsKeyPressed(KEY_R);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }

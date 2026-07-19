@@ -116,6 +116,7 @@ struct GameState {
     int                currentSettlement = -1;   // town index while inside a settlement
     bool               timeFlowing = false;      // did world time advance this frame?
     std::vector<int>   troopXp;                  // player XP pool per troop type (C2)
+    std::vector<int>   prisoners;                // captives by troop type (ransomable)
     std::vector<InvItem> inventory;              // hero's tiled bag (D1)
     int                invCarry = -1;            // inventory item being moved (transient)
 

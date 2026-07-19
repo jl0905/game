@@ -67,6 +67,7 @@ bool SaveGame(const GameState& gs, const char* path) {
     f << "playerpos " << gs.player.pos.x << ' ' << gs.player.pos.y << '\n';
     WriteTroops(f, c, "ptroop", gs.player.troopCounts);
     WriteTroops(f, c, "pxp",    gs.troopXp);   // veterancy pools
+    WriteTroops(f, c, "captive", gs.prisoners);
 
     // Hero progression.
     f << "hero " << gs.playerHero.level << ' ' << gs.playerHero.xp << ' '
@@ -150,13 +151,14 @@ bool LoadGame(GameState& gs, const char* path) {
         if (tag == "gold") ss >> gs.gold;
         else if (tag == "day") ss >> gs.day;
         else if (tag == "playerpos") ss >> gs.player.pos.x >> gs.player.pos.y;
-        else if (tag == "ptroop" || tag == "troop" || tag == "pxp") {
+        else if (tag == "ptroop" || tag == "troop" || tag == "pxp" || tag == "captive") {
             std::string id; int n = 0;
             ss >> id >> n;
             const int t = c.troops.find(id.c_str());
             if (t < 0 || n <= 0) continue;   // troop type no longer exists
             if (tag == "ptroop")      gs.player.troopCounts[t] += n;
             else if (tag == "pxp")    gs.troopXp[t] += n;
+            else if (tag == "captive") gs.prisoners[t] += n;
             else if (cur)             cur->troopCounts[t] += n;
         } else if (tag == "wear") {
             std::string slot, id;

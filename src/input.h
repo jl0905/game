@@ -19,6 +19,7 @@ struct CampaignInput {
 
     // settlement screen
     int     recruitSlot     = -1;     // roster slot to recruit, -1 none
+    bool    ransom          = false;  // sell captives at the tavern (R)
     bool    leaveSettlement = false;
 
     // party screen
