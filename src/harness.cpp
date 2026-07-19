@@ -210,10 +210,11 @@ struct Harness {
         if (gs.screen == Screen::Settlement) {
             const TownView v = GetTownView();
             std::printf("settlement=%d (%s) heroPos=(%.1f,%.1f) yaw=%.2f "
-                        "tavern=(%.1f,%.1f) atTavern=%d npcs=%d\n",
+                        "tavern=(%.1f,%.1f) atTavern=%d inside=%d npcs=%d\n",
                         gs.currentSettlement, gs.towns[gs.currentSettlement].name.c_str(),
                         v.heroPos.x, v.heroPos.z, v.heroYaw,
-                        v.tavernPos.x, v.tavernPos.z, v.atTavern ? 1 : 0, v.npcs);
+                        v.tavernPos.x, v.tavernPos.z, v.atTavern ? 1 : 0,
+                        v.inside ? 1 : 0, v.npcs);
         }
         std::fflush(stdout);
     }
@@ -331,6 +332,9 @@ int RunScript(const char* path) {
                 CampaignInput cin; cin.upgradeSlot = slot;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "interact") {
+            CampaignInput cin; cin.interact = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "ransom") {
             CampaignInput cin; cin.ransom = true;
             h.Step(cin, BattleInput{});

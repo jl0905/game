@@ -507,7 +507,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             gs.content.factions[gs.content.playerFaction].roster;
         for (int slot = 0; slot < (int)roster.size(); ++slot)
             if (IsKeyPressed(KEY_ONE + slot)) in.recruitSlot = slot;
-        in.ransom = IsKeyPressed(KEY_R);
+        in.ransom   = IsKeyPressed(KEY_R);
+        in.interact = IsKeyPressed(KEY_E);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }

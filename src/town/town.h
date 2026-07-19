@@ -29,5 +29,6 @@ struct TownView {
     Vector3 tavernPos{};
     int     npcs = 0;
     bool    atTavern = false;
+    bool    inside = false;   // in the tavern common room
 };
 TownView GetTownView();

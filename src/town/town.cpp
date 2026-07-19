@@ -50,6 +50,10 @@ struct TownScene {
     float   yaw = 0, pitch = 0;
     float   walkPhase = 0;
 
+    // Inside the tavern common room (separate little coordinate space).
+    bool    inside = false;
+    Vector3 iPos{};
+
     Vector2 lastMouse{};
     bool    hasLastMouse = false;
 };
@@ -223,6 +227,12 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- step through the tavern door (E), or back out again ----
+    if (cin.interact && (T.inside || TownAtTavern())) {
+        T.inside = !T.inside;
+        if (T.inside) { T.iPos = { 0, 0, 3.5f }; T.yaw = PI; }
+    }
+
     // ---- hero movement (battle-style third person) ----
     T.yaw   -= in.lookDelta.x * 0.003f;
     T.pitch  = Clamp(T.pitch - in.lookDelta.y * 0.003f, -0.4f, 0.6f);
@@ -230,11 +240,19 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     const Vector3 right = { -fwd.z, 0, fwd.x };
     Vector3 move = Vector3Add(Vector3Scale(fwd, in.moveForward),
                               Vector3Scale(right, in.moveRight));
-    if (Vector3Length(move) > 0) {
+    if (T.inside) {
+        if (Vector3Length(move) > 0) {
+            T.iPos = Vector3Add(T.iPos, Vector3Scale(Vector3Normalize(move),
+                                                     WALK_SPEED * 0.7f * dt));
+            T.walkPhase += dt * 10.0f;
+        }
+        T.iPos.x = Clamp(T.iPos.x, -5.0f, 5.0f);   // the common room
+        T.iPos.z = Clamp(T.iPos.z, -3.5f, 4.2f);
+    } else if (Vector3Length(move) > 0) {
         T.pPos = Vector3Add(T.pPos, Vector3Scale(Vector3Normalize(move), WALK_SPEED * dt));
         T.walkPhase += dt * 10.0f;
     }
-    T.pPos = CollideBuildings(T.pPos, 0.5f);
+    if (!T.inside) T.pPos = CollideBuildings(T.pPos, 0.5f);
 
     // ---- tavern recruiting ----
     if (TownAtTavern() && cin.recruitSlot >= 0) {
@@ -287,6 +305,7 @@ TownView GetTownView() {
         v.tavernPos = T.buildings[T.tavern].pos;
     v.npcs = (int)T.npcs.size();
     v.atTavern = TownAtTavern();
+    v.inside = T.inside;
     return v;
 }
 
@@ -300,6 +319,86 @@ bool TownAtTavern() {
 void TownDraw(const GameState& gs) {
     const Content& c = gs.content;
     const Town& town = gs.towns[gs.currentSettlement >= 0 ? gs.currentSettlement : 0];
+
+    // ---- inside the tavern: a lamplit common room ----
+    if (T.inside) {
+        SfxAmbience(0.05f);
+        Camera3D cam = { 0 };
+        const Vector3 look = { sinf(T.yaw) * cosf(T.pitch), sinf(T.pitch),
+                               cosf(T.yaw) * cosf(T.pitch) };
+        const Vector3 eye = { T.iPos.x, T.iPos.y + 1.9f, T.iPos.z };
+        cam.position = Vector3Subtract(eye, Vector3Scale(look, 4.0f));
+        cam.position.y = fmaxf(cam.position.y, 0.5f);
+        cam.target = Vector3Add(eye, Vector3Scale(look, 3.0f));
+        cam.up = { 0, 1, 0 };
+        cam.fovy = 60;
+        cam.projection = CAMERA_PERSPECTIVE;
+
+        BeginDrawing();
+        ClearBackground(Color{ 24, 18, 14, 255 });
+        BeginMode3D(cam);
+        BeginShaderMode(GetLitShader());
+        const Color wood = { 92, 66, 44, 255 };
+        const Color dark = { 58, 42, 30, 255 };
+        DrawPlane({ 0, 0, 0 }, { 12, 10 }, dark);                       // floor
+        DrawCube({ 0, 2.0f, -4.6f }, 12, 4, 0.4f, wood);                // walls
+        DrawCube({ 0, 2.0f, 5.0f }, 12, 4, 0.4f, wood);
+        DrawCube({ -6.2f, 2.0f, 0 }, 0.4f, 4, 10, wood);
+        DrawCube({ 6.2f, 2.0f, 0 }, 0.4f, 4, 10, wood);
+        DrawCube({ 0, 4.1f, 0 }, 12, 0.3f, 10, dark);                   // ceiling
+        // hearth on the west wall
+        DrawCube({ -5.8f, 1.0f, -2.0f }, 0.8f, 2.0f, 2.0f, Color{ 70, 66, 64, 255 });
+        DrawCube({ -5.5f, 0.6f, -2.0f }, 0.5f, 0.9f, 1.2f, Color{ 240, 140, 40, 255 });
+        DrawSphere({ -5.2f, 0.8f, -2.0f }, 0.9f, Fade(ORANGE, 0.18f));  // glow
+        // the counter and the keeper behind it
+        DrawCube({ 3.0f, 0.7f, -3.2f }, 4.5f, 1.4f, 0.8f, wood);
+        Pose keeper;
+        keeper.yaw = 0.2f;
+        DrawCharacter(c, { 3.0f, 0, -4.1f }, T.npcs.empty() ? Loadout{} : T.npcs[0].loadout,
+                      keeper, BEIGE);
+        // tables with kegs, and a couple of patrons
+        for (const float tx : { -2.0f, 1.0f }) {
+            DrawCube({ tx, 0.55f, 1.2f }, 1.6f, 1.1f, 1.6f, wood);
+            DrawCylinder({ tx + 0.3f, 1.1f, 1.2f }, 0.16f, 0.16f, 0.3f, 8,
+                         Color{ 120, 90, 60, 255 });
+            Pose sit;
+            sit.yaw = tx < 0 ? 1.2f : -1.6f;
+            DrawCharacter(c, { tx + (tx < 0 ? -1.0f : 1.0f), 0, 1.2f },
+                          T.npcs.size() > 1 ? T.npcs[1].loadout : Loadout{}, sit, BEIGE);
+        }
+        // the hero
+        DrawCylinder({ T.iPos.x, 0.03f, T.iPos.z }, 0.5f, 0.5f, 0.02f, 12, Fade(BLACK, 0.3f));
+        Pose hero;
+        hero.yaw = T.yaw;
+        hero.walkPhase = T.walkPhase;
+        DrawCharacter(c, T.iPos, gs.playerHero.loadout, hero, Color{ 40, 120, 255, 255 });
+        EndShaderMode();
+        EndMode3D();
+
+        // HUD: same tavern business, indoors where it belongs.
+        DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
+        ui::Text(TextFormat("The %s tavern  ·  Gold: %d   Party: %d", town.name.c_str(),
+                            gs.gold, gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
+        const std::vector<int>& roster = c.factions[c.playerFaction].roster;
+        int captives = 0;
+        for (int n : gs.prisoners) captives += n;
+        const int y = GetScreenHeight() - 60 - (int)roster.size() * 24 - (captives > 0 ? 24 : 0);
+        DrawRectangle(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
+        ui::Text("Recruits drink in the corner:", 10, y, 20, GOLD);
+        for (int slot = 0; slot < (int)roster.size(); ++slot) {
+            const TroopDef& td = c.troops[roster[slot]];
+            ui::Text(TextFormat("[%d] %s - %d gold  (have %d)", slot + 1, td.name.c_str(),
+                                td.cost, gs.player.troopCounts[roster[slot]]),
+                     10, y + 26 + slot * 24, 20, RAYWHITE);
+        }
+        if (captives > 0)
+            ui::Text(TextFormat("[R] Ransom %d captives (%d gold)", captives, captives * 10),
+                     10, GetScreenHeight() - 54, 20, LIME);
+        ui::Text("[E] back to the street", 10, GetScreenHeight() - 26, 16,
+                 Fade(RAYWHITE, 0.7f));
+        EndDrawing();
+        return;
+    }
 
     Camera3D cam = { 0 };
     const Vector3 look = { sinf(T.yaw) * cosf(T.pitch), sinf(T.pitch), cosf(T.yaw) * cosf(T.pitch) };

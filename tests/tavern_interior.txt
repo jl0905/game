@@ -1,0 +1,15 @@
+# Tavern interior: walk to the tavern, step inside (E), recruit at the bar,
+# step back out, and leave town.
+seed 3
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+state
+interact
+state
+recruit 0 2
+state
+interact
+state
+leave
+state
