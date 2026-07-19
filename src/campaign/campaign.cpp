@@ -1027,11 +1027,41 @@ void CampaignDraw(const GameState& gs) {
         DrawCircleV({ p.x, p.y - 32 }, 3, GOLD);
         ui::Text("You", (int)p.x - 12, (int)p.y - 48, 16, RAYWHITE);
     }
+    // Lit windows: settlements glow after dark, before the night veil falls.
+    const float dayFrac = gs.dayTimer / DAY_LENGTH;
+    const bool  isNight = dayFrac >= 0.82f || dayFrac < 0.06f;
+    if (isNight) {
+        for (const Town& t : gs.towns) {
+            DrawCircleV(t.pos, 26, Fade(Color{ 255, 190, 90, 255 }, 0.18f));
+            DrawCircleV(t.pos, 12, Fade(Color{ 255, 210, 120, 255 }, 0.30f));
+        }
+    }
     EndMode2D();
 
+    // ---- day/night veil: dawn gold, dusk amber, deep blue night ----
+    {
+        const int sw = GetScreenWidth(), sh = GetScreenHeight();
+        if (dayFrac < 0.10f) {           // dawn burns off
+            const float k = 1.0f - dayFrac / 0.10f;
+            DrawRectangle(0, 0, sw, sh, Fade(Color{ 255, 170, 90, 255 }, 0.16f * k));
+            DrawRectangle(0, 0, sw, sh, Fade(Color{ 20, 28, 60, 255 }, 0.30f * k));
+        } else if (dayFrac >= 0.70f && dayFrac < 0.82f) {   // dusk
+            const float k = (dayFrac - 0.70f) / 0.12f;
+            DrawRectangle(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * k));
+        } else if (dayFrac >= 0.82f) {   // night deepens toward midnight
+            const float k = fminf((dayFrac - 0.82f) / 0.06f, 1.0f);
+            DrawRectangle(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * (1.0f - k)));
+            DrawRectangle(0, 0, sw, sh, Fade(Color{ 10, 14, 44, 255 }, 0.58f * k));
+        }
+    }
+
     // ---- HUD ----
+    const char* tod = dayFrac < 0.10f ? "dawn"
+                    : dayFrac < 0.45f ? "morning"
+                    : dayFrac < 0.70f ? "afternoon"
+                    : dayFrac < 0.82f ? "evening" : "night";
     DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
-    ui::Text(TextFormat("Day %d   Gold: %d   Party: %d", gs.day, gs.gold,
+    ui::Text(TextFormat("Day %d, %s   Gold: %d   Party: %d", gs.day, tod, gs.gold,
                         gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
 
     // Time state, top-right: the world is frozen until you move or wait.
