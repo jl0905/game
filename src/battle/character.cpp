@@ -152,8 +152,8 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 const float p = (float)gi / STEPS;
                 Vector3 gh, gt;
                 BladeLine(Vector3Lerp(cocked, follow, p), gh, gt, reach);
-                DrawSphere(at(gt.x, gt.y, gt.z), 0.035f,
-                           Fade(ORANGE, 0.35f * pose.windup));
+                DrawSphere(at(gt.x, gt.y, gt.z), 0.06f,
+                           Fade(ORANGE, 0.6f * pose.windup));
             }
         }
 
