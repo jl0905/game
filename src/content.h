@@ -98,6 +98,11 @@ struct FactionDef {
     PartyBehavior    behavior = PartyBehavior::Patrol;
     std::vector<int> roster;        // troop handles this faction can field
     bool             recruitable = false;  // can the player hire from towns?
+
+    // Named lords this faction fields as large armies (roadmap C3). One-token
+    // names (drawn as "Lord <name>"). Empty = the faction has no lords.
+    std::vector<std::string> lords;
+    int lordPartySize = 0;          // TODO(balance): order-of-hundreds army size
 };
 
 // The whole game catalogue. Everything is added in LoadDefaultContent(); to add

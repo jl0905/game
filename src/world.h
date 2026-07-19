@@ -26,7 +26,8 @@ struct Party {
     std::vector<int> troopCounts;       // one entry per troop type
     bool             isPlayer = false;
     bool             alive = true;
-    bool             engaged = false;    // locked in a world-map skirmish
+    bool             engaged = false;    // locked in a world-map skirmish/siege
+    std::string      lord;               // lord's name; empty for ordinary parties
     Vector2          wanderTarget{};
     float            thinkTimer = 0;
 
@@ -51,6 +52,20 @@ struct Town {
     }
 };
 
+// An AI army besieging a settlement; resolves on its own after `timer`.
+struct AISiege {
+    int   party = -1;   // attacker, index into GameState::parties
+    int   town  = -1;   // target, index into GameState::towns
+    float timer = 0;
+};
+
+// A fallen lord gathering a new host; respawns at an owned settlement.
+struct LordRespawn {
+    int         faction = -1;
+    std::string name;
+    float       timer = 0;
+};
+
 // Two hostile AI parties locked in a fight on the world map. It resolves on its
 // own after `timer` runs out (the player can watch), or the player can join a
 // side and turn it into a full battle. `a` and `b` index into GameState::parties.
@@ -73,6 +88,8 @@ struct GameState {
     std::vector<Party>    parties;      // all non-player parties
     std::vector<Town>     towns;
     std::vector<Skirmish> skirmishes;   // ongoing AI-vs-AI clashes on the map
+    std::vector<AISiege>  aiSieges;     // AI armies besieging settlements
+    std::vector<LordRespawn> lordRespawns;   // fallen lords raising new hosts
     int                gold = 300;
     float              spawnTimer = 0;
     int                nearTown = -1;

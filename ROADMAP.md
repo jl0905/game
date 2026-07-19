@@ -50,11 +50,15 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   `upgradeXp` (flat); survivors of won battles earn per-type XP pools
   (`GameState::troopXp`); upgrades spend XP to promote units. Persisted in
   saves.
-- [ ] **C3. Lord parties.** Each faction fields a few named lords with large
-  parties (order-of-hundreds troops — exact sizes TODO(balance)); they besiege
-  and defend settlements (B1/B3), fight field battles, and respawn at owned
-  towns. Requires A1 so battles at that scale hold frame rate; harness soak to
-  verify the map economy doesn't collapse.
+- [x] **C3. Lord parties.** Factions field named lords (`FactionDef::lords`,
+  `lordPartySize` flat 120): they muster at owned settlements, march on hostile
+  settlements they outmatch, invest them (`AISiege` auto-resolve → ownership
+  flips, garrison installed from the attacker's host), fight field battles,
+  respawn at home after falling, and persist in saves. Soak-verified: the
+  settlement war churns on its own.
+  - [ ] C3b. Lord pacing/awareness: lords currently dogpile the same targets
+    and the map churns fast — revisit with balance pass; player-side
+    notifications when YOUR settlements come under siege.
 
 ## Track D — Character & party UI
 

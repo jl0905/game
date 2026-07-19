@@ -130,18 +130,24 @@ void LoadDefaultContent(Content& c) {
     raiders.id = "raiders"; raiders.name = "Raiders";
     raiders.color = RED; raiders.behavior = PartyBehavior::Aggressive;
     raiders.roster = { t_recruit, t_infantry, t_archer };
+    raiders.lords = { "Gorak", "Hesh" };
+    raiders.lordPartySize = 120;    // TODO(balance)
     c.factions.add(raiders);
 
     FactionDef deserters;
     deserters.id = "deserters"; deserters.name = "Deserters";
     deserters.color = ORANGE; deserters.behavior = PartyBehavior::Passive;
     deserters.roster = { t_recruit };
+    deserters.lords = { "Vex" };
+    deserters.lordPartySize = 120;  // TODO(balance)
     c.factions.add(deserters);
 
     FactionDef patrol;
     patrol.id = "patrol"; patrol.name = "Patrol";
     patrol.color = PURPLE; patrol.behavior = PartyBehavior::Patrol;
     patrol.roster = { t_infantry, t_veteran };
+    patrol.lords = { "Aldric", "Corin" };
+    patrol.lordPartySize = 120;     // TODO(balance)
     const int f_patrol = c.factions.add(patrol);
 
     // ---- Relations -------------------------------------------------------

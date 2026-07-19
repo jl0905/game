@@ -146,11 +146,14 @@ struct Harness {
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             const Party& p = gs.parties[i];
             if (!p.alive) continue;
-            std::printf("party %d: faction=%s pos=(%.0f,%.0f) troops=%d engaged=%d dist=%.0f\n",
-                        i, c.factions[p.faction].id.c_str(), p.pos.x, p.pos.y,
-                        p.totalTroops(), p.engaged ? 1 : 0,
+            std::printf("party %d: faction=%s%s%s pos=(%.0f,%.0f) troops=%d engaged=%d dist=%.0f\n",
+                        i, c.factions[p.faction].id.c_str(),
+                        p.lord.empty() ? "" : " lord=", p.lord.c_str(),
+                        p.pos.x, p.pos.y, p.totalTroops(), p.engaged ? 1 : 0,
                         Vector2Distance(p.pos, gs.player.pos));
         }
+        for (const AISiege& sg : gs.aiSieges)
+            std::printf("aisiege: party=%d town=%d timer=%.1f\n", sg.party, sg.town, sg.timer);
         for (int s = 0; s < (int)gs.skirmishes.size(); ++s)
             std::printf("skirmish %d: a=%d b=%d timer=%.1f pos=(%.0f,%.0f)\n",
                         s, gs.skirmishes[s].a, gs.skirmishes[s].b,

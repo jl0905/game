@@ -85,7 +85,9 @@ bool SaveGame(const GameState& gs, const char* path) {
         if (!p.alive) continue;
         if (p.faction < 0 || p.faction >= c.factions.size()) continue;
         f << "party " << c.factions[p.faction].id << ' '
-          << p.pos.x << ' ' << p.pos.y << '\n';
+          << p.pos.x << ' ' << p.pos.y;
+        if (!p.lord.empty()) f << ' ' << p.lord;   // one-token lord names
+        f << '\n';
         WriteTroops(f, c, "troop", p.troopCounts);
     }
     return f.good();
@@ -166,6 +168,7 @@ bool LoadGame(GameState& gs, const char* path) {
             p.faction = fh;
             p.pos = p.wanderTarget = pos;
             p.troopCounts.assign(c.troops.size(), 0);
+            ss >> p.lord;   // optional trailing lord name
             gs.parties.push_back(p);
             cur = &gs.parties.back();
         }

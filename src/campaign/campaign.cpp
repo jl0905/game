@@ -75,6 +75,11 @@ constexpr float PERCEPTION         = 500.0f;  // how far a party notices a foe
 constexpr float SKIRMISH_TIME      = 6.0f;    // seconds a clash takes to resolve
 constexpr float JOIN_RANGE         = 120.0f;  // how close to join a clash
 
+// --- lords (roadmap C3) ------------------------------------------------------
+constexpr float SIEGE_REACH   = 44.0f;  // lord close enough to invest a town
+constexpr float AI_SIEGE_TIME = 12.0f;  // seconds an AI siege takes to resolve
+constexpr float LORD_RESPAWN  = 90.0f;  // TODO(balance): fallen lord downtime
+
 // A potential opponent a roaming party has spotted. `index` is -1 for the
 // player's party, >= 0 for gs.parties[index], or -2 when nothing is in range.
 struct Foe {
@@ -185,6 +190,76 @@ Rectangle SettlementLeaveButton() {
     return { GetScreenWidth() / 2.0f - 100, GetScreenHeight() - 90.0f, 200, 48 };
 }
 
+// A lord's army: lordPartySize troops round-robined over the faction roster.
+Party MakeLordParty(const Content& c, int faction, const std::string& name, Vector2 pos) {
+    Party p;
+    p.faction = faction;
+    p.lord = name;
+    p.pos = p.wanderTarget = pos;
+    p.troopCounts.assign(c.troops.size(), 0);
+    const std::vector<int>& roster = c.factions[faction].roster;
+    for (int i = 0; i < c.factions[faction].lordPartySize && !roster.empty(); ++i)
+        p.troopCounts[roster[i % (int)roster.size()]]++;
+    return p;
+}
+
+// Somewhere a faction can raise troops: an owned settlement, else a map edge.
+Vector2 FactionHome(const GameState& gs, int faction) {
+    for (const Town& t : gs.towns)
+        if (t.owner == faction) return t.pos;
+    return RandomEdgePos();
+}
+
+// Install a fresh garrison detached from `attacker` into a captured town.
+void InstallGarrison(const Content& c, Town& t, Party& attacker) {
+    int size = 8;                                          // TODO(balance)
+    if (t.type == SettlementType::Village) size = 4;       // TODO(balance)
+    if (t.type == SettlementType::Castle)  size = 12;      // TODO(balance)
+    t.garrison.assign(c.troops.size(), 0);
+    for (int i = 0; i < size; ++i) {
+        // move one of the attacker's troops (any type) into the walls
+        bool moved = false;
+        for (int tr = 0; tr < (int)attacker.troopCounts.size(); ++tr)
+            if (attacker.troopCounts[tr] > 0) {
+                attacker.troopCounts[tr]--;
+                t.garrison[tr]++;
+                moved = true;
+                break;
+            }
+        if (!moved) break;
+    }
+}
+
+// Auto-resolve an AI siege: strength-weighted, like skirmishes. TODO(balance):
+// defenders currently enjoy no walls bonus.
+void ResolveAISiege(GameState& gs, AISiege& sg) {
+    if (sg.party < 0 || sg.party >= (int)gs.parties.size()) return;
+    Party& a = gs.parties[sg.party];
+    a.engaged = false;
+    if (!a.alive || sg.town < 0 || sg.town >= (int)gs.towns.size()) return;
+    Town& t = gs.towns[sg.town];
+    if (!AreFactionsHostile(gs.content, a.faction, t.owner)) return;  // already flipped
+
+    const int sa = a.totalTroops();
+    const int sd = t.garrisonSize();
+    if (sa <= 0) { a.alive = false; return; }
+
+    const bool taken = Frand(0, (float)(sa + sd)) < (float)sa;
+    if (taken) {
+        RemoveTroops(a, GetRandomValue(sd / 2, sd));   // storming has a price
+        t.owner = a.faction;
+        InstallGarrison(gs.content, t, a);
+        if (a.totalTroops() <= 0) a.alive = false;
+    } else {
+        RemoveTroops(a, GetRandomValue(sa / 3, sa / 2));   // repelled, mauled
+        if (a.totalTroops() <= 0) a.alive = false;
+        // the garrison is bloodied too
+        int loss = GetRandomValue(0, sd / 2);
+        for (int tr = 0; tr < (int)t.garrison.size() && loss > 0; ++tr)
+            while (t.garrison[tr] > 0 && loss > 0) { t.garrison[tr]--; loss--; }
+    }
+}
+
 }  // namespace
 
 void CampaignInit(GameState& gs) {
@@ -239,11 +314,18 @@ void CampaignInit(GameState& gs) {
 
     gs.parties.clear();
     gs.skirmishes.clear();
+    gs.aiSieges.clear();
+    gs.lordRespawns.clear();
     gs.playerLosses.assign(c.troops.size(), 0);
     gs.troopXp.assign(c.troops.size(), 0);
     const std::vector<int> roamers = RoamingFactions(c);
     for (int i = 0; i < 5; ++i)
         gs.parties.push_back(MakeParty(c, roamers[i % roamers.size()], RandomEdgePos()));
+
+    // Lords muster their hosts at a settlement their faction holds.
+    for (int f = 0; f < c.factions.size(); ++f)
+        for (const std::string& name : c.factions[f].lords)
+            gs.parties.push_back(MakeLordParty(c, f, name, FactionHome(gs, f)));
 }
 
 // A party index is usable as a live entry in gs.parties.
@@ -478,9 +560,38 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             Party& e = gs.parties[i];
             if (!e.alive || e.engaged) continue;
-            const PartyBehavior behavior = c.factions[e.faction].behavior;
-            const Foe foe = NearestHostile(gs, c, i);
-            const Vector2 target = SteerTarget(e, behavior, foe, sim);
+
+            Vector2 target;
+            bool haveTarget = false;
+
+            // Lords wage the settlement war: march on the nearest hostile
+            // settlement they outmatch and invest it on arrival.
+            if (!e.lord.empty()) {
+                int  bestTown = -1;
+                float bestD   = 1e9f;
+                for (int ti = 0; ti < (int)gs.towns.size(); ++ti) {
+                    const Town& t = gs.towns[ti];
+                    if (!AreFactionsHostile(c, e.faction, t.owner)) continue;
+                    if (t.garrisonSize() * 2 > e.totalTroops()) continue;  // TODO(balance)
+                    const float d = Vector2Distance(e.pos, t.pos);
+                    if (d < bestD) { bestD = d; bestTown = ti; }
+                }
+                if (bestTown >= 0) {
+                    if (bestD < SIEGE_REACH) {
+                        e.engaged = true;
+                        gs.aiSieges.push_back({ i, bestTown, AI_SIEGE_TIME });
+                        continue;
+                    }
+                    target = gs.towns[bestTown].pos;
+                    haveTarget = true;
+                }
+            }
+
+            if (!haveTarget) {
+                const PartyBehavior behavior = c.factions[e.faction].behavior;
+                const Foe foe = NearestHostile(gs, c, i);
+                target = SteerTarget(e, behavior, foe, sim);
+            }
             const Vector2 dir = Vector2Subtract(target, e.pos);
             if (Vector2Length(dir) > 5)
                 e.pos = Vector2Add(e.pos, Vector2Scale(Vector2Normalize(dir), PARTY_SPEED * 0.7f * sim));
@@ -532,6 +643,33 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             std::remove_if(gs.skirmishes.begin(), gs.skirmishes.end(),
                            [](const Skirmish& s) { return s.timer <= 0; }),
             gs.skirmishes.end());
+
+        // AI sieges run their course the same way.
+        for (AISiege& sg : gs.aiSieges) {
+            sg.timer -= sim;
+            if (sg.timer <= 0) ResolveAISiege(gs, sg);
+        }
+        gs.aiSieges.erase(
+            std::remove_if(gs.aiSieges.begin(), gs.aiSieges.end(),
+                           [](const AISiege& s) { return s.timer <= 0; }),
+            gs.aiSieges.end());
+
+        // Fallen lords raise a new host at home after a while.
+        for (Party& e : gs.parties) {
+            if (e.alive || e.lord.empty()) continue;
+            gs.lordRespawns.push_back({ e.faction, e.lord, LORD_RESPAWN });
+            e.lord.clear();   // queued exactly once
+        }
+        for (LordRespawn& lr : gs.lordRespawns) {
+            lr.timer -= sim;
+            if (lr.timer <= 0)
+                gs.parties.push_back(MakeLordParty(c, lr.faction, lr.name,
+                                                   FactionHome(gs, lr.faction)));
+        }
+        gs.lordRespawns.erase(
+            std::remove_if(gs.lordRespawns.begin(), gs.lordRespawns.end(),
+                           [](const LordRespawn& r) { return r.timer <= 0; }),
+            gs.lordRespawns.end());
 
         // Respawn parties over time so the map stays lively.
         gs.spawnTimer += sim;
@@ -609,10 +747,25 @@ void CampaignDraw(const GameState& gs) {
     for (const Party& e : gs.parties) {
         if (!e.alive) continue;
         const FactionDef& f = c.factions[e.faction];
-        DrawCircleV(e.pos, 12, f.color);
-        if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, 15, RAYWHITE);
-        ui::Text(TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
-                 (int)e.pos.x - 20, (int)e.pos.y - 32, 14, f.color);
+        const bool isLord = !e.lord.empty();
+        DrawCircleV(e.pos, isLord ? 16.0f : 12.0f, f.color);
+        if (isLord)   // a small crown so lords read at a glance
+            DrawTriangle({ e.pos.x - 10, e.pos.y - 18 }, { e.pos.x + 10, e.pos.y - 18 },
+                         { e.pos.x, e.pos.y - 30 }, GOLD);
+        if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, isLord ? 19 : 15, RAYWHITE);
+        ui::Text(isLord ? TextFormat("Lord %s %d", e.lord.c_str(), e.totalTroops())
+                        : TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
+                 (int)e.pos.x - 20, (int)e.pos.y - (isLord ? 48 : 32), 14, f.color);
+    }
+
+    // Besieged settlements: a pulsing ring in the attacker's colour.
+    for (const AISiege& sg : gs.aiSieges) {
+        if (sg.town < 0 || sg.town >= (int)gs.towns.size()) continue;
+        if (sg.party < 0 || sg.party >= (int)gs.parties.size()) continue;
+        const Town& t = gs.towns[sg.town];
+        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS + 10,
+                        c.factions[gs.parties[sg.party].faction].color);
+        ui::Text("UNDER SIEGE", (int)t.pos.x - 44, (int)t.pos.y - 64, 16, RED);
     }
 
     // Ongoing clashes: crossed swords, the two factions' colours, and a ring
