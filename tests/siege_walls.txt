@@ -1,0 +1,21 @@
+# Wall defenders: let the raiders (roster includes archers) take a walled
+# settlement, then assault it — the battle view must show wall>0 archers and
+# the fight must still resolve.
+seed 21
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+recruit 1 80
+recruit 3 40
+leave
+wait 120
+state
+enter 1
+tick 2
+state
+tick 20
+state
+tick 90
+state
+tick 90
+state

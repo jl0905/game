@@ -1,0 +1,20 @@
+# Veterancy: win battles, earn XP, promote recruits to infantry in the party
+# screen, and check XP persists in saves.
+seed 11
+state
+hunt 90
+tick 60
+state
+hunt 90
+tick 60
+state
+# open the party screen and promote recruits (row 1 = recruit)
+party
+state
+upgrade 0 2
+state
+party
+state
+save C:/Users/hambu/AppData/Local/Temp/claude/test_vet.owb
+load C:/Users/hambu/AppData/Local/Temp/claude/test_vet.owb
+state

@@ -1,0 +1,13 @@
+# Desertion: 500 wages vs 50 income must bankrupt us on day 1 and cost ~10%
+# of the men overnight.
+seed 3
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+recruit 1 500
+leave
+state
+wait 65
+state
+wait 60
+state

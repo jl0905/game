@@ -1,0 +1,31 @@
+# A/D strafe verification. seed 42: patrol party starts at (826,1006), we
+# start at (1000,1000). Walk straight at it to trigger a battle.
+seed 42
+walk -1 0.05 1
+state
+walk -1 0.05 1
+state
+# should now be in battle (or very close). yaw=0 means facing +Z, so:
+#   screen-right (D)  => world -X
+#   screen-left  (A)  => world +X
+#   forward      (W)  => world +Z
+state
+bmove 0 1 2
+state
+bmove 0 -1 4
+state
+bmove 1 0 2
+state
+# swing feels: ready an overhead and release
+attack up
+state
+# block held: enemy damage should be cut to 15% when they reach us
+block on
+tick 5
+state
+block off
+# let the AI fight it out
+tick 60
+state
+tick 30
+state

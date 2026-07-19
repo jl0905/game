@@ -137,7 +137,10 @@ The exe is a GUI app in Release, so capture output via
 
 `openwarband.exe --bench N` runs a windowed N-vs-N synthetic battle at
 uncapped FPS and writes avg/p99 frame times to `bench.txt` — use it to verify
-any rendering or battle-scale change. Colliding with a
+any rendering or battle-scale change.
+
+Reusable regression scripts live in `tests/` (see `tests/README.md`) — run the
+relevant one after touching a system, and add a script when you add a system. Colliding with a
 hostile party mid-`walk`/`wait` enters the battle screen; battles run entirely
 on soldier AI if you issue no battle commands (the idle hero will eventually be
 killed — block or move). See `src/harness.cpp` for the command reference.

@@ -1,0 +1,43 @@
+# Full-systems soak: ~12 minutes of simulated play touching every system.
+seed 77
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+recruit 1 60
+recruit 3 30
+leave
+state
+hunt 90
+tick 60
+state
+wait 60
+state
+hunt 90
+tick 60
+state
+save C:/Users/hambu/AppData/Local/Temp/claude/soak_mid.owb
+wait 120
+state
+hunt 90
+tick 60
+state
+load C:/Users/hambu/AppData/Local/Temp/claude/soak_mid.owb
+state
+wait 120
+state
+hunt 120
+tick 90
+state
+wait 180
+state
+party
+state
+party
+inv
+state
+inv
+char
+state
+char
+wait 60
+state

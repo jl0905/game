@@ -1,0 +1,13 @@
+# C3b: with 7 troops, waiting near lords must NOT get us hunted down by a
+# 120-man host (small aggressive parties may still attack — that's fine).
+# Watch for the siege alert on our town too.
+seed 8
+state
+wait 45
+state
+wait 45
+state
+wait 45
+state
+wait 45
+state
