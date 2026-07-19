@@ -1,0 +1,15 @@
+# Couched lance: swap to the spear, gallop through the enemy line, and ride
+# men down — enemy count should drop from lance strikes as we pass through.
+seed 3
+hunt 120
+state
+swap
+state
+bmove 1 0 5
+state
+bmove 1 0 5
+state
+bmove -1 0 5
+state
+tick 60
+state

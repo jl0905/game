@@ -601,6 +601,15 @@ float ApplyArmor(float damage, int armor) {
     return fmaxf(damage - (float)armor, 1.0f);
 }
 
+// Riding someone down with a polearm levelled is a couched lance strike —
+// weapon damage carried by the horse's momentum. Anything else just tramples.
+// TODO(balance): the couch multiplier.
+float TrampleDamage(const Content& c, int weapon) {
+    if (c.weapons.valid(weapon) && c.weapons[weapon].wclass == WeaponClass::Polearm)
+        return WeaponDamage(c, weapon) * 2.0f;
+    return TRAMPLE_DAMAGE;
+}
+
 void SpawnLine(const Content& c, Team team, const std::vector<int>& counts, float zBase,
                bool ally = false) {
     int n = 0;
@@ -1033,9 +1042,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 Vector3 d3 = Vector3Subtract(s.pos, B.pPos);
                 d3.y = 0;
                 if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
-                    DamageSoldier(c, s, ApplyArmor(TRAMPLE_DAMAGE,
+                    const int wh = B.setup.heroLoadout.get(EquipSlot::Weapon);
+                    DamageSoldier(c, s, ApplyArmor(TrampleDamage(c, wh),
                                                    LoadoutArmor(c, TroopLoadout(c, s.troop))));
                     B.pTrampleCd = TRAMPLE_COOLDOWN;
+                    B.shake = fminf(1.0f, B.shake + 0.2f);   // the impact carries
                     break;
                 }
             }
@@ -1160,7 +1171,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     Vector3 d3 = Vector3Subtract(o.pos, s.pos);
                     d3.y = 0;
                     if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
-                        B.dmg[j] += ApplyArmor(TRAMPLE_DAMAGE,
+                        B.dmg[j] += ApplyArmor(TrampleDamage(c, s.activeWeapon),
                                                LoadoutArmor(c, TroopLoadout(c, o.troop)));
                         s.trampleCd = TRAMPLE_COOLDOWN;
                         break;
