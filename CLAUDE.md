@@ -33,23 +33,104 @@ A small Mount & Blade–style game in **C++17** using **[raylib](https://www.ray
 4. **Keep it clean.** Small focused files, `namespace {}` for file-local helpers,
    `const`-correct, no magic numbers without a named constant, no dead code.
 
-## Code layout
+## Code layout & module boundaries
+
+The tree is split so independent agents can work in parallel without touching
+each other's files:
+
+**Shared core (`src/`)** — stable contracts; change sparingly and deliberately:
 
 | File | Responsibility |
 |---|---|
-| `src/main.cpp` | Window setup, loads content, screen state machine |
+| `src/main.cpp` | Window setup, screen state machine — **the only place campaign and battle meet** |
 | `src/types.h` | Core enums: `Screen`, `EquipSlot`, `WeaponClass`, `AttackDir`, `PartyBehavior`, `Team` |
 | `src/registry.h` | `Registry<T>` — append-only, id→handle lookup |
-| `src/content.h` | Definition structs: `ArmorDef`, `WeaponDef`, `TroopDef`, `FactionDef`, `Loadout`, `Content` |
-| `src/content.cpp` | `LoadDefaultContent()` — **the single place to add game content** |
-| `src/world.h` | Runtime state: `Character`, `Party`, `Town`, `GameState` |
-| `src/game.h` | Umbrella include + subsystem entry points |
-| `src/character.h/.cpp` | Segmented humanoid renderer driven by a `Loadout` |
-| `src/campaign.cpp` | Overworld map, faction party AI, towns/recruiting, economy |
-| `src/battle.cpp` | Real-time 3D battle, 4-directional combat, soldier AI, casualties |
+| `src/content.h/.cpp` | Definition structs + `LoadDefaultContent()` — **the single place to add game content** |
+| `src/world.h` | World-map runtime state: `Character`, `Party`, `Town`, `GameState` |
+| `src/input.h` | `CampaignInput` / `BattleInput` — per-frame player intent, decoupled from devices |
+| `src/harness.h/.cpp` | Headless script harness (`--script`) — see "Programmatic play" below |
+| `src/ui.h/.cpp` | Text rendering. Draw all text via `ui::Text`/`ui::Title` (not raylib `DrawText`) so it uses the smooth TTF fonts. Fonts are mod-configurable in `assets/fonts.cfg`; falls back to the built-in font if a font fails to load. |
+
+**Campaign module (`src/campaign/`)** — owns the overworld: map, party AI,
+towns/recruiting, economy, and *applying* battle outcomes to the world.
+Hostile factions' parties hunt each other (`AreFactionsHostile`), and two that
+collide lock into a **skirmish** that auto-resolves over a few seconds — the
+player can watch it play out or press `[1]`/`[2]` to join a side, turning it
+into a full battle (the backed party fights as your ally). World time is
+**passively paused**: it only advances while the player travels or holds SPACE
+to wait, so nothing moves until the player acts.
+
+**Battle module (`src/battle/`)** — owns everything inside a fight: 3D combat,
+4-directional melee, soldier AI, battle camera/HUD, the humanoid renderer
+(`character.h/.cpp`), and terrain. Terrain lives inside `battle.cpp`: a simple
+deterministic heightfield (hills/mountains, an optional carved river, scattered
+trees) whose single `HeightAt()` is the source of truth for both rendering and
+sitting units on the ground. It is generated from `BattleSetup::campaignPos`
+(`TerrainConfigFromWorld`) so the battlefield reflects where you are on the map.
+
+### The battle handoff (keep this narrow)
+
+Battle is a special state entered when two parties engage. It is deliberately
+isolated: `src/battle/` **never includes `world.h`** and knows nothing about
+parties, towns, or gold. The full contract lives in `src/battle/battle.h`:
+
+- `BattleSetup` — a snapshot taken from the world map at engagement time
+  (troop counts for both sides, an optional allied party's troops when the
+  player joins someone else's fight, the hero's loadout and max HP).
+- `BattleOutcome` — what the battle reports back (won/lost, per-troop player
+  losses, and per-troop allied losses when an ally fought).
+
+Flow: campaign detects a collision and sets `Screen::Battle` → `main.cpp`
+builds a `BattleSetup` from `GameState` and calls `BattleInit` → battle runs
+frame-by-frame until `BattleUpdateDraw` returns `false` with an outcome →
+`main.cpp` writes the outcome into `GameState` → campaign applies it
+(casualties, loot, party removal).
+
+If the battle needs new information (e.g. hero skills, terrain), extend
+`BattleSetup`/`BattleOutcome` — do not reach into campaign state. Both sides'
+data (party composition, player health, etc.) always originates from the
+global world map, which remains the source of truth.
 
 Data flow: `Content` (static catalogue) is loaded once; `GameState` (mutable
-runtime) references it by handle. Subsystems both update and draw within a frame.
+runtime) references it by handle.
+
+### Gather / Update / Draw (keep this separation)
+
+Every screen is split three ways, and **simulation code must never read the
+devices or draw**:
+
+- `Gather*Input()` — raylib devices → `CampaignInput` / `BattleInput` (windowed only)
+- `*Update()` — pure simulation, driven only by the input struct
+- `*Draw()` — rendering only (windowed only)
+
+This is what makes the game playable headless. New player-facing actions get a
+field in the input struct, a branch in Gather, and handling in Update — never a
+raw `IsKeyPressed` inside Update.
+
+## Programmatic play (use this to verify gameplay changes)
+
+`openwarband.exe --script file.txt` runs the full simulation **without a
+window**, at a fixed 60 Hz step, driven by commands and printing state on
+demand. This is the primary way for agents to actually *play* the game:
+
+```
+seed 42            # deterministic run
+walk -1 0.05 2     # travel on the map (direction dx dy, seconds) — time flows
+wait 30            # stand still and let world time pass
+state              # dump: screen, gold, party, all parties, skirmishes, battle view
+enter 0 / leave    # settlements; recruit SLOT N
+join 1|2           # join the nearest skirmish on a side
+bmove F R T        # battle: move (forward, strafe-right) for T seconds
+look DX DY         # battle: turn camera (mouse-delta pixels)
+attack up|down|left|right   # ready, aim, release one swing
+block on|off  swap  menu  formation 1-4  ranks +|-
+```
+
+The exe is a GUI app in Release, so capture output via
+`cmd /c "openwarband.exe --script s.txt > out.txt 2>&1"`. Colliding with a
+hostile party mid-`walk`/`wait` enters the battle screen; battles run entirely
+on soldier AI if you issue no battle commands (the idle hero will eventually be
+killed — block or move). See `src/harness.cpp` for the command reference.
 
 ## How to extend (common tasks)
 
@@ -70,12 +151,28 @@ All of these are edits to `src/content.cpp` only, unless noted:
 
 ## Combat model
 
-- Four attack directions (`AttackDir`). In battle the player's swing direction is
-  chosen from recent mouse motion (`DirFromMotion`): flick up = overhead, down =
-  thrust, left/right = side cuts. RMB blocks.
-- Damage/reach/cooldown currently use placeholder constants in `battle.cpp`
-  (`HIT_DAMAGE`, `ATTACK_COOLDOWN`) and the weapon's `reach`. These are the next
-  things to route through `WeaponDef`/`ArmorDef` once balancing begins.
+- **Directional melee (`AttackDir`).** The player **holds** LMB to ready a swing,
+  aiming it by moving the mouse (`DirFromMotion`: up = overhead, down = thrust,
+  left/right = cuts), then **releases** to strike. `Pose.windup`/`Pose.swing`
+  drive the wind-up-then-follow-through animation; `character.cpp` also draws a
+  motion trail and a crossguard. RMB blocks (and cancels a wind-up).
+- **Multiple weapons.** A `Loadout` carries an arsenal (`weapons`) with the
+  active one mirrored into the `Weapon` slot. The hero swaps with **Q**; troop
+  AI auto-selects per range (`PickWeaponForRange` — spear at range, sword up
+  close). Add weapons to a unit with `loadout.addWeapon(handle)` in `content.cpp`.
+- **Formations (`~` strategy menu).** The player's own troops obey Charge / Line
+  / Square / Spread with an adjustable rank count; `FormationTarget` computes the
+  slot layout. Allies and enemies always charge. Add a shape by extending
+  `FormationType` + `FormationTarget`.
+- **Multithreaded AI.** Soldier AI is a parallel read phase (`ComputeAI` over a
+  read-only snapshot via `ThreadPool` in `src/parallel.h`) followed by a serial
+  apply phase — no locks in the hot path, no data races. The pool is a shared
+  singleton (`ThreadPool::Global()`); CMake links `Threads::Threads`.
+- **Combat stats are data-routed.** Damage, reach and cooldown come from the
+  wielded `WeaponDef` (`WeaponDamage`/`WeaponReach`/`WeaponCooldown` in
+  `battle.cpp`; bare-hand `FIST_*` fallbacks); worn armour soaks per hit via
+  `LoadoutArmor` + `ApplyArmor`. Values are still flat placeholders
+  (TODO(balance)) — tune them in `content.cpp`, not in battle code.
 
 ## Build & run
 
@@ -96,5 +193,9 @@ CMakeCache left over from WSL). The `build/` directory is a build artifact.
   doesn't need to.
 - Handles are `int`; `-1` means "none/empty". Check `Registry::valid()` before use.
 - Placeholder/unbalanced numbers must be labelled `TODO(balance)`.
-- Verify changes by actually building **and** launching the game, not just
-  compiling.
+- Verify changes by actually building **and** playing the game — use the
+  `--script` harness (see "Programmatic play") to drive real gameplay and
+  assert on `state` output, not just compiling.
+- Runtime assets live in `assets/` and are copied next to the executable by
+  CMake post-build; the game locates them via `GetApplicationDirectory()`, so it
+  runs from any working directory. Draw text through `ui::Text`/`ui::Title`.

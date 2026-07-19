@@ -8,7 +8,11 @@
 // ---------------------------------------------------------------------------
 
 // Top-level screen / flow state.
-enum class Screen { Campaign, Battle, BattleResult };
+enum class Screen { Campaign, Settlement, Battle, BattleResult };
+
+// Kind of settlement on the overworld. Drives the map icon and the greeting /
+// available actions on the settlement menu, not balance.
+enum class SettlementType { Village, Town, Castle };
 
 // Equipment slots a character can fill. Add coverage here (e.g. Legs, Cape)
 // and both stats and rendering will account for it.

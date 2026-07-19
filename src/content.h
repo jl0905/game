@@ -38,13 +38,37 @@ struct WeaponDef {
 
 // What a character wears and wields. Each slot holds a handle into the matching
 // registry (armor for wearables, weapons for the Weapon slot); -1 means empty.
+//
+// A character may carry MULTIPLE weapons (an arsenal), not just one. The Weapon
+// slot always mirrors the currently-active weapon so rendering and combat can
+// read a single handle; `weapons` holds the full set to switch between. Add
+// weapons with addWeapon() — the first one becomes active automatically.
 struct Loadout {
     std::array<int, EQUIP_SLOT_COUNT> slots;
+    std::vector<int>                  weapons;   // carried arsenal (handles)
     Loadout() { slots.fill(-1); }
 
     int  get(EquipSlot s) const { return slots[static_cast<int>(s)]; }
     void set(EquipSlot s, int handle) { slots[static_cast<int>(s)] = handle; }
     bool has(EquipSlot s) const { return get(s) >= 0; }
+
+    // Add a weapon to the arsenal; the first added also becomes the active one.
+    void addWeapon(int handle) {
+        weapons.push_back(handle);
+        if (!has(EquipSlot::Weapon)) set(EquipSlot::Weapon, handle);
+    }
+
+    // Arsenal size, tolerating loadouts that only set the Weapon slot directly.
+    int weaponCount() const {
+        return weapons.empty() ? (has(EquipSlot::Weapon) ? 1 : 0)
+                               : static_cast<int>(weapons.size());
+    }
+
+    // Handle of the i-th carried weapon (falls back to the Weapon slot).
+    int weaponAt(int i) const {
+        if (i >= 0 && i < static_cast<int>(weapons.size())) return weapons[i];
+        return get(EquipSlot::Weapon);
+    }
 };
 
 // A troop archetype: a named unit with default equipment.
@@ -83,3 +107,12 @@ struct Content {
 // Registers the base (unbalanced) content set. Single source of truth for all
 // armour, weapons, troops and factions.
 void LoadDefaultContent(Content& c);
+
+// Total armour value of everything worn in `lo` (sums ArmorDef::armor).
+int LoadoutArmor(const Content& c, const Loadout& lo);
+
+// Whether two factions will fight. Currently any two *different* factions are
+// hostile and the same faction is friendly — enough for a chaotic warband world
+// where everyone raids everyone. A per-faction relations table can replace this
+// later without changing any caller.
+bool AreFactionsHostile(const Content& c, int factionA, int factionB);

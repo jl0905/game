@@ -44,11 +44,20 @@ void LoadDefaultContent(Content& c) {
     const int a_boots  = c.armor.add(Armor("boots",  "Leather Boots",EquipSlot::Feet, DARKBROWN));
 
     // ---- Weapons (one per class shown; add freely) ------------------------
-    const int w_sword  = c.weapons.add(Weapon("sword",  "Arming Sword", WeaponClass::OneHanded, LIGHTGRAY));
-    const int w_great  = c.weapons.add(Weapon("great",  "Greatsword",   WeaponClass::TwoHanded, RAYWHITE));
-    const int w_spear  = c.weapons.add(Weapon("spear",  "Spear",        WeaponClass::Polearm,   BROWN));
-    const int w_bow    = c.weapons.add(Weapon("bow",    "Short Bow",    WeaponClass::Ranged,    DARKBROWN));
-    (void)w_great; (void)w_bow;  // registered and ready; not yet issued to a troop
+    // Reach differs by weapon *identity* (a spear is simply longer than a
+    // sword); damage/swing stay flat. TODO(balance): tune all three per def.
+    WeaponDef sword = Weapon("sword", "Arming Sword", WeaponClass::OneHanded, LIGHTGRAY);
+    WeaponDef great = Weapon("great", "Greatsword",   WeaponClass::TwoHanded, RAYWHITE);
+    great.reach = 3.2f;
+    WeaponDef spear = Weapon("spear", "Spear",        WeaponClass::Polearm,   BROWN);
+    spear.reach = 4.0f;
+    WeaponDef bow   = Weapon("bow",   "Short Bow",    WeaponClass::Ranged,    DARKBROWN);
+
+    const int w_sword = c.weapons.add(sword);
+    const int w_great = c.weapons.add(great);
+    const int w_spear = c.weapons.add(spear);
+    const int w_bow   = c.weapons.add(bow);
+    (void)w_bow;  // registered and ready; not yet issued to a troop
 
     // ---- Troops ------------------------------------------------------------
     // Troops differ by loadout + identity, NOT by tuned numbers (all flat base).
@@ -70,14 +79,16 @@ void LoadDefaultContent(Content& c) {
     infantry.loadout.set(EquipSlot::Body,   a_mail);
     infantry.loadout.set(EquipSlot::Hands,  a_gloves);
     infantry.loadout.set(EquipSlot::Feet,   a_boots);
-    infantry.loadout.set(EquipSlot::Weapon, w_spear);
+    infantry.loadout.addWeapon(w_spear);   // carries both — spear at range,
+    infantry.loadout.addWeapon(w_sword);   // sword up close (AI picks per range)
 
     TroopDef veteran = makeTroop("veteran", "Veteran", GOLD);
     veteran.loadout.set(EquipSlot::Head,   a_helmet);
     veteran.loadout.set(EquipSlot::Body,   a_plate);
     veteran.loadout.set(EquipSlot::Hands,  a_gloves);
     veteran.loadout.set(EquipSlot::Feet,   a_boots);
-    veteran.loadout.set(EquipSlot::Weapon, w_sword);
+    veteran.loadout.addWeapon(w_great);    // a veteran carries a greatsword
+    veteran.loadout.addWeapon(w_sword);    // and a sidearm
 
     const int t_recruit  = c.troops.add(recruit);
     const int t_infantry = c.troops.add(infantry);
@@ -109,4 +120,19 @@ void LoadDefaultContent(Content& c) {
     patrol.color = PURPLE; patrol.behavior = PartyBehavior::Patrol;
     patrol.roster = { t_infantry, t_veteran };
     c.factions.add(patrol);
+}
+
+int LoadoutArmor(const Content& c, const Loadout& lo) {
+    int total = 0;
+    for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
+        if (s == static_cast<int>(EquipSlot::Weapon)) continue;
+        const int h = lo.slots[s];
+        if (c.armor.valid(h)) total += c.armor[h].armor;
+    }
+    return total;
+}
+
+bool AreFactionsHostile(const Content& c, int factionA, int factionB) {
+    (void)c;  // relations are implicit for now; kept as a hook for a real table
+    return factionA >= 0 && factionB >= 0 && factionA != factionB;
 }

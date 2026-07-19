@@ -27,22 +27,38 @@ Color SlotTint(const Content& content, const Loadout& lo, EquipSlot slot, Color 
     return content.armor.valid(h) ? content.armor[h].tint : fallback;
 }
 
-// Where the weapon hand sits and points during a swing, in local space. Returns
-// hilt and tip so any weapon class can be drawn along that line.
-void SwingLine(const Pose& pose, Vector3& hilt, Vector3& tip, float reach) {
-    // Rest pose: weapon held forward from the right hand.
-    const Vector3 hand{ 0.42f, 1.15f, 0.15f };
-    const float p = Clamp(pose.swing, 0.0f, 1.0f);
-    // A swing arcs from a wind-up offset to a follow-through offset.
-    Vector3 from, to;
-    switch (pose.attackDir) {
-        case AttackDir::Up:    from = { 0.2f, 2.1f, -0.2f }; to = { 0.0f, 0.4f, 1.2f }; break; // overhead
-        case AttackDir::Down:  from = { 0.1f, 0.6f, 0.4f };  to = { 0.1f, 1.4f, 1.6f }; break; // thrust
-        case AttackDir::Left:  from = { 1.2f, 1.4f, 0.2f };  to = { -1.2f, 1.2f, 0.9f }; break; // R->L
+// The wind-up ("cocked") and follow-through offsets for each attack direction,
+// in local (right, up, fwd) space. Overhead comes from high/back and lands low
+// front; a thrust pulls back then extends forward; side cuts sweep across.
+void SwingArc(AttackDir dir, Vector3& cocked, Vector3& follow) {
+    switch (dir) {
+        case AttackDir::Up:    cocked = { 0.1f, 2.3f, -0.5f }; follow = { 0.0f, 0.3f, 1.5f }; break; // overhead
+        case AttackDir::Down:  cocked = { 0.2f, 1.2f, -0.4f }; follow = { 0.1f, 1.1f, 2.0f }; break; // thrust
+        case AttackDir::Left:  cocked = { 1.5f, 1.6f, -0.1f }; follow = { -1.4f, 1.1f, 1.0f }; break; // R->L
         case AttackDir::Right: default:
-                               from = { -1.2f, 1.4f, 0.2f }; to = { 1.2f, 1.2f, 0.9f }; break;  // L->R
+                               cocked = { -1.5f, 1.6f, -0.1f }; follow = { 1.4f, 1.1f, 1.0f }; break; // L->R
     }
-    const Vector3 aim = (p > 0.0f) ? Vector3Lerp(from, to, p) : Vector3{ 0, 1.4f, 1.0f };
+}
+
+// The point the blade aims at this frame, in local space, blending rest ->
+// cocked (while holding a wind-up) -> follow-through (while swinging).
+Vector3 SwingAim(const Pose& pose) {
+    const Vector3 rest{ 0.45f, 1.35f, 0.95f };
+    Vector3 cocked, follow;
+    SwingArc(pose.attackDir, cocked, follow);
+    if (pose.swing > 0.0f) {
+        float p = 1.0f - Clamp(pose.swing, 0.0f, 1.0f);   // 0 at strike -> 1 done
+        p = p * p * (3.0f - 2.0f * p);                    // ease
+        return Vector3Lerp(cocked, follow, p);
+    }
+    if (pose.windup > 0.0f)
+        return Vector3Lerp(rest, cocked, Clamp(pose.windup, 0.0f, 1.0f));
+    return rest;
+}
+
+// Blade hilt + tip for a given aim point, along the arm from the hand.
+void BladeLine(const Vector3& aim, Vector3& hilt, Vector3& tip, float reach) {
+    const Vector3 hand{ 0.42f, 1.15f, 0.15f };
     hilt = hand;
     tip  = Vector3Add(hand, Vector3Scale(Vector3Normalize(Vector3Subtract(aim, hand)),
                                          reach > 0.5f ? reach : 1.4f));
@@ -85,31 +101,61 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     // ---- Right arm (weapon side) ----
     DrawCapsule(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, 8, 4, handsC);
 
-    // ---- Weapon ----
-    const int wh = loadout.get(EquipSlot::Weapon);
+    // ---- Weapon (the active one; a character may carry several) ----
+    const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
     if (content.weapons.valid(wh)) {
         const WeaponDef& w = content.weapons[wh];
-        Vector3 lh, lt;
         const float reach = w.reach > 0.5f ? w.reach : 1.4f;
-        SwingLine(pose, lh, lt, reach);
+
+        const Vector3 aim = SwingAim(pose);
+        Vector3 lh, lt;
+        BladeLine(aim, lh, lt, reach);
         const Vector3 hilt = at(lh.x, lh.y, lh.z);
         const Vector3 tip  = at(lt.x, lt.y, lt.z);
+
+        // Motion trail: faint ghosts of the blade slightly earlier in the arc.
+        if (pose.swing > 0.0f && w.wclass != WeaponClass::Ranged) {
+            const float p = 1.0f - Clamp(pose.swing, 0.0f, 1.0f);
+            for (int g = 1; g <= 3; ++g) {
+                const float gp = Clamp(p - 0.10f * g, 0.0f, 1.0f);
+                Pose gpose = pose;
+                gpose.swing = 1.0f - gp;
+                Vector3 gh, gt;
+                BladeLine(SwingAim(gpose), gh, gt, reach);
+                DrawCylinderEx(at(gh.x, gh.y, gh.z), at(gt.x, gt.y, gt.z),
+                               0.02f, 0.01f, 6, Fade(w.tint, 0.18f * (4 - g)));
+            }
+        }
+
         switch (w.wclass) {
-            case WeaponClass::Polearm:
-                DrawCylinderEx(hilt, tip, 0.03f, 0.03f, 6, w.tint);
-                DrawCylinderEx(tip, Vector3Add(tip, Vector3Scale(Vector3Normalize(Vector3Subtract(tip, hilt)), 0.25f)),
-                               0.05f, 0.0f, 6, GRAY);  // spearhead
+            case WeaponClass::Polearm: {
+                DrawCylinderEx(hilt, tip, 0.035f, 0.035f, 6, Color{ 110, 78, 48, 255 }); // shaft
+                const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
+                DrawCylinderEx(tip, Vector3Add(tip, Vector3Scale(dir, 0.35f)), 0.06f, 0.0f, 6, w.tint); // head
                 break;
+            }
             case WeaponClass::Ranged:
-                DrawCylinderEx(at(0.42f, 1.6f, 0.2f), at(0.42f, 0.7f, 0.2f), 0.03f, 0.03f, 6, w.tint);
+                // A simple bow held vertically in the hand.
+                DrawCylinderEx(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), 0.03f, 0.03f, 6, w.tint);
+                DrawLine3D(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), Fade(RAYWHITE, 0.6f)); // string
                 break;
-            case WeaponClass::TwoHanded:
-                DrawCylinderEx(hilt, tip, 0.06f, 0.03f, 6, w.tint);
+            case WeaponClass::TwoHanded: {
+                const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
+                const Vector3 guard = { dir.z, 0, -dir.x };  // crossguard, perpendicular
+                DrawCylinderEx(hilt, tip, 0.06f, 0.03f, 8, w.tint);
+                DrawCylinderEx(Vector3Subtract(hilt, Vector3Scale(guard, 0.22f)),
+                               Vector3Add(hilt, Vector3Scale(guard, 0.22f)), 0.035f, 0.035f, 6, DARKGRAY);
                 break;
+            }
             case WeaponClass::OneHanded:
-            default:
-                DrawCylinderEx(hilt, tip, 0.05f, 0.02f, 6, w.tint);
+            default: {
+                const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
+                const Vector3 guard = { dir.z, 0, -dir.x };
+                DrawCylinderEx(hilt, tip, 0.05f, 0.02f, 8, w.tint);
+                DrawCylinderEx(Vector3Subtract(hilt, Vector3Scale(guard, 0.16f)),
+                               Vector3Add(hilt, Vector3Scale(guard, 0.16f)), 0.03f, 0.03f, 6, DARKGRAY);
                 break;
+            }
         }
     }
 

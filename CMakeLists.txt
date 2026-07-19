@@ -18,12 +18,22 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(openwarband
     src/main.cpp
+    src/harness.cpp
+    src/ui.cpp
     src/content.cpp
-    src/character.cpp
-    src/campaign.cpp
-    src/battle.cpp
+    src/campaign/campaign.cpp
+    src/battle/battle.cpp
+    src/battle/character.cpp
 )
-target_link_libraries(openwarband PRIVATE raylib)
+find_package(Threads REQUIRED)
+target_link_libraries(openwarband PRIVATE raylib Threads::Threads)
+
+# Ship the runtime assets (fonts, config) next to the executable so the game
+# finds them via GetApplicationDirectory() regardless of the working directory.
+add_custom_command(TARGET openwarband POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:openwarband>/assets
+    COMMENT "Copying assets to build output")
 
 # macOS needs these frameworks
 if(APPLE)

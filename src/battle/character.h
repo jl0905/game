@@ -1,5 +1,5 @@
 #pragma once
-#include "content.h"
+#include "../content.h"
 #include "raylib.h"
 
 // ---------------------------------------------------------------------------
@@ -11,10 +11,13 @@
 // Transient animation/aim state for one drawn frame.
 struct Pose {
     float     yaw       = 0.0f;               // facing, radians (0 = +Z)
-    float     swing     = 0.0f;               // 0 idle .. 1 full swing
-    AttackDir attackDir = AttackDir::Right;   // which way the current swing goes
+    float     swing     = 0.0f;               // 1 at strike start .. 0 finished
+    float     windup    = 0.0f;               // 0 relaxed .. 1 fully cocked (held)
+    AttackDir attackDir = AttackDir::Right;   // which way the swing/hold goes
     bool      blocking  = false;
     float     walkPhase = 0.0f;               // advances while moving (radians)
+    int       weapon    = -1;                 // weapon handle to draw; -1 = use
+                                              // the loadout's Weapon slot
 };
 
 // Draws a humanoid standing on `feet` (its ground point), wearing `loadout`.

@@ -26,6 +26,7 @@ struct Party {
     std::vector<int> troopCounts;       // one entry per troop type
     bool             isPlayer = false;
     bool             alive = true;
+    bool             engaged = false;    // locked in a world-map skirmish
     Vector2          wanderTarget{};
     float            thinkTimer = 0;
 
@@ -37,8 +38,20 @@ struct Party {
 };
 
 struct Town {
-    Vector2     pos{};
-    std::string name;
+    Vector2        pos{};
+    std::string    name;
+    SettlementType type = SettlementType::Town;
+};
+
+// Two hostile AI parties locked in a fight on the world map. It resolves on its
+// own after `timer` runs out (the player can watch), or the player can join a
+// side and turn it into a full battle. `a` and `b` index into GameState::parties.
+struct Skirmish {
+    int     a = -1;
+    int     b = -1;
+    float   timer    = 0;   // seconds left until auto-resolution
+    float   duration = 1;   // starting timer, for drawing progress
+    Vector2 pos{};          // midpoint where the clash is drawn
 };
 
 // The single mutable game state passed to every subsystem.
@@ -49,15 +62,20 @@ struct GameState {
     // Campaign
     Character          playerHero;   // the avatar you control in battle
     Party              player;
-    std::vector<Party> parties;      // all non-player parties
-    std::vector<Town>  towns;
+    std::vector<Party>    parties;      // all non-player parties
+    std::vector<Town>     towns;
+    std::vector<Skirmish> skirmishes;   // ongoing AI-vs-AI clashes on the map
     int                gold = 300;
     float              spawnTimer = 0;
     int                nearTown = -1;
+    int                currentSettlement = -1;   // town index while inside a settlement
+    bool               timeFlowing = false;      // did world time advance this frame?
 
     // Battle handoff
-    int              battlePartyIndex = -1;      // index into `parties`
+    int              battlePartyIndex = -1;      // enemy: index into `parties`
+    int              battleAllyIndex  = -1;      // friendly party joining you, or -1
     bool             battleWon = false;
     std::vector<int> playerLosses;               // parallel to troops
+    std::vector<int> allyLosses;                 // parallel to troops (if an ally fought)
     std::string      resultText;
 };

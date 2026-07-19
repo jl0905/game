@@ -1,4 +1,6 @@
-#include "game.h"
+#include "campaign.h"
+#include "../ui.h"
+#include <algorithm>
 #include <cmath>
 
 // ---------------------------------------------------------------------------
@@ -12,7 +14,6 @@ namespace {
 
 constexpr float MAP_SIZE   = 2000.0f;
 constexpr float PARTY_SPEED = 160.0f;
-constexpr float TOWN_RANGE  = 60.0f;
 
 float Frand(float a, float b) {
     return a + (b - a) * (GetRandomValue(0, 10000) / 10000.0f);
@@ -34,12 +35,153 @@ Vector2 RandomEdgePos() {
     return { Frand(150, MAP_SIZE - 150), Frand(150, MAP_SIZE - 150) };
 }
 
+// Radius (in world units) within which a click counts as selecting a town.
+constexpr float TOWN_CLICK_RADIUS = 36.0f;
+
+const char* SettlementTypeName(SettlementType t) {
+    switch (t) {
+        case SettlementType::Village: return "Village";
+        case SettlementType::Castle:  return "Castle";
+        case SettlementType::Town:    return "Town";
+    }
+    return "Settlement";
+}
+
+const char* SettlementGreeting(SettlementType t) {
+    switch (t) {
+        case SettlementType::Village:
+            return "A cluster of thatched huts. Peasants eye your warband warily.";
+        case SettlementType::Castle:
+            return "Stone walls loom overhead. The garrison watches from the battlements.";
+        case SettlementType::Town:
+            return "Busy streets, a market, and a keep. Recruits gather at the tavern.";
+    }
+    return "";
+}
+
 // Non-player factions that can spawn as roaming parties.
 std::vector<int> RoamingFactions(const Content& c) {
     std::vector<int> out;
     for (int i = 0; i < c.factions.size(); ++i)
         if (i != c.playerFaction) out.push_back(i);
     return out;
+}
+
+// --- party-vs-party warfare tuning (world-map scale, not battle balance) -----
+constexpr float PARTY_COLLIDE_DIST = 22.0f;   // AI parties touch -> skirmish
+constexpr float PLAYER_COLLIDE_DIST = 24.0f;  // AI party touches you -> battle
+constexpr float PERCEPTION         = 500.0f;  // how far a party notices a foe
+constexpr float SKIRMISH_TIME      = 6.0f;    // seconds a clash takes to resolve
+constexpr float JOIN_RANGE         = 120.0f;  // how close to join a clash
+
+// A potential opponent a roaming party has spotted. `index` is -1 for the
+// player's party, >= 0 for gs.parties[index], or -2 when nothing is in range.
+struct Foe {
+    int     index    = -2;
+    Vector2 pos{};
+    int     strength = 0;
+    float   dist     = PERCEPTION;
+};
+
+// Nearest hostile party (player or AI) that party `ei` can currently see.
+Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
+    const Party& e = gs.parties[ei];
+    Foe best;
+    if (AreFactionsHostile(c, e.faction, c.playerFaction) && gs.player.totalTroops() > 0) {
+        const float d = Vector2Distance(e.pos, gs.player.pos);
+        if (d < best.dist) best = { -1, gs.player.pos, gs.player.totalTroops(), d };
+    }
+    for (int j = 0; j < (int)gs.parties.size(); ++j) {
+        if (j == ei) continue;
+        const Party& o = gs.parties[j];
+        if (!o.alive || o.engaged) continue;
+        if (!AreFactionsHostile(c, e.faction, o.faction)) continue;
+        const float d = Vector2Distance(e.pos, o.pos);
+        if (d < best.dist) best = { j, o.pos, o.totalTroops(), d };
+    }
+    return best;
+}
+
+// Where party `e` steers this tick, given the foe it has spotted (if any).
+Vector2 SteerTarget(Party& e, PartyBehavior behavior, const Foe& foe, float sim) {
+    if (foe.index != -2) {
+        const bool couldWin = e.totalTroops() >= foe.strength / 2;
+        switch (behavior) {
+            case PartyBehavior::Aggressive:
+                if (foe.dist < 500) return foe.pos;                 // hunts eagerly
+                break;
+            case PartyBehavior::Patrol:
+                if (foe.dist < 300 && couldWin) return foe.pos;     // opportunistic
+                break;
+            case PartyBehavior::Passive:
+                if (foe.dist < 220) {                               // flees
+                    Vector2 away = Vector2Subtract(e.pos, foe.pos);
+                    if (Vector2Length(away) > 1)
+                        return Vector2Add(e.pos, Vector2Scale(Vector2Normalize(away), 200));
+                }
+                break;
+        }
+    }
+    e.thinkTimer -= sim;
+    if (e.thinkTimer <= 0) {
+        e.wanderTarget = { Frand(100, MAP_SIZE - 100), Frand(100, MAP_SIZE - 100) };
+        e.thinkTimer = Frand(3, 8);
+    }
+    return e.wanderTarget;
+}
+
+// Remove up to `count` troops from a party, spread across its troop types.
+void RemoveTroops(Party& p, int count) {
+    for (int guard = 0; guard < 10000 && count > 0 && p.totalTroops() > 0; ++guard) {
+        const int t = GetRandomValue(0, (int)p.troopCounts.size() - 1);
+        if (p.troopCounts[t] > 0) { p.troopCounts[t]--; count--; }
+    }
+}
+
+// Auto-resolve a skirmish the player chose not to join: pick a winner weighted
+// by strength, wipe the loser, and bloody the winner in proportion.
+void ResolveSkirmish(GameState& gs, Skirmish& sk) {
+    Party& a = gs.parties[sk.a];
+    Party& b = gs.parties[sk.b];
+    a.engaged = b.engaged = false;
+
+    const int sa = a.totalTroops();
+    const int sb = b.totalTroops();
+    if (sa <= 0) { a.alive = false; return; }
+    if (sb <= 0) { b.alive = false; return; }
+
+    const bool aWins = Frand(0, (float)(sa + sb)) < (float)sa;   // stronger side favoured
+    Party& winner = aWins ? a : b;
+    Party& loser  = aWins ? b : a;
+    const int loserStrength = aWins ? sb : sa;
+
+    RemoveTroops(winner, GetRandomValue(loserStrength / 2, loserStrength));
+    loser.alive = false;
+    if (winner.totalTroops() <= 0) winner.alive = false;  // mutual annihilation
+}
+
+// Camera centred on the player; used by input gathering and drawing.
+Camera2D CampaignCamera(const GameState& gs) {
+    Camera2D cam = { 0 };
+    cam.target = gs.player.pos;
+    cam.offset = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
+    cam.zoom = 1.0f;
+    return cam;
+}
+
+// Nearest joinable skirmish, or -1. Used by update (join) and draw (prompt).
+int NearestSkirmishIndex(const GameState& gs) {
+    int best = -1;
+    float bestD = JOIN_RANGE;
+    for (int s = 0; s < (int)gs.skirmishes.size(); ++s) {
+        const float d = Vector2Distance(gs.player.pos, gs.skirmishes[s].pos);
+        if (d < bestD) { bestD = d; best = s; }
+    }
+    return best;
+}
+
+Rectangle SettlementLeaveButton() {
+    return { GetScreenWidth() / 2.0f - 100, GetScreenHeight() - 90.0f, 200, 48 };
 }
 
 }  // namespace
@@ -63,74 +205,112 @@ void CampaignInit(GameState& gs) {
     hl.set(EquipSlot::Body,   c.armor.find("plate"));
     hl.set(EquipSlot::Hands,  c.armor.find("gloves"));
     hl.set(EquipSlot::Feet,   c.armor.find("boots"));
-    hl.set(EquipSlot::Weapon, c.weapons.find("sword"));
+    hl.addWeapon(c.weapons.find("sword"));   // the hero carries several weapons;
+    hl.addWeapon(c.weapons.find("spear"));   // swap between them in battle with Q
+    hl.addWeapon(c.weapons.find("great"));
 
     gs.towns = {
-        { { 400, 400 },   "Sargoth" },
-        { { 1600, 500 },  "Praven" },
-        { { 500, 1550 },  "Tulga" },
-        { { 1500, 1500 }, "Jelkala" },
+        { { 400, 400 },   "Sargoth",  SettlementType::Town },
+        { { 1600, 500 },  "Praven",   SettlementType::Castle },
+        { { 500, 1550 },  "Tulga",    SettlementType::Village },
+        { { 1500, 1500 }, "Jelkala",  SettlementType::Town },
     };
 
     gs.parties.clear();
+    gs.skirmishes.clear();
     gs.playerLosses.assign(c.troops.size(), 0);
     const std::vector<int> roamers = RoamingFactions(c);
     for (int i = 0; i < 5; ++i)
         gs.parties.push_back(MakeParty(c, roamers[i % roamers.size()], RandomEdgePos()));
 }
 
+// A party index is usable as a live entry in gs.parties.
+static bool ValidParty(const GameState& gs, int i) {
+    return i >= 0 && i < (int)gs.parties.size();
+}
+
 static void ApplyBattleResult(GameState& gs) {
+    // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
         gs.player.troopCounts[t] -= gs.playerLosses[t];
         if (gs.player.troopCounts[t] < 0) gs.player.troopCounts[t] = 0;
     }
+
+    // Allied party's casualties, if one fought alongside you.
+    Party* ally = ValidParty(gs, gs.battleAllyIndex) ? &gs.parties[gs.battleAllyIndex] : nullptr;
+    if (ally) {
+        ally->engaged = false;
+        for (int t = 0; t < (int)gs.allyLosses.size() && t < (int)ally->troopCounts.size(); ++t) {
+            ally->troopCounts[t] -= gs.allyLosses[t];
+            if (ally->troopCounts[t] < 0) ally->troopCounts[t] = 0;
+        }
+    }
+
+    Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
+    if (enemy) enemy->engaged = false;
+
     if (gs.battleWon) {
         const int loot = 50 + GetRandomValue(0, 100);
         gs.gold += loot;
-        gs.resultText = TextFormat("VICTORY!  Loot: %d gold", loot);
-        if (gs.battlePartyIndex >= 0 && gs.battlePartyIndex < (int)gs.parties.size())
-            gs.parties[gs.battlePartyIndex].alive = false;
+        gs.resultText = ally ? TextFormat("VICTORY!  Your ally holds the field. Loot: %d gold", loot)
+                             : TextFormat("VICTORY!  Loot: %d gold", loot);
+        if (enemy) enemy->alive = false;
     } else {
         gs.resultText = "DEFEAT...  You escape with the survivors.";
         gs.player.pos.x = Clamp(gs.player.pos.x + Frand(-300, 300), 100, MAP_SIZE - 100);
         gs.player.pos.y = Clamp(gs.player.pos.y + Frand(-300, 300), 100, MAP_SIZE - 100);
+        if (ally) ally->alive = false;   // the side you backed lost the field
     }
+
+    // A party wiped out of troops is gone regardless of who "won".
+    if (ally && ally->totalTroops() <= 0) ally->alive = false;
+
     gs.battlePartyIndex = -1;
+    gs.battleAllyIndex  = -1;
+    gs.allyLosses.clear();
 }
 
-// Decide a roaming party's steering target for this frame based on its faction
-// behaviour. Returns the point it should move toward.
-static Vector2 PartyTarget(GameState& gs, Party& e, float dt) {
-    const PartyBehavior behavior = gs.content.factions[e.faction].behavior;
-    const float distToPlayer = Vector2Distance(e.pos, gs.player.pos);
-    const int playerStrength = gs.player.totalTroops();
+// Read the real devices into campaign intent. Windowed play only — the
+// headless harness builds CampaignInput directly.
+CampaignInput GatherCampaignInput(const GameState& gs) {
+    CampaignInput in;
 
-    e.thinkTimer -= dt;
-    const bool couldWin = e.totalTroops() >= playerStrength / 2;
+    if (gs.screen == Screen::Settlement) {
+        const std::vector<int>& roster =
+            gs.content.factions[gs.content.playerFaction].roster;
+        for (int slot = 0; slot < (int)roster.size(); ++slot)
+            if (IsKeyPressed(KEY_ONE + slot)) in.recruitSlot = slot;
+        if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+            CheckCollisionPointRec(GetMousePosition(), SettlementLeaveButton()))
+            in.leaveSettlement = true;
+        return in;
+    }
 
-    switch (behavior) {
-        case PartyBehavior::Aggressive:
-            if (distToPlayer < 500) return gs.player.pos;               // hunts eagerly
-            break;
-        case PartyBehavior::Patrol:
-            if (distToPlayer < 300 && couldWin) return gs.player.pos;   // opportunistic
-            break;
-        case PartyBehavior::Passive:
-            if (distToPlayer < 220) {                                   // flees
-                Vector2 away = Vector2Subtract(e.pos, gs.player.pos);
-                if (Vector2Length(away) > 1)
-                    return Vector2Add(e.pos, Vector2Scale(Vector2Normalize(away), 200));
-            }
-            break;
+    const Camera2D cam = CampaignCamera(gs);
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 world = GetScreenToWorld2D(GetMousePosition(), cam);
+        for (int i = 0; i < (int)gs.towns.size(); ++i)
+            if (Vector2Distance(world, gs.towns[i].pos) < TOWN_CLICK_RADIUS)
+                in.clickSettlement = i;
     }
-    if (e.thinkTimer <= 0) {
-        e.wanderTarget = { Frand(100, MAP_SIZE - 100), Frand(100, MAP_SIZE - 100) };
-        e.thinkTimer = Frand(3, 8);
+    if (IsKeyDown(KEY_W)) in.move.y -= 1;
+    if (IsKeyDown(KEY_S)) in.move.y += 1;
+    if (IsKeyDown(KEY_A)) in.move.x -= 1;
+    if (IsKeyDown(KEY_D)) in.move.x += 1;
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        const Vector2 world = GetScreenToWorld2D(GetMousePosition(), cam);
+        const Vector2 dir = Vector2Subtract(world, gs.player.pos);
+        if (Vector2Length(dir) > 8) in.move = Vector2Normalize(dir);
     }
-    return e.wanderTarget;
+    in.wait = IsKeyDown(KEY_SPACE);
+    if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
+    if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
+    in.restart = IsKeyPressed(KEY_R);
+    return in;
 }
 
-void CampaignUpdateDraw(GameState& gs, float dt) {
+void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     const Content& c = gs.content;
 
     if (gs.screen == Screen::BattleResult) {
@@ -138,72 +318,132 @@ void CampaignUpdateDraw(GameState& gs, float dt) {
         gs.screen = Screen::Campaign;
     }
 
-    // ---- player movement ----
-    Camera2D cam = { 0 };
-    cam.target = gs.player.pos;
-    cam.offset = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    cam.zoom = 1.0f;
-
-    Vector2 move = { 0, 0 };
-    if (IsKeyDown(KEY_W)) move.y -= 1;
-    if (IsKeyDown(KEY_S)) move.y += 1;
-    if (IsKeyDown(KEY_A)) move.x -= 1;
-    if (IsKeyDown(KEY_D)) move.x += 1;
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        Vector2 world = GetScreenToWorld2D(GetMousePosition(), cam);
-        Vector2 dir = Vector2Subtract(world, gs.player.pos);
-        if (Vector2Length(dir) > 8) move = Vector2Normalize(dir);
+    // ---- restart after the warband is destroyed ----
+    if (gs.player.totalTroops() == 0 && in.restart) {
+        Content saved = std::move(gs.content);
+        gs = GameState{};
+        gs.content = std::move(saved);
+        CampaignInit(gs);
+        return;
     }
-    if (Vector2Length(move) > 0) {
+
+    // ---- enter a settlement (pauses the overworld) ----
+    if (in.clickSettlement >= 0 && in.clickSettlement < (int)gs.towns.size()) {
+        gs.currentSettlement = in.clickSettlement;
+        gs.screen = Screen::Settlement;
+        return;
+    }
+
+    // ---- the world clock only ticks while you act ----
+    // Travelling is an action, so time flows while you move. Standing still
+    // freezes the whole overworld; wait (SPACE) lets time pass without moving.
+    Vector2 move = in.move;
+    const bool moving  = Vector2Length(move) > 0;
+    gs.timeFlowing = moving || in.wait;
+    const float sim = gs.timeFlowing ? dt : 0.0f;
+
+    if (moving) {
         move = Vector2Normalize(move);
         gs.player.pos = Vector2Add(gs.player.pos, Vector2Scale(move, PARTY_SPEED * dt));
     }
     gs.player.pos.x = Clamp(gs.player.pos.x, 0, MAP_SIZE);
     gs.player.pos.y = Clamp(gs.player.pos.y, 0, MAP_SIZE);
 
-    // ---- towns: recruit from the player faction roster ----
-    gs.nearTown = -1;
-    for (int i = 0; i < (int)gs.towns.size(); ++i)
-        if (Vector2Distance(gs.player.pos, gs.towns[i].pos) < TOWN_RANGE) gs.nearTown = i;
+    // ---- world simulation (advances only while time flows) ----
+    if (sim > 0.0f) {
+        // Roaming + pursuit: each free party steers by its behaviour toward the
+        // nearest hostile party it can see (the player, or another faction).
+        for (int i = 0; i < (int)gs.parties.size(); ++i) {
+            Party& e = gs.parties[i];
+            if (!e.alive || e.engaged) continue;
+            const PartyBehavior behavior = c.factions[e.faction].behavior;
+            const Foe foe = NearestHostile(gs, c, i);
+            const Vector2 target = SteerTarget(e, behavior, foe, sim);
+            const Vector2 dir = Vector2Subtract(target, e.pos);
+            if (Vector2Length(dir) > 5)
+                e.pos = Vector2Add(e.pos, Vector2Scale(Vector2Normalize(dir), PARTY_SPEED * 0.7f * sim));
+            // Keep parties on the map — a fleeing party would otherwise run off
+            // the edge forever (unreachable, yet still counted as alive).
+            e.pos.x = Clamp(e.pos.x, 0, MAP_SIZE);
+            e.pos.y = Clamp(e.pos.y, 0, MAP_SIZE);
+        }
 
-    const std::vector<int>& roster = c.factions[c.playerFaction].roster;
-    if (gs.nearTown >= 0) {
-        for (int slot = 0; slot < (int)roster.size(); ++slot) {
-            const TroopDef& td = c.troops[roster[slot]];
-            if (IsKeyPressed(KEY_ONE + slot) && gs.gold >= td.cost) {
-                gs.gold -= td.cost;
-                gs.player.troopCounts[roster[slot]]++;
+        // Two hostile AI parties touching -> they lock into a skirmish.
+        for (int i = 0; i < (int)gs.parties.size(); ++i) {
+            Party& a = gs.parties[i];
+            if (!a.alive || a.engaged) continue;
+            for (int j = i + 1; j < (int)gs.parties.size(); ++j) {
+                Party& b = gs.parties[j];
+                if (!b.alive || b.engaged) continue;
+                if (!AreFactionsHostile(c, a.faction, b.faction)) continue;
+                if (Vector2Distance(a.pos, b.pos) < PARTY_COLLIDE_DIST) {
+                    a.engaged = b.engaged = true;
+                    Skirmish sk;
+                    sk.a = i; sk.b = j;
+                    sk.timer = sk.duration = SKIRMISH_TIME;
+                    sk.pos = Vector2Scale(Vector2Add(a.pos, b.pos), 0.5f);
+                    gs.skirmishes.push_back(sk);
+                }
             }
+        }
+
+        // A hostile AI party touching YOU -> your own battle.
+        for (int i = 0; i < (int)gs.parties.size(); ++i) {
+            Party& e = gs.parties[i];
+            if (!e.alive || e.engaged) continue;
+            if (AreFactionsHostile(c, e.faction, c.playerFaction) &&
+                gs.player.totalTroops() > 0 &&
+                Vector2Distance(e.pos, gs.player.pos) < PLAYER_COLLIDE_DIST) {
+                gs.battlePartyIndex = i;
+                gs.battleAllyIndex  = -1;
+                gs.screen = Screen::Battle;
+                return;
+            }
+        }
+
+        // Auto-resolve clashes the player left alone; drop the finished ones.
+        for (Skirmish& sk : gs.skirmishes) {
+            sk.timer -= sim;
+            if (sk.timer <= 0) ResolveSkirmish(gs, sk);
+        }
+        gs.skirmishes.erase(
+            std::remove_if(gs.skirmishes.begin(), gs.skirmishes.end(),
+                           [](const Skirmish& s) { return s.timer <= 0; }),
+            gs.skirmishes.end());
+
+        // Respawn parties over time so the map stays lively.
+        gs.spawnTimer += sim;
+        int aliveCount = 0;
+        for (const auto& e : gs.parties) if (e.alive) aliveCount++;
+        if (gs.spawnTimer > 20 && aliveCount < 8) {
+            gs.spawnTimer = 0;
+            const std::vector<int> roamers = RoamingFactions(c);
+            gs.parties.push_back(MakeParty(c, roamers[GetRandomValue(0, (int)roamers.size() - 1)], RandomEdgePos()));
         }
     }
 
-    // ---- roaming party AI ----
-    for (auto& e : gs.parties) {
-        if (!e.alive) continue;
-        Vector2 target = PartyTarget(gs, e, dt);
-        Vector2 dir = Vector2Subtract(target, e.pos);
-        if (Vector2Length(dir) > 5)
-            e.pos = Vector2Add(e.pos, Vector2Scale(Vector2Normalize(dir), PARTY_SPEED * 0.7f * dt));
-
-        if (Vector2Distance(e.pos, gs.player.pos) < 24 && gs.player.totalTroops() > 0) {
-            gs.battlePartyIndex = (int)(&e - &gs.parties[0]);
+    // ---- join a nearby clash on one side (a decision; works even while paused) ----
+    const int nearSkirmish = NearestSkirmishIndex(gs);
+    if (nearSkirmish >= 0 && gs.player.totalTroops() > 0 && in.joinSide != 0) {
+        const Skirmish& sk = gs.skirmishes[nearSkirmish];
+        int allyIdx = -1, enemyIdx = -1;
+        if (in.joinSide == 1) { allyIdx = sk.a; enemyIdx = sk.b; }
+        if (in.joinSide == 2) { allyIdx = sk.b; enemyIdx = sk.a; }
+        if (allyIdx >= 0) {
+            gs.battleAllyIndex  = allyIdx;
+            gs.battlePartyIndex = enemyIdx;
+            gs.skirmishes.erase(gs.skirmishes.begin() + nearSkirmish);
             gs.screen = Screen::Battle;
-            BattleInit(gs);
             return;
         }
     }
+}
 
-    // ---- respawn parties over time ----
-    gs.spawnTimer += dt;
-    int aliveCount = 0;
-    for (auto& e : gs.parties) if (e.alive) aliveCount++;
-    if (gs.spawnTimer > 20 && aliveCount < 8) {
-        gs.spawnTimer = 0;
-        const std::vector<int> roamers = RoamingFactions(c);
-        gs.parties.push_back(MakeParty(c, roamers[GetRandomValue(0, (int)roamers.size() - 1)], RandomEdgePos()));
-    }
+void CampaignDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    const Camera2D cam = CampaignCamera(gs);
+    const int nearSkirmish = NearestSkirmishIndex(gs);
 
-    // ================= DRAW =================
     BeginDrawing();
     ClearBackground(Color{ 60, 92, 48, 255 });
 
@@ -215,51 +455,155 @@ void CampaignUpdateDraw(GameState& gs, float dt) {
         DrawLine(0, y, (int)MAP_SIZE, y, Color{ 70, 102, 58, 255 });
 
     for (const Town& t : gs.towns) {
-        DrawRectangle((int)t.pos.x - 20, (int)t.pos.y - 20, 40, 40, BROWN);
-        DrawTriangle({ t.pos.x - 24, t.pos.y - 20 }, { t.pos.x + 24, t.pos.y - 20 },
-                     { t.pos.x, t.pos.y - 44 }, MAROON);
-        DrawText(t.name.c_str(), (int)t.pos.x - 30, (int)t.pos.y + 26, 16, RAYWHITE);
-        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_RANGE, Fade(RAYWHITE, 0.25f));
+        switch (t.type) {
+            case SettlementType::Village:
+                DrawRectangle((int)t.pos.x - 14, (int)t.pos.y - 10, 28, 20, BROWN);
+                DrawTriangle({ t.pos.x - 16, t.pos.y - 10 }, { t.pos.x + 16, t.pos.y - 10 },
+                             { t.pos.x, t.pos.y - 26 }, DARKBROWN);
+                break;
+            case SettlementType::Town:
+                DrawRectangle((int)t.pos.x - 20, (int)t.pos.y - 20, 40, 40, BROWN);
+                DrawTriangle({ t.pos.x - 24, t.pos.y - 20 }, { t.pos.x + 24, t.pos.y - 20 },
+                             { t.pos.x, t.pos.y - 44 }, MAROON);
+                break;
+            case SettlementType::Castle:
+                DrawRectangle((int)t.pos.x - 24, (int)t.pos.y - 22, 48, 42, GRAY);
+                // crenellated top
+                for (int b = -24; b < 24; b += 16)
+                    DrawRectangle((int)t.pos.x + b, (int)t.pos.y - 34, 8, 12, DARKGRAY);
+                break;
+        }
+        ui::Text(TextFormat("%s (%s)", t.name.c_str(), SettlementTypeName(t.type)),
+                 (int)t.pos.x - 40, (int)t.pos.y + 26, 16, RAYWHITE);
+        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(RAYWHITE, 0.25f));
     }
 
     for (const Party& e : gs.parties) {
         if (!e.alive) continue;
         const FactionDef& f = c.factions[e.faction];
         DrawCircleV(e.pos, 12, f.color);
-        DrawText(TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
+        if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, 15, RAYWHITE);
+        ui::Text(TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
                  (int)e.pos.x - 20, (int)e.pos.y - 32, 14, f.color);
     }
 
+    // Ongoing clashes: crossed swords, the two factions' colours, and a ring
+    // that empties as the fight nears its outcome.
+    for (const Skirmish& sk : gs.skirmishes) {
+        const FactionDef& fa = c.factions[gs.parties[sk.a].faction];
+        const FactionDef& fb = c.factions[gs.parties[sk.b].faction];
+        DrawCircleV(sk.pos, 22, Fade(BLACK, 0.35f));
+        DrawLineEx({ sk.pos.x - 12, sk.pos.y - 12 }, { sk.pos.x + 12, sk.pos.y + 12 }, 3, fa.color);
+        DrawLineEx({ sk.pos.x + 12, sk.pos.y - 12 }, { sk.pos.x - 12, sk.pos.y + 12 }, 3, fb.color);
+        const float frac = sk.duration > 0 ? sk.timer / sk.duration : 0;
+        DrawRing(sk.pos, 24, 27, -90, -90 + 360 * frac, 32, Fade(GOLD, 0.9f));
+    }
+
     DrawCircleV(gs.player.pos, 12, c.factions[c.playerFaction].color);
-    DrawText("You", (int)gs.player.pos.x - 12, (int)gs.player.pos.y - 34, 16, RAYWHITE);
+    ui::Text("You", (int)gs.player.pos.x - 12, (int)gs.player.pos.y - 34, 16, RAYWHITE);
     EndMode2D();
 
     // ---- HUD ----
     DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
-    DrawText(TextFormat("Gold: %d   Party: %d", gs.gold, gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
+    ui::Text(TextFormat("Gold: %d   Party: %d", gs.gold, gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
 
-    if (gs.nearTown >= 0) {
-        const int y = GetScreenHeight() - 40 - (int)roster.size() * 24;
-        DrawRectangle(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
-        DrawText(TextFormat("Welcome to %s! Recruit troops:", gs.towns[gs.nearTown].name.c_str()),
-                 10, y, 20, GOLD);
-        for (int slot = 0; slot < (int)roster.size(); ++slot) {
-            const TroopDef& td = c.troops[roster[slot]];
-            DrawText(TextFormat("[%d] %s - %d gold  (have %d)", slot + 1, td.name.c_str(),
-                                td.cost, gs.player.troopCounts[roster[slot]]),
-                     10, y + 26 + slot * 24, 20, RAYWHITE);
-        }
-    } else if (!gs.resultText.empty()) {
-        DrawText(gs.resultText.c_str(), 10, 42, 20, GOLD);
+    // Time state, top-right: the world is frozen until you move or wait.
+    const char* clock = gs.timeFlowing ? "TIME FLOWING" : "TIME PAUSED  (move, or hold SPACE)";
+    ui::Text(clock, GetScreenWidth() - ui::Measure(clock, 20) - 12, 8, 20,
+             gs.timeFlowing ? LIME : Fade(GOLD, 0.9f));
+
+    if (!gs.resultText.empty())
+        ui::Text(gs.resultText.c_str(), 10, 42, 20, GOLD);
+
+    // Prompt to join a nearby clash.
+    if (nearSkirmish >= 0 && gs.player.totalTroops() > 0) {
+        const Skirmish& sk = gs.skirmishes[nearSkirmish];
+        const FactionDef& fa = c.factions[gs.parties[sk.a].faction];
+        const FactionDef& fb = c.factions[gs.parties[sk.b].faction];
+        const int by = GetScreenHeight() - 92;
+        DrawRectangle(0, by - 8, GetScreenWidth(), 52, Fade(BLACK, 0.7f));
+        ui::Text("Battle nearby! Join a side:", 10, by, 20, GOLD);
+        ui::Text(TextFormat("[1] Aid %s (%d)", fa.name.c_str(), gs.parties[sk.a].totalTroops()),
+                 260, by, 20, fa.color);
+        ui::Text(TextFormat("[2] Aid %s (%d)", fb.name.c_str(), gs.parties[sk.b].totalTroops()),
+                 470, by, 20, fb.color);
     }
-    DrawText("Move: WASD or hold LMB. Coloured parties roam by faction. Enter towns to recruit.",
+
+    ui::Text("WASD / hold LMB to travel (time flows). Hold SPACE to wait. Click a settlement to enter.",
              10, GetScreenHeight() - 22, 16, Fade(RAYWHITE, 0.7f));
 
-    if (gs.player.totalTroops() == 0) {
-        DrawText("Your warband is destroyed... press R to restart.", 10, 70, 20, RED);
-        if (IsKeyPressed(KEY_R)) { Content saved = std::move(gs.content); gs = GameState{};
-                                   gs.content = std::move(saved); CampaignInit(gs); }
+    if (gs.player.totalTroops() == 0)
+        ui::Text("Your warband is destroyed... press R to restart.", 10, 70, 20, RED);
+
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Settlement menu: the overworld is frozen (main.cpp routes here instead of
+// CampaignUpdateDraw) while the player is inside a town/castle/village.
+// ---------------------------------------------------------------------------
+void SettlementUpdate(GameState& gs, const CampaignInput& in) {
+    const Content& c = gs.content;
+    if (gs.currentSettlement < 0 || gs.currentSettlement >= (int)gs.towns.size()) {
+        gs.screen = Screen::Campaign;   // defensive: nothing to show
+        return;
     }
+    const std::vector<int>& roster = c.factions[c.playerFaction].roster;
+
+    if (in.recruitSlot >= 0 && in.recruitSlot < (int)roster.size()) {
+        const TroopDef& td = c.troops[roster[in.recruitSlot]];
+        if (gs.gold >= td.cost) {
+            gs.gold -= td.cost;
+            gs.player.troopCounts[roster[in.recruitSlot]]++;
+        }
+    }
+    if (in.leaveSettlement) {
+        gs.currentSettlement = -1;
+        gs.screen = Screen::Campaign;
+    }
+}
+
+void SettlementDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    if (gs.currentSettlement < 0 || gs.currentSettlement >= (int)gs.towns.size()) return;
+    const Town& town = gs.towns[gs.currentSettlement];
+    const std::vector<int>& roster = c.factions[c.playerFaction].roster;
+    const Rectangle leaveBtn = SettlementLeaveButton();
+    const bool overLeave = CheckCollisionPointRec(GetMousePosition(), leaveBtn);
+
+    BeginDrawing();
+    ClearBackground(Color{ 28, 26, 24, 255 });
+
+    const int w = GetScreenWidth();
+    const int panelX = w / 2 - 320;
+
+    // Header band.
+    DrawRectangle(0, 60, w, 120, Fade(BLACK, 0.5f));
+    ui::Title(town.name.c_str(), panelX, 74, 52, GOLD);
+    ui::Text(SettlementTypeName(town.type), panelX, 132, 24, Fade(RAYWHITE, 0.8f));
+    ui::Text(SettlementGreeting(town.type), panelX, 200, 20, RAYWHITE);
+
+    // Gold readout.
+    ui::Text(TextFormat("Gold: %d    Party: %d", gs.gold, gs.player.totalTroops()),
+             panelX, 236, 22, GOLD);
+
+    // Recruiting panel.
+    const int listY = 290;
+    ui::Text("Recruit troops:", panelX, listY, 26, RAYWHITE);
+    for (int slot = 0; slot < (int)roster.size(); ++slot) {
+        const TroopDef& td = c.troops[roster[slot]];
+        const bool afford = gs.gold >= td.cost;
+        ui::Text(TextFormat("[%d]  %s  -  %d gold   (have %d)", slot + 1, td.name.c_str(),
+                            td.cost, gs.player.troopCounts[roster[slot]]),
+                 panelX + 12, listY + 40 + slot * 30, 22, afford ? RAYWHITE : Fade(RED, 0.7f));
+    }
+
+    // Leave button.
+    DrawRectangleRec(leaveBtn, overLeave ? MAROON : Fade(MAROON, 0.7f));
+    DrawRectangleLinesEx(leaveBtn, 2, GOLD);
+    const char* leaveTxt = "Leave  (Esc)";
+    ui::Text(leaveTxt, (int)(leaveBtn.x + leaveBtn.width / 2 - ui::Measure(leaveTxt, 22) / 2),
+             (int)(leaveBtn.y + 13), 22, RAYWHITE);
 
     EndDrawing();
 }
