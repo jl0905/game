@@ -76,10 +76,11 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   back into the bag; battle victories drop loot; persists in saves; harness
   `inv`/`equip` commands. Remaining: hover tooltips with stats, drop-to-
   discard, item rotation.
-- [ ] **D2. Party management screen.** v1 exists (`Screen::Party`, opened with
-  P): roster rows with counts + XP, number keys promote units, harness
-  `party`/`upgrade` commands. Remaining: dismiss troops, per-troop detail
-  (loadout preview via `DrawCharacter`), mouse support.
+- [x] **D2. Party management screen.** `Screen::Party` (P): roster rows with
+  counts + XP, promote with number keys, dismiss with Shift+number, and a
+  daily ledger preview (income vs wages, red when running a deficit).
+  Harness `party`/`upgrade`/`dismiss`. Remaining polish: per-troop loadout
+  preview via `DrawCharacter`, mouse support.
 - [x] **D3. Skill system (structure).** `AttributeDef` registry (str/agi/int/cha
   with documented hook strings); hero levels from battle XP (flat thresholds)
   and spends points on the character sheet (`Screen::Character`, C key).

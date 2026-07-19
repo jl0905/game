@@ -305,6 +305,12 @@ int RunScript(const char* path) {
             if (h.gs.screen == Screen::Party) cin.leaveSettlement = true;
             else                              cin.openParty = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "dismiss") {
+            int slot = 0, n = 1; ss >> slot >> n;
+            for (int i = 0; i < n; ++i) {
+                CampaignInput cin; cin.dismissSlot = slot;
+                h.Step(cin, BattleInput{});
+            }
         } else if (cmd == "upgrade") {
             int slot = 0, n = 1; ss >> slot >> n;
             for (int i = 0; i < n; ++i) {

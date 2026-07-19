@@ -495,8 +495,10 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Party) {
+        const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         for (int slot = 0; slot < 9; ++slot)
-            if (IsKeyPressed(KEY_ONE + slot)) in.upgradeSlot = slot;
+            if (IsKeyPressed(KEY_ONE + slot))
+                (shift ? in.dismissSlot : in.upgradeSlot) = slot;
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) in.leaveSettlement = true;
         return in;
     }
@@ -1126,6 +1128,10 @@ void PartyUpdate(GameState& gs, const CampaignInput& in) {
             gs.player.troopCounts[td.upgradesTo]++;
         }
     }
+    if (in.dismissSlot >= 0 && in.dismissSlot < (int)rows.size()) {
+        const int t = rows[in.dismissSlot];
+        if (gs.player.troopCounts[t] > 0) gs.player.troopCounts[t]--;   // off the books
+    }
     if (in.leaveSettlement) gs.screen = Screen::Campaign;
 }
 
@@ -1137,9 +1143,18 @@ void PartyDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int panelX = GetScreenWidth() / 2 - 360;
 
+    // Daily ledger preview so roster decisions are financial decisions.
+    int wages = 0;
+    for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
+        wages += gs.player.troopCounts[t] * c.troops[t].wage;
+    int income = 0;
+    for (const Town& tw : gs.towns)
+        if (tw.owner == c.playerFaction) income += SettlementIncome(tw.type);
+
     ui::Title("YOUR WARBAND", panelX, 60, 44, GOLD);
-    ui::Text(TextFormat("Gold: %d    Troops: %d", gs.gold, gs.player.totalTroops()),
-             panelX, 120, 22, RAYWHITE);
+    ui::Text(TextFormat("Gold: %d    Troops: %d    Daily: +%d income  -%d wages  (%+d)",
+                        gs.gold, gs.player.totalTroops(), income, wages, income - wages),
+             panelX, 120, 22, income >= wages ? RAYWHITE : Fade(RED, 0.9f));
     ui::Text("Survivors of won battles earn experience; spend it to promote them.",
              panelX, 150, 18, Fade(RAYWHITE, 0.7f));
 
@@ -1165,7 +1180,7 @@ void PartyDraw(const GameState& gs) {
         ui::Text("Your warband is empty. Recruit in a friendly settlement.",
                  panelX, y, 22, Fade(RED, 0.8f));
 
-    ui::Text("[1-9] promote one unit    [Esc / P] back to the map",
+    ui::Text("[1-9] promote one unit    [Shift+1-9] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();
 }

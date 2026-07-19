@@ -23,7 +23,8 @@ struct CampaignInput {
 
     // party screen
     bool    openParty   = false;      // P on the map
-    int     upgradeSlot = -1;         // troop row to upgrade one unit of
+    int     upgradeSlot = -1;         // troop row to promote one unit of
+    int     dismissSlot = -1;         // troop row to dismiss one unit of (Shift+key)
 
     // inventory screen (cells are grid coordinates)
     bool    openInventory = false;    // I on the map
