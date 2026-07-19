@@ -1,4 +1,5 @@
 #include "harness.h"
+#include "bridge.h"
 #include "save.h"
 #include "world.h"
 #include "campaign/campaign.h"
@@ -54,7 +55,7 @@ struct Harness {
             case Screen::BattleResult:
                 CampaignUpdate(gs, STEP, cin);
                 if (gs.screen == Screen::Battle && !battleLive) {
-                    BattleInit(gs.content, MakeSetup());
+                    BattleInit(gs.content, MakeBattleSetup(gs));
                     battleLive = true;
                 }
                 break;
@@ -77,18 +78,6 @@ struct Harness {
                 break;
             }
         }
-    }
-
-    BattleSetup MakeSetup() const {
-        BattleSetup s;
-        s.playerTroops = gs.player.troopCounts;
-        s.enemyTroops  = gs.parties[gs.battlePartyIndex].troopCounts;
-        if (gs.battleAllyIndex >= 0 && gs.battleAllyIndex < (int)gs.parties.size())
-            s.allyTroops = gs.parties[gs.battleAllyIndex].troopCounts;
-        s.heroLoadout = gs.playerHero.loadout;
-        s.heroMaxHp   = gs.playerHero.maxHp;
-        s.campaignPos = gs.player.pos;
-        return s;
     }
 
     void Ticks(float seconds, const CampaignInput& cin, const BattleInput& bin) {
@@ -143,9 +132,10 @@ struct Harness {
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
         for (int t = 0; t < (int)gs.towns.size(); ++t) {
             const Town& tw = gs.towns[t];
-            std::printf("town %d: %s owner=%s dist=%.0f\n", t, tw.name.c_str(),
+            std::printf("town %d: %s owner=%s garrison=%d dist=%.0f\n", t, tw.name.c_str(),
                         (tw.owner >= 0 && tw.owner < c.factions.size())
                             ? c.factions[tw.owner].id.c_str() : "none",
+                        tw.garrisonSize(),
                         Vector2Distance(tw.pos, gs.player.pos));
         }
         for (int i = 0; i < (int)gs.parties.size(); ++i) {

@@ -1,6 +1,7 @@
 #include "world.h"
 #include "ui.h"
 #include "harness.h"
+#include "bridge.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
 #include <algorithm>
@@ -70,19 +71,6 @@ int RunBench(int perSide) {
         std::fclose(f);
     }
     return 0;
-}
-
-// Capture everything the battle needs from the world map.
-BattleSetup MakeBattleSetup(const GameState& gs) {
-    BattleSetup s;
-    s.playerTroops = gs.player.troopCounts;
-    s.enemyTroops  = gs.parties[gs.battlePartyIndex].troopCounts;
-    if (gs.battleAllyIndex >= 0 && gs.battleAllyIndex < (int)gs.parties.size())
-        s.allyTroops = gs.parties[gs.battleAllyIndex].troopCounts;  // a party joined you
-    s.heroLoadout  = gs.playerHero.loadout;
-    s.heroMaxHp    = gs.playerHero.maxHp;
-    s.campaignPos  = gs.player.pos;   // terrain is generated from where we stand
-    return s;
 }
 
 }  // namespace

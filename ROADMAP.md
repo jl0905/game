@@ -31,10 +31,15 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   scene (reuse the battle renderer/terrain tech): buildings, streets, wandering
   NPC villagers (procedural characters), talk/recruit at the tavern instead of
   a flat menu. Settlement layout seeded from the town like battle terrain is.
-- [ ] **B3. Sieging system.** Attack a hostile village/castle/town: a battle on
-  a settlement-flavoured battlefield (walls/gate for castles & towns, open
-  raid for villages). Winning transfers ownership (B1) or sacks the village.
-  Defenders drawn from a garrison the owner faction maintains.
+- [x] **B3. Sieging system (v1).** Settlements keep a garrison drawn from the
+  owner's roster (sized by settlement type, TODO(balance)); clicking a hostile
+  settlement storms it — the garrison fights on home terrain, victory
+  transfers ownership (villages "sacked", castles/towns "taken"), garrison
+  casualties and captures persist in saves. Undefended settlements change
+  hands without a fight.
+  - [ ] B3b. Siege battlefields: walls + gate for castles/towns, defender
+    formations on the walls, attacker spawns outside.
+  - [ ] B3c. Garrison replenishment by the owner faction (ties into C3 lords).
 
 ## Track C — Campaign systems
 

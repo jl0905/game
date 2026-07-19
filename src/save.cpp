@@ -69,9 +69,16 @@ bool SaveGame(const GameState& gs, const char* path) {
 
     // Settlement ownership (towns themselves are recreated by CampaignInit;
     // only who holds them is state). Keyed by index — the town list is static.
-    for (int t = 0; t < (int)gs.towns.size(); ++t)
+    for (int t = 0; t < (int)gs.towns.size(); ++t) {
         if (gs.towns[t].owner >= 0 && gs.towns[t].owner < c.factions.size())
             f << "town " << t << ' ' << c.factions[gs.towns[t].owner].id << '\n';
+        // Explicit reset so an emptied garrison doesn't resurrect on load.
+        f << "garrisonreset " << t << '\n';
+        for (int tr = 0; tr < (int)gs.towns[t].garrison.size() && tr < c.troops.size(); ++tr)
+            if (gs.towns[t].garrison[tr] > 0)
+                f << "garrison " << t << ' ' << c.troops[tr].id << ' '
+                  << gs.towns[t].garrison[tr] << '\n';
+    }
 
     for (const Party& p : gs.parties) {
         if (!p.alive) continue;
@@ -137,6 +144,17 @@ bool LoadGame(GameState& gs, const char* path) {
             const int fh = c.factions.find(fid.c_str());
             if (idx >= 0 && idx < (int)gs.towns.size() && fh >= 0)
                 gs.towns[idx].owner = fh;
+        } else if (tag == "garrisonreset") {
+            int idx = -1;
+            ss >> idx;
+            if (idx >= 0 && idx < (int)gs.towns.size())
+                gs.towns[idx].garrison.assign(c.troops.size(), 0);
+        } else if (tag == "garrison") {
+            int idx = -1, n = 0; std::string tid;
+            ss >> idx >> tid >> n;
+            const int tr = c.troops.find(tid.c_str());
+            if (idx >= 0 && idx < (int)gs.towns.size() && tr >= 0 && n > 0)
+                gs.towns[idx].garrison[tr] += n;
         } else if (tag == "party") {
             std::string fid; Vector2 pos{};
             ss >> fid >> pos.x >> pos.y;

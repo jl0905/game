@@ -223,6 +223,20 @@ void CampaignInit(GameState& gs) {
         { { 1500, 1500 }, "Jelkala",  SettlementType::Town,    f_patrol },
     };
 
+    // Garrison every owned settlement from its owner's roster. Relative sizes
+    // are settlement identity (a castle holds more than a village);
+    // TODO(balance): the actual numbers.
+    for (Town& t : gs.towns) {
+        t.garrison.assign(c.troops.size(), 0);
+        if (t.owner < 0) continue;
+        int size = 8;                                          // TODO(balance)
+        if (t.type == SettlementType::Village) size = 4;       // TODO(balance)
+        if (t.type == SettlementType::Castle)  size = 12;      // TODO(balance)
+        const std::vector<int>& roster = c.factions[t.owner].roster;
+        for (int i = 0; i < size && !roster.empty(); ++i)
+            t.garrison[roster[i % (int)roster.size()]]++;
+    }
+
     gs.parties.clear();
     gs.skirmishes.clear();
     gs.playerLosses.assign(c.troops.size(), 0);
@@ -266,6 +280,37 @@ static void ApplyBattleResult(GameState& gs) {
 
     Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
     if (enemy) enemy->engaged = false;
+
+    // Siege outcome: the garrison takes its casualties; a captured settlement
+    // changes hands (villages are "sacked", walls are "stormed").
+    if (gs.siegeTownIndex >= 0 && gs.siegeTownIndex < (int)gs.towns.size()) {
+        Town& t = gs.towns[gs.siegeTownIndex];
+        for (int i = 0; i < (int)t.garrison.size() && i < (int)gs.enemyLosses.size(); ++i) {
+            t.garrison[i] -= gs.enemyLosses[i];
+            if (t.garrison[i] < 0) t.garrison[i] = 0;
+        }
+        if (gs.battleWon) {
+            t.owner = gs.content.playerFaction;
+            const int loot = 50 + GetRandomValue(0, 100);   // TODO(balance)
+            gs.gold += loot;
+            gs.resultText = t.type == SettlementType::Village
+                ? TextFormat("%s IS SACKED!  It flies your banner now. Loot: %d gold",
+                             t.name.c_str(), loot)
+                : TextFormat("%s IS TAKEN!  The %s is yours. Loot: %d gold",
+                             t.name.c_str(), SettlementTypeName(t.type), loot);
+        } else {
+            gs.resultText = TextFormat("The assault on %s is repelled...", t.name.c_str());
+            gs.player.pos.x = Clamp(gs.player.pos.x + Frand(-300, 300), 100, MAP_SIZE - 100);
+            gs.player.pos.y = Clamp(gs.player.pos.y + Frand(-300, 300), 100, MAP_SIZE - 100);
+        }
+        const std::string fallenS = LossSummary(gs.content, gs.playerLosses);
+        if (!fallenS.empty()) gs.resultText += "   Fallen: " + fallenS;
+        gs.siegeTownIndex   = -1;
+        gs.battlePartyIndex = -1;
+        gs.battleAllyIndex  = -1;
+        gs.allyLosses.clear();
+        return;
+    }
 
     // Battle report: outcome, loot, and what the fight cost each side.
     const std::string fallen = LossSummary(gs.content, gs.playerLosses);
@@ -362,12 +407,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         gs.resultText = "No save to load.";
     }
 
-    // ---- enter a settlement (pauses the overworld) ----
+    // ---- enter (friendly) or assault (hostile) a settlement ----
     if (in.clickSettlement >= 0 && in.clickSettlement < (int)gs.towns.size()) {
-        const Town& t = gs.towns[in.clickSettlement];
+        Town& t = gs.towns[in.clickSettlement];
         if (AreFactionsHostile(c, t.owner, c.playerFaction)) {
-            // Hostile gates stay shut — until sieges exist (roadmap B3).
-            gs.resultText = TextFormat("%s bars its gates against you.", t.name.c_str());
+            if (t.garrisonSize() <= 0) {
+                // Nobody mans the walls — it simply changes hands.
+                t.owner = c.playerFaction;
+                gs.resultText = TextFormat("%s is undefended. It is yours.", t.name.c_str());
+            } else if (gs.player.totalTroops() > 0) {
+                // Storm it: the garrison fights on its home ground.
+                gs.siegeTownIndex   = in.clickSettlement;
+                gs.battlePartyIndex = -1;
+                gs.battleAllyIndex  = -1;
+                gs.screen = Screen::Battle;
+                return;
+            }
         } else {
             gs.currentSettlement = in.clickSettlement;
             gs.screen = Screen::Settlement;
@@ -520,7 +575,7 @@ void CampaignDraw(const GameState& gs) {
         ui::Text(TextFormat("%s (%s)", t.name.c_str(), SettlementTypeName(t.type)),
                  (int)t.pos.x - 40, (int)t.pos.y + 26, 16, RAYWHITE);
         if (ownerValid)
-            ui::Text(c.factions[t.owner].name.c_str(),
+            ui::Text(TextFormat("%s (%d)", c.factions[t.owner].name.c_str(), t.garrisonSize()),
                      (int)t.pos.x - 40, (int)t.pos.y + 44, 14, ownerCol);
         DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(ownerCol, 0.45f));
     }

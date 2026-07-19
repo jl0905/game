@@ -42,6 +42,13 @@ struct Town {
     std::string    name;
     SettlementType type  = SettlementType::Town;
     int            owner = -1;   // owning faction handle; changes at runtime (sieges)
+    std::vector<int> garrison;   // defending troops, parallel to Content::troops
+
+    int garrisonSize() const {
+        int n = 0;
+        for (int c : garrison) n += c;
+        return n;
+    }
 };
 
 // Two hostile AI parties locked in a fight on the world map. It resolves on its
@@ -73,6 +80,7 @@ struct GameState {
     bool               timeFlowing = false;      // did world time advance this frame?
 
     // Battle handoff
+    int              siegeTownIndex   = -1;      // assaulting this town (else -1)
     int              battlePartyIndex = -1;      // enemy: index into `parties`
     int              battleAllyIndex  = -1;      // friendly party joining you, or -1
     bool             battleWon = false;
