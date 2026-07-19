@@ -49,7 +49,9 @@ no tuned progressions, costs, damage curves, or stat weights yet.
     yard behind the gate; captured garrisons detach a troop MIX from the
     attacker so walls stay manned. Remaining: ladders/rams as alternate
     entries.
-  - [ ] B3c. Garrison replenishment by the owner faction (ties into C3 lords).
+  - [x] B3c. Garrison replenishment: every owner musters one soldier a day
+    toward the settlement-type cap, drawn from their roster (flat rate,
+    TODO(balance)) — conquest is sticky and sieges recur.
 
 ## Track C — Campaign systems
 

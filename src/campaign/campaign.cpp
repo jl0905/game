@@ -818,6 +818,21 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.gold += income - wages;
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.",
                                        gs.day, income, wages);
+
+            // Every owner musters one soldier a day toward their garrison cap
+            // (roadmap B3c). TODO(balance): the rate.
+            for (Town& t : gs.towns) {
+                if (t.owner < 0 || t.owner >= c.factions.size()) continue;
+                int cap = 8;                                          // TODO(balance)
+                if (t.type == SettlementType::Village) cap = 4;
+                if (t.type == SettlementType::Castle)  cap = 12;
+                const std::vector<int>& roster = c.factions[t.owner].roster;
+                if (!roster.empty() && t.garrisonSize() < cap) {
+                    if ((int)t.garrison.size() < c.troops.size())
+                        t.garrison.assign(c.troops.size(), 0);
+                    t.garrison[roster[t.garrisonSize() % (int)roster.size()]]++;
+                }
+            }
             if (gs.gold < 0) {
                 // The coffers ran dry: a share of the men drift away overnight.
                 gs.gold = 0;
@@ -940,6 +955,7 @@ void CampaignDraw(const GameState& gs) {
             DrawRectangle((int)bx, (int)by, 16, 10, ownerCol);
             DrawRectangleLines((int)bx, (int)by, 16, 10, Fade(BLACK, 0.5f));
         }
+        DrawRectangle((int)t.pos.x - 44, (int)t.pos.y + 24, 120, 20, Fade(BLACK, 0.40f));
         ui::Text(TextFormat("%s (%s)", t.name.c_str(), SettlementTypeName(t.type)),
                  (int)t.pos.x - 40, (int)t.pos.y + 26, 16, RAYWHITE);
         if (ownerValid)
@@ -977,7 +993,8 @@ void CampaignDraw(const GameState& gs) {
         const Town& t = gs.towns[sg.town];
         DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS + 10,
                         c.factions[gs.parties[sg.party].faction].color);
-        ui::Text("UNDER SIEGE", (int)t.pos.x - 44, (int)t.pos.y - 64, 16, RED);
+        DrawRectangle((int)t.pos.x - 48, (int)t.pos.y - 80, 104, 20, Fade(BLACK, 0.55f));
+        ui::Text("UNDER SIEGE", (int)t.pos.x - 44, (int)t.pos.y - 78, 16, RED);
     }
 
     // Ongoing clashes: crossed swords, the two factions' colours, and a ring

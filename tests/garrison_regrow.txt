@@ -1,0 +1,14 @@
+# Garrison replenishment: capture Tulga (garrison drops to 0), then let days
+# pass — the garrison should regrow one soldier per day toward the village
+# cap of 4, drawn from OUR roster now that it's ours.
+seed 5
+load tests/fixtures/near_victory.owb
+enter 2
+tick 60
+state
+wait 65
+state
+wait 60
+state
+wait 60
+state

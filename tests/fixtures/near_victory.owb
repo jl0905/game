@@ -1,0 +1,19 @@
+OWSAVE 1
+gold 500
+day 3
+playerpos 500 1450
+ptroop infantry 80
+wear body plate
+carry sword
+town 0 kingdom
+garrisonreset 0
+garrison 0 recruit 4
+town 1 kingdom
+garrisonreset 1
+town 2 deserters
+garrisonreset 2
+garrison 2 recruit 4
+town 3 kingdom
+garrisonreset 3
+party raiders 1900 1900
+troop recruit 2
