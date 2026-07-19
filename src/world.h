@@ -40,7 +40,8 @@ struct Party {
 struct Town {
     Vector2        pos{};
     std::string    name;
-    SettlementType type = SettlementType::Town;
+    SettlementType type  = SettlementType::Town;
+    int            owner = -1;   // owning faction handle; changes at runtime (sieges)
 };
 
 // Two hostile AI parties locked in a fight on the world map. It resolves on its

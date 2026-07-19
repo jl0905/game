@@ -210,11 +210,17 @@ void CampaignInit(GameState& gs) {
     hl.addWeapon(c.weapons.find("spear"));   // swap between them in battle with Q
     hl.addWeapon(c.weapons.find("great"));
 
+    // Who holds what at the start: your warband holds Sargoth, the lawful
+    // patrols hold the castle and Jelkala, and deserters squat in Tulga —
+    // a hostile settlement on the map from day one (siege bait for B3).
+    const int f_kingdom   = c.playerFaction;
+    const int f_patrol    = c.factions.find("patrol");
+    const int f_deserters = c.factions.find("deserters");
     gs.towns = {
-        { { 400, 400 },   "Sargoth",  SettlementType::Town },
-        { { 1600, 500 },  "Praven",   SettlementType::Castle },
-        { { 500, 1550 },  "Tulga",    SettlementType::Village },
-        { { 1500, 1500 }, "Jelkala",  SettlementType::Town },
+        { { 400, 400 },   "Sargoth",  SettlementType::Town,    f_kingdom },
+        { { 1600, 500 },  "Praven",   SettlementType::Castle,  f_patrol },
+        { { 500, 1550 },  "Tulga",    SettlementType::Village, f_deserters },
+        { { 1500, 1500 }, "Jelkala",  SettlementType::Town,    f_patrol },
     };
 
     gs.parties.clear();
@@ -358,9 +364,15 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
     // ---- enter a settlement (pauses the overworld) ----
     if (in.clickSettlement >= 0 && in.clickSettlement < (int)gs.towns.size()) {
-        gs.currentSettlement = in.clickSettlement;
-        gs.screen = Screen::Settlement;
-        return;
+        const Town& t = gs.towns[in.clickSettlement];
+        if (AreFactionsHostile(c, t.owner, c.playerFaction)) {
+            // Hostile gates stay shut — until sieges exist (roadmap B3).
+            gs.resultText = TextFormat("%s bars its gates against you.", t.name.c_str());
+        } else {
+            gs.currentSettlement = in.clickSettlement;
+            gs.screen = Screen::Settlement;
+            return;
+        }
     }
 
     // ---- the world clock only ticks while you act ----
@@ -502,9 +514,15 @@ void CampaignDraw(const GameState& gs) {
                     DrawRectangle((int)t.pos.x + b, (int)t.pos.y - 34, 8, 12, DARKGRAY);
                 break;
         }
+        // Owner banner: label + ring in the owning faction's colour.
+        const bool ownerValid = t.owner >= 0 && t.owner < c.factions.size();
+        const Color ownerCol  = ownerValid ? c.factions[t.owner].color : RAYWHITE;
         ui::Text(TextFormat("%s (%s)", t.name.c_str(), SettlementTypeName(t.type)),
                  (int)t.pos.x - 40, (int)t.pos.y + 26, 16, RAYWHITE);
-        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(RAYWHITE, 0.25f));
+        if (ownerValid)
+            ui::Text(c.factions[t.owner].name.c_str(),
+                     (int)t.pos.x - 40, (int)t.pos.y + 44, 14, ownerCol);
+        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(ownerCol, 0.45f));
     }
 
     for (const Party& e : gs.parties) {
@@ -609,7 +627,12 @@ void SettlementDraw(const GameState& gs) {
     // Header band.
     DrawRectangle(0, 60, w, 120, Fade(BLACK, 0.5f));
     ui::Title(town.name.c_str(), panelX, 74, 52, GOLD);
-    ui::Text(SettlementTypeName(town.type), panelX, 132, 24, Fade(RAYWHITE, 0.8f));
+    if (town.owner >= 0 && town.owner < c.factions.size())
+        ui::Text(TextFormat("%s  ·  held by %s", SettlementTypeName(town.type),
+                            c.factions[town.owner].name.c_str()),
+                 panelX, 132, 24, c.factions[town.owner].color);
+    else
+        ui::Text(SettlementTypeName(town.type), panelX, 132, 24, Fade(RAYWHITE, 0.8f));
     ui::Text(SettlementGreeting(town.type), panelX, 200, 20, RAYWHITE);
 
     // Gold readout.

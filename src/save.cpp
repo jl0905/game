@@ -67,6 +67,12 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (int w : gs.playerHero.loadout.weapons)
         if (c.weapons.valid(w)) f << "carry " << c.weapons[w].id << '\n';
 
+    // Settlement ownership (towns themselves are recreated by CampaignInit;
+    // only who holds them is state). Keyed by index — the town list is static.
+    for (int t = 0; t < (int)gs.towns.size(); ++t)
+        if (gs.towns[t].owner >= 0 && gs.towns[t].owner < c.factions.size())
+            f << "town " << t << ' ' << c.factions[gs.towns[t].owner].id << '\n';
+
     for (const Party& p : gs.parties) {
         if (!p.alive) continue;
         if (p.faction < 0 || p.faction >= c.factions.size()) continue;
@@ -125,6 +131,12 @@ bool LoadGame(GameState& gs, const char* path) {
             ss >> id;
             const int h = c.weapons.find(id.c_str());
             if (h >= 0) gs.playerHero.loadout.addWeapon(h);
+        } else if (tag == "town") {
+            int idx = -1; std::string fid;
+            ss >> idx >> fid;
+            const int fh = c.factions.find(fid.c_str());
+            if (idx >= 0 && idx < (int)gs.towns.size() && fh >= 0)
+                gs.towns[idx].owner = fh;
         } else if (tag == "party") {
             std::string fid; Vector2 pos{};
             ss >> fid >> pos.x >> pos.y;

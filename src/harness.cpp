@@ -141,6 +141,13 @@ struct Harness {
         std::printf("\n");
         if (!gs.resultText.empty())
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
+        for (int t = 0; t < (int)gs.towns.size(); ++t) {
+            const Town& tw = gs.towns[t];
+            std::printf("town %d: %s owner=%s dist=%.0f\n", t, tw.name.c_str(),
+                        (tw.owner >= 0 && tw.owner < c.factions.size())
+                            ? c.factions[tw.owner].id.c_str() : "none",
+                        Vector2Distance(tw.pos, gs.player.pos));
+        }
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             const Party& p = gs.parties[i];
             if (!p.alive) continue;

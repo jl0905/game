@@ -23,10 +23,10 @@ no tuned progressions, costs, damage curves, or stat weights yet.
 
 ## Track B — Settlements
 
-- [ ] **B1. Faction ownership of settlements.** `Town` gains an owning faction
-  (data-driven; ownership changes at runtime). Map icons/labels tint by owner;
-  recruiting only in friendly settlements; hostile settlements refuse entry
-  (until B3/sieges). This underpins sieges and lords.
+- [x] **B1. Faction ownership of settlements.** `Town::owner` faction handle;
+  map rings/labels in owner colour; hostile settlements refuse entry
+  ("bars its gates"); ownership saved/loaded. Start state: Sargoth yours,
+  Praven+Jelkala patrol, Tulga held by deserters (siege bait for B3).
 - [ ] **B2. Walkable settlements.** Entering a settlement drops you into a 3D
   scene (reuse the battle renderer/terrain tech): buildings, streets, wandering
   NPC villagers (procedural characters), talk/recruit at the tavern instead of
