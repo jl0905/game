@@ -1,5 +1,6 @@
 #include "town.h"
 #include "../battle/character.h"   // the one humanoid renderer (battle owns it)
+#include "../gfx.h"
 #include "../ui.h"
 #include "raymath.h"
 #include <cmath>
@@ -303,6 +304,7 @@ void TownDraw(const GameState& gs) {
                            Color{ 132, 172, 220, 255 }, Color{ 222, 232, 240, 255 });
 
     BeginMode3D(cam);
+    BeginShaderMode(GetLitShader());
     DrawPlane({ 0, 0, 0 }, { TOWN_EDGE * 2, TOWN_EDGE * 2 }, Color{ 96, 128, 72, 255 });
     DrawCylinder({ 0, 0.01f, 0 }, 16.0f, 16.0f, 0.02f, 24, Color{ 150, 134, 105, 255 }); // plaza
     DrawCylinder({ 0, 0.02f, 0 }, 1.2f, 1.4f, 0.9f, 12, Color{ 120, 110, 100, 255 });    // well
@@ -340,6 +342,7 @@ void TownDraw(const GameState& gs) {
     hero.yaw = T.yaw;
     hero.walkPhase = T.walkPhase;
     DrawCharacter(c, T.pPos, gs.playerHero.loadout, hero, Color{ 40, 120, 255, 255 });
+    EndShaderMode();
     EndMode3D();
 
     // ---- speech: whoever stands close has a word for you ----

@@ -1,5 +1,6 @@
 #include "battle.h"
 #include "character.h"
+#include "../gfx.h"
 #include "../ui.h"
 #include "../parallel.h"
 #include "raymath.h"
@@ -298,18 +299,22 @@ void Terrain::BakeModel() const {
     mesh.colors   = (unsigned char*)MemAlloc((unsigned)mesh.vertexCount * 4);
 
     int v = 0;
-    auto emit = [&](Vector3 p, Color col) {
+    auto emit = [&](Vector3 p, Color col, Vector3 nrm) {
         mesh.vertices[v * 3 + 0] = p.x;
         mesh.vertices[v * 3 + 1] = p.y;
         mesh.vertices[v * 3 + 2] = p.z;
-        mesh.normals[v * 3 + 0] = 0;
-        mesh.normals[v * 3 + 1] = 1;
-        mesh.normals[v * 3 + 2] = 0;
+        mesh.normals[v * 3 + 0] = nrm.x;
+        mesh.normals[v * 3 + 1] = nrm.y;
+        mesh.normals[v * 3 + 2] = nrm.z;
         mesh.colors[v * 4 + 0] = col.r;
         mesh.colors[v * 4 + 1] = col.g;
         mesh.colors[v * 4 + 2] = col.b;
         mesh.colors[v * 4 + 3] = col.a;
         ++v;
+    };
+    auto faceNormal = [](Vector3 a, Vector3 b, Vector3 cc) {
+        return Vector3Normalize(Vector3CrossProduct(Vector3Subtract(b, a),
+                                                    Vector3Subtract(cc, a)));
     };
     for (int j = 0; j < gridN_; ++j) {
         for (int i = 0; i < gridN_; ++i) {
@@ -324,12 +329,15 @@ void Terrain::BakeModel() const {
             // Winding A,C,B / B,C,D gives an upward-facing (+y) normal.
             const Color c1 = TriangleColor(A, C, Bv);
             const Color c2 = TriangleColor(Bv, C, D);
-            emit(A, c1); emit(C, c1); emit(Bv, c1);
-            emit(Bv, c2); emit(C, c2); emit(D, c2);
+            const Vector3 n1 = faceNormal(A, C, Bv);
+            const Vector3 n2 = faceNormal(Bv, C, D);
+            emit(A, c1, n1); emit(C, c1, n1); emit(Bv, c1, n1);
+            emit(Bv, c2, n2); emit(C, c2, n2); emit(D, c2, n2);
         }
     }
     UploadMesh(&mesh, false);
     model_ = LoadModelFromMesh(mesh);
+    model_.materials[0].shader = GetLitShader();   // sun-lit slopes
     baked_ = true;
 }
 
@@ -1297,6 +1305,7 @@ void BattleDraw(const Content& c) {
                        Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
 
     BeginMode3D(cam);
+    BeginShaderMode(GetLitShader());   // one sun over everything solid
     B.terrain.Draw();
 
     // Siege wall: stone segments with crenellations, broken by the gate.
@@ -1395,6 +1404,7 @@ void BattleDraw(const Content& c) {
         ppose.walkPhase = 0;
     }
     DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
+    EndShaderMode();
 
     EndMode3D();
 
