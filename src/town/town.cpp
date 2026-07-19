@@ -26,6 +26,7 @@ struct Building {
     Color   wall;
     Color   roof;
     bool    tavern = false;
+    bool    flatTop = false;   // curtain walls / towers: no pitched roof
 };
 
 struct Npc {
@@ -81,11 +82,61 @@ void TownInit(const GameState& gs) {
 
     Rng rng{ (unsigned)(town.pos.x * 73856093) ^ (unsigned)(town.pos.y * 19349663) ^ 7u };
 
+    // Castles are built, not grown: curtain walls with corner towers around a
+    // courtyard, and a central keep where the lord holds court (recruiting).
+    if (town.type == SettlementType::Castle) {
+        const Color stone = Color{ 158, 156, 160, 255 };
+        const Color dark  = Color{ 120, 118, 124, 255 };
+        const float C = 26.0f;   // courtyard half-size
+        auto wall = [&](Vector3 pos, Vector3 size) {
+            Building b;
+            b.pos = pos; b.size = size;
+            b.wall = stone; b.roof = dark; b.flatTop = true;
+            T.buildings.push_back(b);
+        };
+        // north, east, west full walls; south wall split by the gate
+        wall({ 0, 0, -C }, { C * 2 + 4, 7, 3 });
+        wall({ -C, 0, 0 }, { 3, 7, C * 2 + 4 });
+        wall({  C, 0, 0 }, { 3, 7, C * 2 + 4 });
+        wall({ -(C * 0.5f + 4.5f), 0, C }, { C - 9, 7, 3 });
+        wall({  (C * 0.5f + 4.5f), 0, C }, { C - 9, 7, 3 });
+        for (const float tx : { -C, C })              // corner towers
+            for (const float tz : { -C, C })
+                wall({ tx, 0, tz }, { 7, 11, 7 });
+
+        Building keep;                                 // the keep, centre-north
+        keep.pos = { 0, 0, -C * 0.45f };
+        keep.size = { 15, 13, 13 };
+        keep.wall = stone; keep.roof = GOLD;
+        keep.tavern = true;                            // recruit in the hall
+        T.buildings.push_back(keep);
+        T.tavern = (int)T.buildings.size() - 1;
+
+        // The garrison drills in the yard: armoured guards, not villagers.
+        const int a_mail   = c.armor.find("mail");
+        const int a_helm   = c.armor.find("helmet");
+        const int a_bootsG = c.armor.find("boots");
+        for (int i = 0; i < 5; ++i) {
+            Npc n;
+            n.pos = { rng.range(-14, 14), 0, rng.range(2, 18) };
+            n.target = { rng.range(-14, 14), rng.range(2, 18) };
+            n.loadout.set(EquipSlot::Body, a_mail);
+            n.loadout.set(EquipSlot::Head, a_helm);
+            n.loadout.set(EquipSlot::Feet, a_bootsG);
+            T.npcs.push_back(n);
+        }
+
+        T.pPos = { 0, 0, C + 8 };   // start outside the gate...
+        T.yaw  = PI;                // ...facing in through it
+        if (IsWindowReady()) DisableCursor();
+        T.hasLastMouse = false;
+        return;
+    }
+
     // Buildings ring a central plaza; count scales with settlement type
     // (identity, not balance).
     int count = 8;
     if (town.type == SettlementType::Village) count = 5;
-    if (town.type == SettlementType::Castle)  count = 7;
     for (int i = 0; i < count; ++i) {
         Building b;
         const float ang = (2.0f * PI * i) / count + rng.range(-0.15f, 0.15f);
@@ -226,11 +277,17 @@ void TownDraw(const GameState& gs) {
         DrawCube({ b.pos.x, b.size.y * 0.5f, b.pos.z }, b.size.x, b.size.y, b.size.z, b.wall);
         DrawCubeWires({ b.pos.x, b.size.y * 0.5f, b.pos.z }, b.size.x, b.size.y, b.size.z,
                       Fade(BLACK, 0.35f));
-        // pitched roof: a squashed 4-sided cone
-        DrawCylinderEx({ b.pos.x, b.size.y, b.pos.z },
-                       { b.pos.x, b.size.y + 2.4f, b.pos.z },
-                       fmaxf(b.size.x, b.size.z) * 0.72f, 0.0f, 4, b.roof);
-        if (b.tavern)   // hanging sign: a keg on a post
+        if (b.flatTop) {   // crenellated top instead of a roof
+            for (float cx = -b.size.x / 2; cx < b.size.x / 2; cx += 2.4f)
+                DrawCube({ b.pos.x + cx + 0.6f, b.size.y + 0.4f, b.pos.z },
+                         1.1f, 0.8f, fminf(b.size.z, 1.6f), b.roof);
+        } else {
+            // pitched roof: a squashed 4-sided cone
+            DrawCylinderEx({ b.pos.x, b.size.y, b.pos.z },
+                           { b.pos.x, b.size.y + 2.4f, b.pos.z },
+                           fmaxf(b.size.x, b.size.z) * 0.72f, 0.0f, 4, b.roof);
+        }
+        if (b.tavern)   // hanging sign: a keg (or the lord's banner on a keep)
             DrawSphere({ b.pos.x, b.size.y + 3.4f, b.pos.z }, 0.7f, GOLD);
     }
 
