@@ -11,6 +11,7 @@ constexpr int   RATE   = 22050;
 constexpr int   NSFX   = 8;
 Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
+Sound  g_wind = {};
 bool   g_ready = false;
 
 // Build a 16-bit mono wave from a generator f(t seconds) in [-1, 1].
@@ -95,14 +96,30 @@ void SfxInit() {
         return (sinf(2 * PI * 196.0f * t) * 0.6f + sinf(2 * PI * 293.0f * t) * 0.25f +
                 sinf(2 * PI * 415.0f * t) * 0.15f) * env * 0.7f;
     });
+    // Wind bed: two seconds of slow-breathing low noise, retriggered while
+    // it plays out — a serviceable field ambience.
+    g_wind = Synth(2.0f, [](float t) {
+        const float breath = 0.6f + 0.4f * sinf(2 * PI * 0.5f * t);
+        static float lp = 0;                     // crude one-pole low-pass
+        lp += (Noise() - lp) * 0.08f;
+        return lp * breath * 0.8f;
+    });
+
     g_ready = true;
 }
 
 void SfxShutdown() {
     if (!g_ready) return;
     for (Sound& s : g_sounds) UnloadSound(s);
+    UnloadSound(g_wind);
     CloseAudioDevice();
     g_ready = false;
+}
+
+void SfxAmbience(float volume) {
+    if (!g_ready) return;
+    SetSoundVolume(g_wind, volume);
+    if (volume > 0.01f && !IsSoundPlaying(g_wind)) PlaySound(g_wind);
 }
 
 void SfxPlay(Sfx s, float volume) {
