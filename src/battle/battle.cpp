@@ -544,6 +544,7 @@ struct BattleState {
     bool  over = false;
     bool  won = false;
     float overTimer = 0;
+    float introTimer = 0;   // opening banner fade
     bool  reported = false;         // outcome handed back to the caller
     int   aliveAllies = 0, aliveEnemies = 0;   // tallied each update, drawn in HUD
 
@@ -969,6 +970,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.mounted = !setup.siege;   // walls are stormed on foot
     B.pHorseHp = HORSE_HP;
 
+    B.introTimer = 3.0f;
     if (IsWindowReady()) DisableCursor();   // headless harness has no window
     B.hasLastMouse = false;
 }
@@ -1534,6 +1536,23 @@ void BattleDraw(const Content& c) {
         ui::Text("Charge attacks; Line / Square /", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 20;
         ui::Text("Spread hold that shape and fight.", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 30;
         ui::Text("~ closes this menu.", px + 22, y, 16, Fade(RAYWHITE, 0.7f));
+    }
+
+    // Opening banner: who stands against whom.
+    B.introTimer = fmaxf(0.0f, B.introTimer - GetFrameTime());
+    if (B.introTimer > 0 && !B.over) {
+        const float a = fminf(B.introTimer / 0.6f, 1.0f);   // fade out at the end
+        int own = 0, foes = 0;
+        for (const Soldier& s : B.soldiers)
+            (s.team == Team::Enemy ? foes : own) += (s.hp > 0) ? 1 : 0;
+        const char* head = B.setup.siege ? "STORM THE WALLS" : "BATTLE IS JOINED";
+        const char* nums = TextFormat("%d men against %d", own, foes);
+        const int w1 = ui::MeasureTitle(head, 52);
+        const int w2 = ui::Measure(nums, 24);
+        const int cy = GetScreenHeight() / 3;
+        DrawRectangle(0, cy - 16, GetScreenWidth(), 110, Fade(BLACK, 0.45f * a));
+        ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 52, Fade(GOLD, a));
+        ui::Text(nums, (GetScreenWidth() - w2) / 2, cy + 62, 24, Fade(RAYWHITE, a));
     }
 
     if (B.over) {
