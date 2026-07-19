@@ -30,12 +30,13 @@ struct Building {
 };
 
 struct Npc {
-    Vector3 pos;
-    float   yaw = 0;
-    float   walkPhase = 0;
-    Vector2 target{};
-    float   think = 0;
-    Loadout loadout;
+    Vector3     pos;
+    float       yaw = 0;
+    float       walkPhase = 0;
+    Vector2     target{};
+    float       think = 0;
+    Loadout     loadout;
+    std::string line;   // what they say when you come close
 };
 
 struct TownScene {
@@ -52,6 +53,33 @@ struct TownScene {
 };
 
 TownScene T;
+
+// What the locals have to say. Some of it is stock small talk; some is real
+// gossip composed from world state (sieges, who holds what) at entry time.
+std::vector<std::string> GatherLines(const GameState& gs, bool guards) {
+    std::vector<std::string> lines;
+    if (guards) {
+        lines.push_back("Keep your blade sheathed inside the walls.");
+        lines.push_back("The lord watches from the keep.");
+        lines.push_back("Quiet watch tonight. I don't trust it.");
+    } else {
+        lines.push_back("Fine weather for the harvest.");
+        lines.push_back("Mind the well after dark, stranger.");
+        lines.push_back("Soldiers drink the tavern dry these days.");
+    }
+    // Gossip: the war reaches every ear.
+    const Content& c = gs.content;
+    for (const AISiege& sg : gs.aiSieges)
+        if (sg.town >= 0 && sg.town < (int)gs.towns.size())
+            lines.push_back(TextFormat("They say %s is under siege!",
+                                       gs.towns[sg.town].name.c_str()));
+    for (const Town& t : gs.towns)
+        if (t.owner >= 0 && t.owner < c.factions.size() &&
+            AreFactionsHostile(c, t.owner, c.playerFaction))
+            lines.push_back(TextFormat("%s flies the %s banner now. Dark days.",
+                                       t.name.c_str(), c.factions[t.owner].name.c_str()));
+    return lines;
+}
 
 // Keep a point out of every building footprint (simple AABB push-out).
 Vector3 CollideBuildings(Vector3 p, float radius) {
@@ -116,6 +144,7 @@ void TownInit(const GameState& gs) {
         const int a_mail   = c.armor.find("mail");
         const int a_helm   = c.armor.find("helmet");
         const int a_bootsG = c.armor.find("boots");
+        const std::vector<std::string> gLines = GatherLines(gs, /*guards=*/true);
         for (int i = 0; i < 5; ++i) {
             Npc n;
             n.pos = { rng.range(-14, 14), 0, rng.range(2, 18) };
@@ -123,6 +152,7 @@ void TownInit(const GameState& gs) {
             n.loadout.set(EquipSlot::Body, a_mail);
             n.loadout.set(EquipSlot::Head, a_helm);
             n.loadout.set(EquipSlot::Feet, a_bootsG);
+            n.line = gLines[(size_t)(rng.unit() * 0.999f * gLines.size())];
             T.npcs.push_back(n);
         }
 
@@ -162,6 +192,7 @@ void TownInit(const GameState& gs) {
     int folk = 10;
     if (town.type == SettlementType::Village) folk = 6;
     if (town.type == SettlementType::Castle)  folk = 6;
+    const std::vector<std::string> vLines = GatherLines(gs, /*guards=*/false);
     for (int i = 0; i < folk; ++i) {
         Npc n;
         n.pos = { rng.range(-16, 16), 0, rng.range(-16, 16) };
@@ -169,6 +200,7 @@ void TownInit(const GameState& gs) {
         n.loadout.set(EquipSlot::Body, a_tunic);
         n.loadout.set(EquipSlot::Feet, a_boots);
         if (rng.unit() > 0.5f) n.loadout.set(EquipSlot::Head, a_cap);
+        n.line = vLines[(size_t)(rng.unit() * 0.999f * vLines.size())];
         T.npcs.push_back(n);
     }
 
@@ -303,6 +335,17 @@ void TownDraw(const GameState& gs) {
     hero.walkPhase = T.walkPhase;
     DrawCharacter(c, T.pPos, gs.playerHero.loadout, hero, Color{ 40, 120, 255, 255 });
     EndMode3D();
+
+    // ---- speech: whoever stands close has a word for you ----
+    for (const Npc& n : T.npcs) {
+        const float dx = n.pos.x - T.pPos.x, dz = n.pos.z - T.pPos.z;
+        if (dx * dx + dz * dz > 4.5f * 4.5f || n.line.empty()) continue;
+        const Vector2 sp = GetWorldToScreen({ n.pos.x, n.pos.y + 2.5f, n.pos.z }, cam);
+        if (sp.x < 0 || sp.x > GetScreenWidth() || sp.y < 0) continue;
+        const int tw = ui::Measure(n.line.c_str(), 17);
+        DrawRectangle((int)sp.x - tw / 2 - 8, (int)sp.y - 12, tw + 16, 26, Fade(BLACK, 0.65f));
+        ui::Text(n.line.c_str(), (int)sp.x - tw / 2, (int)sp.y - 8, 17, RAYWHITE);
+    }
 
     // ---- HUD ----
     DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
