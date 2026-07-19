@@ -878,6 +878,8 @@ void CampaignDraw(const GameState& gs) {
     const Camera2D cam = CampaignCamera(gs);
     const int nearSkirmish = NearestSkirmishIndex(gs);
 
+    SfxAmbience(0.07f);   // a soft wind over the overworld
+
     BeginDrawing();
     ClearBackground(Color{ 40, 58, 36, 255 });   // beyond the map's edge
 

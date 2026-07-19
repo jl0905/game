@@ -311,6 +311,8 @@ void TownDraw(const GameState& gs) {
     cam.fovy = 60;
     cam.projection = CAMERA_PERSPECTIVE;
 
+    SfxAmbience(0.10f);   // street murmur stand-in
+
     BeginDrawing();
     ClearBackground(Color{ 132, 172, 220, 255 });   // clears depth too
     DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
