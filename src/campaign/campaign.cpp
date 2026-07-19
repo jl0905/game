@@ -846,14 +846,55 @@ void CampaignDraw(const GameState& gs) {
     const int nearSkirmish = NearestSkirmishIndex(gs);
 
     BeginDrawing();
-    ClearBackground(Color{ 60, 92, 48, 255 });
+    ClearBackground(Color{ 40, 58, 36, 255 });   // beyond the map's edge
 
     BeginMode2D(cam);
+    // Painted ground: biome patches from the SAME noise that shapes battle
+    // terrain, so the map foreshadows the battlefield you'd fight on.
+    constexpr int CELL = 100;
+    for (int gy = 0; gy < (int)MAP_SIZE / CELL; ++gy) {
+        for (int gx = 0; gx < (int)MAP_SIZE / CELL; ++gx) {
+            const float wx = gx * CELL + CELL * 0.5f;
+            const float wy = gy * CELL + CELL * 0.5f;
+            const float n1 = sinf(wx * 0.0031f) * cosf(wy * 0.0027f);   // hills
+            const float n2 = sinf(wx * 0.0012f + wy * 0.0019f);         // forests
+            const Color ground = { (unsigned char)(66 + 20.0f * n1),
+                                   (unsigned char)(98 + 14.0f * n2),
+                                   (unsigned char)(48 + 10.0f * n1), 255 };
+            DrawRectangle(gx * CELL, gy * CELL, CELL, CELL, ground);
+
+            unsigned int h = (unsigned)(gx * 73856093) ^ (unsigned)(gy * 19349663);
+            h ^= h >> 13;
+            if (n2 > 0.35f) {   // forest clumps
+                for (int t = 0; t < 5; ++t) {
+                    h = h * 1664525u + 1013904223u;
+                    const float tx = gx * CELL + (h & 63) + 16;
+                    const float ty = gy * CELL + ((h >> 8) & 63) + 16;
+                    DrawTriangle({ tx, ty }, { tx + 10, ty }, { tx + 5, ty - 16 },
+                                 Color{ 34, 66, 34, 255 });
+                }
+            } else if (n1 > 0.55f) {   // mountain ridges
+                for (int t = 0; t < 3; ++t) {
+                    h = h * 1664525u + 1013904223u;
+                    const float tx = gx * CELL + (h & 63) + 12;
+                    const float ty = gy * CELL + ((h >> 8) & 63) + 24;
+                    DrawTriangle({ tx, ty }, { tx + 22, ty }, { tx + 11, ty - 20 },
+                                 Color{ 118, 112, 108, 255 });
+                    DrawTriangle({ tx + 7, ty - 12 }, { tx + 15, ty - 12 },
+                                 { tx + 11, ty - 20 }, Color{ 226, 228, 232, 255 });
+                }
+            }
+        }
+    }
+
+    // Roads thread the settlements together.
+    for (int a = 0; a < (int)gs.towns.size(); ++a)
+        for (int b = a + 1; b < (int)gs.towns.size(); ++b)
+            if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) < 1350)
+                DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 5,
+                           Fade(Color{ 128, 106, 76, 255 }, 0.45f));
+
     DrawRectangleLinesEx(Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, 6, DARKBROWN);
-    for (int x = 0; x <= (int)MAP_SIZE; x += 200)
-        DrawLine(x, 0, x, (int)MAP_SIZE, Color{ 70, 102, 58, 255 });
-    for (int y = 0; y <= (int)MAP_SIZE; y += 200)
-        DrawLine(0, y, (int)MAP_SIZE, y, Color{ 70, 102, 58, 255 });
 
     for (const Town& t : gs.towns) {
         switch (t.type) {

@@ -94,13 +94,18 @@ Color SurfaceColor(float height, float slope, float shade) {
     return c;
 }
 
-// Flat-shaded colour for a triangle from its three corners.
+// Flat-shaded colour for a triangle from its three corners, with a little
+// per-triangle jitter so the ground reads as textured, not vector-flat.
 Color TriangleColor(Vector3 a, Vector3 b, Vector3 c) {
     const Vector3 n = Vector3Normalize(
         Vector3CrossProduct(Vector3Subtract(b, a), Vector3Subtract(c, a)));
     const float slope = 1.0f - fabsf(n.y);
     const float h = (a.y + b.y + c.y) / 3.0f;
-    const float shade = 0.75f + 0.25f * fabsf(n.y);   // face the light a little
+    unsigned int hash = (unsigned)(a.x * 37.0f) * 73856093u ^
+                        (unsigned)(a.z * 41.0f) * 19349663u;
+    hash ^= hash >> 13;
+    const float jitter = 0.92f + 0.16f * ((hash & 0xFF) / 255.0f);
+    const float shade = (0.75f + 0.25f * fabsf(n.y)) * jitter;
     return SurfaceColor(h, slope, shade);
 }
 
@@ -347,6 +352,8 @@ void Terrain::Draw() const {
 
     // trees
     for (const Tree& t : trees_) {
+        DrawCylinder({ t.pos.x, t.pos.y + 0.04f, t.pos.z }, t.radius * 1.1f,
+                     t.radius * 1.1f, 0.02f, 10, Fade(BLACK, 0.25f));   // shadow
         const Vector3 base     = t.pos;
         const Vector3 trunkTop = { base.x, base.y + t.height * 0.4f, base.z };
         const Vector3 crownMid = { base.x, base.y + t.height * 0.3f, base.z };
@@ -785,6 +792,12 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 }
 
 Color TeamTint(Team t) { return t == Team::Enemy ? RED : BLUE; }
+
+// Soft blob shadow pinned to the terrain — the cheapest depth cue there is.
+void BlobShadow(const Terrain& t, float x, float z, float r) {
+    DrawCylinder({ x, t.HeightAt(x, z) + 0.04f, z }, r, r, 0.02f, 12,
+                 Fade(BLACK, 0.28f));
+}
 
 // The horse: barrel, neck + head, four trotting legs. The rider is drawn by
 // the caller, seated 1.25 above `pos`.
@@ -1227,7 +1240,12 @@ void BattleDraw(const Content& c) {
 
     // ================= DRAW =================
     BeginDrawing();
-    ClearBackground(Color{ 150, 190, 230, 255 });
+    ClearBackground(Color{ 92, 148, 214, 255 });   // also clears the DEPTH buffer
+    // Sky: a vertical gradient with a low sun, instead of a flat fill.
+    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+                           Color{ 92, 148, 214, 255 }, Color{ 208, 224, 238, 255 });
+    DrawCircleGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
+                       Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
 
     BeginMode3D(cam);
     B.terrain.Draw();
@@ -1262,6 +1280,7 @@ void BattleDraw(const Content& c) {
             DrawCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.7f));
             continue;
         }
+        BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
         if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
             const Color tint = TeamTint(s.team);
             DrawCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
@@ -1309,6 +1328,7 @@ void BattleDraw(const Content& c) {
     ppose.blocking = B.blocking;
     ppose.walkPhase = B.walkPhase;
     ppose.weapon = B.setup.heroLoadout.get(EquipSlot::Weapon);
+    BlobShadow(B.terrain, B.pPos.x, B.pPos.z, B.mounted ? 0.85f : 0.5f);
     Vector3 heroDraw = B.pPos;
     if (B.mounted) {
         DrawHorse(B.pPos, B.yaw, B.walkPhase);
