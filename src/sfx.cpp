@@ -8,7 +8,7 @@
 namespace {
 
 constexpr int   RATE   = 22050;
-constexpr int   NSFX   = 8;
+constexpr int   NSFX   = 9;
 Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
 Sound  g_wind = {};
@@ -95,6 +95,15 @@ void SfxInit() {
         const float env = expf(-t * 2.6f);
         return (sinf(2 * PI * 196.0f * t) * 0.6f + sinf(2 * PI * 293.0f * t) * 0.25f +
                 sinf(2 * PI * 415.0f * t) * 0.15f) * env * 0.7f;
+    });
+    // War cry: a massed roar — band-limited noise breathing through rough
+    // vowel-ish formants, swelling fast and trailing off.
+    g_sounds[(int)Sfx::WarCry] = Synth(1.3f, [](float t) {
+        const float env = fminf(t * 8.0f, 1.0f) * expf(-t * 2.2f);
+        static float lp = 0;
+        lp += (Noise() - lp) * 0.12f;                 // throaty rumble
+        const float voice = sinf(2 * PI * (95.0f + 18.0f * sinf(2 * PI * 7.0f * t)) * t);
+        return (lp * 0.9f + voice * 0.5f) * env * 0.9f;
     });
     // Wind bed: two seconds of slow-breathing low noise, retriggered while
     // it plays out — a serviceable field ambience.

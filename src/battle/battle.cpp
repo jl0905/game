@@ -571,6 +571,8 @@ struct BattleState {
     int   ownCount = 0;             // player's own (non-ally) troop count
     int   enemyCount = 0;           // enemy line strength at the start
     bool  enemyHoldsLine = false;   // field armies form up before they charge
+    bool  enemyCharged = false;     // the moment the whole line breaks forward
+    float cryTimer = 0;             // "THEY CHARGE!" banner fade
 
     // Parallel-AI scratch, reused each frame to avoid per-frame allocation.
     std::vector<AICmd> cmds;
@@ -806,9 +808,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     const bool commanded =
         (s.team == Team::Player && !s.ally && formation != FormationType::Charge);
     // Enemy field armies keep a battle line until the fight comes near.
+    // The whole line breaks at once (B.enemyCharged), never soldier by soldier
+    // — but a soldier with a foe already on him always defends himself.
     const bool enemyInLine =
-        s.team == Team::Enemy && B.enemyHoldsLine && s.slot >= 0 &&
-        !(haveFoe && foeDist < 28.0f);
+        s.team == Team::Enemy && B.enemyHoldsLine && !B.enemyCharged &&
+        s.slot >= 0 && !(haveFoe && foeDist < 10.0f);
 
     Vector3 goal;
     bool holding = false;
@@ -1164,6 +1168,26 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     const int     n = (int)B.soldiers.size();
     if (!B.over && n > 0) {
         B.cmds.resize(n);
+        // A holding line breaks all at once: the first foe to close within
+        // reach of any of them sends the whole army forward with a roar.
+        if (B.enemyHoldsLine && !B.enemyCharged) {
+            constexpr float BREAK_DIST2 = 28.0f * 28.0f;
+            for (int i = 0; i < n && !B.enemyCharged; ++i) {
+                const Soldier& e = B.soldiers[i];
+                if (e.hp <= 0 || e.team != Team::Enemy) continue;
+                if (Vector3DistanceSqr(e.pos, B.pPos) < BREAK_DIST2) { B.enemyCharged = true; break; }
+                for (int j = 0; j < n; ++j) {
+                    const Soldier& p = B.soldiers[j];
+                    if (p.hp <= 0 || p.team != Team::Player) continue;
+                    if (Vector3DistanceSqr(e.pos, p.pos) < BREAK_DIST2) { B.enemyCharged = true; break; }
+                }
+            }
+            if (B.enemyCharged) {
+                B.cryTimer = 2.2f;
+                SfxPlay(Sfx::WarCry);
+            }
+        }
+
         // Phase 1 — compute every soldier's intent in parallel from a read-only
         // snapshot. Nothing is mutated here, so there are no data races.
         ThreadPool::Global().For(0, n, 24, [&](int i) {
@@ -1594,6 +1618,17 @@ void BattleDraw(const Content& c) {
         DrawRectangle(0, cy - 16, GetScreenWidth(), 110, Fade(BLACK, 0.45f * a));
         ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 52, Fade(GOLD, a));
         ui::Text(nums, (GetScreenWidth() - w2) / 2, cy + 62, 24, Fade(RAYWHITE, a));
+    }
+
+    // The line breaks: a short red flash of intent.
+    B.cryTimer = fmaxf(0.0f, B.cryTimer - GetFrameTime());
+    if (B.cryTimer > 0 && B.introTimer <= 0 && !B.over) {
+        const float a = fminf(B.cryTimer / 0.5f, 1.0f);
+        const char* head = "THEY CHARGE!";
+        const int w = ui::MeasureTitle(head, 44);
+        const int cy = GetScreenHeight() / 3;
+        DrawRectangle(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.4f * a));
+        ui::Title(head, (GetScreenWidth() - w) / 2, cy, 44, Fade(Color{ 235, 90, 70, 255 }, a));
     }
 
     if (B.over) {
