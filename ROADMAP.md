@@ -28,10 +28,12 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   map rings/labels in owner colour; hostile settlements refuse entry
   ("bars its gates"); ownership saved/loaded. Start state: Sargoth yours,
   Praven+Jelkala patrol, Tulga held by deserters (siege bait for B3).
-- [ ] **B2. Walkable settlements.** Entering a settlement drops you into a 3D
-  scene (reuse the battle renderer/terrain tech): buildings, streets, wandering
-  NPC villagers (procedural characters), talk/recruit at the tavern instead of
-  a flat menu. Settlement layout seeded from the town like battle terrain is.
+- [x] **B2. Walkable settlements (v1).** `src/town/`: entering a settlement is
+  a 3D walk — seeded buildings ring a plaza (count/materials by settlement
+  type), gold-roofed tavern where recruiting happens, wandering villager NPCs,
+  building collision, third-person camera reusing BattleInput. Harness drives
+  it with `bmove`/`recruit`; `state` shows hero/tavern positions.
+  Remaining: interiors, castle keep layout, NPC dialogue.
 - [x] **B3. Sieging system (v1).** Settlements keep a garrison drawn from the
   owner's roster (sized by settlement type, TODO(balance)); clicking a hostile
   settlement storms it — the garrison fights on home terrain, victory

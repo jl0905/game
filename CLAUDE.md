@@ -60,6 +60,11 @@ into a full battle (the backed party fights as your ally). World time is
 **passively paused**: it only advances while the player travels or holds SPACE
 to wait, so nothing moves until the player acts.
 
+**Town module (`src/town/`)** — the walkable 3D settlement scene (roadmap B2):
+seeded buildings + plaza, villager NPCs, tavern recruiting. Movement reuses
+`BattleInput`; menu intents come via `CampaignInput`. Includes the battle
+module's `character.h` renderer (read-only reuse).
+
 **Battle module (`src/battle/`)** — owns everything inside a fight: 3D combat,
 4-directional melee, soldier AI, battle camera/HUD, the humanoid renderer
 (`character.h/.cpp`), and terrain. Terrain lives inside `battle.cpp`: a simple

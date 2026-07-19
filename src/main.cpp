@@ -4,6 +4,7 @@
 #include "bridge.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
+#include "town/town.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -105,17 +106,18 @@ int main(int argc, char** argv) {
                     BattleInit(gs.content, MakeBattleSetup(gs));
                     BattleDraw(gs.content);
                 } else if (gs.screen == Screen::Settlement) {
-                    SettlementDraw(gs);
+                    TownInit(gs);                          // step into the streets
+                    TownDraw(gs);
                 } else {
                     CampaignDraw(gs);
                 }
                 break;
             }
-            case Screen::Settlement: {                    // inside a town; overworld paused
-                const CampaignInput in = GatherCampaignInput(gs);
-                SettlementUpdate(gs, in);
-                if (gs.screen == Screen::Settlement) SettlementDraw(gs);
-                else                                 CampaignDraw(gs);
+            case Screen::Settlement: {                    // walking the streets; paused
+                const CampaignInput cin = GatherCampaignInput(gs);
+                const BattleInput   bin = GatherBattleInput();
+                if (TownUpdate(gs, dt, bin, cin)) TownDraw(gs);
+                else                              CampaignDraw(gs);
                 break;
             }
             case Screen::Party: {                         // roster + upgrades; paused

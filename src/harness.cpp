@@ -1,6 +1,7 @@
 #include "harness.h"
 #include "bridge.h"
 #include "save.h"
+#include "town/town.h"
 #include "world.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
@@ -47,6 +48,7 @@ struct Harness {
     GameState gs;
     bool      blockHeld = false;   // battle guard persists across ticks
     bool      battleLive = false;  // BattleInit has run for the current battle
+    bool      townLive   = false;  // TownInit has run for the current settlement
 
     // One fixed step of the whole game, mirroring main.cpp's screen routing.
     void Step(const CampaignInput& cin, const BattleInput& bin) {
@@ -58,9 +60,13 @@ struct Harness {
                     BattleInit(gs.content, MakeBattleSetup(gs));
                     battleLive = true;
                 }
+                if (gs.screen == Screen::Settlement && !townLive) {
+                    TownInit(gs);
+                    townLive = true;
+                }
                 break;
             case Screen::Settlement:
-                SettlementUpdate(gs, cin);
+                if (!TownUpdate(gs, STEP, bin, cin)) townLive = false;
                 break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
@@ -187,9 +193,14 @@ struct Harness {
                         v.heroHp, v.heroMaxHp, wname, v.aliveAllies, v.aliveEnemies,
                         v.arrowsInFlight, v.over ? 1 : 0, v.won ? 1 : 0);
         }
-        if (gs.screen == Screen::Settlement)
-            std::printf("settlement=%d (%s)\n", gs.currentSettlement,
-                        gs.towns[gs.currentSettlement].name.c_str());
+        if (gs.screen == Screen::Settlement) {
+            const TownView v = GetTownView();
+            std::printf("settlement=%d (%s) heroPos=(%.1f,%.1f) yaw=%.2f "
+                        "tavern=(%.1f,%.1f) atTavern=%d npcs=%d\n",
+                        gs.currentSettlement, gs.towns[gs.currentSettlement].name.c_str(),
+                        v.heroPos.x, v.heroPos.z, v.heroYaw,
+                        v.tavernPos.x, v.tavernPos.z, v.atTavern ? 1 : 0, v.npcs);
+        }
         std::fflush(stdout);
     }
 };

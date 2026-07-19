@@ -23,8 +23,7 @@ CampaignInput GatherCampaignInput(const GameState& gs);   // covers settlement t
 void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in);
 void CampaignDraw(const GameState& gs);
 
-void SettlementUpdate(GameState& gs, const CampaignInput& in);
-void SettlementDraw(const GameState& gs);
+// (The settlement itself is a walkable 3D scene — see src/town/town.h.)
 
 // Party management screen (roster + veterancy upgrades), opened with P.
 void PartyUpdate(GameState& gs, const CampaignInput& in);

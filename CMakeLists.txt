@@ -23,6 +23,7 @@ add_executable(openwarband
     src/ui.cpp
     src/content.cpp
     src/campaign/campaign.cpp
+    src/town/town.cpp
     src/battle/battle.cpp
     src/battle/character.cpp
 )

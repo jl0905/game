@@ -48,18 +48,6 @@ const char* SettlementTypeName(SettlementType t) {
     return "Settlement";
 }
 
-const char* SettlementGreeting(SettlementType t) {
-    switch (t) {
-        case SettlementType::Village:
-            return "A cluster of thatched huts. Peasants eye your warband warily.";
-        case SettlementType::Castle:
-            return "Stone walls loom overhead. The garrison watches from the battlements.";
-        case SettlementType::Town:
-            return "Busy streets, a market, and a keep. Recruits gather at the tavern.";
-    }
-    return "";
-}
-
 // Non-player factions that can spawn as roaming parties.
 std::vector<int> RoamingFactions(const Content& c) {
     std::vector<int> out;
@@ -184,10 +172,6 @@ int NearestSkirmishIndex(const GameState& gs) {
         if (d < bestD) { bestD = d; best = s; }
     }
     return best;
-}
-
-Rectangle SettlementLeaveButton() {
-    return { GetScreenWidth() / 2.0f - 100, GetScreenHeight() - 90.0f, 200, 48 };
 }
 
 // A lord's army: lordPartySize troops round-robined over the faction roster.
@@ -473,14 +457,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     CampaignInput in;
 
     if (gs.screen == Screen::Settlement) {
+        // Walking a settlement: menu intents only — movement is gathered
+        // separately via GatherBattleInput (same third-person controls).
         const std::vector<int>& roster =
             gs.content.factions[gs.content.playerFaction].roster;
         for (int slot = 0; slot < (int)roster.size(); ++slot)
             if (IsKeyPressed(KEY_ONE + slot)) in.recruitSlot = slot;
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-            CheckCollisionPointRec(GetMousePosition(), SettlementLeaveButton()))
-            in.leaveSettlement = true;
         return in;
     }
 
@@ -1170,73 +1153,3 @@ void CharacterDraw(const GameState& gs) {
     EndDrawing();
 }
 
-void SettlementUpdate(GameState& gs, const CampaignInput& in) {
-    const Content& c = gs.content;
-    if (gs.currentSettlement < 0 || gs.currentSettlement >= (int)gs.towns.size()) {
-        gs.screen = Screen::Campaign;   // defensive: nothing to show
-        return;
-    }
-    const std::vector<int>& roster = c.factions[c.playerFaction].roster;
-
-    if (in.recruitSlot >= 0 && in.recruitSlot < (int)roster.size()) {
-        const TroopDef& td = c.troops[roster[in.recruitSlot]];
-        if (gs.gold >= td.cost) {
-            gs.gold -= td.cost;
-            gs.player.troopCounts[roster[in.recruitSlot]]++;
-        }
-    }
-    if (in.leaveSettlement) {
-        gs.currentSettlement = -1;
-        gs.screen = Screen::Campaign;
-    }
-}
-
-void SettlementDraw(const GameState& gs) {
-    const Content& c = gs.content;
-    if (gs.currentSettlement < 0 || gs.currentSettlement >= (int)gs.towns.size()) return;
-    const Town& town = gs.towns[gs.currentSettlement];
-    const std::vector<int>& roster = c.factions[c.playerFaction].roster;
-    const Rectangle leaveBtn = SettlementLeaveButton();
-    const bool overLeave = CheckCollisionPointRec(GetMousePosition(), leaveBtn);
-
-    BeginDrawing();
-    ClearBackground(Color{ 28, 26, 24, 255 });
-
-    const int w = GetScreenWidth();
-    const int panelX = w / 2 - 320;
-
-    // Header band.
-    DrawRectangle(0, 60, w, 120, Fade(BLACK, 0.5f));
-    ui::Title(town.name.c_str(), panelX, 74, 52, GOLD);
-    if (town.owner >= 0 && town.owner < c.factions.size())
-        ui::Text(TextFormat("%s  ·  held by %s", SettlementTypeName(town.type),
-                            c.factions[town.owner].name.c_str()),
-                 panelX, 132, 24, c.factions[town.owner].color);
-    else
-        ui::Text(SettlementTypeName(town.type), panelX, 132, 24, Fade(RAYWHITE, 0.8f));
-    ui::Text(SettlementGreeting(town.type), panelX, 200, 20, RAYWHITE);
-
-    // Gold readout.
-    ui::Text(TextFormat("Gold: %d    Party: %d", gs.gold, gs.player.totalTroops()),
-             panelX, 236, 22, GOLD);
-
-    // Recruiting panel.
-    const int listY = 290;
-    ui::Text("Recruit troops:", panelX, listY, 26, RAYWHITE);
-    for (int slot = 0; slot < (int)roster.size(); ++slot) {
-        const TroopDef& td = c.troops[roster[slot]];
-        const bool afford = gs.gold >= td.cost;
-        ui::Text(TextFormat("[%d]  %s  -  %d gold   (have %d)", slot + 1, td.name.c_str(),
-                            td.cost, gs.player.troopCounts[roster[slot]]),
-                 panelX + 12, listY + 40 + slot * 30, 22, afford ? RAYWHITE : Fade(RED, 0.7f));
-    }
-
-    // Leave button.
-    DrawRectangleRec(leaveBtn, overLeave ? MAROON : Fade(MAROON, 0.7f));
-    DrawRectangleLinesEx(leaveBtn, 2, GOLD);
-    const char* leaveTxt = "Leave  (Esc)";
-    ui::Text(leaveTxt, (int)(leaveBtn.x + leaveBtn.width / 2 - ui::Measure(leaveTxt, 22) / 2),
-             (int)(leaveBtn.y + 13), 22, RAYWHITE);
-
-    EndDrawing();
-}
