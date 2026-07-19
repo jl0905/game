@@ -132,6 +132,13 @@ int main(int argc, char** argv) {
                 else                                CampaignDraw(gs);
                 break;
             }
+            case Screen::Character: {                     // hero sheet; paused
+                const CampaignInput in = GatherCampaignInput(gs);
+                CharacterUpdate(gs, in);
+                if (gs.screen == Screen::Character) CharacterDraw(gs);
+                else                                CampaignDraw(gs);
+                break;
+            }
             case Screen::Battle: {
                 const BattleInput in = GatherBattleInput();
                 BattleOutcome out;

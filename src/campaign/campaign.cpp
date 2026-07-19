@@ -284,6 +284,7 @@ void CampaignInit(GameState& gs) {
 
     // Give the hero a starting loadout (models are driven by these handles).
     gs.playerHero = Character{};
+    gs.playerHero.attributes.assign(c.attributes.size(), 0);
     Loadout& hl = gs.playerHero.loadout;
     hl.set(EquipSlot::Head,   c.armor.find("helmet"));
     hl.set(EquipSlot::Body,   c.armor.find("plate"));
@@ -354,6 +355,9 @@ static std::string LossSummary(const Content& c, const std::vector<int>& losses)
 
 // Experience each surviving troop earns from a won battle. TODO(balance).
 static constexpr int XP_PER_SURVIVOR = 25;
+// Hero experience per won battle, and XP needed per level. TODO(balance).
+static constexpr int HERO_XP_PER_WIN = 50;
+static int HeroXpToLevel(int level) { return level * 100; }
 
 static void ApplyBattleResult(GameState& gs) {
     // Player's own casualties.
@@ -368,6 +372,15 @@ static void ApplyBattleResult(GameState& gs) {
             gs.troopXp.assign(gs.content.troops.size(), 0);
         for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
             gs.troopXp[t] += gs.player.troopCounts[t] * XP_PER_SURVIVOR;
+
+        // The hero grows too: XP, levels, and attribute points to spend.
+        Character& hero = gs.playerHero;
+        hero.xp += HERO_XP_PER_WIN;
+        while (hero.xp >= HeroXpToLevel(hero.level)) {
+            hero.xp -= HeroXpToLevel(hero.level);
+            hero.level++;
+            hero.attrPoints++;
+        }
     }
 
     // Allied party's casualties, if one fought alongside you.
@@ -478,6 +491,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Character) {
+        for (int slot = 0; slot < 9; ++slot)
+            if (IsKeyPressed(KEY_ONE + slot)) in.spendAttr = slot;
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_C)) in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::Inventory) {
         const Vector2 m = GetMousePosition();
         const int cx = ((int)m.x - InvOriginX()) / INV_CELL;
@@ -515,6 +535,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     in.restart   = IsKeyPressed(KEY_R);
     in.openParty = IsKeyPressed(KEY_P);
     in.openInventory = IsKeyPressed(KEY_I);
+    in.openCharacter = IsKeyPressed(KEY_C);
     in.quickSave = IsKeyPressed(KEY_F5);
     in.quickLoad = IsKeyPressed(KEY_F9);
     return in;
@@ -554,6 +575,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
     if (in.openInventory) {
         gs.screen = Screen::Inventory;
+        return;
+    }
+    if (in.openCharacter) {
+        gs.screen = Screen::Character;
         return;
     }
 
@@ -1091,6 +1116,56 @@ void PartyDraw(const GameState& gs) {
                  panelX, y, 22, Fade(RED, 0.8f));
 
     ui::Text("[1-9] promote one unit    [Esc / P] back to the map",
+             panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Character sheet (roadmap D3): level, XP, and attribute points. Attributes
+// are pure structure until the balance pass — the sheet says so.
+// ---------------------------------------------------------------------------
+
+void CharacterUpdate(GameState& gs, const CampaignInput& in) {
+    Character& hero = gs.playerHero;
+    if ((int)hero.attributes.size() < gs.content.attributes.size())
+        hero.attributes.assign(gs.content.attributes.size(), 0);
+
+    if (in.spendAttr >= 0 && in.spendAttr < gs.content.attributes.size() &&
+        hero.attrPoints > 0) {
+        hero.attributes[in.spendAttr]++;
+        hero.attrPoints--;
+    }
+    if (in.leaveSettlement) gs.screen = Screen::Campaign;
+}
+
+void CharacterDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    const Character& hero = gs.playerHero;
+
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int panelX = GetScreenWidth() / 2 - 360;
+
+    ui::Title("CHARACTER", panelX, 60, 44, GOLD);
+    ui::Text(TextFormat("Level %d    XP %d / %d    Points to spend: %d",
+                        hero.level, hero.xp,
+                        hero.level * 100,   // mirrors HeroXpToLevel; TODO(balance)
+                        hero.attrPoints),
+             panelX, 122, 22, RAYWHITE);
+
+    int y = 180;
+    for (int a = 0; a < c.attributes.size(); ++a) {
+        const AttributeDef& ad = c.attributes[a];
+        const int v = a < (int)hero.attributes.size() ? hero.attributes[a] : 0;
+        ui::Text(TextFormat("[%d]  %-14s %d", a + 1, ad.name.c_str(), v),
+                 panelX, y, 26, hero.attrPoints > 0 ? LIME : RAYWHITE);
+        ui::Text(ad.hook.c_str(), panelX + 320, y + 4, 16, Fade(RAYWHITE, 0.55f));
+        y += 40;
+    }
+
+    ui::Text("Attribute effects arrive with the balancing pass - spend freely.",
+             panelX, y + 10, 18, Fade(GOLD, 0.7f));
+    ui::Text("[1-4] spend a point    [Esc / C] back to the map",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();
 }

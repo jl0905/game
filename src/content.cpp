@@ -160,6 +160,18 @@ void LoadDefaultContent(Content& c) {
     patrol.lordPartySize = 120;     // TODO(balance)
     const int f_patrol = c.factions.add(patrol);
 
+    // ---- Hero attributes (roadmap D3) ------------------------------------
+    // Structure + intent only. No gameplay code reads these yet; the `hook`
+    // strings are the contract for the balancing pass.
+    c.attributes.add({ "str", "Strength",
+                       "will modify: melee damage, carry weight" });
+    c.attributes.add({ "agi", "Agility",
+                       "will modify: move speed, swing speed, jump" });
+    c.attributes.add({ "int", "Intelligence",
+                       "will modify: troop XP gain, upgrade costs" });
+    c.attributes.add({ "cha", "Charisma",
+                       "will modify: recruit costs, party size, loot" });
+
     // ---- Relations -------------------------------------------------------
     // Who is at war with whom. Outlaws (raiders, deserters) are hostile to
     // everyone including each other; the lawful factions (your warband and

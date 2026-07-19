@@ -93,6 +93,14 @@ struct TroopDef {
     Color       accent = WHITE;    // small identifying plume/banner colour
 };
 
+// A hero attribute (roadmap D3). Pure structure: `hook` documents what the
+// attribute WILL modify once balancing begins; nothing reads values yet.
+struct AttributeDef {
+    std::string id;
+    std::string name;
+    std::string hook;   // human-readable list of intended effects
+};
+
 // A faction fields particular troops and roams with a particular behaviour.
 // This is how "different types of parties" exist on the campaign map.
 struct FactionDef {
@@ -112,10 +120,11 @@ struct FactionDef {
 // The whole game catalogue. Everything is added in LoadDefaultContent(); to add
 // content you register more defs there — no other code needs to change.
 struct Content {
-    Registry<ArmorDef>   armor;
-    Registry<WeaponDef>  weapons;
-    Registry<TroopDef>   troops;
-    Registry<FactionDef> factions;
+    Registry<ArmorDef>     armor;
+    Registry<WeaponDef>    weapons;
+    Registry<TroopDef>     troops;
+    Registry<FactionDef>   factions;
+    Registry<AttributeDef> attributes;
 
     int playerFaction = -1;  // resolved after loading
 

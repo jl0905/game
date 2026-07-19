@@ -68,6 +68,9 @@ struct Harness {
             case Screen::Inventory:
                 InventoryUpdate(gs, cin);
                 break;
+            case Screen::Character:
+                CharacterUpdate(gs, cin);
+                break;
             case Screen::Battle: {
                 BattleOutcome out;
                 BattleInput b = bin;
@@ -120,6 +123,7 @@ struct Harness {
             case Screen::Settlement:   return "Settlement";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
+            case Screen::Character:    return "Character";
             case Screen::Battle:       return "Battle";
             case Screen::BattleResult: return "BattleResult";
         }
@@ -131,6 +135,13 @@ struct Harness {
         std::printf("screen=%s gold=%d pos=(%.0f,%.0f) party=%d timeFlowing=%d\n",
                     ScreenName(), gs.gold, gs.player.pos.x, gs.player.pos.y,
                     gs.player.totalTroops(), gs.timeFlowing ? 1 : 0);
+        std::printf("hero: level=%d xp=%d points=%d attrs=[", gs.playerHero.level,
+                    gs.playerHero.xp, gs.playerHero.attrPoints);
+        for (int a = 0; a < c.attributes.size(); ++a)
+            std::printf("%s%s=%d", a ? " " : "", c.attributes[a].id.c_str(),
+                        a < (int)gs.playerHero.attributes.size()
+                            ? gs.playerHero.attributes[a] : 0);
+        std::printf("]\n");
         std::printf("troops:");
         for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
             if (gs.player.troopCounts[t] > 0)
@@ -260,6 +271,14 @@ int RunScript(const char* path) {
                 CampaignInput cin; cin.recruitSlot = slot;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "char") {
+            CampaignInput cin;
+            if (h.gs.screen == Screen::Character) cin.leaveSettlement = true;
+            else                                  cin.openCharacter = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "spend") {
+            CampaignInput cin; ss >> cin.spendAttr;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "inv") {
             CampaignInput cin;
             if (h.gs.screen == Screen::Inventory) cin.leaveSettlement = true;

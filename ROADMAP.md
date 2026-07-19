@@ -72,10 +72,11 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   P): roster rows with counts + XP, number keys promote units, harness
   `party`/`upgrade` commands. Remaining: dismiss troops, per-troop detail
   (loadout preview via `DrawCharacter`), mouse support.
-- [ ] **D3. Skill system.** Hero attributes (strength, agility, intelligence,
-  charisma …) as data-driven definitions in `content.cpp` — structure and
-  hooks only (what each *could* modify), flat/no-op effects until balancing.
-  Shown on a character sheet; groundwork for level-ups.
+- [x] **D3. Skill system (structure).** `AttributeDef` registry (str/agi/int/cha
+  with documented hook strings); hero levels from battle XP (flat thresholds)
+  and spends points on the character sheet (`Screen::Character`, C key).
+  Effects are deliberately no-op until the balance pass. Persisted in saves;
+  harness `char`/`spend` commands.
 
 ## Done (this effort)
 

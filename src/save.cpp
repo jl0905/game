@@ -58,6 +58,13 @@ bool SaveGame(const GameState& gs, const char* path) {
     WriteTroops(f, c, "ptroop", gs.player.troopCounts);
     WriteTroops(f, c, "pxp",    gs.troopXp);   // veterancy pools
 
+    // Hero progression.
+    f << "hero " << gs.playerHero.level << ' ' << gs.playerHero.xp << ' '
+      << gs.playerHero.attrPoints << '\n';
+    for (int a = 0; a < c.attributes.size() && a < (int)gs.playerHero.attributes.size(); ++a)
+        if (gs.playerHero.attributes[a] > 0)
+            f << "attr " << c.attributes[a].id << ' ' << gs.playerHero.attributes[a] << '\n';
+
     // Hero equipment: worn slots by id, then the carried arsenal in order.
     for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
         if (s == (int)EquipSlot::Weapon) continue;
@@ -157,6 +164,14 @@ bool LoadGame(GameState& gs, const char* path) {
             const int fh = c.factions.find(fid.c_str());
             if (idx >= 0 && idx < (int)gs.towns.size() && fh >= 0)
                 gs.towns[idx].owner = fh;
+        } else if (tag == "hero") {
+            ss >> gs.playerHero.level >> gs.playerHero.xp >> gs.playerHero.attrPoints;
+        } else if (tag == "attr") {
+            std::string id; int v = 0;
+            ss >> id >> v;
+            const int a = c.attributes.find(id.c_str());
+            if (a >= 0 && a < (int)gs.playerHero.attributes.size())
+                gs.playerHero.attributes[a] = v;
         } else if (tag == "item") {
             std::string kind, id;
             InvItem it;

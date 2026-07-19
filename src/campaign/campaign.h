@@ -33,3 +33,7 @@ void PartyDraw(const GameState& gs);
 // Tiled inventory screen (grid loot + equipping), opened with I.
 void InventoryUpdate(GameState& gs, const CampaignInput& in);
 void InventoryDraw(const GameState& gs);
+
+// Character sheet (level / XP / attributes), opened with C.
+void CharacterUpdate(GameState& gs, const CampaignInput& in);
+void CharacterDraw(const GameState& gs);

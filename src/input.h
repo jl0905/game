@@ -31,6 +31,10 @@ struct CampaignInput {
     bool    invPick  = false;         // pick up / place at the cell (LMB)
     bool    invEquip = false;         // equip the item at the cell (E / RMB)
 
+    // character sheet
+    bool    openCharacter = false;    // C on the map
+    int     spendAttr     = -1;       // attribute row to put a point into
+
     // meta
     bool    quickSave = false;        // F5
     bool    quickLoad = false;        // F9

@@ -16,6 +16,13 @@ struct Character {
     Loadout loadout;
     int     maxHp = 100;  // placeholder base; see content.h note on balance
     float   hp    = 100;
+
+    // Progression (roadmap D3): level/XP and attribute values. Attributes are
+    // parallel to Content::attributes; effects arrive with the balance pass.
+    int              level = 1;
+    int              xp = 0;
+    int              attrPoints = 0;
+    std::vector<int> attributes;
 };
 
 // A party moving on the campaign map. Its troop composition is stored per troop
