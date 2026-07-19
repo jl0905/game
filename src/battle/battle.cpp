@@ -1339,6 +1339,35 @@ void BattleDraw(const Content& c) {
     DrawLine(GetScreenWidth() / 2 - 8, GetScreenHeight() / 2, GetScreenWidth() / 2 + 8, GetScreenHeight() / 2, RAYWHITE);
     DrawLine(GetScreenWidth() / 2, GetScreenHeight() / 2 - 8, GetScreenWidth() / 2, GetScreenHeight() / 2 + 8, RAYWHITE);
 
+    // ---- minimap (top-right): the whole field at a glance ----
+    {
+        const int   MM = 170;
+        const int   mx = GetScreenWidth() - MM - 14;
+        const int   my = 96;
+        DrawRectangle(mx - 4, my - 4, MM + 8, MM + 8, Fade(BLACK, 0.55f));
+        DrawRectangleLines(mx - 4, my - 4, MM + 8, MM + 8, Fade(RAYWHITE, 0.3f));
+        auto toMap = [&](Vector3 p) {
+            return Vector2{ mx + (p.x + ARENA) / (2 * ARENA) * MM,
+                            my + (ARENA - p.z) / (2 * ARENA) * MM };   // +z is up
+        };
+        if (B.hasWall) {   // the wall with its gate gap
+            const float wy = my + (ARENA - WALL_Z) / (2 * ARENA) * MM;
+            const float gl = mx + (-GATE_HALF + ARENA) / (2 * ARENA) * MM;
+            const float gr = mx + ( GATE_HALF + ARENA) / (2 * ARENA) * MM;
+            DrawLineEx({ (float)mx, wy }, { gl, wy }, 2, GRAY);
+            DrawLineEx({ gr, wy }, { (float)(mx + MM), wy }, 2, GRAY);
+        }
+        for (const Soldier& s : B.soldiers) {
+            if (s.hp <= 0) continue;
+            const Color dot = s.team == Team::Enemy ? RED
+                              : (s.ally ? Color{ 120, 190, 255, 255 } : GREEN);
+            DrawCircleV(toMap(s.pos), 2, dot);
+        }
+        const Vector2 hp2 = toMap(B.pPos);
+        DrawCircleV(hp2, 4, Color{ 40, 120, 255, 255 });
+        DrawLineEx(hp2, { hp2.x + sinf(B.yaw) * 9, hp2.y - cosf(B.yaw) * 9 }, 2, RAYWHITE);
+    }
+
     // ---- strategy / formation menu: a slightly grey, transparent side panel;
     //      gameplay stays visible and running behind it ----
     if (B.showMenu) {
