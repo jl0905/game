@@ -1326,7 +1326,11 @@ void BattleDraw(const Content& c) {
     for (const Soldier& s : B.soldiers) {
         if (s.hp <= 0) {
             const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
-            DrawCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.7f));
+            DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
+                         Fade(Color{ 110, 20, 20, 255 }, 0.5f));   // blood pool
+            DrawCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.8f));
+            DrawSphere({ s.pos.x + 0.8f, gy + 0.16f, s.pos.z }, 0.2f,
+                       Color{ 214, 176, 142, 255 });   // a fallen man, not a crate
             continue;
         }
         BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
@@ -1336,8 +1340,9 @@ void BattleDraw(const Content& c) {
             DrawCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
                      Color{ 224, 188, 150, 255 });
             const float fracFar = s.hp / s.maxHp;
-            DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * fracFar, 0.08f, 0.08f,
-                     s.team == Team::Enemy ? RED : GREEN);
+            if (fracFar < 0.999f)   // only the wounded show a bar
+                DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * fracFar, 0.08f, 0.08f,
+                         s.team == Team::Enemy ? RED : GREEN);
             continue;
         }
         Pose pose;
@@ -1355,10 +1360,11 @@ void BattleDraw(const Content& c) {
             pose.walkPhase = 0;   // the rider sits; the horse does the running
         }
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, TeamTint(s.team));
-        // health bar (above the soldier, following the terrain)
+        // health bar — only once blood has been drawn (uninjured lines stay clean)
         const float frac = s.hp / s.maxHp;
-        DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,
-                 s.team == Team::Enemy ? RED : GREEN);
+        if (frac < 0.999f)
+            DrawCube({ s.pos.x, riderPos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,
+                     s.team == Team::Enemy ? RED : GREEN);
     }
 
     // particles (blood, dust)
@@ -1393,9 +1399,15 @@ void BattleDraw(const Content& c) {
     EndMode3D();
 
     // ---------- HUD ----------
-    DrawRectangle(18, GetScreenHeight() - 42, 300, 22, Fade(BLACK, 0.5f));
-    DrawRectangle(20, GetScreenHeight() - 40, (int)(296 * fmaxf(B.pHp, 0) / B.pMaxHp), 18, RED);
-    ui::Text("HP", 24, GetScreenHeight() - 40, 18, RAYWHITE);
+    DrawRectangle(16, GetScreenHeight() - 46, 306, 28, Fade(BLACK, 0.55f));
+    DrawRectangleLines(16, GetScreenHeight() - 46, 306, 28, Fade(GOLD, 0.5f));
+    DrawRectangleGradientH(20, GetScreenHeight() - 42,
+                           (int)(298 * fmaxf(B.pHp, 0) / B.pMaxHp), 20,
+                           Color{ 150, 24, 24, 255 }, Color{ 220, 60, 40, 255 });
+    ui::Text("HP", 26, GetScreenHeight() - 41, 18, RAYWHITE);
+    if (B.mounted)
+        ui::Text(TextFormat("Horse %d", (int)fmaxf(B.pHorseHp, 0)),
+                 250, GetScreenHeight() - 41, 16, Fade(RAYWHITE, 0.85f));
     ui::Text(TextFormat("Allies: %d   Enemies: %d", B.aliveAllies, B.aliveEnemies), 18, 12, 22, RAYWHITE);
     ui::Text("Hold LMB to ready a swing, release to strike | RMB block | Q swap weapon | ~ strategy",
              18, 38, 16, Fade(RAYWHITE, 0.7f));
