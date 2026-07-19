@@ -379,7 +379,8 @@ constexpr float FORM_FRONT   = 4.0f;   // distance the front rank forms ahead of
 Vector3 FormationTarget(FormationType type, int ranks, Vector3 anchor, float yaw,
                         int slot, int count) {
     const Vector3 fwd   = { sinf(yaw), 0, cosf(yaw) };
-    const Vector3 right = { fwd.z, 0, -fwd.x };
+    // Same screen-right convention as player strafing: cross(fwd, up).
+    const Vector3 right = { -fwd.z, 0, fwd.x };
     auto place = [&](float rx, float fz) {
         return Vector3{ anchor.x + right.x * rx + fwd.x * fz, anchor.y,
                         anchor.z + right.z * rx + fwd.z * fz };

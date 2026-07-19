@@ -316,6 +316,11 @@ int RunScript(const char* path) {
             if (!(ss >> p)) p = DefaultSavePath();
             const bool ok = (cmd == "save") ? SaveGame(h.gs, p.c_str())
                                             : LoadGame(h.gs, p.c_str());
+            if (cmd == "load" && ok) {
+                // Any in-flight battle/town scene died with the old world.
+                h.battleLive = false;
+                h.townLive   = false;
+            }
             std::printf("%s %s: %s\n", cmd.c_str(), p.c_str(), ok ? "ok" : "FAILED");
         } else if (cmd == "join") {
             CampaignInput cin; ss >> cin.joinSide;
