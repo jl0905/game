@@ -59,6 +59,7 @@ struct TerrainConfig {
     float        forestDensity = 0.3f;  // 0..1 : how many trees
     bool         hasRiver      = false;
     bool         mountainous   = false; // adds a few tall peaks
+    bool         raining       = false; // some fields are fought in the rain
 };
 
 struct Tree {
@@ -128,6 +129,7 @@ TerrainConfig TerrainConfigFromWorld(Vector2 campaignPos) {
     cfg.forestDensity = Clamp(0.5f + 0.5f * n2, 0.0f, 1.0f);
     cfg.mountainous   = cfg.hilliness > 0.72f;
     cfg.hasRiver      = n2 < -0.15f;
+    cfg.raining       = sinf(campaignPos.x * 0.0017f - campaignPos.y * 0.0023f) > 0.45f;
     return cfg;
 }
 
@@ -518,6 +520,7 @@ struct BattleState {
     BattleSetup          setup;     // world-map snapshot this battle runs on
     Terrain              terrain;   // generated from setup.campaignPos
     bool                 hasWall = false;   // siege of a walled settlement
+    bool                 raining = false;
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
 
@@ -941,7 +944,9 @@ std::vector<int> ComputeEnemyLosses() {
 void BattleInit(const Content& c, const BattleSetup& setup) {
     B = BattleState{};
     B.setup = setup;
-    B.terrain.Generate(TerrainConfigFromWorld(setup.campaignPos), ARENA);
+    const TerrainConfig tcfg = TerrainConfigFromWorld(setup.campaignPos);
+    B.terrain.Generate(tcfg, ARENA);
+    B.raining = tcfg.raining;
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
 
     SpawnLine(c, Team::Player, setup.playerTroops, -30.0f);
@@ -1349,11 +1354,16 @@ void BattleDraw(const Content& c) {
     // ================= DRAW =================
     BeginDrawing();
     ClearBackground(Color{ 92, 148, 214, 255 });   // also clears the DEPTH buffer
-    // Sky: a vertical gradient with a low sun, instead of a flat fill.
-    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
-                           Color{ 92, 148, 214, 255 }, Color{ 208, 224, 238, 255 });
-    DrawCircleGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
-                       Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
+    // Sky: gradient with a low sun — or a leaden overcast when it rains.
+    if (B.raining) {
+        DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+                               Color{ 96, 104, 120, 255 }, Color{ 150, 156, 166, 255 });
+    } else {
+        DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+                               Color{ 92, 148, 214, 255 }, Color{ 208, 224, 238, 255 });
+        DrawCircleGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
+                           Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
+    }
 
     BeginMode3D(cam);
     BeginShaderMode(GetLitShader());   // one sun over everything solid
@@ -1484,6 +1494,20 @@ void BattleDraw(const Content& c) {
 
     DrawLine(GetScreenWidth() / 2 - 8, GetScreenHeight() / 2, GetScreenWidth() / 2 + 8, GetScreenHeight() / 2, RAYWHITE);
     DrawLine(GetScreenWidth() / 2, GetScreenHeight() / 2 - 8, GetScreenWidth() / 2, GetScreenHeight() / 2 + 8, RAYWHITE);
+
+    // Rain: screen-space streaks drifting with time.
+    if (B.raining) {
+        const float t = (float)GetTime();
+        const int w = GetScreenWidth(), h = GetScreenHeight();
+        for (int i = 0; i < 170; ++i) {
+            unsigned int hh = (unsigned)i * 2654435761u;
+            hh ^= hh >> 15;
+            const float x = (float)(hh % (unsigned)w);
+            const float speed = 620.0f + (hh & 0xFF);
+            const float y = fmodf((float)((hh >> 8) % (unsigned)h) + t * speed, (float)(h + 40)) - 20.0f;
+            DrawLineEx({ x, y }, { x - 4, y + 16 }, 1.2f, Fade(Color{ 190, 205, 225, 255 }, 0.32f));
+        }
+    }
 
     // ---- minimap (top-right): the whole field at a glance ----
     {

@@ -28,7 +28,7 @@
 namespace {
 
 // ---- render benchmark (--bench N): N-vs-N synthetic battle, uncapped FPS ----
-int RunBench(int perSide) {
+int RunBench(int perSide, Vector2 where) {
     if (perSide <= 0) perSide = 300;
     SetConfigFlags(FLAG_MSAA_4X_HINT);          // no vsync: measure real speed
     InitWindow(1280, 720, "OpenWarband bench");
@@ -48,7 +48,7 @@ int RunBench(int perSide) {
     Character hero;   // default loadout-less hero; battle handles it
     s.heroLoadout = hero.loadout;
     s.heroMaxHp   = 1000000;          // don't die mid-benchmark
-    s.campaignPos = { 500, 500 };     // fixed spot -> deterministic terrain
+    s.campaignPos = where;            // fixed spot -> deterministic terrain
     BattleInit(gs.content, s);
 
     const int WARMUP = 60, FRAMES = 600;
@@ -83,8 +83,12 @@ int main(int argc, char** argv) {
     if (argc >= 3 && std::strcmp(argv[1], "--script") == 0)
         return RunScript(argv[2]);
     // Render benchmark: N-vs-N battle, uncapped FPS, results to bench.txt.
-    if (argc >= 3 && std::strcmp(argv[1], "--bench") == 0)
-        return RunBench(std::atoi(argv[2]));
+    // Optional trailing "x y" picks the battlefield spot (terrain/weather).
+    if (argc >= 3 && std::strcmp(argv[1], "--bench") == 0) {
+        Vector2 where = { 500, 500 };
+        if (argc >= 5) where = { (float)std::atof(argv[3]), (float)std::atof(argv[4]) };
+        return RunBench(std::atoi(argv[2]), where);
+    }
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
     InitWindow(1280, 720, "OpenWarband");
