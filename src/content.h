@@ -107,6 +107,10 @@ struct Content {
     Registry<FactionDef> factions;
 
     int playerFaction = -1;  // resolved after loading
+
+    // Symmetric factions×factions hostility matrix (1 = at war), filled at the
+    // end of LoadDefaultContent(). Query via AreFactionsHostile().
+    std::vector<unsigned char> hostile;
 };
 
 // Registers the base (unbalanced) content set. Single source of truth for all

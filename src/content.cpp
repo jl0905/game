@@ -134,7 +134,24 @@ void LoadDefaultContent(Content& c) {
     patrol.id = "patrol"; patrol.name = "Patrol";
     patrol.color = PURPLE; patrol.behavior = PartyBehavior::Patrol;
     patrol.roster = { t_infantry, t_veteran };
-    c.factions.add(patrol);
+    const int f_patrol = c.factions.add(patrol);
+
+    // ---- Relations -------------------------------------------------------
+    // Who is at war with whom. Outlaws (raiders, deserters) are hostile to
+    // everyone including each other; the lawful factions (your warband and
+    // the patrols) keep the peace with one another.
+    const int n = c.factions.size();
+    c.hostile.assign((size_t)n * n, 0);
+    auto war = [&](int a, int b) {
+        c.hostile[(size_t)a * n + b] = c.hostile[(size_t)b * n + a] = 1;
+    };
+    const int f_raiders   = c.factions.find("raiders");
+    const int f_deserters = c.factions.find("deserters");
+    for (int f = 0; f < n; ++f) {
+        if (f != f_raiders)   war(f_raiders, f);
+        if (f != f_deserters) war(f_deserters, f);
+    }
+    (void)f_patrol;   // at peace with the player by omission
 }
 
 int LoadoutArmor(const Content& c, const Loadout& lo) {
@@ -148,6 +165,9 @@ int LoadoutArmor(const Content& c, const Loadout& lo) {
 }
 
 bool AreFactionsHostile(const Content& c, int factionA, int factionB) {
-    (void)c;  // relations are implicit for now; kept as a hook for a real table
-    return factionA >= 0 && factionB >= 0 && factionA != factionB;
+    const int n = c.factions.size();
+    if (factionA < 0 || factionB < 0 || factionA >= n || factionB >= n) return false;
+    if ((int)c.hostile.size() != n * n)   // no relations table loaded: all-out war
+        return factionA != factionB;
+    return c.hostile[(size_t)factionA * n + factionB] != 0;
 }

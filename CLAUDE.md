@@ -146,7 +146,9 @@ All of these are edits to `src/content.cpp` only, unless noted:
   and add the handle to the factions that field it.
 - **New faction / party type** → build a `FactionDef` with a `color`, a
   `PartyBehavior`, and a `roster`, then `c.factions.add(...)`. It will roam and
-  fight automatically.
+  fight automatically. Declare who it fights in the relations block at the end
+  of `LoadDefaultContent()` (`war(a, b)` fills `Content::hostile`); factions
+  not marked are at peace and ignore each other.
 - **Armour/weapon stats (balance)** → replace the flat `base::*` constants (or set
   per-def values) in `content.cpp`. This is the intended balancing surface.
 
