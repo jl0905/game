@@ -18,6 +18,8 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         const Town& t = gs.towns[gs.siegeTownIndex];
         s.enemyTroops = t.garrison;
         s.campaignPos = t.pos;            // battlefield looks like the town's land
+        s.siege       = true;
+        s.siegeType   = t.type;
     } else {
         s.enemyTroops = gs.parties[gs.battlePartyIndex].troopCounts;
         s.campaignPos = gs.player.pos;

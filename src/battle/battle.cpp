@@ -34,6 +34,12 @@ constexpr float ARROW_HIT_RADIUS = 0.9f;
 constexpr float BLOCK_MELEE_FACTOR   = 0.15f;  // guarded melee damage multiplier
 constexpr float BLOCK_MISSILE_FACTOR = 0.5f;   // a raised guard helps less vs arrows
 
+// Siege walls (roadmap B3b): towns/castles defend behind a wall with one gate.
+constexpr float WALL_Z      = 8.0f;   // wall line, between the two spawn lines
+constexpr float WALL_BAND   = 1.4f;   // half-thickness of the blocked band
+constexpr float WALL_HEIGHT = 4.0f;
+constexpr float GATE_HALF   = 5.0f;   // half-width of the gate opening
+
 // ===========================================================================
 // Battle terrain
 //
@@ -481,6 +487,7 @@ struct Soldier {
 struct BattleState {
     BattleSetup          setup;     // world-map snapshot this battle runs on
     Terrain              terrain;   // generated from setup.campaignPos
+    bool                 hasWall = false;   // siege of a walled settlement
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
 
@@ -592,6 +599,10 @@ int FindNearest(const Soldier& me, Team wantTeam) {
     return best;
 }
 
+// Siege-wall helpers (defined below, near the other world-collision code).
+void    EnforceWall(Vector3& p);
+Vector3 FunnelThroughGate(Vector3 pos, Vector3 goal);
+
 // Decide one soldier's actions for this frame from a READ-ONLY view of the
 // world (no soldier is mutated). Safe to run for many soldiers concurrently;
 // results are applied serially by the caller. Player-owned troops obey the
@@ -653,6 +664,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         goal = s.pos;
     }
 
+    goal = FunnelThroughGate(s.pos, goal);   // siege walls funnel everyone
     Vector3 to = Vector3Subtract(goal, s.pos);
     to.y = 0;
     const float dist = Vector3Length(to);
@@ -690,6 +702,25 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 }
 
 Color TeamTint(Team t) { return t == Team::Enemy ? RED : BLUE; }
+
+// Keep a mover out of the wall band unless it's inside the gate opening.
+void EnforceWall(Vector3& p) {
+    if (!B.hasWall) return;
+    if (fabsf(p.x) <= GATE_HALF) return;                 // in the gateway
+    const float dz = p.z - WALL_Z;
+    if (fabsf(dz) >= WALL_BAND) return;
+    p.z = WALL_Z + (dz < 0 ? -WALL_BAND : WALL_BAND);    // push back to own side
+}
+
+// If the straight path to `goal` crosses the wall outside the gate, steer via
+// the gate mouth on the mover's own side first.
+Vector3 FunnelThroughGate(Vector3 pos, Vector3 goal) {
+    if (!B.hasWall) return goal;
+    const bool crossing = (pos.z - WALL_Z) * (goal.z - WALL_Z) < 0;
+    if (!crossing || fabsf(pos.x) <= GATE_HALF * 0.8f) return goal;
+    const float side = pos.z < WALL_Z ? -1.0f : 1.0f;
+    return { 0, pos.y, WALL_Z + side * 2.5f };           // gate mouth, own side
+}
 
 void EndBattle(bool won) {
     B.over = true;
@@ -729,6 +760,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B = BattleState{};
     B.setup = setup;
     B.terrain.Generate(TerrainConfigFromWorld(setup.campaignPos), ARENA);
+    B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
 
     SpawnLine(c, Team::Player, setup.playerTroops, -30.0f);
     SpawnLine(c, Team::Enemy,  setup.enemyTroops,   30.0f);
@@ -817,6 +849,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         }
         B.pPos.x = Clamp(B.pPos.x, -ARENA, ARENA);
         B.pPos.z = Clamp(B.pPos.z, -ARENA, ARENA);
+        EnforceWall(B.pPos);
 
         const float groundY = B.terrain.HeightAt(B.pPos.x, B.pPos.z);
         if (in.jump && B.pPos.y <= groundY + 0.02f) B.vY = 6.0f;
@@ -919,6 +952,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.activeWeapon = cmd.activeWeapon;
             s.walkPhase   += cmd.walkAdd;
             s.pos = Vector3Add(s.pos, Vector3Add(cmd.step, cmd.separation));
+            EnforceWall(s.pos);
             // Armour soaks per hit, so reduction happens per blow, not per frame.
             if (cmd.hitSoldier >= 0)
                 B.dmg[cmd.hitSoldier] += ApplyArmor(
@@ -970,6 +1004,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             a.vel.y -= ARROW_GRAVITY * dt;
             if (a.life <= 0 || a.pos.y <= B.terrain.HeightAt(a.pos.x, a.pos.z)) {
                 a.alive = false;   // stuck in the dirt
+                continue;
+            }
+            // Siege wall stops low shafts (arrows can still arc over the top).
+            if (B.hasWall && fabsf(a.pos.x) > GATE_HALF &&
+                fabsf(a.pos.z - WALL_Z) < WALL_BAND &&
+                a.pos.y < B.terrain.HeightAt(a.pos.x, WALL_Z) + WALL_HEIGHT) {
+                a.alive = false;
                 continue;
             }
             // Hit a soldier of the opposing team?
@@ -1034,6 +1075,25 @@ void BattleDraw(const Content& c) {
 
     BeginMode3D(cam);
     B.terrain.Draw();
+
+    // Siege wall: stone segments with crenellations, broken by the gate.
+    if (B.hasWall) {
+        const Color stone = { 150, 148, 152, 255 };
+        for (float x = -ARENA; x < ARENA; x += 4.0f) {
+            const float cx = x + 2.0f;
+            if (fabsf(cx) <= GATE_HALF + 1.0f) continue;   // the gateway
+            const float gy = B.terrain.HeightAt(cx, WALL_Z);
+            DrawCube({ cx, gy + WALL_HEIGHT * 0.5f, WALL_Z }, 4.0f, WALL_HEIGHT, WALL_BAND * 2, stone);
+            DrawCube({ cx - 1.0f, gy + WALL_HEIGHT + 0.35f, WALL_Z }, 1.2f, 0.7f, WALL_BAND * 2,
+                     Color{ 130, 128, 132, 255 });   // crenellation
+        }
+        // gate posts
+        for (const float gx : { -GATE_HALF, GATE_HALF }) {
+            const float gy = B.terrain.HeightAt(gx, WALL_Z);
+            DrawCube({ gx, gy + (WALL_HEIGHT + 1.5f) * 0.5f, WALL_Z }, 1.6f,
+                     WALL_HEIGHT + 1.5f, WALL_BAND * 2 + 0.4f, Color{ 110, 108, 112, 255 });
+        }
+    }
 
     // Beyond this distance a soldier draws as a cheap two-box silhouette —
     // full segmented humanoids only where the player can appreciate them.

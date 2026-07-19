@@ -40,8 +40,11 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   transfers ownership (villages "sacked", castles/towns "taken"), garrison
   casualties and captures persist in saves. Undefended settlements change
   hands without a fight.
-  - [ ] B3b. Siege battlefields: walls + gate for castles/towns, defender
-    formations on the walls, attacker spawns outside.
+  - [x] B3b. Siege battlefields (v1): town/castle assaults have a stone wall
+    with one gate (village raids stay open) — movement blocked outside the
+    gateway, AI funnels through the gate mouth, low arrows stop on the wall,
+    crenellated rendering. Remaining: defenders stationed ON the walls,
+    ladders/rams as alternate entries.
   - [ ] B3c. Garrison replenishment by the owner faction (ties into C3 lords).
 
 ## Track C — Campaign systems

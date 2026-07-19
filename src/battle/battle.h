@@ -26,6 +26,11 @@ struct BattleSetup {
     int              heroMaxHp = 0;
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
+
+    // Siege assaults (roadmap B3b): towns and castles defend from behind a
+    // wall with a single gate; villages are open raids.
+    bool           siege = false;
+    SettlementType siegeType = SettlementType::Village;
 };
 
 // What the battle reports back once it ends.
