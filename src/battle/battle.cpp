@@ -482,6 +482,7 @@ struct Soldier {
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
     int     activeWeapon = -1; // currently-wielded weapon handle
+    bool    onWall = false;    // garrison archer posted on the siege wall
 };
 
 struct BattleState {
@@ -583,6 +584,43 @@ void SpawnLine(const Content& c, Team team, const std::vector<int>& counts, floa
             s.yaw = (team == Team::Enemy) ? PI : 0.0f;
             B.soldiers.push_back(s);
             ++n;
+        }
+    }
+}
+
+bool HasRangedWeapon(const Content& c, const Loadout& lo) {
+    for (int i = 0; i < lo.weaponCount(); ++i)
+        if (c.weapons.valid(lo.weaponAt(i)) && c.weapons[lo.weaponAt(i)].isRanged())
+            return true;
+    return false;
+}
+
+// Siege defenders: archers take posts along the wall top; melee musters in
+// the yard behind the gate, ready to plug the breach.
+void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
+    int wallN = 0, yardN = 0;
+    for (int troop = (int)counts.size() - 1; troop >= 0; --troop) {
+        for (int i = 0; i < counts[troop]; ++i) {
+            Soldier s;
+            s.troop = troop;
+            s.team = Team::Enemy;
+            s.maxHp = (float)c.troops[troop].maxHp;
+            s.hp = s.maxHp;
+            s.activeWeapon = c.troops[troop].loadout.weaponAt(0);
+            s.yaw = PI;   // face the attackers
+            if (HasRangedWeapon(c, c.troops[troop].loadout)) {
+                const float x = (wallN % 2 ? 1.0f : -1.0f) *
+                                (GATE_HALF + 4.0f + 3.0f * (float)(wallN / 2));
+                s.pos = { x, B.terrain.HeightAt(x, WALL_Z) + WALL_HEIGHT, WALL_Z };
+                s.onWall = true;
+                ++wallN;
+            } else {
+                const float x = -12.0f + (yardN % 8) * 3.2f;
+                const float z = WALL_Z + 6.0f + (float)(yardN / 8) * 3.0f;
+                s.pos = { x, B.terrain.HeightAt(x, z), z };
+                ++yardN;
+            }
+            B.soldiers.push_back(s);
         }
     }
 }
@@ -698,6 +736,13 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
                                                (SOLDIER_RADIUS * 2 - len) * 0.5f));
     }
     cmd.separation = sep;
+
+    // Wall posts are held to the death: no advancing, no crowd-shuffling.
+    if (s.onWall) {
+        cmd.step = { 0, 0, 0 };
+        cmd.separation = { 0, 0, 0 };
+        cmd.walkAdd = 0;
+    }
     return cmd;
 }
 
@@ -763,7 +808,8 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
 
     SpawnLine(c, Team::Player, setup.playerTroops, -30.0f);
-    SpawnLine(c, Team::Enemy,  setup.enemyTroops,   30.0f);
+    if (B.hasWall) SpawnGarrison(c, setup.enemyTroops);   // walls + yard posts
+    else           SpawnLine(c, Team::Enemy, setup.enemyTroops, 30.0f);
     // An allied party, if one joined the fight, forms up just behind your line.
     if (!setup.allyTroops.empty())
         SpawnLine(c, Team::Player, setup.allyTroops, -48.0f, /*ally=*/true);
@@ -992,9 +1038,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             B.pFlash = 1.0f;
         }
 
-        // Keep living soldiers sitting on the terrain surface (they moved in x/z).
+        // Keep living soldiers sitting on the terrain surface (they moved in
+        // x/z) — except wall posts, whose feet stay on the rampart.
         for (Soldier& s : B.soldiers)
-            if (s.hp > 0) s.pos.y = B.terrain.HeightAt(s.pos.x, s.pos.z);
+            if (s.hp > 0 && !s.onWall) s.pos.y = B.terrain.HeightAt(s.pos.x, s.pos.z);
 
         // ---------- arrows in flight ----------
         for (Arrow& a : B.arrows) {
@@ -1218,6 +1265,8 @@ BattleView GetBattleView() {
     v.aliveAllies  = B.aliveAllies;
     v.aliveEnemies = B.aliveEnemies;
     v.arrowsInFlight = (int)B.arrows.size();
+    for (const Soldier& s : B.soldiers)
+        if (s.onWall && s.hp > 0) v.wallDefenders++;
     v.over         = B.over;
     v.won          = B.won;
     return v;

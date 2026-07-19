@@ -50,6 +50,7 @@ struct BattleView {
     int     heroWeapon = -1;   // active weapon handle
     int     aliveAllies = 0, aliveEnemies = 0;
     int     arrowsInFlight = 0;
+    int     wallDefenders = 0;   // live garrison archers still on the wall
     bool    over = false, won = false;
 };
 

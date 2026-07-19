@@ -228,16 +228,14 @@ void InstallGarrison(const Content& c, Town& t, Party& attacker) {
     if (t.type == SettlementType::Castle)  size = 12;      // TODO(balance)
     t.garrison.assign(c.troops.size(), 0);
     for (int i = 0; i < size; ++i) {
-        // move one of the attacker's troops (any type) into the walls
-        bool moved = false;
+        // Detach from the attacker's most numerous type each pick, so the
+        // garrison is a mix (archers man walls; a recruit-only garrison isn't).
+        int best = -1, bestN = 0;
         for (int tr = 0; tr < (int)attacker.troopCounts.size(); ++tr)
-            if (attacker.troopCounts[tr] > 0) {
-                attacker.troopCounts[tr]--;
-                t.garrison[tr]++;
-                moved = true;
-                break;
-            }
-        if (!moved) break;
+            if (attacker.troopCounts[tr] > bestN) { best = tr; bestN = attacker.troopCounts[tr]; }
+        if (best < 0) break;
+        attacker.troopCounts[best]--;
+        t.garrison[best]++;
     }
 }
 
