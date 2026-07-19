@@ -1,0 +1,11 @@
+# Rival kingdom: Sarleon holds Curaw, fields lords Aldemar/Rowan, and is
+# hostile to the player (their parties should engage us) but at peace with
+# the patrols. Soak and observe.
+seed 13
+state
+wait 90
+state
+wait 90
+state
+wait 90
+state

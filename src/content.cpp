@@ -175,6 +175,18 @@ void LoadDefaultContent(Content& c) {
     patrol.lordPartySize = 120;     // TODO(balance)
     const int f_patrol = c.factions.add(patrol);
 
+    // The rival crown: a lawful kingdom with a claim of its own. Hostile to
+    // the player and to the outlaws; the patrols keep the peace with both
+    // crowns.
+    FactionDef sarleon;
+    sarleon.id = "sarleon"; sarleon.name = "Sarleon";
+    sarleon.color = Color{ 0, 150, 150, 255 };
+    sarleon.behavior = PartyBehavior::Patrol;
+    sarleon.roster = { t_infantry, t_veteran, t_archer, t_knight };
+    sarleon.lords = { "Aldemar", "Rowan" };
+    sarleon.lordPartySize = 120;    // TODO(balance)
+    const int f_sarleon = c.factions.add(sarleon);
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.
@@ -202,7 +214,8 @@ void LoadDefaultContent(Content& c) {
         if (f != f_raiders)   war(f_raiders, f);
         if (f != f_deserters) war(f_deserters, f);
     }
-    (void)f_patrol;   // at peace with the player by omission
+    war(f_sarleon, c.playerFaction);   // two crowns, one land
+    (void)f_patrol;   // the patrols keep the peace with both crowns
 }
 
 int LoadoutArmor(const Content& c, const Loadout& lo) {
