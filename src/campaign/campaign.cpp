@@ -1328,6 +1328,26 @@ void TitleDraw(const GameState& gs) {
     ClearBackground(Color{ 20, 22, 26, 255 });
 
     const int w = GetScreenWidth();
+    const int hgt = GetScreenHeight();
+
+    // A dusk field of war: gradient sky, low sun, hill lines, castle silhouette.
+    DrawRectangleGradientV(0, 0, w, hgt, Color{ 30, 26, 44, 255 }, Color{ 158, 74, 44, 255 });
+    DrawCircleGradient(w / 5, hgt * 2 / 3, 110, Fade(Color{ 255, 180, 90, 255 }, 0.85f),
+                       Fade(WHITE, 0.0f));
+    DrawRectangle(0, hgt - 160, w, 160, Color{ 26, 20, 24, 255 });          // near ridge
+    for (int x = -40; x < w; x += 120)                                       // far hills
+        DrawTriangle({ (float)x, (float)(hgt - 150) }, { (float)(x + 140), (float)(hgt - 150) },
+                     { (float)(x + 70), (float)(hgt - 230) }, Color{ 38, 30, 36, 255 });
+    // castle on the ridge, black against the dusk
+    const int cx = w * 3 / 4;
+    DrawRectangle(cx - 90, hgt - 300, 180, 150, Color{ 16, 12, 16, 255 });
+    for (int b = -90; b < 90; b += 30)
+        DrawRectangle(cx + b, hgt - 316, 16, 16, Color{ 16, 12, 16, 255 });
+    DrawRectangle(cx - 24, hgt - 380, 48, 90, Color{ 16, 12, 16, 255 });     // keep tower
+    DrawLineEx({ (float)cx, (float)(hgt - 380) }, { (float)cx, (float)(hgt - 412) }, 3, Color{ 16, 12, 16, 255 });
+    DrawTriangle({ (float)cx, (float)(hgt - 412) }, { (float)cx, (float)(hgt - 396) },
+                 { (float)(cx + 26), (float)(hgt - 404) }, Color{ 150, 30, 30, 255 });   // banner
+    DrawRectangleGradientV(0, 0, w, hgt / 2, Fade(BLACK, 0.35f), Fade(BLACK, 0.0f));     // vignette for text
     const char* title = "OPENWARBAND";
     ui::Title(title, (w - ui::MeasureTitle(title, 84)) / 2, 150, 84, GOLD);
     const char* sub = "raise a warband - take the land - hold it";
