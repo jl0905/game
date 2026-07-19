@@ -102,19 +102,22 @@ struct Harness {
     }
 
     // Steer toward the nearest live hostile party each step until a battle
-    // starts (or the time budget runs out).
+    // starts (or the time budget runs out). Prefers ordinary parties over
+    // lords' hosts — scripts hunting for a fight rarely want a 120-man army.
     void Hunt(float seconds) {
         const int n = (int)(seconds / STEP + 0.5f);
         for (int i = 0; i < n && gs.screen == Screen::Campaign; ++i) {
-            int best = -1;
-            float bestD = 1e9f;
+            int best = -1, bestLord = -1;
+            float bestD = 1e9f, bestLordD = 1e9f;
             for (int p = 0; p < (int)gs.parties.size(); ++p) {
                 const Party& e = gs.parties[p];
                 if (!e.alive || e.engaged) continue;
                 if (!AreFactionsHostile(gs.content, e.faction, gs.content.playerFaction)) continue;
                 const float d = Vector2Distance(e.pos, gs.player.pos);
-                if (d < bestD) { bestD = d; best = p; }
+                if (e.lord.empty()) { if (d < bestD) { bestD = d; best = p; } }
+                else                { if (d < bestLordD) { bestLordD = d; bestLord = p; } }
             }
+            if (best < 0) best = bestLord;   // only lords left to fight
             CampaignInput cin;
             if (best >= 0)
                 cin.move = Vector2Subtract(gs.parties[best].pos, gs.player.pos);

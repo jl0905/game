@@ -1,20 +1,21 @@
-# Veterancy: win battles, earn XP, promote recruits to infantry in the party
-# screen, and check XP persists in saves.
+# Veterancy: raise an army that survives the lord era, win battles to earn
+# XP, promote infantry to veterans in the party screen, and check the pools
+# persist in saves.
 seed 11
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+recruit 1 100
+leave
 state
-hunt 90
-tick 60
-state
-hunt 90
-tick 60
-state
-# open the party screen and promote recruits (row 1 = recruit)
-party
-state
-upgrade 0 2
+hunt 120
+tick 90
 state
 party
 state
+upgrade 1 2
+state
+party
 save C:/Users/hambu/AppData/Local/Temp/claude/test_vet.owb
 load C:/Users/hambu/AppData/Local/Temp/claude/test_vet.owb
 state
