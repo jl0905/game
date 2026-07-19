@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\openwarband.dir/objects.a
-C:\msys64\ucrt64\bin\ar.exe qc CMakeFiles\openwarband.dir/objects.a @CMakeFiles\openwarband.dir\objects1.rsp
-C:\msys64\ucrt64\bin\c++.exe -O3 -DNDEBUG -mwindows -Wl,--whole-archive CMakeFiles\openwarband.dir/objects.a -Wl,--no-whole-archive -o openwarband.exe -Wl,--out-implib,libopenwarband.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\openwarband.dir\linkLibs.rsp
