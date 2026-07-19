@@ -1,21 +1,12 @@
-# Wall defenders: let the raiders (roster includes archers) take a walled
-# settlement, then assault it — the battle view must show wall>0 archers and
-# the fight must still resolve.
+# Walled siege, deterministic: load a fixture where raiders (with archers)
+# hold Praven castle and we stand outside with an army. Assault: expect
+# mounted=0 (walls are stormed on foot), wall>0 archers on the ramparts,
+# the gate funnel to resolve, and the castle to change hands.
 seed 21
-enter 0
-bmove 1 0 2
-bmove 0 -1 3
-recruit 1 80
-recruit 3 40
-leave
-wait 120
+load tests/fixtures/siege_praven.owb
 state
 enter 1
 tick 2
 state
-tick 20
-state
-tick 90
-state
-tick 90
+tick 120
 state
