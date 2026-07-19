@@ -1,4 +1,5 @@
 #include "campaign.h"
+#include "../save.h"
 #include "../ui.h"
 #include <algorithm>
 #include <cmath>
@@ -322,7 +323,9 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     in.wait = IsKeyDown(KEY_SPACE);
     if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
     if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
-    in.restart = IsKeyPressed(KEY_R);
+    in.restart   = IsKeyPressed(KEY_R);
+    in.quickSave = IsKeyPressed(KEY_F5);
+    in.quickLoad = IsKeyPressed(KEY_F9);
     return in;
 }
 
@@ -341,6 +344,16 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         gs.content = std::move(saved);
         CampaignInit(gs);
         return;
+    }
+
+    // ---- quicksave / quickload ----
+    if (in.quickSave) {
+        gs.resultText = SaveGame(gs, DefaultSavePath()) ? "Game saved."
+                                                        : "Save FAILED.";
+    }
+    if (in.quickLoad) {
+        if (LoadGame(gs, DefaultSavePath())) { gs.resultText = "Game loaded."; return; }
+        gs.resultText = "No save to load.";
     }
 
     // ---- enter a settlement (pauses the overworld) ----

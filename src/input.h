@@ -20,6 +20,10 @@ struct CampaignInput {
     // settlement screen
     int     recruitSlot     = -1;     // roster slot to recruit, -1 none
     bool    leaveSettlement = false;
+
+    // meta
+    bool    quickSave = false;        // F5
+    bool    quickLoad = false;        // F9
 };
 
 struct BattleInput {

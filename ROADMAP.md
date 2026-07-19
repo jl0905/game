@@ -38,9 +38,9 @@ no tuned progressions, costs, damage curves, or stat weights yet.
 
 ## Track C — Campaign systems
 
-- [ ] **C1. Save / load.** Serialize `GameState` (handles are already stable
-  ints; content is re-loaded, world state is data). Harness commands `save` /
-  `load` so scripted play can verify round-trips.
+- [x] **C1. Save / load.** `src/save.h/.cpp`: line-based text save keyed by
+  content id strings (survives content additions); F5/F9 quicksave/quickload
+  on the map; harness `save`/`load` commands. Battles are not saved.
 - [ ] **C2. Troop veterancy / upgrade paths.** `TroopDef::upgradesTo` chain
   (recruit → infantry → veteran); survivors accrue experience toward upgrades
   (structure only — thresholds flat). Feeds the D2 management screen.

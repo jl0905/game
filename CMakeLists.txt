@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(raylib)
 add_executable(openwarband
     src/main.cpp
     src/harness.cpp
+    src/save.cpp
     src/ui.cpp
     src/content.cpp
     src/campaign/campaign.cpp

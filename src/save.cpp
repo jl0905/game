@@ -1,0 +1,143 @@
+#include "save.h"
+#include "campaign/campaign.h"
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+namespace {
+
+constexpr int SAVE_VERSION = 1;
+
+// Write one troop-count vector as "<tag> <troopId> <count>" lines.
+void WriteTroops(std::ofstream& f, const Content& c, const char* tag,
+                 const std::vector<int>& counts) {
+    for (int t = 0; t < (int)counts.size() && t < c.troops.size(); ++t)
+        if (counts[t] > 0)
+            f << tag << ' ' << c.troops[t].id << ' ' << counts[t] << '\n';
+}
+
+const char* SlotName(EquipSlot s) {
+    switch (s) {
+        case EquipSlot::Head:   return "head";
+        case EquipSlot::Body:   return "body";
+        case EquipSlot::Hands:  return "hands";
+        case EquipSlot::Feet:   return "feet";
+        case EquipSlot::Weapon: return "weapon";
+        case EquipSlot::Count:  break;
+    }
+    return "?";
+}
+
+int SlotFromName(const std::string& n) {
+    for (int s = 0; s < EQUIP_SLOT_COUNT; ++s)
+        if (n == SlotName(static_cast<EquipSlot>(s))) return s;
+    return -1;
+}
+
+}  // namespace
+
+const char* DefaultSavePath() {
+    static char path[512];
+    if (IsWindowReady())
+        std::snprintf(path, sizeof(path), "%ssave.owb", GetApplicationDirectory());
+    else
+        std::snprintf(path, sizeof(path), "save.owb");
+    return path;
+}
+
+bool SaveGame(const GameState& gs, const char* path) {
+    const Content& c = gs.content;
+    std::ofstream f(path);
+    if (!f) return false;
+
+    f << "OWSAVE " << SAVE_VERSION << '\n';
+    f << "gold " << gs.gold << '\n';
+    f << "playerpos " << gs.player.pos.x << ' ' << gs.player.pos.y << '\n';
+    WriteTroops(f, c, "ptroop", gs.player.troopCounts);
+
+    // Hero equipment: worn slots by id, then the carried arsenal in order.
+    for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
+        if (s == (int)EquipSlot::Weapon) continue;
+        const int h = gs.playerHero.loadout.slots[s];
+        if (c.armor.valid(h))
+            f << "wear " << SlotName((EquipSlot)s) << ' ' << c.armor[h].id << '\n';
+    }
+    for (int w : gs.playerHero.loadout.weapons)
+        if (c.weapons.valid(w)) f << "carry " << c.weapons[w].id << '\n';
+
+    for (const Party& p : gs.parties) {
+        if (!p.alive) continue;
+        if (p.faction < 0 || p.faction >= c.factions.size()) continue;
+        f << "party " << c.factions[p.faction].id << ' '
+          << p.pos.x << ' ' << p.pos.y << '\n';
+        WriteTroops(f, c, "troop", p.troopCounts);
+    }
+    return f.good();
+}
+
+bool LoadGame(GameState& gs, const char* path) {
+    std::ifstream f(path);
+    if (!f) return false;
+
+    std::string header;
+    int version = 0;
+    f >> header >> version;
+    if (header != "OWSAVE" || version != SAVE_VERSION) return false;
+
+    // Start from a fresh world (towns etc.), then overwrite with saved state.
+    {
+        Content saved = std::move(gs.content);
+        gs = GameState{};
+        gs.content = std::move(saved);
+    }
+    CampaignInit(gs);
+    gs.parties.clear();
+    gs.player.troopCounts.assign(gs.content.troops.size(), 0);
+    gs.playerHero.loadout = Loadout{};
+
+    const Content& c = gs.content;
+    std::string line;
+    std::getline(f, line);   // finish the header line
+    Party* cur = nullptr;    // party whose "troop" lines we're reading
+    while (std::getline(f, line)) {
+        std::istringstream ss(line);
+        std::string tag;
+        if (!(ss >> tag)) continue;
+        if (tag == "gold") ss >> gs.gold;
+        else if (tag == "playerpos") ss >> gs.player.pos.x >> gs.player.pos.y;
+        else if (tag == "ptroop" || tag == "troop") {
+            std::string id; int n = 0;
+            ss >> id >> n;
+            const int t = c.troops.find(id.c_str());
+            if (t < 0 || n <= 0) continue;   // troop type no longer exists
+            if (tag == "ptroop") gs.player.troopCounts[t] += n;
+            else if (cur)        cur->troopCounts[t] += n;
+        } else if (tag == "wear") {
+            std::string slot, id;
+            ss >> slot >> id;
+            const int s = SlotFromName(slot);
+            const int h = c.armor.find(id.c_str());
+            if (s >= 0 && h >= 0) gs.playerHero.loadout.slots[s] = h;
+        } else if (tag == "carry") {
+            std::string id;
+            ss >> id;
+            const int h = c.weapons.find(id.c_str());
+            if (h >= 0) gs.playerHero.loadout.addWeapon(h);
+        } else if (tag == "party") {
+            std::string fid; Vector2 pos{};
+            ss >> fid >> pos.x >> pos.y;
+            const int fh = c.factions.find(fid.c_str());
+            if (fh < 0) { cur = nullptr; continue; }
+            Party p;
+            p.faction = fh;
+            p.pos = p.wanderTarget = pos;
+            p.troopCounts.assign(c.troops.size(), 0);
+            gs.parties.push_back(p);
+            cur = &gs.parties.back();
+        }
+    }
+    gs.screen = Screen::Campaign;
+    return true;
+}

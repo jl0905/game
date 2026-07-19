@@ -1,4 +1,5 @@
 #include "harness.h"
+#include "save.h"
 #include "world.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
@@ -246,6 +247,12 @@ int RunScript(const char* path) {
                 CampaignInput cin; cin.recruitSlot = slot;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "save" || cmd == "load") {
+            std::string p;
+            if (!(ss >> p)) p = DefaultSavePath();
+            const bool ok = (cmd == "save") ? SaveGame(h.gs, p.c_str())
+                                            : LoadGame(h.gs, p.c_str());
+            std::printf("%s %s: %s\n", cmd.c_str(), p.c_str(), ok ? "ok" : "FAILED");
         } else if (cmd == "join") {
             CampaignInput cin; ss >> cin.joinSide;
             h.Step(cin, BattleInput{});
