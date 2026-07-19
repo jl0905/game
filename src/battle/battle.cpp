@@ -538,6 +538,7 @@ struct BattleState {
     bool    mounted = false;    // the hero rides in field battles (not sieges)
     float   pTrampleCd = 0;
     float   pHorseHp = 0;       // the hero's mount can be killed under him
+    float   shake = 0;          // camera kick when the hero is struck
 
     bool  over = false;
     bool  won = false;
@@ -644,6 +645,18 @@ void SpawnBlood(Vector3 at) {
         B.puffs.push_back({ Vector3Add(at, { 0, 1.2f, 0 }),
                             { cosf(a) * 1.6f, up, sinf(a) * 1.6f },
                             0.45f, 0.45f, Color{ 168, 24, 24, 255 } });
+    }
+}
+
+// Bright sparks off a raised guard — a parry you can SEE.
+void SpawnSparks(Vector3 at) {
+    for (int i = 0; i < 6; ++i) {
+        const unsigned int h = PuffRand();
+        const float a = (h & 0xFF) / 255.0f * 2.0f * PI;
+        const float up = 1.0f + ((h >> 8) & 0x7F) / 127.0f * 2.5f;
+        B.puffs.push_back({ Vector3Add(at, { 0, 1.3f, 0 }),
+                            { cosf(a) * 2.4f, up, sinf(a) * 2.4f },
+                            0.22f, 0.22f, Color{ 255, 232, 140, 255 } });
     }
 }
 
@@ -1197,7 +1210,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             B.pHp -= d;
             B.pFlash = 1.0f;
-            SpawnBlood(B.pPos);
+            if (B.blocking) SpawnSparks(B.pPos);   // steel meets shield
+            else            SpawnBlood(B.pPos);
+            B.shake = fminf(1.0f, B.shake + (B.blocking ? 0.25f : 0.6f));
         }
 
         // Keep living soldiers sitting on the terrain surface (they moved in
@@ -1247,6 +1262,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                     B.pHp -= d;
                     B.pFlash = 1.0f;
+                    if (B.blocking) SpawnSparks(B.pPos);
+                    else            SpawnBlood(B.pPos);
+                    B.shake = fminf(1.0f, B.shake + 0.35f);
                     a.alive = false;
                 }
             }
@@ -1284,10 +1302,16 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
 void BattleDraw(const Content& c) {
     // ---------- camera ----------
+    B.shake = fmaxf(0.0f, B.shake - GetFrameTime() * 3.0f);
     Camera3D cam = { 0 };
     const Vector3 look = { sinf(B.yaw) * cosf(B.pitch), sinf(B.pitch), cosf(B.yaw) * cosf(B.pitch) };
     const float eyeUp = B.mounted ? 3.25f : 2.0f;   // taller in the saddle
-    const Vector3 eye = { B.pPos.x, B.pPos.y + eyeUp, B.pPos.z };
+    Vector3 eye = { B.pPos.x, B.pPos.y + eyeUp, B.pPos.z };
+    if (B.shake > 0.01f) {   // a struck helmet rings
+        const unsigned int h1 = PuffRand(), h2 = PuffRand();
+        eye.x += (((h1 & 0xFF) / 255.0f) - 0.5f) * 0.30f * B.shake;
+        eye.y += (((h2 & 0xFF) / 255.0f) - 0.5f) * 0.30f * B.shake;
+    }
     cam.position = Vector3Subtract(eye, Vector3Scale(look, 6.0f));
     cam.position.y = fmaxf(cam.position.y, 0.5f);
     cam.target = Vector3Add(eye, Vector3Scale(look, 4.0f));
