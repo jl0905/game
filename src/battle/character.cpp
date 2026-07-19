@@ -183,6 +183,18 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 DrawCylinderEx(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), 0.03f, 0.03f, 6, w.tint);
                 DrawLine3D(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), Fade(RAYWHITE, 0.6f)); // string
                 break;
+            case WeaponClass::Axe: {
+                // A haft with a broad head set just below the tip.
+                const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
+                const Vector3 side = { dir.z, 0, -dir.x };
+                const Vector3 neck = Vector3Add(hilt, Vector3Scale(dir,
+                                        Vector3Distance(hilt, tip) * 0.8f));
+                DrawCylinderEx(hilt, tip, 0.035f, 0.03f, 6, Color{ 110, 78, 48, 255 }); // haft
+                DrawCylinderEx(Vector3Subtract(neck, Vector3Scale(side, 0.05f)),
+                               Vector3Add(neck, Vector3Scale(side, 0.30f)),
+                               0.16f, 0.05f, 6, w.tint);                                 // blade
+                break;
+            }
             case WeaponClass::TwoHanded: {
                 const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
                 const Vector3 guard = { dir.z, 0, -dir.x };  // crossguard, perpendicular

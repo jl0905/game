@@ -73,10 +73,14 @@ void LoadDefaultContent(Content& c) {
     spear.tileW = 1; spear.tileH = 4;
     bow.tileW   = 2; bow.tileH   = 3;
 
+    WeaponDef axe = Weapon("axe", "War Axe", WeaponClass::Axe, LIGHTGRAY);
+    axe.tileW = 2; axe.tileH = 3;
+
     const int w_sword = c.weapons.add(sword);
     const int w_great = c.weapons.add(great);
     const int w_spear = c.weapons.add(spear);
     const int w_bow   = c.weapons.add(bow);
+    const int w_axe   = c.weapons.add(axe);
 
     // ---- Troops ------------------------------------------------------------
     // Troops differ by loadout + identity, NOT by tuned numbers (all flat base).
@@ -120,6 +124,12 @@ void LoadDefaultContent(Content& c) {
     knight.loadout.addWeapon(w_spear);     // couched at the charge,
     knight.loadout.addWeapon(w_sword);     // steel in the press
 
+    TroopDef brigand = makeTroop("brigand", "Brigand", MAROON);
+    brigand.loadout.set(EquipSlot::Head,   a_cap);
+    brigand.loadout.set(EquipSlot::Body,   a_tunic);
+    brigand.loadout.set(EquipSlot::Feet,   a_boots);
+    brigand.loadout.addWeapon(w_axe);      // an outlaw's tool of trade
+
     TroopDef archer = makeTroop("archer", "Archer", GREEN);
     archer.loadout.set(EquipSlot::Head,   a_cap);
     archer.loadout.set(EquipSlot::Body,   a_tunic);
@@ -132,6 +142,7 @@ void LoadDefaultContent(Content& c) {
     const int t_veteran  = c.troops.add(veteran);
     const int t_archer   = c.troops.add(archer);
     const int t_knight   = c.troops.add(knight);
+    const int t_brigand  = c.troops.add(brigand);
 
     // Upgrade tree: recruit -> infantry -> veteran; archers are a branch off
     // recruit. Costs are flat placeholders.
@@ -154,7 +165,7 @@ void LoadDefaultContent(Content& c) {
     FactionDef raiders;
     raiders.id = "raiders"; raiders.name = "Raiders";
     raiders.color = RED; raiders.behavior = PartyBehavior::Aggressive;
-    raiders.roster = { t_recruit, t_infantry, t_archer };
+    raiders.roster = { t_brigand, t_infantry, t_archer };   // axes lead the charge
     raiders.lords = { "Gorak", "Hesh" };
     raiders.lordPartySize = 120;    // TODO(balance)
     c.factions.add(raiders);

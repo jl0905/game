@@ -21,7 +21,7 @@ enum class EquipSlot { Head, Body, Hands, Feet, Weapon, Count };
 inline constexpr int EQUIP_SLOT_COUNT = static_cast<int>(EquipSlot::Count);
 
 // Broad weapon families. Drives animation + reach behaviour, not tuning.
-enum class WeaponClass { OneHanded, TwoHanded, Polearm, Ranged };
+enum class WeaponClass { OneHanded, TwoHanded, Polearm, Axe, Ranged };
 
 // Mount & Blade style four-way attack / guard directions.
 enum class AttackDir { Up, Down, Left, Right };
