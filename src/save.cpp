@@ -54,6 +54,7 @@ bool SaveGame(const GameState& gs, const char* path) {
 
     f << "OWSAVE " << SAVE_VERSION << '\n';
     f << "gold " << gs.gold << '\n';
+    f << "day " << gs.day << '\n';
     f << "playerpos " << gs.player.pos.x << ' ' << gs.player.pos.y << '\n';
     WriteTroops(f, c, "ptroop", gs.player.troopCounts);
     WriteTroops(f, c, "pxp",    gs.troopXp);   // veterancy pools
@@ -138,6 +139,7 @@ bool LoadGame(GameState& gs, const char* path) {
         std::string tag;
         if (!(ss >> tag)) continue;
         if (tag == "gold") ss >> gs.gold;
+        else if (tag == "day") ss >> gs.day;
         else if (tag == "playerpos") ss >> gs.player.pos.x >> gs.player.pos.y;
         else if (tag == "ptroop" || tag == "troop" || tag == "pxp") {
             std::string id; int n = 0;

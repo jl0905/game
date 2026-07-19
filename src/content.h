@@ -87,6 +87,7 @@ struct TroopDef {
     int         maxHp     = 0;     // TODO(balance)
     float       moveSpeed = 0.0f;  // TODO(balance)
     int         cost      = 0;     // TODO(balance): recruit cost in gold
+    int         wage      = 0;     // TODO(balance): per-day upkeep in gold
     int         upgradesTo = -1;   // troop handle this unit can become (-1 none)
     int         upgradeXp  = 0;    // TODO(balance): experience one upgrade costs
     Loadout     loadout;           // default gear (drives stats + look)

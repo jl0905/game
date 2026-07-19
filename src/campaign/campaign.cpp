@@ -63,6 +63,20 @@ constexpr float PERCEPTION         = 500.0f;  // how far a party notices a foe
 constexpr float SKIRMISH_TIME      = 6.0f;    // seconds a clash takes to resolve
 constexpr float JOIN_RANGE         = 120.0f;  // how close to join a clash
 
+// --- economy: world days, income, wages --------------------------------------
+constexpr float DAY_LENGTH = 60.0f;   // TODO(balance): seconds of sim per day
+
+// Daily income of an owned settlement. Relative sizes are settlement identity;
+// TODO(balance): the numbers.
+int SettlementIncome(SettlementType t) {
+    switch (t) {
+        case SettlementType::Village: return 20;
+        case SettlementType::Town:    return 50;
+        case SettlementType::Castle:  return 30;
+    }
+    return 0;
+}
+
 // --- lords (roadmap C3) ------------------------------------------------------
 constexpr float SIEGE_REACH   = 44.0f;  // lord close enough to invest a town
 constexpr float AI_SIEGE_TIME = 12.0f;  // seconds an AI siege takes to resolve
@@ -750,6 +764,29 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                            [](const LordRespawn& r) { return r.timer <= 0; }),
             gs.lordRespawns.end());
 
+        // ---- the daily ledger: settlement income in, troop wages out ----
+        gs.dayTimer += sim;
+        if (gs.dayTimer >= DAY_LENGTH) {
+            gs.dayTimer -= DAY_LENGTH;
+            gs.day++;
+            int income = 0;
+            for (const Town& t : gs.towns)
+                if (t.owner == c.playerFaction) income += SettlementIncome(t.type);
+            int wages = 0;
+            for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
+                wages += gs.player.troopCounts[t] * c.troops[t].wage;
+            gs.gold += income - wages;
+            gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.",
+                                       gs.day, income, wages);
+            if (gs.gold < 0) {
+                // The coffers ran dry: a share of the men drift away overnight.
+                gs.gold = 0;
+                const int leave = (gs.player.totalTroops() + 9) / 10;   // TODO(balance)
+                RemoveTroops(gs.player, leave);
+                gs.resultText += TextFormat("  Unpaid, %d men desert!", leave);
+            }
+        }
+
         // Respawn parties over time so the map stays lively.
         gs.spawnTimer += sim;
         int aliveCount = 0;
@@ -865,7 +902,8 @@ void CampaignDraw(const GameState& gs) {
 
     // ---- HUD ----
     DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
-    ui::Text(TextFormat("Gold: %d   Party: %d", gs.gold, gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
+    ui::Text(TextFormat("Day %d   Gold: %d   Party: %d", gs.day, gs.gold,
+                        gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
 
     // Time state, top-right: the world is frozen until you move or wait.
     const char* clock = gs.timeFlowing ? "TIME FLOWING" : "TIME PAUSED  (move, or hold SPACE)";

@@ -109,6 +109,8 @@ struct GameState {
     std::vector<AISiege>  aiSieges;     // AI armies besieging settlements
     std::vector<LordRespawn> lordRespawns;   // fallen lords raising new hosts
     int                gold = 300;
+    int                day = 0;          // world days elapsed (economy ticks)
+    float              dayTimer = 0;
     float              spawnTimer = 0;
     int                nearTown = -1;
     int                currentSettlement = -1;   // town index while inside a settlement

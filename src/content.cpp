@@ -22,6 +22,7 @@ constexpr float WEAPON_SWING  = 0.7f;
 constexpr int   ARMOR_VALUE   = 0;
 constexpr float ARMOR_WEIGHT  = 0.0f;
 constexpr int   UPGRADE_XP    = 100;   // experience one troop upgrade costs
+constexpr int   TROOP_WAGE    = 1;     // per-day upkeep per soldier
 }  // namespace base
 
 // Small helpers to keep the registration list readable.
@@ -83,6 +84,7 @@ void LoadDefaultContent(Content& c) {
         TroopDef t;
         t.id = id; t.name = name;
         t.maxHp = base::TROOP_HP; t.moveSpeed = base::TROOP_SPEED; t.cost = base::TROOP_COST;
+        t.wage = base::TROOP_WAGE;
         t.accent = accent;
         return t;
     };

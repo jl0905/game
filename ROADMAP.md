@@ -88,6 +88,10 @@ no tuned progressions, costs, damage curves, or stat weights yet.
 
 ## Done (this effort)
 
+- [x] Economy: world days (`DAY_LENGTH` sim seconds), daily settlement income
+  by type, per-troop wages (`TroopDef::wage`), and unpaid desertion — all flat
+  TODO(balance) rates. Day shown in the HUD and saves.
+
 - [x] Gather/Update/Draw split + headless `--script` play harness (`hunt`, `state`, …)
 - [x] A/D strafe inversion fix; AI parties clamped to map bounds
 - [x] Weapon/armour-routed combat stats (flat values, `TODO(balance)`)

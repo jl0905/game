@@ -138,8 +138,8 @@ struct Harness {
 
     void DumpState() const {
         const Content& c = gs.content;
-        std::printf("screen=%s gold=%d pos=(%.0f,%.0f) party=%d timeFlowing=%d\n",
-                    ScreenName(), gs.gold, gs.player.pos.x, gs.player.pos.y,
+        std::printf("screen=%s day=%d gold=%d pos=(%.0f,%.0f) party=%d timeFlowing=%d\n",
+                    ScreenName(), gs.day, gs.gold, gs.player.pos.x, gs.player.pos.y,
                     gs.player.totalTroops(), gs.timeFlowing ? 1 : 0);
         std::printf("hero: level=%d xp=%d points=%d attrs=[", gs.playerHero.level,
                     gs.playerHero.xp, gs.playerHero.attrPoints);
