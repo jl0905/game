@@ -298,7 +298,9 @@ void TownDraw(const GameState& gs) {
     cam.projection = CAMERA_PERSPECTIVE;
 
     BeginDrawing();
-    ClearBackground(Color{ 168, 200 - 10, 226, 255 });
+    ClearBackground(Color{ 132, 172, 220, 255 });   // clears depth too
+    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+                           Color{ 132, 172, 220, 255 }, Color{ 222, 232, 240, 255 });
 
     BeginMode3D(cam);
     DrawPlane({ 0, 0, 0 }, { TOWN_EDGE * 2, TOWN_EDGE * 2 }, Color{ 96, 128, 72, 255 });
@@ -324,12 +326,16 @@ void TownDraw(const GameState& gs) {
     }
 
     for (const Npc& n : T.npcs) {
+        DrawCylinder({ n.pos.x, 0.03f, n.pos.z }, 0.45f, 0.45f, 0.02f, 12,
+                     Fade(BLACK, 0.25f));
         Pose pose;
         pose.yaw = n.yaw;
         pose.walkPhase = n.walkPhase;
         DrawCharacter(c, n.pos, n.loadout, pose, BEIGE);
     }
 
+    DrawCylinder({ T.pPos.x, 0.03f, T.pPos.z }, 0.5f, 0.5f, 0.02f, 12,
+                 Fade(BLACK, 0.28f));
     Pose hero;
     hero.yaw = T.yaw;
     hero.walkPhase = T.walkPhase;

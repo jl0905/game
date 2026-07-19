@@ -930,14 +930,22 @@ void CampaignDraw(const GameState& gs) {
         if (!e.alive) continue;
         const FactionDef& f = c.factions[e.faction];
         const bool isLord = !e.lord.empty();
-        DrawCircleV(e.pos, isLord ? 16.0f : 12.0f, f.color);
-        if (isLord)   // a small crown so lords read at a glance
-            DrawTriangle({ e.pos.x - 10, e.pos.y - 18 }, { e.pos.x + 10, e.pos.y - 18 },
-                         { e.pos.x, e.pos.y - 30 }, GOLD);
-        if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, isLord ? 19 : 15, RAYWHITE);
+        // A pennant: shadow, pole, and a swallow-tailed flag in faction colour.
+        DrawEllipse((int)e.pos.x, (int)e.pos.y + 4, 10, 4, Fade(BLACK, 0.3f));
+        DrawLineEx({ e.pos.x, e.pos.y + 4 }, { e.pos.x, e.pos.y - (isLord ? 26.0f : 20.0f) },
+                   2.5f, Color{ 92, 70, 48, 255 });
+        const float fy = e.pos.y - (isLord ? 26.0f : 20.0f);
+        const float fw = isLord ? 18.0f : 13.0f;
+        DrawTriangle({ e.pos.x, fy }, { e.pos.x, fy + 10 }, { e.pos.x + fw, fy + 5 }, f.color);
+        DrawTriangleLines({ e.pos.x, fy }, { e.pos.x, fy + 10 }, { e.pos.x + fw, fy + 5 },
+                          Fade(BLACK, 0.5f));
+        if (isLord)   // a small crown atop the pole
+            DrawTriangle({ e.pos.x - 6, fy - 2 }, { e.pos.x + 6, fy - 2 },
+                         { e.pos.x, fy - 10 }, GOLD);
+        if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, 15, RAYWHITE);
         ui::Text(isLord ? TextFormat("Lord %s %d", e.lord.c_str(), e.totalTroops())
                         : TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
-                 (int)e.pos.x - 20, (int)e.pos.y - (isLord ? 48 : 32), 14, f.color);
+                 (int)e.pos.x - 20, (int)e.pos.y - (isLord ? 44 : 36), 14, f.color);
     }
 
     // Besieged settlements: a pulsing ring in the attacker's colour.

@@ -512,6 +512,10 @@ struct BattleState {
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
 
+    // Hit feedback particles (blood puffs); purely visual.
+    struct Puff { Vector3 pos, vel; float life; };
+    std::vector<Puff> puffs;
+
     // Player avatar
     Vector3 pPos;
     float   pHp = 0, pMaxHp = 0;
@@ -617,6 +621,18 @@ bool IsMounted(const Content& c, const Soldier& s) {
     return c.troops[s.troop].mounted && !s.dehorsed;
 }
 
+// A burst of red at a wound; pure feedback, no gameplay.
+void SpawnBlood(Vector3 at) {
+    static unsigned int h = 12345u;
+    for (int i = 0; i < 5; ++i) {
+        h ^= h << 13; h ^= h >> 17; h ^= h << 5;
+        const float a = (h & 0xFF) / 255.0f * 2.0f * PI;
+        const float up = 2.0f + ((h >> 8) & 0x7F) / 127.0f * 2.0f;
+        B.puffs.push_back({ Vector3Add(at, { 0, 1.2f, 0 }),
+                            { cosf(a) * 1.6f, up, sinf(a) * 1.6f }, 0.45f });
+    }
+}
+
 // All damage to a soldier routes through here so a mounted target's horse
 // soaks its share of the blow — and can die under the rider.
 void DamageSoldier(const Content& c, Soldier& s, float dmg) {
@@ -628,6 +644,7 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     }
     s.hp -= dmg;
     s.flash = 1.0f;
+    SpawnBlood(s.pos);
 }
 
 bool HasRangedWeapon(const Content& c, const Loadout& lo) {
@@ -1151,6 +1168,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             B.pHp -= d;
             B.pFlash = 1.0f;
+            SpawnBlood(B.pPos);
         }
 
         // Keep living soldiers sitting on the terrain surface (they moved in
@@ -1207,6 +1225,16 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.arrows.erase(std::remove_if(B.arrows.begin(), B.arrows.end(),
                                       [](const Arrow& a) { return !a.alive; }),
                        B.arrows.end());
+
+        // blood puffs drift and fade
+        for (auto& p : B.puffs) {
+            p.life -= dt;
+            p.vel.y -= 9.0f * dt;
+            p.pos = Vector3Add(p.pos, Vector3Scale(p.vel, dt));
+        }
+        B.puffs.erase(std::remove_if(B.puffs.begin(), B.puffs.end(),
+                                     [](const BattleState::Puff& p) { return p.life <= 0; }),
+                      B.puffs.end());
     }
 
     // Tallies for the HUD and win/lose, computed after damage is applied.
@@ -1311,6 +1339,11 @@ void BattleDraw(const Content& c) {
         DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,
                  s.team == Team::Enemy ? RED : GREEN);
     }
+
+    // blood puffs
+    for (const auto& p : B.puffs)
+        DrawCube(p.pos, 0.12f, 0.12f, 0.12f,
+                 Fade(Color{ 168, 24, 24, 255 }, p.life / 0.45f));
 
     // arrows in flight — short shafts oriented along their velocity
     for (const Arrow& a : B.arrows) {
