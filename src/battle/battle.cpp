@@ -509,6 +509,8 @@ struct BattleState {
     float   vY = 0;
     float   walkPhase = 0;
     float   pFlash = 0;         // hero just-hit feedback
+    bool    mounted = false;    // the hero rides in field battles (not sieges)
+    float   pTrampleCd = 0;
 
     bool  over = false;
     bool  won = false;
@@ -754,6 +756,24 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 
 Color TeamTint(Team t) { return t == Team::Enemy ? RED : BLUE; }
 
+// The horse: barrel, neck + head, four trotting legs. The rider is drawn by
+// the caller, seated 1.25 above `pos`.
+void DrawHorse(Vector3 pos, float yaw, float walkPhase) {
+    const float cy = cosf(yaw), sy = sinf(yaw);
+    auto hAt = [&](float r, float u, float f) {
+        return Vector3{ pos.x + r * cy + f * sy, pos.y + u, pos.z - r * sy + f * cy };
+    };
+    const Color coat = Color{ 96, 66, 40, 255 };
+    const float trot = sinf(walkPhase) * 0.25f;
+    DrawCapsule(hAt(0, 1.05f, -0.7f), hAt(0, 1.05f, 0.7f), 0.34f, 8, 5, coat);   // barrel
+    DrawCapsule(hAt(0, 1.15f, 0.7f), hAt(0, 1.65f, 1.15f), 0.14f, 6, 4, coat);   // neck
+    DrawCapsule(hAt(0, 1.65f, 1.15f), hAt(0, 1.55f, 1.5f), 0.11f, 6, 4, coat);   // head
+    DrawCapsule(hAt(-0.2f, 0.05f,  0.55f + trot), hAt(-0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
+    DrawCapsule(hAt( 0.2f, 0.05f,  0.55f - trot), hAt( 0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
+    DrawCapsule(hAt(-0.2f, 0.05f, -0.55f - trot), hAt(-0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
+    DrawCapsule(hAt( 0.2f, 0.05f, -0.55f + trot), hAt( 0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
+}
+
 // Keep a mover out of the wall band unless it's inside the gate opening.
 void EnforceWall(Vector3& p) {
     if (!B.hasWall) return;
@@ -836,6 +856,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.pPos = { 0, B.terrain.HeightAt(0.0f, -38.0f), -38 };
     B.pMaxHp = (float)setup.heroMaxHp;
     B.pHp = B.pMaxHp;
+    B.mounted = !setup.siege;   // walls are stormed on foot
 
     if (IsWindowReady()) DisableCursor();   // headless harness has no window
     B.hasLastMouse = false;
@@ -894,10 +915,31 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
         Vector3 move = Vector3Add(Vector3Scale(fwd, in.moveForward),
                                   Vector3Scale(right, in.moveRight));
+        bool galloping = false;
         if (Vector3Length(move) > 0) {
-            const float speed = B.blocking ? 3.0f : 7.0f;
+            // A horse doubles your pace (identity; numbers TODO(balance)).
+            const float speed = B.mounted ? (B.blocking ? 6.0f : 14.0f)
+                                          : (B.blocking ? 3.0f : 7.0f);
             B.pPos = Vector3Add(B.pPos, Vector3Scale(Vector3Normalize(move), speed * dt));
             B.walkPhase += dt * 10.0f;
+            galloping = B.mounted && !B.blocking;
+        }
+
+        // Ride enemies down: the hero tramples at the gallop, like cavalry.
+        B.pTrampleCd -= dt;
+        if (galloping && B.pTrampleCd <= 0) {
+            for (Soldier& s : B.soldiers) {
+                if (s.hp <= 0 || s.team != Team::Enemy || s.onWall) continue;
+                Vector3 d3 = Vector3Subtract(s.pos, B.pPos);
+                d3.y = 0;
+                if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
+                    s.hp -= ApplyArmor(TRAMPLE_DAMAGE,
+                                       LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                    s.flash = 1.0f;
+                    B.pTrampleCd = TRAMPLE_COOLDOWN;
+                    break;
+                }
+            }
         }
         B.pPos.x = Clamp(B.pPos.x, -ARENA, ARENA);
         B.pPos.z = Clamp(B.pPos.z, -ARENA, ARENA);
@@ -1132,7 +1174,8 @@ void BattleDraw(const Content& c) {
     // ---------- camera ----------
     Camera3D cam = { 0 };
     const Vector3 look = { sinf(B.yaw) * cosf(B.pitch), sinf(B.pitch), cosf(B.yaw) * cosf(B.pitch) };
-    const Vector3 eye = { B.pPos.x, B.pPos.y + 2.0f, B.pPos.z };
+    const float eyeUp = B.mounted ? 3.25f : 2.0f;   // taller in the saddle
+    const Vector3 eye = { B.pPos.x, B.pPos.y + eyeUp, B.pPos.z };
     cam.position = Vector3Subtract(eye, Vector3Scale(look, 6.0f));
     cam.position.y = fmaxf(cam.position.y, 0.5f);
     cam.target = Vector3Add(eye, Vector3Scale(look, 4.0f));
@@ -1197,21 +1240,7 @@ void BattleDraw(const Content& c) {
 
         Vector3 riderPos = s.pos;
         if (c.troops[s.troop].mounted) {
-            // The horse: barrel, neck + head, four legs — rider sits on top.
-            const float hy = s.pos.y;
-            const float cy = cosf(s.yaw), sy = sinf(s.yaw);
-            auto hAt = [&](float r, float u, float f) {
-                return Vector3{ s.pos.x + r * cy + f * sy, hy + u, s.pos.z - r * sy + f * cy };
-            };
-            const Color coat = Color{ 96, 66, 40, 255 };
-            const float trot = sinf(s.walkPhase) * 0.25f;
-            DrawCapsule(hAt(0, 1.05f, -0.7f), hAt(0, 1.05f, 0.7f), 0.34f, 8, 5, coat);   // barrel
-            DrawCapsule(hAt(0, 1.15f, 0.7f), hAt(0, 1.65f, 1.15f), 0.14f, 6, 4, coat);   // neck
-            DrawCapsule(hAt(0, 1.65f, 1.15f), hAt(0, 1.55f, 1.5f), 0.11f, 6, 4, coat);   // head
-            DrawCapsule(hAt(-0.2f, 0.05f,  0.55f + trot), hAt(-0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
-            DrawCapsule(hAt( 0.2f, 0.05f,  0.55f - trot), hAt( 0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
-            DrawCapsule(hAt(-0.2f, 0.05f, -0.55f - trot), hAt(-0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
-            DrawCapsule(hAt( 0.2f, 0.05f, -0.55f + trot), hAt( 0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
+            DrawHorse(s.pos, s.yaw, s.walkPhase);
             riderPos.y += 1.25f;
             pose.walkPhase = 0;   // the rider sits; the horse does the running
         }
@@ -1238,7 +1267,13 @@ void BattleDraw(const Content& c) {
     ppose.blocking = B.blocking;
     ppose.walkPhase = B.walkPhase;
     ppose.weapon = B.setup.heroLoadout.get(EquipSlot::Weapon);
-    DrawCharacter(c, B.pPos, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
+    Vector3 heroDraw = B.pPos;
+    if (B.mounted) {
+        DrawHorse(B.pPos, B.yaw, B.walkPhase);
+        heroDraw.y += 1.25f;
+        ppose.walkPhase = 0;
+    }
+    DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
 
     EndMode3D();
 
