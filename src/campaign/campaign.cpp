@@ -897,6 +897,7 @@ void CampaignDraw(const GameState& gs) {
     DrawRectangleLinesEx(Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, 6, DARKBROWN);
 
     for (const Town& t : gs.towns) {
+        DrawEllipse((int)t.pos.x, (int)t.pos.y + 16, 30, 9, Fade(BLACK, 0.25f));
         switch (t.type) {
             case SettlementType::Village:
                 DrawRectangle((int)t.pos.x - 14, (int)t.pos.y - 10, 28, 20, BROWN);
@@ -915,9 +916,15 @@ void CampaignDraw(const GameState& gs) {
                     DrawRectangle((int)t.pos.x + b, (int)t.pos.y - 34, 8, 12, DARKGRAY);
                 break;
         }
-        // Owner banner: label + ring in the owning faction's colour.
+        // Owner banner flying above the icon + label + ring.
         const bool ownerValid = t.owner >= 0 && t.owner < c.factions.size();
         const Color ownerCol  = ownerValid ? c.factions[t.owner].color : RAYWHITE;
+        if (ownerValid) {
+            const float bx = t.pos.x + 22, by = t.pos.y - 34;
+            DrawLineEx({ bx, by + 22 }, { bx, by }, 2.5f, Color{ 92, 70, 48, 255 });
+            DrawRectangle((int)bx, (int)by, 16, 10, ownerCol);
+            DrawRectangleLines((int)bx, (int)by, 16, 10, Fade(BLACK, 0.5f));
+        }
         ui::Text(TextFormat("%s (%s)", t.name.c_str(), SettlementTypeName(t.type)),
                  (int)t.pos.x - 40, (int)t.pos.y + 26, 16, RAYWHITE);
         if (ownerValid)
@@ -970,8 +977,18 @@ void CampaignDraw(const GameState& gs) {
         DrawRing(sk.pos, 24, 27, -90, -90 + 360 * frac, 32, Fade(GOLD, 0.9f));
     }
 
-    DrawCircleV(gs.player.pos, 12, c.factions[c.playerFaction].color);
-    ui::Text("You", (int)gs.player.pos.x - 12, (int)gs.player.pos.y - 34, 16, RAYWHITE);
+    // Your own banner: taller pole, bright flag, gold finial.
+    {
+        const Vector2 p = gs.player.pos;
+        const Color mine = c.factions[c.playerFaction].color;
+        DrawEllipse((int)p.x, (int)p.y + 4, 11, 4, Fade(BLACK, 0.3f));
+        DrawLineEx({ p.x, p.y + 4 }, { p.x, p.y - 30 }, 3.0f, Color{ 92, 70, 48, 255 });
+        DrawTriangle({ p.x, p.y - 30 }, { p.x, p.y - 16 }, { p.x + 22, p.y - 23 }, mine);
+        DrawTriangleLines({ p.x, p.y - 30 }, { p.x, p.y - 16 }, { p.x + 22, p.y - 23 },
+                          Fade(BLACK, 0.5f));
+        DrawCircleV({ p.x, p.y - 32 }, 3, GOLD);
+        ui::Text("You", (int)p.x - 12, (int)p.y - 48, 16, RAYWHITE);
+    }
     EndMode2D();
 
     // ---- HUD ----

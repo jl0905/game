@@ -512,8 +512,8 @@ struct BattleState {
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
 
-    // Hit feedback particles (blood puffs); purely visual.
-    struct Puff { Vector3 pos, vel; float life; };
+    // Feedback particles (blood, hoof dust); purely visual.
+    struct Puff { Vector3 pos, vel; float life; float maxLife; Color col; };
     std::vector<Puff> puffs;
 
     // Player avatar
@@ -621,16 +621,31 @@ bool IsMounted(const Content& c, const Soldier& s) {
     return c.troops[s.troop].mounted && !s.dehorsed;
 }
 
-// A burst of red at a wound; pure feedback, no gameplay.
-void SpawnBlood(Vector3 at) {
+// Particle helpers; pure feedback, no gameplay.
+unsigned int PuffRand() {
     static unsigned int h = 12345u;
+    h ^= h << 13; h ^= h >> 17; h ^= h << 5;
+    return h;
+}
+
+void SpawnBlood(Vector3 at) {
     for (int i = 0; i < 5; ++i) {
-        h ^= h << 13; h ^= h >> 17; h ^= h << 5;
+        const unsigned int h = PuffRand();
         const float a = (h & 0xFF) / 255.0f * 2.0f * PI;
         const float up = 2.0f + ((h >> 8) & 0x7F) / 127.0f * 2.0f;
         B.puffs.push_back({ Vector3Add(at, { 0, 1.2f, 0 }),
-                            { cosf(a) * 1.6f, up, sinf(a) * 1.6f }, 0.45f });
+                            { cosf(a) * 1.6f, up, sinf(a) * 1.6f },
+                            0.45f, 0.45f, Color{ 168, 24, 24, 255 } });
     }
+}
+
+// Kicked-up earth behind a galloping horse.
+void SpawnDust(Vector3 at) {
+    const unsigned int h = PuffRand();
+    const float a = (h & 0xFF) / 255.0f * 2.0f * PI;
+    B.puffs.push_back({ Vector3Add(at, { 0, 0.25f, 0 }),
+                        { cosf(a) * 0.7f, 1.1f, sinf(a) * 0.7f },
+                        0.6f, 0.6f, Color{ 148, 128, 100, 255 } });
 }
 
 // All damage to a soldier routes through here so a mounted target's horse
@@ -986,6 +1001,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             galloping = B.mounted && !B.blocking;
         }
 
+        // Hooves kick up dust at the gallop.
+        if (galloping && (PuffRand() & 3) == 0) SpawnDust(B.pPos);
+
         // Ride enemies down: the hero tramples at the gallop, like cavalry.
         B.pTrampleCd -= dt;
         if (galloping && B.pTrampleCd <= 0) {
@@ -1110,6 +1128,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
             // Cavalry at the gallop tramples whoever it rides through.
             s.trampleCd -= dt;
+            if (IsMounted(c, s) && Vector3LengthSqr(cmd.step) > 0.0001f &&
+                (PuffRand() & 7) == 0)
+                SpawnDust(s.pos);
             if (IsMounted(c, s) && s.trampleCd <= 0 &&
                 Vector3Length(cmd.step) > 0.5f * c.troops[s.troop].moveSpeed * dt) {
                 for (int j = 0; j < n; ++j) {
@@ -1340,10 +1361,9 @@ void BattleDraw(const Content& c) {
                  s.team == Team::Enemy ? RED : GREEN);
     }
 
-    // blood puffs
+    // particles (blood, dust)
     for (const auto& p : B.puffs)
-        DrawCube(p.pos, 0.12f, 0.12f, 0.12f,
-                 Fade(Color{ 168, 24, 24, 255 }, p.life / 0.45f));
+        DrawCube(p.pos, 0.13f, 0.13f, 0.13f, Fade(p.col, p.life / p.maxLife));
 
     // arrows in flight — short shafts oriented along their velocity
     for (const Arrow& a : B.arrows) {
