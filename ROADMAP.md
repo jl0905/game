@@ -46,9 +46,10 @@ no tuned progressions, costs, damage curves, or stat weights yet.
 - [x] **C1. Save / load.** `src/save.h/.cpp`: line-based text save keyed by
   content id strings (survives content additions); F5/F9 quicksave/quickload
   on the map; harness `save`/`load` commands. Battles are not saved.
-- [ ] **C2. Troop veterancy / upgrade paths.** `TroopDef::upgradesTo` chain
-  (recruit → infantry → veteran); survivors accrue experience toward upgrades
-  (structure only — thresholds flat). Feeds the D2 management screen.
+- [x] **C2. Troop veterancy / upgrade paths.** `TroopDef::upgradesTo` +
+  `upgradeXp` (flat); survivors of won battles earn per-type XP pools
+  (`GameState::troopXp`); upgrades spend XP to promote units. Persisted in
+  saves.
 - [ ] **C3. Lord parties.** Each faction fields a few named lords with large
   parties (order-of-hundreds troops — exact sizes TODO(balance)); they besiege
   and defend settlements (B1/B3), fight field battles, and respawn at owned
@@ -61,9 +62,10 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   items occupy w×h tiles, drag/rearrange, equip to `Loadout` slots. Items are
   the existing `ArmorDef`/`WeaponDef` handles plus loot drops after battles.
   Input goes through the intent structs so the harness can drive it.
-- [ ] **D2. Party management screen.** Roster view: troop counts, types,
-  upgrade buttons (consumes C2 experience), dismiss troops; opened from the
-  campaign map. Same gather/update/draw split as every other screen.
+- [ ] **D2. Party management screen.** v1 exists (`Screen::Party`, opened with
+  P): roster rows with counts + XP, number keys promote units, harness
+  `party`/`upgrade` commands. Remaining: dismiss troops, per-troop detail
+  (loadout preview via `DrawCharacter`), mouse support.
 - [ ] **D3. Skill system.** Hero attributes (strength, agility, intelligence,
   charisma …) as data-driven definitions in `content.cpp` — structure and
   hooks only (what each *could* modify), flat/no-op effects until balancing.

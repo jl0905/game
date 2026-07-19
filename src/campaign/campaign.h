@@ -25,3 +25,7 @@ void CampaignDraw(const GameState& gs);
 
 void SettlementUpdate(GameState& gs, const CampaignInput& in);
 void SettlementDraw(const GameState& gs);
+
+// Party management screen (roster + veterancy upgrades), opened with P.
+void PartyUpdate(GameState& gs, const CampaignInput& in);
+void PartyDraw(const GameState& gs);

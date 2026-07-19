@@ -240,6 +240,7 @@ void CampaignInit(GameState& gs) {
     gs.parties.clear();
     gs.skirmishes.clear();
     gs.playerLosses.assign(c.troops.size(), 0);
+    gs.troopXp.assign(c.troops.size(), 0);
     const std::vector<int> roamers = RoamingFactions(c);
     for (int i = 0; i < 5; ++i)
         gs.parties.push_back(MakeParty(c, roamers[i % roamers.size()], RandomEdgePos()));
@@ -261,11 +262,22 @@ static std::string LossSummary(const Content& c, const std::vector<int>& losses)
     return out;
 }
 
+// Experience each surviving troop earns from a won battle. TODO(balance).
+static constexpr int XP_PER_SURVIVOR = 25;
+
 static void ApplyBattleResult(GameState& gs) {
     // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
         gs.player.troopCounts[t] -= gs.playerLosses[t];
         if (gs.player.troopCounts[t] < 0) gs.player.troopCounts[t] = 0;
+    }
+
+    // Veterancy: survivors of a won battle season toward their next rank.
+    if (gs.battleWon) {
+        if ((int)gs.troopXp.size() < gs.content.troops.size())
+            gs.troopXp.assign(gs.content.troops.size(), 0);
+        for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
+            gs.troopXp[t] += gs.player.troopCounts[t] * XP_PER_SURVIVOR;
     }
 
     // Allied party's casualties, if one fought alongside you.
@@ -355,6 +367,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Party) {
+        for (int slot = 0; slot < 9; ++slot)
+            if (IsKeyPressed(KEY_ONE + slot)) in.upgradeSlot = slot;
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) in.leaveSettlement = true;
+        return in;
+    }
+
     const Camera2D cam = CampaignCamera(gs);
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 world = GetScreenToWorld2D(GetMousePosition(), cam);
@@ -375,6 +394,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
     if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
     in.restart   = IsKeyPressed(KEY_R);
+    in.openParty = IsKeyPressed(KEY_P);
     in.quickSave = IsKeyPressed(KEY_F5);
     in.quickLoad = IsKeyPressed(KEY_F9);
     return in;
@@ -405,6 +425,12 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     if (in.quickLoad) {
         if (LoadGame(gs, DefaultSavePath())) { gs.resultText = "Game loaded."; return; }
         gs.resultText = "No save to load.";
+    }
+
+    // ---- open the party management screen ----
+    if (in.openParty) {
+        gs.screen = Screen::Party;
+        return;
     }
 
     // ---- enter (friendly) or assault (hostile) a settlement ----
@@ -644,6 +670,79 @@ void CampaignDraw(const GameState& gs) {
 // Settlement menu: the overworld is frozen (main.cpp routes here instead of
 // CampaignUpdateDraw) while the player is inside a town/castle/village.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Party management (roadmap D2): roster review + spending veterancy (C2).
+// Rows are troop types the player owns, in troop-registry order.
+// ---------------------------------------------------------------------------
+
+// Troop handles the player currently fields, in display order.
+static std::vector<int> PartyRows(const GameState& gs) {
+    std::vector<int> rows;
+    for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
+        if (gs.player.troopCounts[t] > 0) rows.push_back(t);
+    return rows;
+}
+
+void PartyUpdate(GameState& gs, const CampaignInput& in) {
+    const Content& c = gs.content;
+    if ((int)gs.troopXp.size() < c.troops.size())
+        gs.troopXp.assign(c.troops.size(), 0);
+
+    const std::vector<int> rows = PartyRows(gs);
+    if (in.upgradeSlot >= 0 && in.upgradeSlot < (int)rows.size()) {
+        const int t  = rows[in.upgradeSlot];
+        const TroopDef& td = c.troops[t];
+        if (td.upgradesTo >= 0 && gs.player.troopCounts[t] > 0 &&
+            gs.troopXp[t] >= td.upgradeXp) {
+            gs.troopXp[t] -= td.upgradeXp;
+            gs.player.troopCounts[t]--;
+            gs.player.troopCounts[td.upgradesTo]++;
+        }
+    }
+    if (in.leaveSettlement) gs.screen = Screen::Campaign;
+}
+
+void PartyDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    const std::vector<int> rows = PartyRows(gs);
+
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int panelX = GetScreenWidth() / 2 - 360;
+
+    ui::Title("YOUR WARBAND", panelX, 60, 44, GOLD);
+    ui::Text(TextFormat("Gold: %d    Troops: %d", gs.gold, gs.player.totalTroops()),
+             panelX, 120, 22, RAYWHITE);
+    ui::Text("Survivors of won battles earn experience; spend it to promote them.",
+             panelX, 150, 18, Fade(RAYWHITE, 0.7f));
+
+    int y = 200;
+    for (int slot = 0; slot < (int)rows.size(); ++slot) {
+        const int t = rows[slot];
+        const TroopDef& td = c.troops[t];
+        const int xp = (t < (int)gs.troopXp.size()) ? gs.troopXp[t] : 0;
+        ui::Text(TextFormat("[%d]  %-10s x%-3d   XP %d", slot + 1, td.name.c_str(),
+                            gs.player.troopCounts[t], xp),
+                 panelX, y, 24, RAYWHITE);
+        if (td.upgradesTo >= 0) {
+            const bool can = xp >= td.upgradeXp;
+            ui::Text(TextFormat("-> %s  (%d XP)", c.troops[td.upgradesTo].name.c_str(),
+                                td.upgradeXp),
+                     panelX + 420, y, 20, can ? LIME : Fade(RAYWHITE, 0.45f));
+        } else {
+            ui::Text("(elite)", panelX + 420, y, 20, Fade(GOLD, 0.6f));
+        }
+        y += 34;
+    }
+    if (rows.empty())
+        ui::Text("Your warband is empty. Recruit in a friendly settlement.",
+                 panelX, y, 22, Fade(RED, 0.8f));
+
+    ui::Text("[1-9] promote one unit    [Esc / P] back to the map",
+             panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    EndDrawing();
+}
+
 void SettlementUpdate(GameState& gs, const CampaignInput& in) {
     const Content& c = gs.content;
     if (gs.currentSettlement < 0 || gs.currentSettlement >= (int)gs.towns.size()) {

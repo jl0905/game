@@ -118,6 +118,13 @@ int main(int argc, char** argv) {
                 else                                 CampaignDraw(gs);
                 break;
             }
+            case Screen::Party: {                         // roster + upgrades; paused
+                const CampaignInput in = GatherCampaignInput(gs);
+                PartyUpdate(gs, in);
+                if (gs.screen == Screen::Party) PartyDraw(gs);
+                else                            CampaignDraw(gs);
+                break;
+            }
             case Screen::Battle: {
                 const BattleInput in = GatherBattleInput();
                 BattleOutcome out;

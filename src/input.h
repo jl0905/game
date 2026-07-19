@@ -21,6 +21,10 @@ struct CampaignInput {
     int     recruitSlot     = -1;     // roster slot to recruit, -1 none
     bool    leaveSettlement = false;
 
+    // party screen
+    bool    openParty   = false;      // P on the map
+    int     upgradeSlot = -1;         // troop row to upgrade one unit of
+
     // meta
     bool    quickSave = false;        // F5
     bool    quickLoad = false;        // F9

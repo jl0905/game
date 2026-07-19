@@ -21,6 +21,7 @@ public:
     }
 
     const T& operator[](int handle) const { return defs_[handle]; }
+    T&       operator[](int handle)       { return defs_[handle]; }  // load-time wiring only
     int size() const { return static_cast<int>(defs_.size()); }
     bool valid(int handle) const { return handle >= 0 && handle < size(); }
 

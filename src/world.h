@@ -78,6 +78,7 @@ struct GameState {
     int                nearTown = -1;
     int                currentSettlement = -1;   // town index while inside a settlement
     bool               timeFlowing = false;      // did world time advance this frame?
+    std::vector<int>   troopXp;                  // player XP pool per troop type (C2)
 
     // Battle handoff
     int              siegeTownIndex   = -1;      // assaulting this town (else -1)

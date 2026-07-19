@@ -21,6 +21,7 @@ constexpr float WEAPON_REACH  = 2.5f;
 constexpr float WEAPON_SWING  = 0.7f;
 constexpr int   ARMOR_VALUE   = 0;
 constexpr float ARMOR_WEIGHT  = 0.0f;
+constexpr int   UPGRADE_XP    = 100;   // experience one troop upgrade costs
 }  // namespace base
 
 // Small helpers to keep the registration list readable.
@@ -108,6 +109,13 @@ void LoadDefaultContent(Content& c) {
     const int t_infantry = c.troops.add(infantry);
     const int t_veteran  = c.troops.add(veteran);
     const int t_archer   = c.troops.add(archer);
+
+    // Upgrade tree: recruit -> infantry -> veteran; archers are a branch off
+    // recruit. Costs are flat placeholders.
+    c.troops[t_recruit].upgradesTo  = t_infantry;
+    c.troops[t_recruit].upgradeXp   = base::UPGRADE_XP;
+    c.troops[t_infantry].upgradesTo = t_veteran;
+    c.troops[t_infantry].upgradeXp  = base::UPGRADE_XP;
 
     // ---- Factions ----------------------------------------------------------
     // Distinct behaviours + rosters give the map its variety of party types.

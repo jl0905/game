@@ -56,6 +56,7 @@ bool SaveGame(const GameState& gs, const char* path) {
     f << "gold " << gs.gold << '\n';
     f << "playerpos " << gs.player.pos.x << ' ' << gs.player.pos.y << '\n';
     WriteTroops(f, c, "ptroop", gs.player.troopCounts);
+    WriteTroops(f, c, "pxp",    gs.troopXp);   // veterancy pools
 
     // Hero equipment: worn slots by id, then the carried arsenal in order.
     for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
@@ -120,13 +121,14 @@ bool LoadGame(GameState& gs, const char* path) {
         if (!(ss >> tag)) continue;
         if (tag == "gold") ss >> gs.gold;
         else if (tag == "playerpos") ss >> gs.player.pos.x >> gs.player.pos.y;
-        else if (tag == "ptroop" || tag == "troop") {
+        else if (tag == "ptroop" || tag == "troop" || tag == "pxp") {
             std::string id; int n = 0;
             ss >> id >> n;
             const int t = c.troops.find(id.c_str());
             if (t < 0 || n <= 0) continue;   // troop type no longer exists
-            if (tag == "ptroop") gs.player.troopCounts[t] += n;
-            else if (cur)        cur->troopCounts[t] += n;
+            if (tag == "ptroop")      gs.player.troopCounts[t] += n;
+            else if (tag == "pxp")    gs.troopXp[t] += n;
+            else if (cur)             cur->troopCounts[t] += n;
         } else if (tag == "wear") {
             std::string slot, id;
             ss >> slot >> id;

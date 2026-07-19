@@ -62,6 +62,9 @@ struct Harness {
             case Screen::Settlement:
                 SettlementUpdate(gs, cin);
                 break;
+            case Screen::Party:
+                PartyUpdate(gs, cin);
+                break;
             case Screen::Battle: {
                 BattleOutcome out;
                 BattleInput b = bin;
@@ -112,6 +115,7 @@ struct Harness {
         switch (gs.screen) {
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
+            case Screen::Party:        return "Party";
             case Screen::Battle:       return "Battle";
             case Screen::BattleResult: return "BattleResult";
         }
@@ -126,7 +130,8 @@ struct Harness {
         std::printf("troops:");
         for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
             if (gs.player.troopCounts[t] > 0)
-                std::printf(" %s=%d", c.troops[t].id.c_str(), gs.player.troopCounts[t]);
+                std::printf(" %s=%d(xp%d)", c.troops[t].id.c_str(), gs.player.troopCounts[t],
+                            t < (int)gs.troopXp.size() ? gs.troopXp[t] : 0);
         std::printf("\n");
         if (!gs.resultText.empty())
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
@@ -242,6 +247,17 @@ int RunScript(const char* path) {
             int slot = 0, n = 1; ss >> slot >> n;
             for (int i = 0; i < n; ++i) {
                 CampaignInput cin; cin.recruitSlot = slot;
+                h.Step(cin, BattleInput{});
+            }
+        } else if (cmd == "party") {
+            CampaignInput cin;
+            if (h.gs.screen == Screen::Party) cin.leaveSettlement = true;
+            else                              cin.openParty = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "upgrade") {
+            int slot = 0, n = 1; ss >> slot >> n;
+            for (int i = 0; i < n; ++i) {
+                CampaignInput cin; cin.upgradeSlot = slot;
                 h.Step(cin, BattleInput{});
             }
         } else if (cmd == "save" || cmd == "load") {
