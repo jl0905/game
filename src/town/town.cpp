@@ -327,8 +327,10 @@ void TownDraw(const GameState& gs) {
         const Vector3 look = { sinf(T.yaw) * cosf(T.pitch), sinf(T.pitch),
                                cosf(T.yaw) * cosf(T.pitch) };
         const Vector3 eye = { T.iPos.x, T.iPos.y + 1.9f, T.iPos.z };
-        cam.position = Vector3Subtract(eye, Vector3Scale(look, 4.0f));
-        cam.position.y = fmaxf(cam.position.y, 0.5f);
+        cam.position = Vector3Subtract(eye, Vector3Scale(look, 2.4f));
+        cam.position.y = Clamp(cam.position.y, 0.5f, 3.6f);
+        cam.position.x = Clamp(cam.position.x, -5.6f, 5.6f);   // stay in the room
+        cam.position.z = Clamp(cam.position.z, -4.1f, 4.5f);
         cam.target = Vector3Add(eye, Vector3Scale(look, 3.0f));
         cam.up = { 0, 1, 0 };
         cam.fovy = 60;
