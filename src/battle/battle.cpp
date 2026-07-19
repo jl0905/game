@@ -569,6 +569,8 @@ struct BattleState {
     int   ranks = 3;
     bool  showMenu = false;
     int   ownCount = 0;             // player's own (non-ally) troop count
+    int   enemyCount = 0;           // enemy line strength at the start
+    bool  enemyHoldsLine = false;   // field armies form up before they charge
 
     // Parallel-AI scratch, reused each frame to avoid per-frame allocation.
     std::vector<AICmd> cmds;
@@ -626,7 +628,7 @@ void SpawnLine(const Content& c, Team team, const std::vector<int>& counts, floa
             s.ally = ally;
             s.maxHp = (float)c.troops[troop].maxHp;
             s.hp = s.maxHp;
-            s.slot = (team == Team::Player && !ally) ? n : -1;   // formation slot
+            s.slot = ally ? -1 : n;   // formation slot (players and enemy lines)
             s.activeWeapon = c.troops[troop].loadout.weaponAt(0);
             s.horseHp = HORSE_HP;
             const float x = -20.0f + (n % 10) * 4.0f;
@@ -803,10 +805,18 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 
     const bool commanded =
         (s.team == Team::Player && !s.ally && formation != FormationType::Charge);
+    // Enemy field armies keep a battle line until the fight comes near.
+    const bool enemyInLine =
+        s.team == Team::Enemy && B.enemyHoldsLine && s.slot >= 0 &&
+        !(haveFoe && foeDist < 28.0f);
 
     Vector3 goal;
     bool holding = false;
-    if (commanded && !(haveFoe && foeDist <= engage * 1.3f)) {
+    if (enemyInLine) {
+        goal = FormationTarget(FormationType::Line, 4, { 0, s.pos.y, 30.0f }, PI,
+                               s.slot, B.enemyCount);
+        holding = true;
+    } else if (commanded && !(haveFoe && foeDist <= engage * 1.3f)) {
         goal = FormationTarget(formation, ranks, anchor, anchorYaw, s.slot, ownCount);
         holding = true;
     } else if (haveFoe) {
@@ -959,8 +969,12 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     // Count the player's own troops (formation slots were assigned in SpawnLine)
     // and set up the hero's carried weapons.
     B.ownCount = 0;
-    for (const Soldier& s : B.soldiers)
+    B.enemyCount = 0;
+    for (const Soldier& s : B.soldiers) {
         if (s.team == Team::Player && !s.ally) ++B.ownCount;
+        if (s.team == Team::Enemy) ++B.enemyCount;
+    }
+    B.enemyHoldsLine = !setup.siege;   // field armies form up; garrisons hold posts
 
     B.heroArsenal.clear();
     for (int i = 0; i < setup.heroLoadout.weaponCount(); ++i)
