@@ -1218,6 +1218,46 @@ void InventoryDraw(const GameState& gs) {
         ui::Text("Empty. Win battles to gather loot.", ox, oy + INV_H * INV_CELL + 16,
                  20, Fade(RAYWHITE, 0.6f));
 
+    // Hover tooltip: what is this thing, and what does it do?
+    const Vector2 m = GetMousePosition();
+    const int hx = ((int)m.x - ox) / INV_CELL;
+    const int hy = ((int)m.y - oy) / INV_CELL;
+    if (m.x >= ox && m.y >= oy && hx >= 0 && hx < INV_W && hy >= 0 && hy < INV_H) {
+        const int idx = ItemAtCell(gs, hx, hy);
+        if (idx >= 0) {
+            const InvItem& it = gs.inventory[idx];
+            const char* line1;
+            const char* line2;
+            if (it.isWeapon) {
+                const WeaponDef& w = c.weapons[it.handle];
+                const char* cls = w.wclass == WeaponClass::TwoHanded ? "Two-handed"
+                                : w.wclass == WeaponClass::Polearm   ? "Polearm"
+                                : w.wclass == WeaponClass::Axe       ? "Axe"
+                                : w.wclass == WeaponClass::Ranged    ? "Ranged"
+                                                                     : "One-handed";
+                line1 = TextFormat("%s  ·  %s", w.name.c_str(), cls);
+                line2 = w.isRanged()
+                    ? TextFormat("dmg %.0f   range %.0f", w.damage, w.missileRange)
+                    : TextFormat("dmg %.0f   reach %.1f   swing %.1fs",
+                                 w.damage, w.reach, w.swingTime);
+            } else {
+                const ArmorDef& a = c.armor[it.handle];
+                const char* slot = a.slot == EquipSlot::Head ? "Head"
+                                 : a.slot == EquipSlot::Body ? "Body"
+                                 : a.slot == EquipSlot::Hands ? "Hands" : "Feet";
+                line1 = TextFormat("%s  ·  %s", a.name.c_str(), slot);
+                line2 = TextFormat("armour %d", a.armor);
+            }
+            const int tw = ui::Measure(line1, 20) > ui::Measure(line2, 18)
+                               ? ui::Measure(line1, 20) : ui::Measure(line2, 18);
+            const int bx = (int)m.x + 16, by = (int)m.y + 8;
+            DrawRectangle(bx - 8, by - 6, tw + 16, 54, Fade(BLACK, 0.85f));
+            DrawRectangleLines(bx - 8, by - 6, tw + 16, 54, Fade(GOLD, 0.6f));
+            ui::Text(line1, bx, by, 20, RAYWHITE);
+            ui::Text(line2, bx, by + 26, 18, Fade(RAYWHITE, 0.75f));
+        }
+    }
+
     EndDrawing();
 }
 
