@@ -906,6 +906,7 @@ void EndBattle(bool won) {
     B.over = true;
     B.won = won;
     B.overTimer = 2.5f;
+    SfxPlay(won ? Sfx::Fanfare : Sfx::Knell);
     if (IsWindowReady()) EnableCursor();   // headless harness has no window
 }
 

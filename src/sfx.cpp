@@ -8,7 +8,7 @@
 namespace {
 
 constexpr int   RATE   = 22050;
-constexpr int   NSFX   = 5;
+constexpr int   NSFX   = 8;
 Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
 bool   g_ready = false;
@@ -75,6 +75,25 @@ void SfxInit() {
             if (lt > 0) v += (sinf(2 * PI * 70.0f * lt) + Noise() * 0.2f) * expf(-lt * 40.0f);
         }
         return v * 0.5f;
+    });
+    // Click: a dry little tick for menus.
+    g_sounds[(int)Sfx::Click] = Synth(0.05f, [](float t) {
+        return sinf(2 * PI * 900.0f * t) * expf(-t * 90.0f) * 0.5f;
+    });
+    // Fanfare: three rising horn-ish notes.
+    g_sounds[(int)Sfx::Fanfare] = Synth(0.9f, [](float t) {
+        const float freqs[3] = { 392.0f, 494.0f, 587.0f };
+        const int   note = t < 0.25f ? 0 : (t < 0.5f ? 1 : 2);
+        const float lt = t - note * 0.25f;
+        const float f = freqs[note];
+        const float env = fminf(lt * 20.0f, 1.0f) * expf(-lt * (note == 2 ? 3.0f : 6.0f));
+        return (sinf(2 * PI * f * t) * 0.5f + sinf(2 * PI * f * 2.0f * t) * 0.2f) * env * 0.7f;
+    });
+    // Knell: one low mournful bell.
+    g_sounds[(int)Sfx::Knell] = Synth(1.2f, [](float t) {
+        const float env = expf(-t * 2.6f);
+        return (sinf(2 * PI * 196.0f * t) * 0.6f + sinf(2 * PI * 293.0f * t) * 0.25f +
+                sinf(2 * PI * 415.0f * t) * 0.15f) * env * 0.7f;
     });
     g_ready = true;
 }

@@ -1,6 +1,7 @@
 #include "town.h"
 #include "../battle/character.h"   // the one humanoid renderer (battle owns it)
 #include "../gfx.h"
+#include "../sfx.h"
 #include "../ui.h"
 #include "raymath.h"
 #include <cmath>
@@ -243,6 +244,7 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
             if (gs.gold >= td.cost) {
                 gs.gold -= td.cost;
                 gs.player.troopCounts[roster[cin.recruitSlot]]++;
+                SfxPlay(Sfx::Click);
             }
         }
     }

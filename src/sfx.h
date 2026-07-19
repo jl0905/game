@@ -5,7 +5,7 @@
 // All calls are safe headless (no audio device = silent no-ops).
 // ---------------------------------------------------------------------------
 
-enum class Sfx { Thud, Clang, Loose, Swing, Gallop };
+enum class Sfx { Thud, Clang, Loose, Swing, Gallop, Click, Fanfare, Knell };
 
 void SfxInit();       // call once after InitWindow (opens the audio device)
 void SfxShutdown();

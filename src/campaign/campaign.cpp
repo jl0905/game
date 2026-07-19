@@ -1,5 +1,6 @@
 #include "campaign.h"
 #include "../save.h"
+#include "../sfx.h"
 #include "../ui.h"
 #include <algorithm>
 #include <cmath>
@@ -1339,6 +1340,7 @@ void VictoryDraw(const GameState& gs) {
 }
 
 bool TitleUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.menuChoice != 0) SfxPlay(Sfx::Click);
     switch (in.menuChoice) {
         case 1:   // fresh world
             gs.screen = Screen::Campaign;
