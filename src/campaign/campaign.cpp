@@ -229,6 +229,17 @@ static bool ValidParty(const GameState& gs, int i) {
     return i >= 0 && i < (int)gs.parties.size();
 }
 
+// "2 Recruit, 1 Archer" — human-readable troop tally; empty when no losses.
+static std::string LossSummary(const Content& c, const std::vector<int>& losses) {
+    std::string out;
+    for (int t = 0; t < (int)losses.size() && t < c.troops.size(); ++t) {
+        if (losses[t] <= 0) continue;
+        if (!out.empty()) out += ", ";
+        out += TextFormat("%d %s", losses[t], c.troops[t].name.c_str());
+    }
+    return out;
+}
+
 static void ApplyBattleResult(GameState& gs) {
     // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
@@ -249,6 +260,9 @@ static void ApplyBattleResult(GameState& gs) {
     Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
     if (enemy) enemy->engaged = false;
 
+    // Battle report: outcome, loot, and what the fight cost each side.
+    const std::string fallen = LossSummary(gs.content, gs.playerLosses);
+    const std::string slain  = LossSummary(gs.content, gs.enemyLosses);
     if (gs.battleWon) {
         const int loot = 50 + GetRandomValue(0, 100);
         gs.gold += loot;
@@ -261,6 +275,8 @@ static void ApplyBattleResult(GameState& gs) {
         gs.player.pos.y = Clamp(gs.player.pos.y + Frand(-300, 300), 100, MAP_SIZE - 100);
         if (ally) ally->alive = false;   // the side you backed lost the field
     }
+    if (!slain.empty())  gs.resultText += "   Slain: " + slain;
+    if (!fallen.empty()) gs.resultText += "   Fallen: " + fallen;
 
     // A party wiped out of troops is gone regardless of who "won".
     if (ally && ally->totalTroops() <= 0) ally->alive = false;

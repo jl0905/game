@@ -68,6 +68,7 @@ struct Harness {
                     gs.battleWon    = out.won;
                     gs.playerLosses = out.playerLosses;
                     gs.allyLosses   = out.allyLosses;
+                    gs.enemyLosses  = out.enemyLosses;
                     gs.screen = Screen::BattleResult;
                     battleLive = false;
                     blockHeld = false;

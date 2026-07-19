@@ -670,6 +670,13 @@ std::vector<int> ComputeAllyLosses() {
     return losses;
 }
 
+std::vector<int> ComputeEnemyLosses() {
+    std::vector<int> losses = B.setup.enemyTroops;
+    for (const Soldier& s : B.soldiers)
+        if (s.team == Team::Enemy && s.hp > 0) losses[s.troop]--;
+    return losses;
+}
+
 }  // namespace
 
 void BattleInit(const Content& c, const BattleSetup& setup) {
@@ -835,6 +842,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             out.won = B.won;
             out.playerLosses = ComputeLosses();
             out.allyLosses   = ComputeAllyLosses();
+            out.enemyLosses  = ComputeEnemyLosses();
             return false;   // battle over — caller returns to the world map
         }
     }

@@ -77,5 +77,6 @@ struct GameState {
     bool             battleWon = false;
     std::vector<int> playerLosses;               // parallel to troops
     std::vector<int> allyLosses;                 // parallel to troops (if an ally fought)
+    std::vector<int> enemyLosses;                // enemy dead, for the battle report
     std::string      resultText;
 };

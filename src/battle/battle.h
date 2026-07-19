@@ -33,6 +33,7 @@ struct BattleOutcome {
     bool             won = false;
     std::vector<int> playerLosses;   // parallel to Content::troops
     std::vector<int> allyLosses;     // losses among allyTroops (empty if none)
+    std::vector<int> enemyLosses;    // enemy dead, parallel to Content::troops
 };
 
 // Read-only view of the running battle, for script harnesses and debugging.
