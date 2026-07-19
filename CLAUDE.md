@@ -116,6 +116,7 @@ demand. This is the primary way for agents to actually *play* the game:
 ```
 seed 42            # deterministic run
 walk -1 0.05 2     # travel on the map (direction dx dy, seconds) — time flows
+hunt 60            # auto-steer to the nearest hostile party until battle starts
 wait 30            # stand still and let world time pass
 state              # dump: screen, gold, party, all parties, skirmishes, battle view
 enter 0 / leave    # settlements; recruit SLOT N
@@ -168,6 +169,13 @@ All of these are edits to `src/content.cpp` only, unless noted:
   read-only snapshot via `ThreadPool` in `src/parallel.h`) followed by a serial
   apply phase — no locks in the hot path, no data races. The pool is a shared
   singleton (`ThreadPool::Global()`); CMake links `Threads::Threads`.
+- **Ranged combat.** A `WeaponClass::Ranged` weapon with `missileRange`/
+  `missileSpeed` set (see the Short Bow) makes its wielder an archer: the AI
+  advances to ~90% of missile range, stands, and looses ballistic arrows
+  (`Arrow` sim in `battle.cpp`; gravity-compensated aim, per-hit armour soak,
+  no friendly fire, terrain stops shafts). Blocking soaks arrows at
+  `BLOCK_MISSILE_FACTOR`. Archers carry a sidearm and switch automatically
+  when cornered (`PickWeaponForRange` treats missile range as reach).
 - **Combat stats are data-routed.** Damage, reach and cooldown come from the
   wielded `WeaponDef` (`WeaponDamage`/`WeaponReach`/`WeaponCooldown` in
   `battle.cpp`; bare-hand `FIST_*` fallbacks); worn armour soaks per hit via

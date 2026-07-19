@@ -23,6 +23,8 @@
 //   quit                stop (end-of-file also stops)
 // campaign:
 //   walk DX DY T        travel in direction (DX,DY) for T seconds (time flows)
+//   hunt T              auto-steer toward the nearest hostile party for up to
+//                       T seconds; stops early when a battle starts
 //   wait T              stand still and let time pass for T seconds
 //   enter N             enter settlement index N     |  leave
 //   recruit SLOT [N]    recruit N (default 1) troops from roster slot
@@ -92,6 +94,29 @@ struct Harness {
         for (int i = 0; i < n; ++i) Step(cin, bin);
     }
 
+    // Steer toward the nearest live hostile party each step until a battle
+    // starts (or the time budget runs out).
+    void Hunt(float seconds) {
+        const int n = (int)(seconds / STEP + 0.5f);
+        for (int i = 0; i < n && gs.screen == Screen::Campaign; ++i) {
+            int best = -1;
+            float bestD = 1e9f;
+            for (int p = 0; p < (int)gs.parties.size(); ++p) {
+                const Party& e = gs.parties[p];
+                if (!e.alive || e.engaged) continue;
+                if (!AreFactionsHostile(gs.content, e.faction, gs.content.playerFaction)) continue;
+                const float d = Vector2Distance(e.pos, gs.player.pos);
+                if (d < bestD) { bestD = d; best = p; }
+            }
+            CampaignInput cin;
+            if (best >= 0)
+                cin.move = Vector2Subtract(gs.parties[best].pos, gs.player.pos);
+            else
+                cin.wait = true;   // nothing to hunt yet; let the world breathe
+            Step(cin, BattleInput{});
+        }
+    }
+
     const char* ScreenName() const {
         switch (gs.screen) {
             case Screen::Campaign:     return "Campaign";
@@ -131,10 +156,10 @@ struct Harness {
             const char* wname = c.weapons.valid(v.heroWeapon)
                                     ? c.weapons[v.heroWeapon].id.c_str() : "none";
             std::printf("battle: heroPos=(%.2f,%.2f,%.2f) yaw=%.3f pitch=%.3f "
-                        "hp=%.0f/%.0f weapon=%s allies=%d enemies=%d over=%d won=%d\n",
+                        "hp=%.0f/%.0f weapon=%s allies=%d enemies=%d arrows=%d over=%d won=%d\n",
                         v.heroPos.x, v.heroPos.y, v.heroPos.z, v.heroYaw, v.heroPitch,
                         v.heroHp, v.heroMaxHp, wname, v.aliveAllies, v.aliveEnemies,
-                        v.over ? 1 : 0, v.won ? 1 : 0);
+                        v.arrowsInFlight, v.over ? 1 : 0, v.won ? 1 : 0);
         }
         if (gs.screen == Screen::Settlement)
             std::printf("settlement=%d (%s)\n", gs.currentSettlement,
@@ -201,6 +226,9 @@ int RunScript(const char* path) {
             CampaignInput cin; float t = 1;
             ss >> cin.move.x >> cin.move.y >> t;
             h.Ticks(t, cin, BattleInput{});
+        } else if (cmd == "hunt") {
+            float t = 10; ss >> t;
+            h.Hunt(t);
         } else if (cmd == "wait") {
             float t = 1; ss >> t;
             CampaignInput cin; cin.wait = true;

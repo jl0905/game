@@ -3,6 +3,7 @@
 #include "../ui.h"
 #include "../parallel.h"
 #include "raymath.h"
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -25,6 +26,13 @@ constexpr float SOLDIER_RADIUS = 0.6f;
 constexpr float FIST_DAMAGE = 10.0f;
 constexpr float FIST_REACH  = 2.6f;
 constexpr float FIST_SWING  = 0.7f;
+
+// Missile flight. TODO(balance): gravity/lifetime are feel, not tuning.
+constexpr float ARROW_GRAVITY  = 10.0f;
+constexpr float ARROW_LIFETIME = 4.0f;
+constexpr float ARROW_HIT_RADIUS = 0.9f;
+constexpr float BLOCK_MELEE_FACTOR   = 0.15f;  // guarded melee damage multiplier
+constexpr float BLOCK_MISSILE_FACTOR = 0.5f;   // a raised guard helps less vs arrows
 
 // ===========================================================================
 // Battle terrain
@@ -369,7 +377,11 @@ int PickWeaponForRange(const Content& c, const Loadout& lo, float dist) {
     for (int i = 0; i < n; ++i) {
         const int h = lo.weaponAt(i);
         if (!c.weapons.valid(h)) continue;
-        const float r = c.weapons[h].reach > 0.5f ? c.weapons[h].reach : FIST_REACH;
+        const WeaponDef& w = c.weapons[h];
+        // A bow's effective "reach" is its missile range, so an archer keeps the
+        // bow up until a foe is inside melee reach of its sidearm.
+        const float r = w.isRanged() ? w.missileRange
+                                     : (w.reach > 0.5f ? w.reach : FIST_REACH);
         if (r >= dist && r < ssReach) { ssReach = r; shortestSufficient = h; }
         if (r > longReach)            { longReach = r; longest = h; }
     }
@@ -390,6 +402,19 @@ struct AICmd {
     int     hitSoldier = -1; // soldier index to damage this frame, or -1
     bool    hitPlayer = false;
     float   hitDamage = 0;
+    bool    shoot = false;   // loose a missile instead of a melee blow
+    Vector3 shootAt{};       // where the missile is aimed
+};
+
+// A missile in flight. Team says who it can hurt (no friendly fire — allied
+// archers shooting over a melee would otherwise slaughter their own side).
+struct Arrow {
+    Vector3 pos;
+    Vector3 vel;
+    Team    team;
+    float   damage = 0;
+    float   life = ARROW_LIFETIME;
+    bool    alive = true;
 };
 
 struct Soldier {
@@ -412,6 +437,7 @@ struct BattleState {
     BattleSetup          setup;     // world-map snapshot this battle runs on
     Terrain              terrain;   // generated from setup.campaignPos
     std::vector<Soldier> soldiers;
+    std::vector<Arrow>   arrows;    // missiles in flight
 
     // Player avatar
     Vector3 pPos;
@@ -560,7 +586,12 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     // Pick the best carried weapon for this distance (multi-weapon support).
     const Loadout& lo = TroopLoadout(c, s.troop);
     cmd.activeWeapon = PickWeaponForRange(c, lo, haveFoe ? foeDist : FIST_REACH);
-    const float engage = WeaponReach(c, cmd.activeWeapon) * 0.8f;
+    const WeaponDef* wd = c.weapons.valid(cmd.activeWeapon) ? &c.weapons[cmd.activeWeapon] : nullptr;
+    const bool ranged = wd && wd->isRanged();
+    // Archers advance until comfortably inside missile range, then stand and
+    // loose; melee closes to arm's reach.
+    const float engage = ranged ? wd->missileRange * 0.9f
+                                : WeaponReach(c, cmd.activeWeapon) * 0.8f;
 
     const bool commanded =
         (s.team == Team::Player && !s.ally && formation != FormationType::Charge);
@@ -586,8 +617,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon);
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
-        if (targetPlayer) cmd.hitPlayer = true;
-        else              cmd.hitSoldier = target;
+        if (ranged)           { cmd.shoot = true; cmd.shootAt = tpos; }
+        else if (targetPlayer) cmd.hitPlayer = true;
+        else                   cmd.hitSoldier = target;
     } else if (dist > (holding ? 0.4f : engage)) {
         cmd.step    = Vector3Scale(Vector3Normalize(to), c.troops[s.troop].moveSpeed * dt);
         cmd.walkAdd = dt * 10.0f;
@@ -841,14 +873,67 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (cmd.hitPlayer)
                 playerDamage += ApplyArmor(cmd.hitDamage,
                                            LoadoutArmor(c, B.setup.heroLoadout));
+            if (cmd.shoot) {
+                // Loose an arrow from chest height, lobbed to compensate for
+                // gravity drop over the flight time (simple ballistic aim).
+                Arrow a;
+                a.team   = s.team;
+                a.damage = cmd.hitDamage;
+                a.pos    = Vector3Add(s.pos, { 0, 1.5f, 0 });
+                const Vector3 target = Vector3Add(cmd.shootAt, { 0, 1.2f, 0 });
+                Vector3 delta = Vector3Subtract(target, a.pos);
+                const float distTo = Vector3Length(delta);
+                const bool  validSpeed = c.weapons.valid(cmd.activeWeapon) &&
+                                         c.weapons[cmd.activeWeapon].missileSpeed > 1.0f;
+                const float speed = validSpeed ? c.weapons[cmd.activeWeapon].missileSpeed : 30.0f;
+                a.vel = Vector3Scale(Vector3Normalize(delta), speed);
+                a.vel.y += 0.5f * ARROW_GRAVITY * (distTo / speed);
+                B.arrows.push_back(a);
+            }
         }
         for (int i = 0; i < n; ++i)
             if (B.soldiers[i].hp > 0) B.soldiers[i].hp -= B.dmg[i];
-        if (playerDamage > 0.0f) B.pHp -= B.blocking ? playerDamage * 0.15f : playerDamage;
+        if (playerDamage > 0.0f)
+            B.pHp -= B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
 
         // Keep living soldiers sitting on the terrain surface (they moved in x/z).
         for (Soldier& s : B.soldiers)
             if (s.hp > 0) s.pos.y = B.terrain.HeightAt(s.pos.x, s.pos.z);
+
+        // ---------- arrows in flight ----------
+        for (Arrow& a : B.arrows) {
+            if (!a.alive) continue;
+            a.life -= dt;
+            a.pos = Vector3Add(a.pos, Vector3Scale(a.vel, dt));
+            a.vel.y -= ARROW_GRAVITY * dt;
+            if (a.life <= 0 || a.pos.y <= B.terrain.HeightAt(a.pos.x, a.pos.z)) {
+                a.alive = false;   // stuck in the dirt
+                continue;
+            }
+            // Hit a soldier of the opposing team?
+            for (Soldier& s : B.soldiers) {
+                if (s.hp <= 0 || s.team == a.team) continue;
+                const Vector3 chest = Vector3Add(s.pos, { 0, 1.2f, 0 });
+                if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
+                    s.hp -= ApplyArmor(a.damage, LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                    a.alive = false;
+                    break;
+                }
+            }
+            // Hit the player?
+            if (a.alive && a.team == Team::Enemy) {
+                const Vector3 chest = Vector3Add(B.pPos, { 0, 1.2f, 0 });
+                if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
+                    float d = ApplyArmor(a.damage, LoadoutArmor(c, B.setup.heroLoadout));
+                    if (B.blocking) d *= BLOCK_MISSILE_FACTOR;
+                    B.pHp -= d;
+                    a.alive = false;
+                }
+            }
+        }
+        B.arrows.erase(std::remove_if(B.arrows.begin(), B.arrows.end(),
+                                      [](const Arrow& a) { return !a.alive; }),
+                       B.arrows.end());
     }
 
     // Tallies for the HUD and win/lose, computed after damage is applied.
@@ -902,6 +987,12 @@ void BattleDraw(const Content& c) {
         const float frac = s.hp / s.maxHp;
         DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,
                  s.team == Team::Enemy ? RED : GREEN);
+    }
+
+    // arrows in flight — short shafts oriented along their velocity
+    for (const Arrow& a : B.arrows) {
+        const Vector3 tail = Vector3Subtract(a.pos, Vector3Scale(Vector3Normalize(a.vel), 0.6f));
+        DrawCylinderEx(tail, a.pos, 0.03f, 0.03f, 4, DARKBROWN);
     }
 
     // player avatar
@@ -984,6 +1075,7 @@ BattleView GetBattleView() {
     v.heroWeapon   = B.setup.heroLoadout.get(EquipSlot::Weapon);
     v.aliveAllies  = B.aliveAllies;
     v.aliveEnemies = B.aliveEnemies;
+    v.arrowsInFlight = (int)B.arrows.size();
     v.over         = B.over;
     v.won          = B.won;
     return v;

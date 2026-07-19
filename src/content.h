@@ -33,7 +33,12 @@ struct WeaponDef {
     float       reach     = 0.0f;  // TODO(balance): attack range
     float       damage    = 0.0f;  // TODO(balance): hit damage
     float       swingTime = 0.0f;  // TODO(balance): cooldown between swings
+    // Ranged weapons only (wclass == WeaponClass::Ranged):
+    float       missileRange = 0.0f;  // TODO(balance): how far it can shoot
+    float       missileSpeed = 0.0f;  // TODO(balance): projectile speed
     Color       tint      = LIGHTGRAY;
+
+    bool isRanged() const { return wclass == WeaponClass::Ranged && missileRange > 0.5f; }
 };
 
 // What a character wears and wields. Each slot holds a handle into the matching

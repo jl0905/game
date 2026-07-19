@@ -43,6 +43,7 @@ struct BattleView {
     float   heroHp = 0, heroMaxHp = 0;
     int     heroWeapon = -1;   // active weapon handle
     int     aliveAllies = 0, aliveEnemies = 0;
+    int     arrowsInFlight = 0;
     bool    over = false, won = false;
 };
 

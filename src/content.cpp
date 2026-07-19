@@ -28,8 +28,13 @@ static ArmorDef Armor(const char* id, const char* name, EquipSlot slot, Color ti
     return ArmorDef{ id, name, slot, base::ARMOR_VALUE, base::ARMOR_WEIGHT, tint };
 }
 static WeaponDef Weapon(const char* id, const char* name, WeaponClass wc, Color tint) {
-    return WeaponDef{ id, name, wc, base::WEAPON_REACH, base::WEAPON_DAMAGE,
-                      base::WEAPON_SWING, tint };
+    WeaponDef w;
+    w.id = id; w.name = name; w.wclass = wc;
+    w.reach = base::WEAPON_REACH;
+    w.damage = base::WEAPON_DAMAGE;
+    w.swingTime = base::WEAPON_SWING;
+    w.tint = tint;
+    return w;
 }
 
 void LoadDefaultContent(Content& c) {
@@ -52,12 +57,14 @@ void LoadDefaultContent(Content& c) {
     WeaponDef spear = Weapon("spear", "Spear",        WeaponClass::Polearm,   BROWN);
     spear.reach = 4.0f;
     WeaponDef bow   = Weapon("bow",   "Short Bow",    WeaponClass::Ranged,    DARKBROWN);
+    bow.missileRange = 40.0f;   // TODO(balance)
+    bow.missileSpeed = 30.0f;   // TODO(balance)
+    bow.swingTime    = 2.0f;    // TODO(balance): nock-draw-loose is slower than a cut
 
     const int w_sword = c.weapons.add(sword);
     const int w_great = c.weapons.add(great);
     const int w_spear = c.weapons.add(spear);
     const int w_bow   = c.weapons.add(bow);
-    (void)w_bow;  // registered and ready; not yet issued to a troop
 
     // ---- Troops ------------------------------------------------------------
     // Troops differ by loadout + identity, NOT by tuned numbers (all flat base).
@@ -90,9 +97,17 @@ void LoadDefaultContent(Content& c) {
     veteran.loadout.addWeapon(w_great);    // a veteran carries a greatsword
     veteran.loadout.addWeapon(w_sword);    // and a sidearm
 
+    TroopDef archer = makeTroop("archer", "Archer", GREEN);
+    archer.loadout.set(EquipSlot::Head,   a_cap);
+    archer.loadout.set(EquipSlot::Body,   a_tunic);
+    archer.loadout.set(EquipSlot::Feet,   a_boots);
+    archer.loadout.addWeapon(w_bow);       // shoots at range,
+    archer.loadout.addWeapon(w_sword);     // draws steel when cornered
+
     const int t_recruit  = c.troops.add(recruit);
     const int t_infantry = c.troops.add(infantry);
     const int t_veteran  = c.troops.add(veteran);
+    const int t_archer   = c.troops.add(archer);
 
     // ---- Factions ----------------------------------------------------------
     // Distinct behaviours + rosters give the map its variety of party types.
@@ -100,13 +115,13 @@ void LoadDefaultContent(Content& c) {
     kingdom.id = "kingdom"; kingdom.name = "Your Warband";
     kingdom.color = BLUE; kingdom.behavior = PartyBehavior::Patrol;
     kingdom.recruitable = true;
-    kingdom.roster = { t_recruit, t_infantry, t_veteran };
+    kingdom.roster = { t_recruit, t_infantry, t_veteran, t_archer };
     c.playerFaction = c.factions.add(kingdom);
 
     FactionDef raiders;
     raiders.id = "raiders"; raiders.name = "Raiders";
     raiders.color = RED; raiders.behavior = PartyBehavior::Aggressive;
-    raiders.roster = { t_recruit, t_infantry };
+    raiders.roster = { t_recruit, t_infantry, t_archer };
     c.factions.add(raiders);
 
     FactionDef deserters;
