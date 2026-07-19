@@ -1,6 +1,7 @@
 #include "battle.h"
 #include "character.h"
 #include "../gfx.h"
+#include "../sfx.h"
 #include "../ui.h"
 #include "../parallel.h"
 #include "raymath.h"
@@ -690,6 +691,9 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     s.hp -= dmg;
     s.flash = 1.0f;
     SpawnBlood(s.pos);
+    // Volume falls off with distance from the hero (rough but effective).
+    const float d = Vector3Distance(s.pos, B.pPos);
+    SfxPlay(Sfx::Thud, Clamp(1.0f - d / 45.0f, 0.05f, 1.0f));
 }
 
 bool HasRangedWeapon(const Content& c, const Loadout& lo) {
@@ -1033,6 +1037,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
         // Hooves kick up dust at the gallop.
         if (galloping && (PuffRand() & 3) == 0) SpawnDust(B.pPos);
+        if (galloping) SfxPlay(Sfx::Gallop, 0.5f);   // rate limit paces the rhythm
 
         // Ride enemies down: the hero tramples at the gallop, like cavalry.
         B.pTrampleCd -= dt;
@@ -1102,6 +1107,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             B.readying = false;
             B.windup = 0.0f;
             B.swing = 1.0f;
+            SfxPlay(Sfx::Swing);
             const int wh = B.setup.heroLoadout.get(EquipSlot::Weapon);
             const float reach = WeaponReach(c, wh);
             B.cooldown = WeaponCooldown(c, wh);
@@ -1202,6 +1208,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 a.vel = Vector3Scale(Vector3Normalize(delta), speed);
                 a.vel.y += 0.5f * ARROW_GRAVITY * (distTo / speed);
                 B.arrows.push_back(a);
+                SfxPlay(Sfx::Loose,
+                        Clamp(1.0f - Vector3Distance(s.pos, B.pPos) / 45.0f, 0.05f, 0.8f));
             }
         }
         for (int i = 0; i < n; ++i) {
@@ -1224,6 +1232,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (B.blocking) SpawnSparks(B.pPos);   // steel meets shield
             else            SpawnBlood(B.pPos);
             B.shake = fminf(1.0f, B.shake + (B.blocking ? 0.25f : 0.6f));
+            SfxPlay(B.blocking ? Sfx::Clang : Sfx::Thud);
         }
 
         // Keep living soldiers sitting on the terrain surface (they moved in
@@ -1276,6 +1285,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     if (B.blocking) SpawnSparks(B.pPos);
                     else            SpawnBlood(B.pPos);
                     B.shake = fminf(1.0f, B.shake + 0.35f);
+                    SfxPlay(B.blocking ? Sfx::Clang : Sfx::Thud);
                     a.alive = false;
                 }
             }

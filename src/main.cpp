@@ -3,6 +3,7 @@
 #include "harness.h"
 #include "bridge.h"
 #include "save.h"
+#include "sfx.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
 #include "town/town.h"
@@ -90,6 +91,7 @@ int main(int argc, char** argv) {
     SetTargetFPS(120);
     SetExitKey(KEY_NULL);   // ESC shouldn't insta-quit mid battle
     ui::LoadFonts();        // smooth TTF text everywhere (see assets/fonts.cfg)
+    SfxInit();              // procedural sound effects
 
     GameState gs;
     LoadDefaultContent(gs.content);   // populate the data-driven catalogue
@@ -190,6 +192,7 @@ int main(int argc, char** argv) {
     }
 
     ui::UnloadFonts();
+    SfxShutdown();
     CloseWindow();
     return 0;
 }
