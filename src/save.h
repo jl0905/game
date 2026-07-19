@@ -11,6 +11,9 @@
 // "save.owb" next to the exe (windowed) or the working directory (headless).
 const char* DefaultSavePath();
 
+// "autosave.owb" in the same place (written when the game quits).
+const char* AutoSavePath();
+
 bool SaveGame(const GameState& gs, const char* path);
 
 // Requires gs.content to be loaded. On success the world is replaced by the

@@ -2,6 +2,7 @@
 #include "ui.h"
 #include "harness.h"
 #include "bridge.h"
+#include "save.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
 #include "town/town.h"
@@ -94,6 +95,7 @@ int main(int argc, char** argv) {
     LoadDefaultContent(gs.content);   // populate the data-driven catalogue
     CampaignInit(gs);
 
+    float quitArm = 0;   // double-Esc window for quitting
     while (!WindowShouldClose()) {
         const float dt = GetFrameTime();
         const Screen screenAtFrameStart = gs.screen;
@@ -158,9 +160,17 @@ int main(int argc, char** argv) {
                 break;
             }
         }
-        // Quit only when ESC is pressed on the overworld itself — not when it was
-        // just consumed to leave a settlement (which lands us back on Campaign).
-        if (IsKeyPressed(KEY_ESCAPE) && screenAtFrameStart == Screen::Campaign) break;
+        // Quit needs a deliberate double-Esc on the overworld itself — not one
+        // consumed leaving a sub-screen — and always writes an autosave.
+        quitArm -= dt;
+        if (IsKeyPressed(KEY_ESCAPE) && screenAtFrameStart == Screen::Campaign) {
+            if (quitArm > 0) {
+                SaveGame(gs, AutoSavePath());
+                break;
+            }
+            quitArm = 2.0f;
+            gs.resultText = "Press Esc again to quit (autosaves).";
+        }
     }
 
     ui::UnloadFonts();

@@ -38,13 +38,22 @@ int SlotFromName(const std::string& n) {
 
 }  // namespace
 
+namespace {
+const char* SavePathNamed(char* buf, size_t n, const char* name) {
+    if (IsWindowReady()) std::snprintf(buf, n, "%s%s", GetApplicationDirectory(), name);
+    else                 std::snprintf(buf, n, "%s", name);
+    return buf;
+}
+}  // namespace
+
 const char* DefaultSavePath() {
     static char path[512];
-    if (IsWindowReady())
-        std::snprintf(path, sizeof(path), "%ssave.owb", GetApplicationDirectory());
-    else
-        std::snprintf(path, sizeof(path), "save.owb");
-    return path;
+    return SavePathNamed(path, sizeof(path), "save.owb");
+}
+
+const char* AutoSavePath() {
+    static char path[512];
+    return SavePathNamed(path, sizeof(path), "autosave.owb");
 }
 
 bool SaveGame(const GameState& gs, const char* path) {
