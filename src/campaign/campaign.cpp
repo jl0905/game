@@ -77,11 +77,23 @@ struct Foe {
     float   dist     = PERCEPTION;
 };
 
+// A lord's host doesn't break march to chase parties this much smaller than
+// itself — armies have wars to fight. TODO(balance): the contempt ratio.
+constexpr int LORD_NOTICE_RATIO = 4;
+
 // Nearest hostile party (player or AI) that party `ei` can currently see.
+// Lords overlook prey "beneath their notice" (see LORD_NOTICE_RATIO).
 Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
     const Party& e = gs.parties[ei];
+    const bool lordly = !e.lord.empty();
+    const int  mine   = e.totalTroops();
+    auto beneathNotice = [&](int strength) {
+        return lordly && strength * LORD_NOTICE_RATIO < mine;
+    };
+
     Foe best;
-    if (AreFactionsHostile(c, e.faction, c.playerFaction) && gs.player.totalTroops() > 0) {
+    if (AreFactionsHostile(c, e.faction, c.playerFaction) && gs.player.totalTroops() > 0 &&
+        !beneathNotice(gs.player.totalTroops())) {
         const float d = Vector2Distance(e.pos, gs.player.pos);
         if (d < best.dist) best = { -1, gs.player.pos, gs.player.totalTroops(), d };
     }
@@ -90,6 +102,7 @@ Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
         const Party& o = gs.parties[j];
         if (!o.alive || o.engaged) continue;
         if (!AreFactionsHostile(c, e.faction, o.faction)) continue;
+        if (beneathNotice(o.totalTroops())) continue;
         const float d = Vector2Distance(e.pos, o.pos);
         if (d < best.dist) best = { j, o.pos, o.totalTroops(), d };
     }
@@ -630,6 +643,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if (bestD < SIEGE_REACH) {
                         e.engaged = true;
                         gs.aiSieges.push_back({ i, bestTown, AI_SIEGE_TIME });
+                        // Sound the alarm when it's YOUR settlement invested.
+                        if (gs.towns[bestTown].owner == c.playerFaction)
+                            gs.resultText = TextFormat("%s IS UNDER SIEGE by Lord %s!",
+                                                       gs.towns[bestTown].name.c_str(),
+                                                       e.lord.c_str());
                         continue;
                     }
                     target = gs.towns[bestTown].pos;
@@ -670,13 +688,24 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
         }
 
-        // A hostile AI party touching YOU -> your own battle.
+        // A hostile AI party touching YOU -> your own battle. A party besieging
+        // a settlement can be attacked too — riding into it breaks the siege.
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             Party& e = gs.parties[i];
-            if (!e.alive || e.engaged) continue;
+            if (!e.alive) continue;
+            int besiegingIdx = -1;
+            if (e.engaged) {
+                for (int s = 0; s < (int)gs.aiSieges.size(); ++s)
+                    if (gs.aiSieges[s].party == i) { besiegingIdx = s; break; }
+                if (besiegingIdx < 0) continue;   // locked in a skirmish; join it instead
+            }
             if (AreFactionsHostile(c, e.faction, c.playerFaction) &&
                 gs.player.totalTroops() > 0 &&
                 Vector2Distance(e.pos, gs.player.pos) < PLAYER_COLLIDE_DIST) {
+                if (besiegingIdx >= 0) {           // you fall upon the siege camp
+                    gs.aiSieges.erase(gs.aiSieges.begin() + besiegingIdx);
+                    e.engaged = false;
+                }
                 gs.battlePartyIndex = i;
                 gs.battleAllyIndex  = -1;
                 gs.screen = Screen::Battle;

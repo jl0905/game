@@ -59,9 +59,11 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   flips, garrison installed from the attacker's host), fight field battles,
   respawn at home after falling, and persist in saves. Soak-verified: the
   settlement war churns on its own.
-  - [ ] C3b. Lord pacing/awareness: lords currently dogpile the same targets
-    and the map churns fast — revisit with balance pass; player-side
-    notifications when YOUR settlements come under siege.
+  - [x] C3b. Lord awareness: lords ignore parties "beneath their notice"
+    (LORD_NOTICE_RATIO, TODO(balance)) so the early game survives them; a
+    banner alert fires when YOUR settlement is invested; riding into a siege
+    camp breaks the siege and starts the battle. Remaining: lords still
+    dogpile the same targets (pacing → balance pass).
 
 ## Track D — Character & party UI
 
