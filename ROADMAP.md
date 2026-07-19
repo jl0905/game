@@ -7,11 +7,11 @@ no tuned progressions, costs, damage curves, or stat weights yet.
 
 ## Track A — Engine & rendering
 
-- [ ] **A1. GPU rendering / acceleration.** Today every limb/cube is an
-  immediate-mode draw call and the terrain re-submits triangles every frame.
-  Move to: terrain baked into a `Mesh`/`Model` uploaded once; humanoids drawn
-  via instancing or at least batched by material; profile with 600+ soldiers
-  (needed by C3 lord battles). Measure before/after with a scripted battle.
+- [x] **A1. GPU rendering / acceleration.** Terrain baked into a one-time GPU
+  mesh (`Terrain::BakeModel`); soldiers beyond 45 u draw as a two-box LOD
+  silhouette. `--bench N` mode measures it: 300 soldiers 35→68 FPS,
+  600 18→41, 1000 11→41. Further headroom (true instancing) only if C3
+  demands it.
 - [ ] **A2. Better troop models.** Replace bare cube-segments with nicer
   proportioned humanoids (still procedural from `Loadout` — no art pipeline):
   tapered limbs, heads with helmets that read at distance, shields on the arm,

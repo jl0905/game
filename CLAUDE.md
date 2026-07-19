@@ -128,7 +128,11 @@ block on|off  swap  menu  formation 1-4  ranks +|-
 ```
 
 The exe is a GUI app in Release, so capture output via
-`cmd /c "openwarband.exe --script s.txt > out.txt 2>&1"`. Colliding with a
+`cmd /c "openwarband.exe --script s.txt > out.txt 2>&1"`.
+
+`openwarband.exe --bench N` runs a windowed N-vs-N synthetic battle at
+uncapped FPS and writes avg/p99 frame times to `bench.txt` — use it to verify
+any rendering or battle-scale change. Colliding with a
 hostile party mid-`walk`/`wait` enters the battle screen; battles run entirely
 on soldier AI if you issue no battle commands (the idle hero will eventually be
 killed — block or move). See `src/harness.cpp` for the command reference.

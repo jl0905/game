@@ -144,9 +144,20 @@ private:
     float                      cell_  = 0.0f;
     std::vector<float>         gridH_;
     std::vector<unsigned char> gridWater_;
+
+    // The surface is baked into a GPU mesh on first Draw (windowed only) and
+    // drawn as one model instead of thousands of immediate triangles.
+    void BakeModel() const;
+    mutable Model model_{};
+    mutable bool  baked_ = false;
 };
 
 void Terrain::Generate(const TerrainConfig& cfg, float arenaHalf) {
+    if (baked_) {                      // regenerating: drop the old GPU mesh
+        UnloadModel(model_);
+        model_ = Model{};
+        baked_ = false;
+    }
     arena_      = arenaHalf;
     waterLevel_ = 0.0f;
     hasRiver_   = cfg.hasRiver;
@@ -265,8 +276,30 @@ bool Terrain::IsWaterAt(float x, float z) const {
     return hasRiver_ && RiverDistance(x, z) < riverHalfWidth_;
 }
 
-void Terrain::Draw() const {
-    // surface polygons
+// Build the whole surface as ONE mesh (flat-shaded: unshared vertices with
+// per-triangle colors), upload it once, and draw it as a model from then on.
+void Terrain::BakeModel() const {
+    Mesh mesh{};
+    mesh.triangleCount = gridN_ * gridN_ * 2;
+    mesh.vertexCount   = mesh.triangleCount * 3;
+    mesh.vertices = (float*)MemAlloc((unsigned)mesh.vertexCount * 3 * sizeof(float));
+    mesh.normals  = (float*)MemAlloc((unsigned)mesh.vertexCount * 3 * sizeof(float));
+    mesh.colors   = (unsigned char*)MemAlloc((unsigned)mesh.vertexCount * 4);
+
+    int v = 0;
+    auto emit = [&](Vector3 p, Color col) {
+        mesh.vertices[v * 3 + 0] = p.x;
+        mesh.vertices[v * 3 + 1] = p.y;
+        mesh.vertices[v * 3 + 2] = p.z;
+        mesh.normals[v * 3 + 0] = 0;
+        mesh.normals[v * 3 + 1] = 1;
+        mesh.normals[v * 3 + 2] = 0;
+        mesh.colors[v * 4 + 0] = col.r;
+        mesh.colors[v * 4 + 1] = col.g;
+        mesh.colors[v * 4 + 2] = col.b;
+        mesh.colors[v * 4 + 3] = col.a;
+        ++v;
+    };
     for (int j = 0; j < gridN_; ++j) {
         for (int i = 0; i < gridN_; ++i) {
             const float x0 = -arena_ + i * cell_;
@@ -278,10 +311,20 @@ void Terrain::Draw() const {
             const Vector3 C = { x0, gridH_[gridIndex(i,     j + 1)], z1 };
             const Vector3 D = { x1, gridH_[gridIndex(i + 1, j + 1)], z1 };
             // Winding A,C,B / B,C,D gives an upward-facing (+y) normal.
-            DrawTriangle3D(A, C, Bv, TriangleColor(A, C, Bv));
-            DrawTriangle3D(Bv, C, D, TriangleColor(Bv, C, D));
+            const Color c1 = TriangleColor(A, C, Bv);
+            const Color c2 = TriangleColor(Bv, C, D);
+            emit(A, c1); emit(C, c1); emit(Bv, c1);
+            emit(Bv, c2); emit(C, c2); emit(D, c2);
         }
     }
+    UploadMesh(&mesh, false);
+    model_ = LoadModelFromMesh(mesh);
+    baked_ = true;
+}
+
+void Terrain::Draw() const {
+    if (!baked_) BakeModel();
+    DrawModel(model_, { 0, 0, 0 }, 1.0f, WHITE);
 
     // water surface (flat translucent quads over river cells)
     if (hasRiver_) {
@@ -979,10 +1022,25 @@ void BattleDraw(const Content& c) {
     BeginMode3D(cam);
     B.terrain.Draw();
 
+    // Beyond this distance a soldier draws as a cheap two-box silhouette —
+    // full segmented humanoids only where the player can appreciate them.
+    constexpr float LOD_DIST    = 45.0f;
+    constexpr float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
+
     for (const Soldier& s : B.soldiers) {
         if (s.hp <= 0) {
             const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
             DrawCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.7f));
+            continue;
+        }
+        if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
+            const Color tint = TeamTint(s.team);
+            DrawCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
+            DrawCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
+                     Color{ 224, 188, 150, 255 });
+            const float fracFar = s.hp / s.maxHp;
+            DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * fracFar, 0.08f, 0.08f,
+                     s.team == Team::Enemy ? RED : GREEN);
             continue;
         }
         Pose pose;
