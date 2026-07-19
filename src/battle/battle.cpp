@@ -484,12 +484,19 @@ struct Soldier {
     int     activeWeapon = -1; // currently-wielded weapon handle
     bool    onWall = false;    // garrison archer posted on the siege wall
     float   trampleCd = 0;     // mounted: cooldown between trample hits
+    float   horseHp = 0;       // mount's health (mounted troops only)
+    bool    dehorsed = false;  // horse killed under them; fighting on foot
 };
 
 // Cavalry trample. TODO(balance): damage/cooldown; structure only.
 constexpr float TRAMPLE_DAMAGE   = 15.0f;
 constexpr float TRAMPLE_COOLDOWN = 1.5f;
 constexpr float TRAMPLE_RADIUS   = 1.3f;
+
+// Horses are mortal. TODO(balance): mount HP and the share of blows that
+// strike the mount instead of the rider.
+constexpr float HORSE_HP        = 60.0f;
+constexpr float HORSE_HIT_SHARE = 0.4f;
 
 struct BattleState {
     BattleSetup          setup;     // world-map snapshot this battle runs on
@@ -511,6 +518,7 @@ struct BattleState {
     float   pFlash = 0;         // hero just-hit feedback
     bool    mounted = false;    // the hero rides in field battles (not sieges)
     float   pTrampleCd = 0;
+    float   pHorseHp = 0;       // the hero's mount can be killed under him
 
     bool  over = false;
     bool  won = false;
@@ -586,6 +594,7 @@ void SpawnLine(const Content& c, Team team, const std::vector<int>& counts, floa
             s.hp = s.maxHp;
             s.slot = (team == Team::Player && !ally) ? n : -1;   // formation slot
             s.activeWeapon = c.troops[troop].loadout.weaponAt(0);
+            s.horseHp = HORSE_HP;
             const float x = -20.0f + (n % 10) * 4.0f;
             const float z = zBase + (n / 10) * 4.0f * (team == Team::Enemy ? 1.0f : -1.0f);
             s.pos = { x, B.terrain.HeightAt(x, z), z };
@@ -594,6 +603,24 @@ void SpawnLine(const Content& c, Team team, const std::vector<int>& counts, floa
             ++n;
         }
     }
+}
+
+// A soldier still fighting from the saddle.
+bool IsMounted(const Content& c, const Soldier& s) {
+    return c.troops[s.troop].mounted && !s.dehorsed;
+}
+
+// All damage to a soldier routes through here so a mounted target's horse
+// soaks its share of the blow — and can die under the rider.
+void DamageSoldier(const Content& c, Soldier& s, float dmg) {
+    if (IsMounted(c, s)) {
+        const float toHorse = dmg * HORSE_HIT_SHARE;
+        s.horseHp -= toHorse;
+        dmg -= toHorse;
+        if (s.horseHp <= 0) s.dehorsed = true;   // horse falls; rider fights on
+    }
+    s.hp -= dmg;
+    s.flash = 1.0f;
 }
 
 bool HasRangedWeapon(const Content& c, const Loadout& lo) {
@@ -615,6 +642,7 @@ void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
             s.maxHp = (float)c.troops[troop].maxHp;
             s.hp = s.maxHp;
             s.activeWeapon = c.troops[troop].loadout.weaponAt(0);
+            s.horseHp = HORSE_HP;
             s.yaw = PI;   // face the attackers
             if (HasRangedWeapon(c, c.troops[troop].loadout)) {
                 const float x = (wallN % 2 ? 1.0f : -1.0f) *
@@ -725,7 +753,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         else if (targetPlayer) cmd.hitPlayer = true;
         else                   cmd.hitSoldier = target;
     } else if (dist > (holding ? 0.4f : engage)) {
-        cmd.step    = Vector3Scale(Vector3Normalize(to), c.troops[s.troop].moveSpeed * dt);
+        // A dehorsed rider trudges at half pace (his boots, not his horse).
+        const float ms = c.troops[s.troop].moveSpeed * (s.dehorsed ? 0.5f : 1.0f);
+        cmd.step    = Vector3Scale(Vector3Normalize(to), ms * dt);
         cmd.walkAdd = dt * 10.0f;
     }
 
@@ -857,6 +887,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.pMaxHp = (float)setup.heroMaxHp;
     B.pHp = B.pMaxHp;
     B.mounted = !setup.siege;   // walls are stormed on foot
+    B.pHorseHp = HORSE_HP;
 
     if (IsWindowReady()) DisableCursor();   // headless harness has no window
     B.hasLastMouse = false;
@@ -933,9 +964,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 Vector3 d3 = Vector3Subtract(s.pos, B.pPos);
                 d3.y = 0;
                 if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
-                    s.hp -= ApplyArmor(TRAMPLE_DAMAGE,
-                                       LoadoutArmor(c, TroopLoadout(c, s.troop)));
-                    s.flash = 1.0f;
+                    DamageSoldier(c, s, ApplyArmor(TRAMPLE_DAMAGE,
+                                                   LoadoutArmor(c, TroopLoadout(c, s.troop))));
                     B.pTrampleCd = TRAMPLE_COOLDOWN;
                     break;
                 }
@@ -1003,8 +1033,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 if (d < reach + 0.6f && d > 0.01f &&
                     Vector3DotProduct(Vector3Normalize(to), fwd) > 0.4f) {
                     // ~120° frontal arc; the target's armour soaks per hit.
-                    s.hp -= ApplyArmor(WeaponDamage(c, wh),
-                                       LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                    DamageSoldier(c, s, ApplyArmor(WeaponDamage(c, wh),
+                                                   LoadoutArmor(c, TroopLoadout(c, s.troop))));
                 }
             }
         }
@@ -1050,7 +1080,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
             // Cavalry at the gallop tramples whoever it rides through.
             s.trampleCd -= dt;
-            if (c.troops[s.troop].mounted && s.trampleCd <= 0 &&
+            if (IsMounted(c, s) && s.trampleCd <= 0 &&
                 Vector3Length(cmd.step) > 0.5f * c.troops[s.troop].moveSpeed * dt) {
                 for (int j = 0; j < n; ++j) {
                     Soldier& o = B.soldiers[j];
@@ -1095,12 +1125,18 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             Soldier& s = B.soldiers[i];
             if (s.hp <= 0) continue;
             s.flash = fmaxf(0.0f, s.flash - dt * 5.0f);
-            if (B.dmg[i] > 0.0f) s.flash = 1.0f;   // hit feedback
-            s.hp -= B.dmg[i];
+            if (B.dmg[i] > 0.0f) DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
         }
         B.pFlash = fmaxf(0.0f, B.pFlash - dt * 5.0f);
         if (playerDamage > 0.0f) {
-            B.pHp -= B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
+            float d = B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
+            if (B.mounted) {   // the horse soaks its share — and can fall
+                const float toHorse = d * HORSE_HIT_SHARE;
+                B.pHorseHp -= toHorse;
+                d -= toHorse;
+                if (B.pHorseHp <= 0) B.mounted = false;
+            }
+            B.pHp -= d;
             B.pFlash = 1.0f;
         }
 
@@ -1131,8 +1167,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 if (s.hp <= 0 || s.team == a.team) continue;
                 const Vector3 chest = Vector3Add(s.pos, { 0, 1.2f, 0 });
                 if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
-                    s.hp -= ApplyArmor(a.damage, LoadoutArmor(c, TroopLoadout(c, s.troop)));
-                    s.flash = 1.0f;
+                    DamageSoldier(c, s, ApplyArmor(a.damage,
+                                                   LoadoutArmor(c, TroopLoadout(c, s.troop))));
                     a.alive = false;
                     break;
                 }
@@ -1143,6 +1179,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
                     float d = ApplyArmor(a.damage, LoadoutArmor(c, B.setup.heroLoadout));
                     if (B.blocking) d *= BLOCK_MISSILE_FACTOR;
+                    if (B.mounted) {
+                        const float toHorse = d * HORSE_HIT_SHARE;
+                        B.pHorseHp -= toHorse;
+                        d -= toHorse;
+                        if (B.pHorseHp <= 0) B.mounted = false;
+                    }
                     B.pHp -= d;
                     B.pFlash = 1.0f;
                     a.alive = false;
@@ -1239,7 +1281,7 @@ void BattleDraw(const Content& c) {
         pose.accent = c.troops[s.troop].accent;   // rank plume
 
         Vector3 riderPos = s.pos;
-        if (c.troops[s.troop].mounted) {
+        if (IsMounted(c, s)) {
             DrawHorse(s.pos, s.yaw, s.walkPhase);
             riderPos.y += 1.25f;
             pose.walkPhase = 0;   // the rider sits; the horse does the running
@@ -1347,6 +1389,8 @@ BattleView GetBattleView() {
     v.arrowsInFlight = (int)B.arrows.size();
     for (const Soldier& s : B.soldiers)
         if (s.onWall && s.hp > 0) v.wallDefenders++;
+    v.heroMounted = B.mounted;
+    v.heroHorseHp = B.pHorseHp;
     v.over         = B.over;
     v.won          = B.won;
     return v;

@@ -190,9 +190,11 @@ struct Harness {
             const char* wname = c.weapons.valid(v.heroWeapon)
                                     ? c.weapons[v.heroWeapon].id.c_str() : "none";
             std::printf("battle: heroPos=(%.2f,%.2f,%.2f) yaw=%.3f pitch=%.3f "
-                        "hp=%.0f/%.0f weapon=%s allies=%d enemies=%d arrows=%d wall=%d over=%d won=%d\n",
+                        "hp=%.0f/%.0f weapon=%s mounted=%d horse=%.0f allies=%d enemies=%d "
+                        "arrows=%d wall=%d over=%d won=%d\n",
                         v.heroPos.x, v.heroPos.y, v.heroPos.z, v.heroYaw, v.heroPitch,
-                        v.heroHp, v.heroMaxHp, wname, v.aliveAllies, v.aliveEnemies,
+                        v.heroHp, v.heroMaxHp, wname, v.heroMounted ? 1 : 0, v.heroHorseHp,
+                        v.aliveAllies, v.aliveEnemies,
                         v.arrowsInFlight, v.wallDefenders, v.over ? 1 : 0, v.won ? 1 : 0);
         }
         if (gs.screen == Screen::Settlement) {
