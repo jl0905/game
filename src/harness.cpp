@@ -78,6 +78,9 @@ struct Harness {
             case Screen::Character:
                 CharacterUpdate(gs, cin);
                 break;
+            case Screen::Victory:
+                VictoryUpdate(gs, cin);
+                break;
             case Screen::Battle: {
                 BattleOutcome out;
                 BattleInput b = bin;
@@ -137,6 +140,7 @@ struct Harness {
             case Screen::Character:    return "Character";
             case Screen::Battle:       return "Battle";
             case Screen::BattleResult: return "BattleResult";
+            case Screen::Victory:      return "Victory";
         }
         return "?";
     }

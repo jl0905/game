@@ -152,6 +152,13 @@ int main(int argc, char** argv) {
                 else                                CampaignDraw(gs);
                 break;
             }
+            case Screen::Victory: {                       // the campaign is won
+                const CampaignInput in = GatherCampaignInput(gs);
+                VictoryUpdate(gs, in);
+                if (gs.screen == Screen::Victory) VictoryDraw(gs);
+                else                              TitleDraw(gs);
+                break;
+            }
             case Screen::Battle: {
                 const BattleInput in = GatherBattleInput();
                 BattleOutcome out;

@@ -22,6 +22,10 @@ void CampaignInit(GameState& gs);
 bool TitleUpdate(GameState& gs, const CampaignInput& in);
 void TitleDraw(const GameState& gs);
 
+// Victory screen — the campaign is won; any choice returns to the title.
+bool VictoryUpdate(GameState& gs, const CampaignInput& in);
+void VictoryDraw(const GameState& gs);
+
 CampaignInput GatherCampaignInput(const GameState& gs);   // covers settlement too
 
 void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in);

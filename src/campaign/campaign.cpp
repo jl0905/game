@@ -499,6 +499,11 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Victory) {
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::Party) {
         const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         for (int slot = 0; slot < 9; ++slot)
@@ -770,6 +775,17 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             std::remove_if(gs.lordRespawns.begin(), gs.lordRespawns.end(),
                            [](const LordRespawn& r) { return r.timer <= 0; }),
             gs.lordRespawns.end());
+
+        // ---- victory: every banner on the map is yours ----
+        {
+            bool all = !gs.towns.empty();
+            for (const Town& t : gs.towns)
+                if (t.owner != c.playerFaction) { all = false; break; }
+            if (all) {
+                gs.screen = Screen::Victory;
+                return;
+            }
+        }
 
         // ---- the daily ledger: settlement income in, troop wages out ----
         gs.dayTimer += sim;
@@ -1194,6 +1210,33 @@ void PartyDraw(const GameState& gs) {
 // Title screen: New Game / Continue (autosave) / Quit. `TitleUpdate` returns
 // false when the player chose Quit.
 // ---------------------------------------------------------------------------
+
+// Victory screen: the campaign is won. Any menu choice returns to the title
+// (windowed) — a fresh world awaits.
+bool VictoryUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.menuChoice != 0 || in.leaveSettlement) {
+        Content saved = std::move(gs.content);
+        gs = GameState{};
+        gs.content = std::move(saved);
+        CampaignInit(gs);
+        gs.screen = Screen::Title;
+    }
+    return true;
+}
+
+void VictoryDraw(const GameState& gs) {
+    BeginDrawing();
+    ClearBackground(Color{ 16, 18, 22, 255 });
+    const int w = GetScreenWidth();
+    const char* t1 = "THE LAND IS YOURS";
+    ui::Title(t1, (w - ui::MeasureTitle(t1, 72)) / 2, 180, 72, GOLD);
+    const char* t2 = TextFormat("Every settlement flies your banner.  Won on day %d, at level %d.",
+                                gs.day, gs.playerHero.level);
+    ui::Text(t2, (w - ui::Measure(t2, 24)) / 2, 300, 24, RAYWHITE);
+    const char* t3 = "[Esc]  Return to the title";
+    ui::Text(t3, (w - ui::Measure(t3, 24)) / 2, 420, 24, Fade(RAYWHITE, 0.8f));
+    EndDrawing();
+}
 
 bool TitleUpdate(GameState& gs, const CampaignInput& in) {
     switch (in.menuChoice) {
