@@ -94,12 +94,21 @@ int main(int argc, char** argv) {
     GameState gs;
     LoadDefaultContent(gs.content);   // populate the data-driven catalogue
     CampaignInit(gs);
+    gs.screen = Screen::Title;        // windowed play begins at the title
 
     float quitArm = 0;   // double-Esc window for quitting
-    while (!WindowShouldClose()) {
+    bool  running = true;
+    while (running && !WindowShouldClose()) {
         const float dt = GetFrameTime();
         const Screen screenAtFrameStart = gs.screen;
         switch (gs.screen) {
+            case Screen::Title: {
+                const CampaignInput in = GatherCampaignInput(gs);
+                if (!TitleUpdate(gs, in)) { running = false; break; }
+                if (gs.screen == Screen::Title) TitleDraw(gs);
+                else                            CampaignDraw(gs);
+                break;
+            }
             case Screen::Campaign:
             case Screen::BattleResult: {
                 const CampaignInput in = GatherCampaignInput(gs);

@@ -18,6 +18,10 @@
 
 void CampaignInit(GameState& gs);
 
+// Title screen (windowed entry point). TitleUpdate returns false on Quit.
+bool TitleUpdate(GameState& gs, const CampaignInput& in);
+void TitleDraw(const GameState& gs);
+
 CampaignInput GatherCampaignInput(const GameState& gs);   // covers settlement too
 
 void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in);

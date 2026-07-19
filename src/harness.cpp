@@ -53,6 +53,7 @@ struct Harness {
     // One fixed step of the whole game, mirroring main.cpp's screen routing.
     void Step(const CampaignInput& cin, const BattleInput& bin) {
         switch (gs.screen) {
+            case Screen::Title:   // harness skips the menu; play starts direct
             case Screen::Campaign:
             case Screen::BattleResult:
                 CampaignUpdate(gs, STEP, cin);
@@ -125,6 +126,7 @@ struct Harness {
 
     const char* ScreenName() const {
         switch (gs.screen) {
+            case Screen::Title:        return "Title";
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
             case Screen::Party:        return "Party";

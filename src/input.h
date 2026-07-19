@@ -36,6 +36,9 @@ struct CampaignInput {
     bool    openCharacter = false;    // C on the map
     int     spendAttr     = -1;       // attribute row to put a point into
 
+    // title screen: 1 = new game, 2 = continue (autosave), 3 = quit
+    int     menuChoice = 0;
+
     // meta
     bool    quickSave = false;        // F5
     bool    quickLoad = false;        // F9

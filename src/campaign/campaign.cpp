@@ -492,6 +492,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Title) {
+        if (IsKeyPressed(KEY_N))      in.menuChoice = 1;
+        if (IsKeyPressed(KEY_C))      in.menuChoice = 2;
+        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 3;
+        return in;
+    }
+
     if (gs.screen == Screen::Party) {
         const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         for (int slot = 0; slot < 9; ++slot)
@@ -1180,6 +1187,51 @@ void PartyDraw(const GameState& gs) {
 
     ui::Text("[1-9] promote one unit    [Shift+1-9] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Title screen: New Game / Continue (autosave) / Quit. `TitleUpdate` returns
+// false when the player chose Quit.
+// ---------------------------------------------------------------------------
+
+bool TitleUpdate(GameState& gs, const CampaignInput& in) {
+    switch (in.menuChoice) {
+        case 1:   // fresh world
+            gs.screen = Screen::Campaign;
+            break;
+        case 2:   // continue from the autosave, if there is one
+            if (LoadGame(gs, AutoSavePath())) gs.resultText = "Welcome back.";
+            gs.screen = Screen::Campaign;   // load failure = new game
+            break;
+        case 3:
+            return false;
+        default: break;
+    }
+    return true;
+}
+
+void TitleDraw(const GameState& gs) {
+    (void)gs;
+    BeginDrawing();
+    ClearBackground(Color{ 20, 22, 26, 255 });
+
+    const int w = GetScreenWidth();
+    const char* title = "OPENWARBAND";
+    ui::Title(title, (w - ui::MeasureTitle(title, 84)) / 2, 150, 84, GOLD);
+    const char* sub = "raise a warband - take the land - hold it";
+    ui::Text(sub, (w - ui::Measure(sub, 22)) / 2, 260, 22, Fade(RAYWHITE, 0.7f));
+
+    const bool haveSave = FileExists(AutoSavePath());
+    int y = 380;
+    auto option = [&](const char* txt, Color col) {
+        ui::Text(txt, (w - ui::Measure(txt, 30)) / 2, y, 30, col);
+        y += 52;
+    };
+    option("[N]  New Game", RAYWHITE);
+    option("[C]  Continue", haveSave ? RAYWHITE : Fade(RAYWHITE, 0.35f));
+    option("[Esc]  Quit", Fade(RAYWHITE, 0.8f));
+
     EndDrawing();
 }
 
