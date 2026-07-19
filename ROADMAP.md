@@ -33,7 +33,9 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   type), gold-roofed tavern where recruiting happens, wandering villager NPCs,
   building collision, third-person camera reusing BattleInput. Harness drives
   it with `bmove`/`recruit`; `state` shows hero/tavern positions.
-  Remaining: interiors, castle keep layout, NPC dialogue.
+  Castles get their own layout (curtain walls, towers, keep hall, drilling
+  guards); NPCs speak on approach — small talk plus dynamic war gossip from
+  live world state. Remaining: building interiors.
 - [x] **B3. Sieging system (v1).** Settlements keep a garrison drawn from the
   owner's roster (sized by settlement type, TODO(balance)); clicking a hostile
   settlement storms it — the garrison fights on home terrain, victory
