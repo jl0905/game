@@ -1,84 +1,81 @@
 # OpenWarband
 
-A small Mount & Blade–style game in C++17 with [raylib](https://www.raylib.com/).
-Cross-platform: Windows, Linux, macOS — one CMake build, raylib is fetched automatically.
+A Mount & Blade–style sandbox war game in C++17 with [raylib](https://www.raylib.com/).
+Cross-platform: Windows, Linux, macOS — one CMake build, raylib fetched automatically.
 
-## Gameplay
+![Battle](docs/battle.png)
 
-**Campaign map** (top-down):
-- Move your warband with **WASD** or hold **LMB** toward the cursor.
-- Red war parties roam the map and chase you if they think they can win.
-- Walk into a **town** to recruit troops: press **1/2/3** (Recruit / Infantry / Veteran).
-- Colliding with an enemy party starts a battle.
+Raise a warband, take the land, hold it. Factions field named **lords** with
+armies in the hundreds who march, besiege, and capture settlements on a living
+campaign map — with or without you.
 
-**Battle** (third-person 3D, you fight alongside your troops):
-- **WASD** move, **mouse** look, **SPACE** jump
-- **LMB** swing your sword (arc hit in front of you)
-- **RMB** block (greatly reduces incoming damage, slows you down)
-- Win by wiping out the enemy; if you fall, the battle is lost.
-- Casualties and loot carry back to the campaign map.
+## What's in the game
+
+- **Campaign map** — a paused-time overworld (time flows only while you act).
+  Factions war over settlements: lords muster hosts, invest castles, and
+  respawn to fight again. Skirmishes you can watch or join on either side.
+- **Real-time 3D battles** — Mount & Blade-style directional melee (hold LMB,
+  aim the swing with mouse motion, release to strike; RMB blocks), archers
+  with ballistic arrows, formation orders (line/square/spread via `~`),
+  procedural terrain generated from where you fight on the map. Multithreaded
+  soldier AI; 1000-soldier battles hold 40+ FPS.
+- **Sieges** — storm walled towns and castles through a contested gate while
+  garrison archers shoot from the ramparts; victories transfer ownership.
+- **Walkable settlements** — enter a town and walk its streets: procedural
+  buildings, villager NPCs, recruiting at the gold-roofed tavern.
+- **Warband management** — troops earn XP and promote along upgrade trees;
+  daily wages vs settlement income (unpaid troops desert); a tiled
+  Diablo-style inventory fed by battle loot; hero levels and attributes.
+- **Save/load** — quicksave (F5/F9), autosave on quit, Continue at the title.
+
+| | |
+|---|---|
+| ![Campaign](docs/campaign.png) | ![Town](docs/town.png) |
+
+## Controls
+
+| Context | Keys |
+|---|---|
+| Campaign | WASD / hold LMB travel · SPACE wait (time flows) · click settlement to enter or assault · P party · I inventory · C character · F5/F9 save/load · Esc×2 quit (autosaves) |
+| Battle | WASD move · mouse look · hold LMB + flick to aim swing, release to strike · RMB block · Q swap weapon · `~` formation orders · SPACE jump |
+| Settlement | WASD walk · number keys recruit at the tavern · Esc leave |
 
 ## Building
 
-Requires CMake ≥ 3.20 and a C++17 compiler. Internet access is needed on the
-first configure (raylib is downloaded via FetchContent).
+CMake ≥ 3.20 and a C++17 compiler. First configure needs internet (raylib via
+FetchContent).
 
-### Linux
-```sh
-sudo apt install build-essential cmake libx11-dev libxrandr-dev libxinerama-dev \
-                 libxcursor-dev libxi-dev libgl1-mesa-dev   # Debian/Ubuntu
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-./build/openwarband
-```
-
-### macOS
-```sh
-brew install cmake            # Xcode command line tools required
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-./build/openwarband
-```
-
-### Windows
-The `build.ps1` helper auto-detects your toolchain (Visual Studio **or** MinGW):
-```powershell
-./build.ps1
-```
-Or manually — with Visual Studio:
-```bat
-cmake -B build
-cmake --build build --config Release
-build\Release\openwarband.exe
-```
-With MSYS2/MinGW GCC (no Visual Studio):
+**Windows** — `./build.ps1` auto-detects MSVC or MinGW. Manually (MinGW):
 ```powershell
 cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ./build/openwarband.exe
 ```
 
-## Code layout
+**Linux**
+```sh
+sudo apt install build-essential cmake libx11-dev libxrandr-dev libxinerama-dev \
+                 libxcursor-dev libxi-dev libgl1-mesa-dev   # Debian/Ubuntu
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+./build/openwarband
+```
 
-The game is **data-driven**: armour, weapons, troops, and factions are
-definitions registered in `src/content.cpp` and referenced by handle. Adding
-content means adding a registry entry — not editing game logic. See
-[CLAUDE.md](./CLAUDE.md) for the full architecture and extension guide.
+**macOS**
+```sh
+brew install cmake
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+./build/openwarband
+```
 
-| File | What it does |
-|---|---|
-| `src/main.cpp` | Window setup, loads content, screen state machine |
-| `src/types.h` | Core enums (slots, weapon classes, attack directions, behaviours) |
-| `src/registry.h` | `Registry<T>` — id→handle lookup |
-| `src/content.h/.cpp` | Content definitions + **the one place to add game content** |
-| `src/world.h` | Runtime state: characters, parties, towns, `GameState` |
-| `src/character.h/.cpp` | Humanoid renderer driven by a character's equipment loadout |
-| `src/campaign.cpp` | Overworld map, faction party AI, towns/recruiting, economy |
-| `src/battle.cpp` | 3D battle: 4-directional combat, soldier AI, casualties |
+## For developers
 
-## Ideas to extend
+The game is **data-driven**: armour, weapons, troops, factions, and attributes
+are definitions in `src/content.cpp`, referenced everywhere by handle — adding
+content is adding a registry entry. Numbers are deliberately flat placeholders
+(`TODO(balance)`): structure first, tuning later.
 
-- Wire `WeaponDef`/`ArmorDef` values into combat (currently flat placeholders)
-- Directional *blocking* to match the 4-way attacks
-- Horses, archers, formations
-- Sieges, lords, fiefs; save/load; character skills
+It is also **fully playable headless**: every screen splits input-gathering
+from simulation, so `openwarband --script tests/soak.txt` drives real gameplay
+from a command script (see `tests/README.md`), and `--bench N` measures battle
+rendering. See [CLAUDE.md](./CLAUDE.md) for architecture and
+[ROADMAP.md](./ROADMAP.md) for what's built and what's next.
