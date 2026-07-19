@@ -483,7 +483,13 @@ struct Soldier {
     int     slot = -1;         // formation slot (player's own troops only)
     int     activeWeapon = -1; // currently-wielded weapon handle
     bool    onWall = false;    // garrison archer posted on the siege wall
+    float   trampleCd = 0;     // mounted: cooldown between trample hits
 };
+
+// Cavalry trample. TODO(balance): damage/cooldown; structure only.
+constexpr float TRAMPLE_DAMAGE   = 15.0f;
+constexpr float TRAMPLE_COOLDOWN = 1.5f;
+constexpr float TRAMPLE_RADIUS   = 1.3f;
 
 struct BattleState {
     BattleSetup          setup;     // world-map snapshot this battle runs on
@@ -999,6 +1005,24 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.walkPhase   += cmd.walkAdd;
             s.pos = Vector3Add(s.pos, Vector3Add(cmd.step, cmd.separation));
             EnforceWall(s.pos);
+
+            // Cavalry at the gallop tramples whoever it rides through.
+            s.trampleCd -= dt;
+            if (c.troops[s.troop].mounted && s.trampleCd <= 0 &&
+                Vector3Length(cmd.step) > 0.5f * c.troops[s.troop].moveSpeed * dt) {
+                for (int j = 0; j < n; ++j) {
+                    Soldier& o = B.soldiers[j];
+                    if (o.hp <= 0 || o.team == s.team || o.onWall) continue;
+                    Vector3 d3 = Vector3Subtract(o.pos, s.pos);
+                    d3.y = 0;
+                    if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
+                        B.dmg[j] += ApplyArmor(TRAMPLE_DAMAGE,
+                                               LoadoutArmor(c, TroopLoadout(c, o.troop)));
+                        s.trampleCd = TRAMPLE_COOLDOWN;
+                        break;
+                    }
+                }
+            }
             // Armour soaks per hit, so reduction happens per blow, not per frame.
             if (cmd.hitSoldier >= 0)
                 B.dmg[cmd.hitSoldier] += ApplyArmor(
@@ -1170,7 +1194,28 @@ void BattleDraw(const Content& c) {
         pose.walkPhase = s.walkPhase;
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding
         pose.accent = c.troops[s.troop].accent;   // rank plume
-        DrawCharacter(c, s.pos, TroopLoadout(c, s.troop), pose, TeamTint(s.team));
+
+        Vector3 riderPos = s.pos;
+        if (c.troops[s.troop].mounted) {
+            // The horse: barrel, neck + head, four legs — rider sits on top.
+            const float hy = s.pos.y;
+            const float cy = cosf(s.yaw), sy = sinf(s.yaw);
+            auto hAt = [&](float r, float u, float f) {
+                return Vector3{ s.pos.x + r * cy + f * sy, hy + u, s.pos.z - r * sy + f * cy };
+            };
+            const Color coat = Color{ 96, 66, 40, 255 };
+            const float trot = sinf(s.walkPhase) * 0.25f;
+            DrawCapsule(hAt(0, 1.05f, -0.7f), hAt(0, 1.05f, 0.7f), 0.34f, 8, 5, coat);   // barrel
+            DrawCapsule(hAt(0, 1.15f, 0.7f), hAt(0, 1.65f, 1.15f), 0.14f, 6, 4, coat);   // neck
+            DrawCapsule(hAt(0, 1.65f, 1.15f), hAt(0, 1.55f, 1.5f), 0.11f, 6, 4, coat);   // head
+            DrawCapsule(hAt(-0.2f, 0.05f,  0.55f + trot), hAt(-0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
+            DrawCapsule(hAt( 0.2f, 0.05f,  0.55f - trot), hAt( 0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
+            DrawCapsule(hAt(-0.2f, 0.05f, -0.55f - trot), hAt(-0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
+            DrawCapsule(hAt( 0.2f, 0.05f, -0.55f + trot), hAt( 0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
+            riderPos.y += 1.25f;
+            pose.walkPhase = 0;   // the rider sits; the horse does the running
+        }
+        DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, TeamTint(s.team));
         // health bar (above the soldier, following the terrain)
         const float frac = s.hp / s.maxHp;
         DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,

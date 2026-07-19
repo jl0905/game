@@ -1,0 +1,16 @@
+# Cavalry: recruit knights (roster slot 5) at the tavern, then fight — the
+# battle must resolve with knights in the line; patrol lords now field
+# knights too. Watch for trample kills in the casualty report.
+seed 3
+enter 0
+bmove 1 0 2
+bmove 0 -1 3
+recruit 4 30
+recruit 1 40
+leave
+state
+hunt 90
+tick 2
+state
+tick 90
+state

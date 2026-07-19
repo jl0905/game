@@ -110,6 +110,16 @@ void LoadDefaultContent(Content& c) {
     veteran.loadout.addWeapon(w_great);    // a veteran carries a greatsword
     veteran.loadout.addWeapon(w_sword);    // and a sidearm
 
+    TroopDef knight = makeTroop("knight", "Knight", ORANGE);
+    knight.mounted   = true;
+    knight.moveSpeed = base::TROOP_SPEED * 2.0f;   // a horse is simply faster (identity)
+    knight.loadout.set(EquipSlot::Head,   a_helmet);
+    knight.loadout.set(EquipSlot::Body,   a_plate);
+    knight.loadout.set(EquipSlot::Hands,  a_gloves);
+    knight.loadout.set(EquipSlot::Feet,   a_boots);
+    knight.loadout.addWeapon(w_spear);     // couched at the charge,
+    knight.loadout.addWeapon(w_sword);     // steel in the press
+
     TroopDef archer = makeTroop("archer", "Archer", GREEN);
     archer.loadout.set(EquipSlot::Head,   a_cap);
     archer.loadout.set(EquipSlot::Body,   a_tunic);
@@ -121,6 +131,7 @@ void LoadDefaultContent(Content& c) {
     const int t_infantry = c.troops.add(infantry);
     const int t_veteran  = c.troops.add(veteran);
     const int t_archer   = c.troops.add(archer);
+    const int t_knight   = c.troops.add(knight);
 
     // Upgrade tree: recruit -> infantry -> veteran; archers are a branch off
     // recruit. Costs are flat placeholders.
@@ -128,6 +139,8 @@ void LoadDefaultContent(Content& c) {
     c.troops[t_recruit].upgradeXp   = base::UPGRADE_XP;
     c.troops[t_infantry].upgradesTo = t_veteran;
     c.troops[t_infantry].upgradeXp  = base::UPGRADE_XP;
+    c.troops[t_veteran].upgradesTo  = t_knight;    // a veteran earns his horse
+    c.troops[t_veteran].upgradeXp   = base::UPGRADE_XP;
 
     // ---- Factions ----------------------------------------------------------
     // Distinct behaviours + rosters give the map its variety of party types.
@@ -135,7 +148,7 @@ void LoadDefaultContent(Content& c) {
     kingdom.id = "kingdom"; kingdom.name = "Your Warband";
     kingdom.color = BLUE; kingdom.behavior = PartyBehavior::Patrol;
     kingdom.recruitable = true;
-    kingdom.roster = { t_recruit, t_infantry, t_veteran, t_archer };
+    kingdom.roster = { t_recruit, t_infantry, t_veteran, t_archer, t_knight };
     c.playerFaction = c.factions.add(kingdom);
 
     FactionDef raiders;
@@ -157,7 +170,7 @@ void LoadDefaultContent(Content& c) {
     FactionDef patrol;
     patrol.id = "patrol"; patrol.name = "Patrol";
     patrol.color = PURPLE; patrol.behavior = PartyBehavior::Patrol;
-    patrol.roster = { t_infantry, t_veteran };
+    patrol.roster = { t_infantry, t_veteran, t_knight };
     patrol.lords = { "Aldric", "Corin" };
     patrol.lordPartySize = 120;     // TODO(balance)
     const int f_patrol = c.factions.add(patrol);

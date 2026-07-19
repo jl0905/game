@@ -90,6 +90,7 @@ struct TroopDef {
     int         wage      = 0;     // TODO(balance): per-day upkeep in gold
     int         upgradesTo = -1;   // troop handle this unit can become (-1 none)
     int         upgradeXp  = 0;    // TODO(balance): experience one upgrade costs
+    bool        mounted   = false; // rides a horse: drawn mounted, tramples on the charge
     Loadout     loadout;           // default gear (drives stats + look)
     Color       accent = WHITE;    // small identifying plume/banner colour
 };
