@@ -470,6 +470,7 @@ struct Soldier {
     float   yaw = 0;
     float   cooldown = 0;
     float   swing = 0;
+    float   flash = 0;         // just-hit white flare, decays fast
     float   walkPhase = 0;
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
@@ -492,6 +493,7 @@ struct BattleState {
     bool    blocking = false;
     float   vY = 0;
     float   walkPhase = 0;
+    float   pFlash = 0;         // hero just-hit feedback
 
     bool  over = false;
     bool  won = false;
@@ -942,10 +944,18 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 B.arrows.push_back(a);
             }
         }
-        for (int i = 0; i < n; ++i)
-            if (B.soldiers[i].hp > 0) B.soldiers[i].hp -= B.dmg[i];
-        if (playerDamage > 0.0f)
+        for (int i = 0; i < n; ++i) {
+            Soldier& s = B.soldiers[i];
+            if (s.hp <= 0) continue;
+            s.flash = fmaxf(0.0f, s.flash - dt * 5.0f);
+            if (B.dmg[i] > 0.0f) s.flash = 1.0f;   // hit feedback
+            s.hp -= B.dmg[i];
+        }
+        B.pFlash = fmaxf(0.0f, B.pFlash - dt * 5.0f);
+        if (playerDamage > 0.0f) {
             B.pHp -= B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
+            B.pFlash = 1.0f;
+        }
 
         // Keep living soldiers sitting on the terrain surface (they moved in x/z).
         for (Soldier& s : B.soldiers)
@@ -967,6 +977,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 const Vector3 chest = Vector3Add(s.pos, { 0, 1.2f, 0 });
                 if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
                     s.hp -= ApplyArmor(a.damage, LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                    s.flash = 1.0f;
                     a.alive = false;
                     break;
                 }
@@ -978,6 +989,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     float d = ApplyArmor(a.damage, LoadoutArmor(c, B.setup.heroLoadout));
                     if (B.blocking) d *= BLOCK_MISSILE_FACTOR;
                     B.pHp -= d;
+                    B.pFlash = 1.0f;
                     a.alive = false;
                 }
             }
@@ -1046,8 +1058,10 @@ void BattleDraw(const Content& c) {
         Pose pose;
         pose.yaw = s.yaw;
         pose.swing = s.swing;
+        pose.flash = s.flash;
         pose.walkPhase = s.walkPhase;
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding
+        pose.accent = c.troops[s.troop].accent;   // rank plume
         DrawCharacter(c, s.pos, TroopLoadout(c, s.troop), pose, TeamTint(s.team));
         // health bar (above the soldier, following the terrain)
         const float frac = s.hp / s.maxHp;
@@ -1066,6 +1080,7 @@ void BattleDraw(const Content& c) {
     ppose.yaw = B.yaw;
     ppose.swing = B.swing;
     ppose.windup = B.readying ? B.windup : 0.0f;   // cocked while holding LMB
+    ppose.flash = B.pFlash;
     ppose.attackDir = B.attackDir;
     ppose.blocking = B.blocking;
     ppose.walkPhase = B.walkPhase;

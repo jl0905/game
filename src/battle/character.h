@@ -18,6 +18,8 @@ struct Pose {
     float     walkPhase = 0.0f;               // advances while moving (radians)
     int       weapon    = -1;                 // weapon handle to draw; -1 = use
                                               // the loadout's Weapon slot
+    float     flash     = 0.0f;               // 0..1 just-hit feedback (white flare)
+    Color     accent    = { 0, 0, 0, 0 };     // troop plume colour; alpha 0 = none
 };
 
 // Draws a humanoid standing on `feet` (its ground point), wearing `loadout`.

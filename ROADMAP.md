@@ -12,14 +12,15 @@ no tuned progressions, costs, damage curves, or stat weights yet.
   silhouette. `--bench N` mode measures it: 300 soldiers 35→68 FPS,
   600 18→41, 1000 11→41. Further headroom (true instancing) only if C3
   demands it.
-- [ ] **A2. Better troop models.** Replace bare cube-segments with nicer
-  proportioned humanoids (still procedural from `Loadout` — no art pipeline):
-  tapered limbs, heads with helmets that read at distance, shields on the arm,
-  faction-tinted surcoats. Keep `character.cpp` the single rendering surface.
-- [ ] **A3. Clearer swing readability.** Make attack direction obvious at a
-  glance: distinct wind-up silhouettes per `AttackDir`, stronger motion trail
-  along the actual arc, brief hit-flash on the victim, blocked-clang feedback.
-  Applies to both hero and AI soldiers.
+- [x] **A2. Better troop models (pass 1).** Dome helmets with brims + nasal
+  bars, team surcoat stripe on the chest, troop-accent plumes (rank identity),
+  shields carried on the arm for sword-and-board troops and raised with a boss
+  when blocking. ~15% frame cost at 600 soldiers (35 FPS, still 2× pre-A1).
+- [x] **A3. Clearer swing readability (pass 1).** Wind-up telegraph: a ghosted
+  preview of the full upcoming arc while readying (direction is readable
+  before it lands); hit-flash flare on any soldier or the hero taking damage
+  (melee and arrows). Existing per-direction arcs + motion trails retained.
+  Remaining: blocked-clang feedback, torso lean during wind-up.
 
 ## Track B — Settlements
 

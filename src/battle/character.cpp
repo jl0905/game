@@ -71,11 +71,20 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const float yaw = pose.yaw;
     auto at = [&](float r, float u, float f) { return ToWorld(feet, yaw, r, u, f); };
 
-    const Color bodyC   = SlotTint(content, loadout, EquipSlot::Body, teamTint);
-    const Color feetC   = SlotTint(content, loadout, EquipSlot::Feet, DARKBROWN);
-    const Color handsC  = SlotTint(content, loadout, EquipSlot::Hands, SKIN);
+    // Just-hit feedback: everything flares toward white for a few frames.
+    const float fl = Clamp(pose.flash, 0.0f, 1.0f);
+    auto flashed = [&](Color c) {
+        return fl <= 0.0f ? c
+                          : Color{ (unsigned char)(c.r + (255 - c.r) * fl),
+                                   (unsigned char)(c.g + (255 - c.g) * fl),
+                                   (unsigned char)(c.b + (255 - c.b) * fl), c.a };
+    };
+
+    const Color bodyC   = flashed(SlotTint(content, loadout, EquipSlot::Body, teamTint));
+    const Color feetC   = flashed(SlotTint(content, loadout, EquipSlot::Feet, DARKBROWN));
+    const Color handsC  = flashed(SlotTint(content, loadout, EquipSlot::Hands, SKIN));
     const bool  hasHelm = loadout.has(EquipSlot::Head);
-    const Color headC   = hasHelm ? SlotTint(content, loadout, EquipSlot::Head, SKIN) : SKIN;
+    const Color headC   = flashed(hasHelm ? SlotTint(content, loadout, EquipSlot::Head, SKIN) : SKIN);
 
     // Walk cycle: legs swing fore/aft, arms counter-swing.
     const float legSwing = sinf(pose.walkPhase) * 0.35f;
@@ -84,19 +93,39 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     DrawCapsule(at(-0.16f, 0.05f,  legSwing), at(-0.16f, 0.95f, 0.0f), 0.14f, 8, 4, feetC);
     DrawCapsule(at( 0.16f, 0.05f, -legSwing), at( 0.16f, 0.95f, 0.0f), 0.14f, 8, 4, feetC);
 
-    // ---- Torso ----
+    // ---- Torso (+ a team surcoat stripe down the chest so sides read) ----
     DrawCapsule(at(0.0f, 0.95f, 0.0f), at(0.0f, 1.6f, 0.0f), 0.30f, 10, 6, bodyC);
+    DrawCapsule(at(0.0f, 1.0f, 0.24f), at(0.0f, 1.55f, 0.24f), 0.09f, 6, 4, flashed(teamTint));
 
-    // ---- Head (+ helmet tint) ----
+    // ---- Head: dome helmet with a nasal bar, or a bare head ----
     DrawSphere(at(0.0f, 1.85f, 0.0f), 0.22f, headC);
-    if (hasHelm)  // a small brim so helmets read as helmets
-        DrawCylinderEx(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.78f, 0.0f), 0.26f, 0.26f, 10, headC);
+    if (hasHelm) {
+        DrawCylinderEx(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, 10, headC); // brim
+        DrawCylinderEx(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, 10, headC); // dome
+        DrawCapsule(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, 4, 3, headC);       // nasal
+    }
+    // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
+    if (pose.accent.a > 0)
+        DrawCapsule(at(0.0f, 2.05f, -0.05f), at(0.0f, 2.30f, -0.18f), 0.05f, 5, 3,
+                    flashed(pose.accent));
 
-    // ---- Left arm (shield/guard side) ----
+    // ---- Left arm + shield ----
+    // Sword-and-board troops carry the shield always; everyone raises it while
+    // guarding (blocking pulls it up front and centre).
+    const int   whShield  = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
+    const bool  oneHanded = content.weapons.valid(whShield) &&
+                            content.weapons[whShield].wclass == WeaponClass::OneHanded;
     const float guard = pose.blocking ? 0.6f : 0.0f;
     DrawCapsule(at(-0.34f, 1.5f, 0.0f), at(-0.34f, 1.05f + guard, 0.2f + guard), 0.11f, 8, 4, bodyC);
-    if (pose.blocking)  // raise a simple round shield when guarding
-        DrawCylinderEx(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, 14, DARKBROWN);
+    if (pose.blocking) {
+        DrawCylinderEx(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, 14,
+                       flashed(DARKBROWN));
+        DrawCylinderEx(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, 8,
+                       flashed(GRAY));   // boss
+    } else if (oneHanded) {   // carried at the forearm when not raised
+        DrawCylinderEx(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, 12,
+                       flashed(DARKBROWN));
+    }
 
     // ---- Right arm (weapon side) ----
     DrawCapsule(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, 8, 4, handsC);
@@ -112,6 +141,21 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
         BladeLine(aim, lh, lt, reach);
         const Vector3 hilt = at(lh.x, lh.y, lh.z);
         const Vector3 tip  = at(lt.x, lt.y, lt.z);
+
+        // Wind-up telegraph: a faint ghost of the FULL upcoming arc, so the
+        // swing plane (and how to block it) is readable before it lands.
+        if (pose.windup > 0.05f && pose.swing <= 0.0f && w.wclass != WeaponClass::Ranged) {
+            Vector3 cocked, follow;
+            SwingArc(pose.attackDir, cocked, follow);
+            const int STEPS = 6;
+            for (int gi = 0; gi <= STEPS; ++gi) {
+                const float p = (float)gi / STEPS;
+                Vector3 gh, gt;
+                BladeLine(Vector3Lerp(cocked, follow, p), gh, gt, reach);
+                DrawSphere(at(gt.x, gt.y, gt.z), 0.035f,
+                           Fade(ORANGE, 0.35f * pose.windup));
+            }
+        }
 
         // Motion trail: faint ghosts of the blade slightly earlier in the arc.
         if (pose.swing > 0.0f && w.wclass != WeaponClass::Ranged) {
