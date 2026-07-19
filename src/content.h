@@ -22,6 +22,8 @@ struct ArmorDef {
     EquipSlot   slot   = EquipSlot::Body;
     int         armor  = 0;     // TODO(balance): damage reduction
     float       weight = 0.0f;  // TODO(balance): encumbrance / speed penalty
+    int         tileW  = 2;     // inventory footprint (identity, not balance)
+    int         tileH  = 2;
     Color       tint   = GRAY;  // rendering only
 };
 
@@ -36,6 +38,8 @@ struct WeaponDef {
     // Ranged weapons only (wclass == WeaponClass::Ranged):
     float       missileRange = 0.0f;  // TODO(balance): how far it can shoot
     float       missileSpeed = 0.0f;  // TODO(balance): projectile speed
+    int         tileW = 1;            // inventory footprint (identity, not balance)
+    int         tileH = 3;
     Color       tint      = LIGHTGRAY;
 
     bool isRanged() const { return wclass == WeaponClass::Ranged && missileRange > 0.5f; }

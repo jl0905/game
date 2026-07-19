@@ -125,6 +125,13 @@ int main(int argc, char** argv) {
                 else                            CampaignDraw(gs);
                 break;
             }
+            case Screen::Inventory: {                     // tiled bag; paused
+                const CampaignInput in = GatherCampaignInput(gs);
+                InventoryUpdate(gs, in);
+                if (gs.screen == Screen::Inventory) InventoryDraw(gs);
+                else                                CampaignDraw(gs);
+                break;
+            }
             case Screen::Battle: {
                 const BattleInput in = GatherBattleInput();
                 BattleOutcome out;

@@ -68,6 +68,15 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (int w : gs.playerHero.loadout.weapons)
         if (c.weapons.valid(w)) f << "carry " << c.weapons[w].id << '\n';
 
+    // Tiled inventory contents.
+    for (const InvItem& it : gs.inventory) {
+        const bool ok = it.isWeapon ? c.weapons.valid(it.handle) : c.armor.valid(it.handle);
+        if (!ok) continue;
+        f << "item " << (it.isWeapon ? "weapon" : "armor") << ' '
+          << (it.isWeapon ? c.weapons[it.handle].id : c.armor[it.handle].id) << ' '
+          << it.x << ' ' << it.y << '\n';
+    }
+
     // Settlement ownership (towns themselves are recreated by CampaignInit;
     // only who holds them is state). Keyed by index — the town list is static.
     for (int t = 0; t < (int)gs.towns.size(); ++t) {
@@ -148,6 +157,13 @@ bool LoadGame(GameState& gs, const char* path) {
             const int fh = c.factions.find(fid.c_str());
             if (idx >= 0 && idx < (int)gs.towns.size() && fh >= 0)
                 gs.towns[idx].owner = fh;
+        } else if (tag == "item") {
+            std::string kind, id;
+            InvItem it;
+            ss >> kind >> id >> it.x >> it.y;
+            it.isWeapon = (kind == "weapon");
+            it.handle = it.isWeapon ? c.weapons.find(id.c_str()) : c.armor.find(id.c_str());
+            if (it.handle >= 0) gs.inventory.push_back(it);
         } else if (tag == "garrisonreset") {
             int idx = -1;
             ss >> idx;

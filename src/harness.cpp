@@ -65,6 +65,9 @@ struct Harness {
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
+            case Screen::Inventory:
+                InventoryUpdate(gs, cin);
+                break;
             case Screen::Battle: {
                 BattleOutcome out;
                 BattleInput b = bin;
@@ -116,6 +119,7 @@ struct Harness {
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
             case Screen::Party:        return "Party";
+            case Screen::Inventory:    return "Inventory";
             case Screen::Battle:       return "Battle";
             case Screen::BattleResult: return "BattleResult";
         }
@@ -152,6 +156,10 @@ struct Harness {
                         p.pos.x, p.pos.y, p.totalTroops(), p.engaged ? 1 : 0,
                         Vector2Distance(p.pos, gs.player.pos));
         }
+        for (const InvItem& it : gs.inventory)
+            std::printf("item: %s %s at (%d,%d)\n", it.isWeapon ? "weapon" : "armor",
+                        it.isWeapon ? c.weapons[it.handle].id.c_str()
+                                    : c.armor[it.handle].id.c_str(), it.x, it.y);
         for (const AISiege& sg : gs.aiSieges)
             std::printf("aisiege: party=%d town=%d timer=%.1f\n", sg.party, sg.town, sg.timer);
         for (int s = 0; s < (int)gs.skirmishes.size(); ++s)
@@ -252,6 +260,16 @@ int RunScript(const char* path) {
                 CampaignInput cin; cin.recruitSlot = slot;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "inv") {
+            CampaignInput cin;
+            if (h.gs.screen == Screen::Inventory) cin.leaveSettlement = true;
+            else                                  cin.openInventory = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "equip") {
+            CampaignInput cin;
+            ss >> cin.invCellX >> cin.invCellY;
+            cin.invEquip = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "party") {
             CampaignInput cin;
             if (h.gs.screen == Screen::Party) cin.leaveSettlement = true;

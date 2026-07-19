@@ -260,7 +260,15 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
     }
 }
 
+// Inventory grid geometry, shared by input gathering and drawing.
+constexpr int INV_CELL = 52;
+int InvOriginX() { return GetScreenWidth() / 2 - (INV_W * INV_CELL) / 2; }
+int InvOriginY() { return 220; }
+
 }  // namespace
+
+// Defined with the inventory screen below; needed earlier for loot drops.
+static bool AutoPlace(GameState& gs, InvItem it);
 
 void CampaignInit(GameState& gs) {
     const Content& c = gs.content;
@@ -415,6 +423,20 @@ static void ApplyBattleResult(GameState& gs) {
         gs.resultText = ally ? TextFormat("VICTORY!  Your ally holds the field. Loot: %d gold", loot)
                              : TextFormat("VICTORY!  Loot: %d gold", loot);
         if (enemy) enemy->alive = false;
+
+        // Battlefield pickings: a fallen foe's gear sometimes ends up in the
+        // bag. TODO(balance): drop chance.
+        if (GetRandomValue(0, 99) < 50) {
+            InvItem drop;
+            drop.isWeapon = GetRandomValue(0, 1) == 1;
+            drop.handle = drop.isWeapon ? GetRandomValue(0, gs.content.weapons.size() - 1)
+                                        : GetRandomValue(0, gs.content.armor.size() - 1);
+            if (AutoPlace(gs, drop)) {
+                const char* nm = drop.isWeapon ? gs.content.weapons[drop.handle].name.c_str()
+                                               : gs.content.armor[drop.handle].name.c_str();
+                gs.resultText += TextFormat("   Picked up: %s", nm);
+            }
+        }
     } else {
         gs.resultText = "DEFEAT...  You escape with the survivors.";
         gs.player.pos.x = Clamp(gs.player.pos.x + Frand(-300, 300), 100, MAP_SIZE - 100);
@@ -456,6 +478,21 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Inventory) {
+        const Vector2 m = GetMousePosition();
+        const int cx = ((int)m.x - InvOriginX()) / INV_CELL;
+        const int cy = ((int)m.y - InvOriginY()) / INV_CELL;
+        if (cx >= 0 && cx < INV_W && cy >= 0 && cy < INV_H &&
+            m.x >= InvOriginX() && m.y >= InvOriginY()) {
+            in.invCellX = cx;
+            in.invCellY = cy;
+        }
+        in.invPick  = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        in.invEquip = IsKeyPressed(KEY_E) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) in.leaveSettlement = true;
+        return in;
+    }
+
     const Camera2D cam = CampaignCamera(gs);
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 world = GetScreenToWorld2D(GetMousePosition(), cam);
@@ -477,6 +514,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
     in.restart   = IsKeyPressed(KEY_R);
     in.openParty = IsKeyPressed(KEY_P);
+    in.openInventory = IsKeyPressed(KEY_I);
     in.quickSave = IsKeyPressed(KEY_F5);
     in.quickLoad = IsKeyPressed(KEY_F9);
     return in;
@@ -509,9 +547,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         gs.resultText = "No save to load.";
     }
 
-    // ---- open the party management screen ----
+    // ---- open the party management / inventory screens ----
     if (in.openParty) {
         gs.screen = Screen::Party;
+        return;
+    }
+    if (in.openInventory) {
+        gs.screen = Screen::Inventory;
         return;
     }
 
@@ -823,6 +865,163 @@ void CampaignDraw(const GameState& gs) {
 // Settlement menu: the overworld is frozen (main.cpp routes here instead of
 // CampaignUpdateDraw) while the player is inside a town/castle/village.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Tiled inventory (roadmap D1): Diablo/PoE-style grid. Items are content
+// handles with a tileW×tileH footprint. Helpers below are the single source
+// of truth for footprints and collision.
+// ---------------------------------------------------------------------------
+
+static void ItemFootprint(const Content& c, const InvItem& it, int& w, int& h) {
+    if (it.isWeapon) { w = c.weapons[it.handle].tileW; h = c.weapons[it.handle].tileH; }
+    else             { w = c.armor[it.handle].tileW;   h = c.armor[it.handle].tileH; }
+}
+
+static bool ItemCovers(const Content& c, const InvItem& it, int cx, int cy) {
+    int w, h;
+    ItemFootprint(c, it, w, h);
+    return cx >= it.x && cx < it.x + w && cy >= it.y && cy < it.y + h;
+}
+
+// Would item `it` (with top-left at x,y) fit without overlap? `ignore` is an
+// index into gs.inventory to skip (the item being moved).
+static bool FitsAt(const GameState& gs, const InvItem& it, int x, int y, int ignore) {
+    const Content& c = gs.content;
+    int w, h;
+    ItemFootprint(c, it, w, h);
+    if (x < 0 || y < 0 || x + w > INV_W || y + h > INV_H) return false;
+    for (int i = 0; i < (int)gs.inventory.size(); ++i) {
+        if (i == ignore) continue;
+        const InvItem& o = gs.inventory[i];
+        int ow, oh;
+        ItemFootprint(c, o, ow, oh);
+        if (x < o.x + ow && o.x < x + w && y < o.y + oh && o.y < y + h) return false;
+    }
+    return true;
+}
+
+// First free spot scanning row-major; false if the bag is full for this item.
+static bool AutoPlace(GameState& gs, InvItem it) {
+    for (int y = 0; y < INV_H; ++y)
+        for (int x = 0; x < INV_W; ++x) {
+            it.x = x; it.y = y;
+            if (FitsAt(gs, it, x, y, -1)) { gs.inventory.push_back(it); return true; }
+        }
+    return false;
+}
+
+// Item index covering a cell, or -1.
+static int ItemAtCell(const GameState& gs, int cx, int cy) {
+    for (int i = 0; i < (int)gs.inventory.size(); ++i)
+        if (ItemCovers(gs.content, gs.inventory[i], cx, cy)) return i;
+    return -1;
+}
+
+void InventoryUpdate(GameState& gs, const CampaignInput& in) {
+    const Content& c = gs.content;
+
+    if (in.invPick && in.invCellX >= 0) {
+        if (gs.invCarry < 0) {
+            gs.invCarry = ItemAtCell(gs, in.invCellX, in.invCellY);   // pick up
+        } else if (gs.invCarry < (int)gs.inventory.size()) {
+            InvItem& it = gs.inventory[gs.invCarry];                  // put down
+            if (FitsAt(gs, it, in.invCellX, in.invCellY, gs.invCarry)) {
+                it.x = in.invCellX;
+                it.y = in.invCellY;
+                gs.invCarry = -1;
+            }
+        }
+    }
+
+    if (in.invEquip && in.invCellX >= 0 && gs.invCarry < 0) {
+        const int idx = ItemAtCell(gs, in.invCellX, in.invCellY);
+        if (idx >= 0) {
+            const InvItem it = gs.inventory[idx];
+            Loadout& lo = gs.playerHero.loadout;
+            if (it.isWeapon) {
+                // Swap with the ACTIVE weapon in the arsenal.
+                const int active = lo.get(EquipSlot::Weapon);
+                gs.inventory.erase(gs.inventory.begin() + idx);
+                for (int w = 0; w < (int)lo.weapons.size(); ++w)
+                    if (lo.weapons[w] == active) { lo.weapons[w] = it.handle; break; }
+                if (lo.weapons.empty()) lo.weapons.push_back(it.handle);
+                lo.set(EquipSlot::Weapon, it.handle);
+                if (c.weapons.valid(active)) {
+                    InvItem old; old.isWeapon = true; old.handle = active;
+                    AutoPlace(gs, old);   // bag full = the old weapon is dropped
+                }
+            } else {
+                const EquipSlot slot = c.armor[it.handle].slot;
+                const int old = lo.get(slot);
+                gs.inventory.erase(gs.inventory.begin() + idx);
+                lo.set(slot, it.handle);
+                if (c.armor.valid(old)) {
+                    InvItem oldIt; oldIt.isWeapon = false; oldIt.handle = old;
+                    AutoPlace(gs, oldIt);
+                }
+            }
+        }
+    }
+
+    if (in.leaveSettlement) {
+        gs.invCarry = -1;
+        gs.screen = Screen::Campaign;
+    }
+}
+
+void InventoryDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+
+    const int ox = InvOriginX(), oy = InvOriginY();
+    ui::Title("INVENTORY", ox, 60, 44, GOLD);
+    ui::Text("LMB pick up / place   E equip   Esc / I back", ox, 116, 20,
+             Fade(RAYWHITE, 0.7f));
+
+    // Hero equipment summary.
+    const Loadout& lo = gs.playerHero.loadout;
+    int ey = 150;
+    std::string worn = "Worn: ";
+    for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
+        if (s == (int)EquipSlot::Weapon) continue;
+        const int h = lo.slots[s];
+        if (c.armor.valid(h)) { worn += c.armor[h].name; worn += "  "; }
+    }
+    const int wh = lo.get(EquipSlot::Weapon);
+    worn += "|  Wielding: ";
+    worn += c.weapons.valid(wh) ? c.weapons[wh].name : "nothing";
+    ui::Text(worn.c_str(), ox, ey, 18, RAYWHITE);
+
+    // Grid.
+    for (int y = 0; y <= INV_H; ++y)
+        DrawLine(ox, oy + y * INV_CELL, ox + INV_W * INV_CELL, oy + y * INV_CELL,
+                 Fade(RAYWHITE, 0.15f));
+    for (int x = 0; x <= INV_W; ++x)
+        DrawLine(ox + x * INV_CELL, oy, ox + x * INV_CELL, oy + INV_H * INV_CELL,
+                 Fade(RAYWHITE, 0.15f));
+
+    // Items.
+    for (int i = 0; i < (int)gs.inventory.size(); ++i) {
+        const InvItem& it = gs.inventory[i];
+        int w, h;
+        ItemFootprint(c, it, w, h);
+        const Color tint = it.isWeapon ? c.weapons[it.handle].tint : c.armor[it.handle].tint;
+        const char* nm   = it.isWeapon ? c.weapons[it.handle].name.c_str()
+                                       : c.armor[it.handle].name.c_str();
+        Rectangle r = { (float)(ox + it.x * INV_CELL + 3), (float)(oy + it.y * INV_CELL + 3),
+                        (float)(w * INV_CELL - 6), (float)(h * INV_CELL - 6) };
+        const bool carried = (i == gs.invCarry);
+        DrawRectangleRec(r, Fade(tint, carried ? 0.35f : 0.8f));
+        DrawRectangleLinesEx(r, 2, carried ? GOLD : Fade(BLACK, 0.6f));
+        ui::Text(TextFormat("%.10s", nm), (int)r.x + 4, (int)r.y + 4, 16, BLACK);
+    }
+    if (gs.inventory.empty())
+        ui::Text("Empty. Win battles to gather loot.", ox, oy + INV_H * INV_CELL + 16,
+                 20, Fade(RAYWHITE, 0.6f));
+
+    EndDrawing();
+}
+
 // ---------------------------------------------------------------------------
 // Party management (roadmap D2): roster review + spending veterancy (C2).
 // Rows are troop types the player owns, in troop-registry order.

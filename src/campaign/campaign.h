@@ -29,3 +29,7 @@ void SettlementDraw(const GameState& gs);
 // Party management screen (roster + veterancy upgrades), opened with P.
 void PartyUpdate(GameState& gs, const CampaignInput& in);
 void PartyDraw(const GameState& gs);
+
+// Tiled inventory screen (grid loot + equipping), opened with I.
+void InventoryUpdate(GameState& gs, const CampaignInput& in);
+void InventoryDraw(const GameState& gs);

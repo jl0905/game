@@ -62,10 +62,12 @@ no tuned progressions, costs, damage curves, or stat weights yet.
 
 ## Track D — Character & party UI
 
-- [ ] **D1. Tiled inventory (Diablo/PoE style).** Grid inventory for the hero:
-  items occupy w×h tiles, drag/rearrange, equip to `Loadout` slots. Items are
-  the existing `ArmorDef`/`WeaponDef` handles plus loot drops after battles.
-  Input goes through the intent structs so the harness can drive it.
+- [x] **D1. Tiled inventory (Diablo/PoE style).** 10×6 grid (`Screen::Inventory`,
+  I key): items are content handles with identity tile footprints (greatsword
+  2×4, boots 2×2, …), LMB pick/place, E/RMB equips with the old piece swapped
+  back into the bag; battle victories drop loot; persists in saves; harness
+  `inv`/`equip` commands. Remaining: hover tooltips with stats, drop-to-
+  discard, item rotation.
 - [ ] **D2. Party management screen.** v1 exists (`Screen::Party`, opened with
   P): roster rows with counts + XP, number keys promote units, harness
   `party`/`upgrade` commands. Remaining: dismiss troops, per-troop detail

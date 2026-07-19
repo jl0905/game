@@ -26,7 +26,12 @@ constexpr int   UPGRADE_XP    = 100;   // experience one troop upgrade costs
 
 // Small helpers to keep the registration list readable.
 static ArmorDef Armor(const char* id, const char* name, EquipSlot slot, Color tint) {
-    return ArmorDef{ id, name, slot, base::ARMOR_VALUE, base::ARMOR_WEIGHT, tint };
+    ArmorDef a;
+    a.id = id; a.name = name; a.slot = slot;
+    a.armor = base::ARMOR_VALUE;
+    a.weight = base::ARMOR_WEIGHT;
+    a.tint = tint;
+    return a;
 }
 static WeaponDef Weapon(const char* id, const char* name, WeaponClass wc, Color tint) {
     WeaponDef w;
@@ -61,6 +66,11 @@ void LoadDefaultContent(Content& c) {
     bow.missileRange = 40.0f;   // TODO(balance)
     bow.missileSpeed = 30.0f;   // TODO(balance)
     bow.swingTime    = 2.0f;    // TODO(balance): nock-draw-loose is slower than a cut
+
+    // Inventory footprints — big weapons take big bags (identity, not balance).
+    great.tileW = 2; great.tileH = 4;
+    spear.tileW = 1; spear.tileH = 4;
+    bow.tileW   = 2; bow.tileH   = 3;
 
     const int w_sword = c.weapons.add(sword);
     const int w_great = c.weapons.add(great);

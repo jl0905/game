@@ -52,6 +52,17 @@ struct Town {
     }
 };
 
+// An item lying in the hero's tiled inventory (roadmap D1). Items are content
+// handles; (x, y) is the top-left cell of its tileW×tileH footprint.
+struct InvItem {
+    bool isWeapon = false;
+    int  handle   = -1;
+    int  x = 0, y = 0;
+};
+
+inline constexpr int INV_W = 10;   // inventory grid size, in cells
+inline constexpr int INV_H = 6;
+
 // An AI army besieging a settlement; resolves on its own after `timer`.
 struct AISiege {
     int   party = -1;   // attacker, index into GameState::parties
@@ -96,6 +107,8 @@ struct GameState {
     int                currentSettlement = -1;   // town index while inside a settlement
     bool               timeFlowing = false;      // did world time advance this frame?
     std::vector<int>   troopXp;                  // player XP pool per troop type (C2)
+    std::vector<InvItem> inventory;              // hero's tiled bag (D1)
+    int                invCarry = -1;            // inventory item being moved (transient)
 
     // Battle handoff
     int              siegeTownIndex   = -1;      // assaulting this town (else -1)

@@ -25,6 +25,12 @@ struct CampaignInput {
     bool    openParty   = false;      // P on the map
     int     upgradeSlot = -1;         // troop row to upgrade one unit of
 
+    // inventory screen (cells are grid coordinates)
+    bool    openInventory = false;    // I on the map
+    int     invCellX = -1, invCellY = -1;   // cell under the cursor this frame
+    bool    invPick  = false;         // pick up / place at the cell (LMB)
+    bool    invEquip = false;         // equip the item at the cell (E / RMB)
+
     // meta
     bool    quickSave = false;        // F5
     bool    quickLoad = false;        // F9
