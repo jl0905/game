@@ -1,4 +1,6 @@
 #include "campaign.h"
+#include "../gfx.h"
+#include "../battle/character.h"   // roster parade preview (read-only reuse)
 #include "../save.h"
 #include "../sfx.h"
 #include "../ui.h"
@@ -1301,6 +1303,35 @@ void PartyDraw(const GameState& gs) {
     const Content& c = gs.content;
     const std::vector<int> rows = PartyRows(gs);
 
+    // Render the roster as a little 3D parade (into a texture, then blitted
+    // as a panel). Windowed only — headless never calls Draw.
+    static RenderTexture2D parade = { 0 };
+    if (parade.id == 0) parade = LoadRenderTexture(420, 420);
+    BeginTextureMode(parade);
+    ClearBackground(Color{ 30, 33, 40, 255 });
+    {
+        Camera3D pc = { 0 };
+        const float mid = (float)((int)rows.size() - 1) * 0.9f;
+        pc.position = { mid, 2.2f, 6.0f };
+        pc.target   = { mid, 1.0f, 0.0f };
+        pc.up = { 0, 1, 0 };
+        pc.fovy = 40;
+        pc.projection = CAMERA_PERSPECTIVE;
+        BeginMode3D(pc);
+        BeginShaderMode(GetLitShader());
+        DrawPlane({ mid, 0, 0 }, { 30, 12 }, Color{ 52, 58, 50, 255 });
+        for (int i = 0; i < (int)rows.size() && i < 6; ++i) {
+            Pose pose;
+            pose.yaw = 0.35f;   // angled toward the viewer
+            pose.accent = c.troops[rows[i]].accent;
+            DrawCharacter(c, { i * 1.8f, 0, 0 }, c.troops[rows[i]].loadout, pose,
+                          Color{ 40, 120, 255, 255 });
+        }
+        EndShaderMode();
+        EndMode3D();
+    }
+    EndTextureMode();
+
     BeginDrawing();
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int panelX = GetScreenWidth() / 2 - 360;
@@ -1341,6 +1372,12 @@ void PartyDraw(const GameState& gs) {
     if (rows.empty())
         ui::Text("Your warband is empty. Recruit in a friendly settlement.",
                  panelX, y, 22, Fade(RED, 0.8f));
+
+    // The parade panel, framed on the right.
+    const int paneX = GetScreenWidth() - 452;
+    DrawTextureRec(parade.texture, { 0, 0, 420, -420 }, { (float)paneX, 180 }, WHITE);
+    DrawRectangleLines(paneX, 180, 420, 420, Fade(GOLD, 0.5f));
+    ui::Text("Your ranks on parade", paneX + 8, 186, 18, Fade(RAYWHITE, 0.7f));
 
     ui::Text("[1-9] promote one unit    [Shift+1-9] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
