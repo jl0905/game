@@ -566,6 +566,7 @@ struct BattleState {
 
     bool  over = false;
     bool  won = false;
+    bool  heroDown = false;   // struck senseless; the warband fights on
     float overTimer = 0;
     float introTimer = 0;   // opening banner fade
     bool  reported = false;         // outcome handed back to the caller
@@ -804,7 +805,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     bool    targetPlayer = false;
     bool    haveFoe = false;
     Vector3 tpos{};
-    if (s.team == Team::Enemy) {
+    if (s.team == Team::Enemy && B.pHp > 0) {
         const float dp = Vector3DistanceSqr(s.pos, B.pPos);
         if (target < 0 || dp < Vector3DistanceSqr(s.pos, B.soldiers[target].pos)) {
             targetPlayer = true; tpos = B.pPos; haveFoe = true;
@@ -1064,7 +1065,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
     // ---------- player intent ----------
     Vector3 fwd = { sinf(B.yaw), 0, cosf(B.yaw) };
-    if (!B.over) {
+    if (!B.over && !B.heroDown) {
         const Vector2 md = in.lookDelta;
         B.yaw   -= md.x * 0.003f;
         B.pitch = Clamp(B.pitch - md.y * 0.003f, -0.4f, 0.6f);
@@ -1177,7 +1178,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 }
             }
         }
-    } else {
+    } else if (B.over) {
         B.overTimer -= dt;
         if (B.overTimer <= 0 && !B.reported) {
             B.reported = true;
@@ -1292,7 +1293,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (B.dmg[i] > 0.0f) DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
         }
         B.pFlash = fmaxf(0.0f, B.pFlash - dt * 5.0f);
-        if (playerDamage > 0.0f) {
+        if (playerDamage > 0.0f && B.pHp > 0) {
             float d = B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
             if (B.mounted) {   // the horse soaks its share — and can fall
                 const float toHorse = d * HORSE_HIT_SHARE;
@@ -1344,7 +1345,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 }
             }
             // Hit the player?
-            if (a.alive && a.team == Team::Enemy) {
+            if (a.alive && a.team == Team::Enemy && B.pHp > 0) {
                 const Vector3 chest = Vector3Add(B.pPos, { 0, 1.2f, 0 });
                 if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
                     float d = ApplyArmor(a.damage, LoadoutArmor(c, B.setup.heroLoadout));
@@ -1389,9 +1390,15 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     }
 
     // ---------- win / lose ----------
+    // A fallen hero is knocked senseless, not beaten: the warband fights on
+    // and the field decides. Defeat comes only when no one is left standing.
     if (!B.over) {
-        if (B.pHp <= 0) EndBattle(false);
-        else if (B.aliveEnemies == 0) EndBattle(true);
+        if (B.pHp <= 0 && !B.heroDown) {
+            B.heroDown = true;
+            SfxPlay(Sfx::Knell);
+        }
+        if (B.aliveEnemies == 0)                      EndBattle(!B.heroDown || B.aliveAllies > 0);
+        else if (B.heroDown && B.aliveAllies == 0)    EndBattle(false);
     }
     return true;
 }
@@ -1540,14 +1547,16 @@ void BattleDraw(const Content& c) {
     ppose.blocking = B.blocking;
     ppose.walkPhase = B.walkPhase;
     ppose.weapon = B.setup.heroLoadout.get(EquipSlot::Weapon);
-    BlobShadow(B.terrain, B.pPos.x, B.pPos.z, B.mounted ? 0.85f : 0.5f);
-    Vector3 heroDraw = B.pPos;
-    if (B.mounted) {
-        DrawHorse(B.pPos, B.yaw, B.walkPhase);
-        heroDraw.y += 1.25f;
-        ppose.walkPhase = 0;
+    if (!B.heroDown) {
+        BlobShadow(B.terrain, B.pPos.x, B.pPos.z, B.mounted ? 0.85f : 0.5f);
+        Vector3 heroDraw = B.pPos;
+        if (B.mounted) {
+            DrawHorse(B.pPos, B.yaw, B.walkPhase);
+            heroDraw.y += 1.25f;
+            ppose.walkPhase = 0;
+        }
+        DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
     }
-    DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
     EndShaderMode();
 
     EndMode3D();
@@ -1674,6 +1683,18 @@ void BattleDraw(const Content& c) {
         const int cy = GetScreenHeight() / 3;
         DrawRectangle(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.4f * a));
         ui::Title(head, (GetScreenWidth() - w) / 2, cy, 44, Fade(Color{ 235, 90, 70, 255 }, a));
+    }
+
+    // Knocked senseless: spectate while the warband decides the field.
+    if (B.heroDown && !B.over) {
+        const char* head = "STRUCK DOWN";
+        const char* sub  = "Your warband fights on...";
+        const int w1 = ui::MeasureTitle(head, 44);
+        const int w2 = ui::Measure(sub, 22);
+        const int cy = GetScreenHeight() / 3;
+        DrawRectangle(0, cy - 12, GetScreenWidth(), 96, Fade(BLACK, 0.5f));
+        ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 44, Fade(RED, 0.9f));
+        ui::Text(sub, (GetScreenWidth() - w2) / 2, cy + 54, 22, Fade(RAYWHITE, 0.9f));
     }
 
     if (B.over) {
