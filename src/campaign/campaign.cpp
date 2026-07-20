@@ -1468,9 +1468,9 @@ void PartyDraw(const GameState& gs) {
             const bool can = xp >= td.upgradeXp;
             ui::Text(TextFormat("-> %s  (%d XP)", c.troops[td.upgradesTo].name.c_str(),
                                 td.upgradeXp),
-                     panelX + 420, y, 20, can ? LIME : Fade(RAYWHITE, 0.45f));
+                     panelX + 360, y + 3, 18, can ? LIME : Fade(RAYWHITE, 0.45f));
         } else {
-            ui::Text("(elite)", panelX + 420, y, 20, Fade(GOLD, 0.6f));
+            ui::Text("(elite)", panelX + 360, y + 3, 18, Fade(GOLD, 0.6f));
         }
         y += 34;
     }
