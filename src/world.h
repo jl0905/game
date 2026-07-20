@@ -137,6 +137,11 @@ struct GameState {
     std::vector<int> allyLosses;                 // parallel to troops (if an ally fought)
     std::vector<int> enemyLosses;                // enemy dead, for the battle report
     std::string      resultText;
+
+    // Aftermath card: filled when a battle result is applied, drawn as a
+    // fading panel over the map for a few seconds. Purely presentational.
+    std::vector<std::string> battleReport;
+    float                    battleReportTimer = 0;
 };
 
 // Whether two factions currently fight — the runtime diplomacy matrix when it

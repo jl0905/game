@@ -434,6 +434,10 @@ static constexpr int HERO_XP_PER_WIN = 50;
 static int HeroXpToLevel(int level) { return level * 100; }
 
 static void ApplyBattleResult(GameState& gs) {
+    // The aftermath card starts fresh each battle; branches below fill it.
+    gs.battleReport.clear();
+    gs.battleReportTimer = 7.0f;   // presentational; drawn fading over the map
+
     // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
         gs.player.troopCounts[t] -= gs.playerLosses[t];
@@ -505,6 +509,11 @@ static void ApplyBattleResult(GameState& gs) {
         }
         const std::string fallenS = LossSummary(gs.content, gs.playerLosses);
         if (!fallenS.empty()) gs.resultText += "   Fallen: " + fallenS;
+        gs.battleReport.push_back(gs.battleWon ? std::string(t.name) + " IS TAKEN"
+                                               : "THE ASSAULT IS REPELLED");
+        const std::string slainS = LossSummary(gs.content, gs.enemyLosses);
+        if (!slainS.empty())  gs.battleReport.push_back("Garrison slain:  " + slainS);
+        if (!fallenS.empty()) gs.battleReport.push_back("Your fallen:  " + fallenS);
         gs.siegeTownIndex   = -1;
         gs.battlePartyIndex = -1;
         gs.battleAllyIndex  = -1;
@@ -520,6 +529,8 @@ static void ApplyBattleResult(GameState& gs) {
         gs.gold += loot;
         gs.resultText = ally ? TextFormat("VICTORY!  Your ally holds the field. Loot: %d gold", loot)
                              : TextFormat("VICTORY!  Loot: %d gold", loot);
+        gs.battleReport.push_back("VICTORY");
+        gs.battleReport.push_back(TextFormat("Loot: %d gold      Hero: +%d XP", loot, HERO_XP_PER_WIN));
         if (enemy) enemy->alive = false;
 
         // A share of the beaten foe yields rather than dies — captives to
@@ -532,8 +543,10 @@ static void ApplyBattleResult(GameState& gs) {
             gs.prisoners[t] += took;
             captives += took;
         }
-        if (captives > 0)
+        if (captives > 0) {
             gs.resultText += TextFormat("   Captives: %d", captives);
+            gs.battleReport.push_back(TextFormat("Captives taken: %d  (ransom at a tavern)", captives));
+        }
 
         // Battlefield pickings: a fallen foe's gear sometimes ends up in the
         // bag. TODO(balance): drop chance.
@@ -546,16 +559,21 @@ static void ApplyBattleResult(GameState& gs) {
                 const char* nm = drop.isWeapon ? gs.content.weapons[drop.handle].name.c_str()
                                                : gs.content.armor[drop.handle].name.c_str();
                 gs.resultText += TextFormat("   Picked up: %s", nm);
+                gs.battleReport.push_back(TextFormat("Picked up: %s", nm));
             }
         }
     } else {
         gs.resultText = "DEFEAT...  You escape with the survivors.";
+        gs.battleReport.push_back("DEFEAT");
+        gs.battleReport.push_back("You escape with the survivors.");
         gs.player.pos.x = Clamp(gs.player.pos.x + Frand(-300, 300), 100, MAP_SIZE - 100);
         gs.player.pos.y = Clamp(gs.player.pos.y + Frand(-300, 300), 100, MAP_SIZE - 100);
         if (ally) ally->alive = false;   // the side you backed lost the field
     }
     if (!slain.empty())  gs.resultText += "   Slain: " + slain;
     if (!fallen.empty()) gs.resultText += "   Fallen: " + fallen;
+    if (!slain.empty())  gs.battleReport.push_back("Enemy slain:  " + slain);
+    if (!fallen.empty()) gs.battleReport.push_back("Your fallen:  " + fallen);
 
     // A party wiped out of troops is gone regardless of who "won".
     if (ally && ally->totalTroops() <= 0) ally->alive = false;
@@ -661,6 +679,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         ApplyBattleResult(gs);
         gs.screen = Screen::Campaign;
     }
+    gs.battleReportTimer = fmaxf(0.0f, gs.battleReportTimer - dt);
 
     // ---- restart after the warband is destroyed ----
     if (gs.player.totalTroops() == 0 && in.restart) {
@@ -1125,6 +1144,26 @@ void CampaignDraw(const GameState& gs) {
             DrawRectangle(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * (1.0f - k)));
             DrawRectangle(0, 0, sw, sh, Fade(Color{ 10, 14, 44, 255 }, 0.58f * k));
         }
+    }
+
+    // ---- battle aftermath card: a fading report panel over the map ----
+    if (gs.battleReportTimer > 0 && !gs.battleReport.empty()) {
+        const float a  = fminf(gs.battleReportTimer / 0.8f, 1.0f);   // fade out
+        const int   sw = GetScreenWidth();
+        const int   ph = 96 + 30 * (int)(gs.battleReport.size() - 1);
+        const int   py = 120;
+        const int   pw = 560;
+        const int   px = (sw - pw) / 2;
+        DrawRectangle(px, py, pw, ph, Fade(Color{ 16, 14, 12, 255 }, 0.85f * a));
+        DrawRectangleLines(px, py, pw, ph, Fade(GOLD, 0.7f * a));
+        const std::string& head = gs.battleReport.front();
+        const bool grim = head.find("DEFEAT") != std::string::npos ||
+                          head.find("REPELLED") != std::string::npos;
+        ui::Title(head.c_str(), px + (pw - ui::MeasureTitle(head.c_str(), 40)) / 2,
+                  py + 14, 40, Fade(grim ? RED : GOLD, a));
+        int ly = py + 68;
+        for (size_t i = 1; i < gs.battleReport.size(); ++i, ly += 30)
+            ui::Text(gs.battleReport[i].c_str(), px + 28, ly, 20, Fade(RAYWHITE, 0.95f * a));
     }
 
     // ---- HUD ----
