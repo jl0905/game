@@ -11,14 +11,18 @@ campaign map — with or without you.
 
 ## What's in the game
 
-- **Campaign map** — a paused-time overworld (time flows only while you act).
-  Factions war over settlements: lords muster hosts, invest castles, and
-  respawn to fight again. Skirmishes you can watch or join on either side.
+- **Campaign map** — a paused-time overworld (time flows only while you act)
+  with a full day/night cycle. Factions war over settlements: lords muster
+  hosts, invest castles, and respawn to fight again. Skirmishes you can watch
+  or join on either side. **Live diplomacy**: wars build weariness from their
+  casualties, weary crowns swear truces, and lapsed truces rekindle the fight.
 - **Real-time 3D battles** — Mount & Blade-style directional melee (hold LMB,
   aim the swing with mouse motion, release to strike; RMB blocks), archers
   with ballistic arrows, formation orders (line/square/spread via `~`),
-  procedural terrain generated from where you fight on the map. Multithreaded
-  soldier AI; 1000-soldier battles hold 40+ FPS.
+  procedural terrain **and weather** generated from where you fight on the
+  map — some fields are fought in the rain. Enemy armies form a battle line
+  and break into the charge together, with a war cry. Multithreaded soldier
+  AI; 1000-soldier battles hold 40+ FPS.
 - **Sieges** — storm walled towns and castles through a contested gate while
   garrison archers shoot from the ramparts; victories transfer ownership.
 - **Walkable settlements** — enter a town and walk its streets: procedural
@@ -31,6 +35,7 @@ campaign map — with or without you.
 | | |
 |---|---|
 | ![Campaign](docs/campaign.png) | ![Town](docs/town.png) |
+| ![Battle line](docs/battleline.png) | ![Night](docs/night.png) |
 
 ## Controls
 
