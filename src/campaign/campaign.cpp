@@ -365,12 +365,14 @@ void CampaignInit(GameState& gs) {
     const int f_patrol    = c.factions.find("patrol");
     const int f_deserters = c.factions.find("deserters");
     const int f_sarleon   = c.factions.find("sarleon");
+    const int f_vaeling   = c.factions.find("vaeling");
     gs.towns = {
         { { 400, 400 },   "Sargoth",  SettlementType::Town,    f_kingdom },
         { { 1600, 500 },  "Praven",   SettlementType::Castle,  f_patrol },
         { { 500, 1550 },  "Tulga",    SettlementType::Village, f_deserters },
         { { 1500, 1500 }, "Jelkala",  SettlementType::Town,    f_patrol },
         { { 1000, 260 },  "Curaw",    SettlementType::Town,    f_sarleon },
+        { { 260, 1000 },  "Rivacheg", SettlementType::Castle,  f_vaeling },
     };
 
     // Garrison every owned settlement from its owner's roster. Relative sizes

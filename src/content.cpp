@@ -52,6 +52,8 @@ void LoadDefaultContent(Content& c) {
     const int a_tunic  = c.armor.add(Armor("tunic",  "Padded Tunic", EquipSlot::Body, BEIGE));
     const int a_mail   = c.armor.add(Armor("mail",   "Mail Hauberk", EquipSlot::Body, DARKGRAY));
     const int a_plate  = c.armor.add(Armor("plate",  "Plate Cuirass",EquipSlot::Body, LIGHTGRAY));
+    const int a_kettle = c.armor.add(Armor("kettle", "Kettle Helm",  EquipSlot::Head, Color{ 105, 105, 115, 255 }));
+    const int a_fur    = c.armor.add(Armor("fur",    "Fur Cloak",    EquipSlot::Body, Color{ 88, 66, 48, 255 }));
     const int a_gloves = c.armor.add(Armor("gloves", "Leather Gloves",EquipSlot::Hands, DARKBROWN));
     const int a_boots  = c.armor.add(Armor("boots",  "Leather Boots",EquipSlot::Feet, DARKBROWN));
 
@@ -76,11 +78,16 @@ void LoadDefaultContent(Content& c) {
     WeaponDef axe = Weapon("axe", "War Axe", WeaponClass::Axe, LIGHTGRAY);
     axe.tileW = 2; axe.tileH = 3;
 
+    WeaponDef daneaxe = Weapon("daneaxe", "Dane Axe", WeaponClass::Axe, RAYWHITE);
+    daneaxe.reach = 3.2f;               // a long-hafted axe (identity, not balance)
+    daneaxe.tileW = 2; daneaxe.tileH = 4;
+
     const int w_sword = c.weapons.add(sword);
     const int w_great = c.weapons.add(great);
     const int w_spear = c.weapons.add(spear);
     const int w_bow   = c.weapons.add(bow);
     const int w_axe   = c.weapons.add(axe);
+    const int w_dane  = c.weapons.add(daneaxe);
 
     // ---- Troops ------------------------------------------------------------
     // Troops differ by loadout + identity, NOT by tuned numbers (all flat base).
@@ -137,12 +144,30 @@ void LoadDefaultContent(Content& c) {
     archer.loadout.addWeapon(w_bow);       // shoots at range,
     archer.loadout.addWeapon(w_sword);     // draws steel when cornered
 
+    // The sea-kings' foot: fur-clad warriors who season into huscarls.
+    TroopDef warrior = makeTroop("warrior", "Vaeling Warrior", Color{ 120, 170, 190, 255 });
+    warrior.loadout.set(EquipSlot::Head,   a_cap);
+    warrior.loadout.set(EquipSlot::Body,   a_fur);
+    warrior.loadout.set(EquipSlot::Feet,   a_boots);
+    warrior.loadout.addWeapon(w_axe);
+    warrior.loadout.addWeapon(w_sword);
+
+    TroopDef huscarl = makeTroop("huscarl", "Huscarl", Color{ 210, 225, 235, 255 });
+    huscarl.loadout.set(EquipSlot::Head,   a_kettle);
+    huscarl.loadout.set(EquipSlot::Body,   a_mail);
+    huscarl.loadout.set(EquipSlot::Hands,  a_gloves);
+    huscarl.loadout.set(EquipSlot::Feet,   a_boots);
+    huscarl.loadout.addWeapon(w_dane);     // the long axe leads,
+    huscarl.loadout.addWeapon(w_sword);    // steel finishes
+
     const int t_recruit  = c.troops.add(recruit);
     const int t_infantry = c.troops.add(infantry);
     const int t_veteran  = c.troops.add(veteran);
     const int t_archer   = c.troops.add(archer);
     const int t_knight   = c.troops.add(knight);
     const int t_brigand  = c.troops.add(brigand);
+    const int t_warrior  = c.troops.add(warrior);
+    const int t_huscarl  = c.troops.add(huscarl);
 
     // Upgrade tree: recruit -> infantry -> veteran; archers are a branch off
     // recruit. Costs are flat placeholders.
@@ -152,6 +177,8 @@ void LoadDefaultContent(Content& c) {
     c.troops[t_infantry].upgradeXp  = base::UPGRADE_XP;
     c.troops[t_veteran].upgradesTo  = t_knight;    // a veteran earns his horse
     c.troops[t_veteran].upgradeXp   = base::UPGRADE_XP;
+    c.troops[t_warrior].upgradesTo  = t_huscarl;   // the Vaeling line
+    c.troops[t_warrior].upgradeXp   = base::UPGRADE_XP;
 
     // ---- Factions ----------------------------------------------------------
     // Distinct behaviours + rosters give the map its variety of party types.
@@ -201,6 +228,17 @@ void LoadDefaultContent(Content& c) {
     sarleon.kingdom = true;
     const int f_sarleon = c.factions.add(sarleon);
 
+    // The sea-kings: a third crown from the cold coast, axe-heavy foot.
+    FactionDef vaeling;
+    vaeling.id = "vaeling"; vaeling.name = "Vaelings";
+    vaeling.color = Color{ 70, 130, 60, 255 };
+    vaeling.behavior = PartyBehavior::Patrol;
+    vaeling.roster = { t_warrior, t_huscarl, t_archer };
+    vaeling.lords = { "Sigvald", "Toke" };
+    vaeling.lordPartySize = 120;    // TODO(balance)
+    vaeling.kingdom = true;
+    const int f_vaeling = c.factions.add(vaeling);
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.
@@ -232,6 +270,9 @@ void LoadDefaultContent(Content& c) {
     war(f_sarleon, f_patrol);          // ...and Sarleon presses its claim on the
                                        // old order too. The patrols stay at
                                        // peace with your warband only.
+    war(f_vaeling, f_sarleon);         // the sea-kings raid the rival crown
+    war(f_vaeling, f_patrol);          // ...and the old order's coasts alike;
+                                       // they have no quarrel with you (yet).
 }
 
 int LoadoutArmor(const Content& c, const Loadout& lo) {
