@@ -14,3 +14,7 @@ void SfxPlay(Sfx s, float volume = 1.0f);   // rate-limited per effect
 // Battle ambience: call every frame while a battle draws; keeps a wind/din
 // loop running at `volume` (0 stops it decaying naturally). Headless no-op.
 void SfxAmbience(float volume);
+
+// Rain bed: a steady patter loop for battles fought in the rain. Call every
+// frame it should sound (volume 0 lets it die out). Headless no-op.
+void SfxRain(float volume);

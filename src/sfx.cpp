@@ -12,6 +12,7 @@ constexpr int   NSFX   = 9;
 Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
 Sound  g_wind = {};
+Sound  g_rain = {};
 bool   g_ready = false;
 
 // Build a 16-bit mono wave from a generator f(t seconds) in [-1, 1].
@@ -114,6 +115,17 @@ void SfxInit() {
         return lp * breath * 0.8f;
     });
 
+    // Rain bed: bright dense noise with a soft flutter — steady patter.
+    g_rain = Synth(2.0f, [](float t) {
+        static float hp = 0;                      // crude high-pass: n - lp(n)
+        static float lp = 0;
+        const float n = Noise();
+        lp += (n - lp) * 0.25f;
+        hp = n - lp;
+        const float flutter = 0.85f + 0.15f * sinf(2 * PI * 3.3f * t);
+        return hp * flutter * 0.5f;
+    });
+
     g_ready = true;
 }
 
@@ -121,6 +133,7 @@ void SfxShutdown() {
     if (!g_ready) return;
     for (Sound& s : g_sounds) UnloadSound(s);
     UnloadSound(g_wind);
+    UnloadSound(g_rain);
     CloseAudioDevice();
     g_ready = false;
 }
@@ -129,6 +142,12 @@ void SfxAmbience(float volume) {
     if (!g_ready) return;
     SetSoundVolume(g_wind, volume);
     if (volume > 0.01f && !IsSoundPlaying(g_wind)) PlaySound(g_wind);
+}
+
+void SfxRain(float volume) {
+    if (!g_ready) return;
+    SetSoundVolume(g_rain, volume);
+    if (volume > 0.01f && !IsSoundPlaying(g_rain)) PlaySound(g_rain);
 }
 
 void SfxPlay(Sfx s, float volume) {

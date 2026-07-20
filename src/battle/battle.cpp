@@ -1399,6 +1399,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 void BattleDraw(const Content& c) {
     // Field ambience swells with the size of the fight still standing.
     SfxAmbience(0.12f + 0.4f * fminf((B.aliveAllies + B.aliveEnemies) / 250.0f, 1.0f));
+    SfxRain(B.raining ? 0.35f : 0.0f);   // the patter sits under the field din
 
     // ---------- camera ----------
     B.shake = fmaxf(0.0f, B.shake - GetFrameTime() * 3.0f);

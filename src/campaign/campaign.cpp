@@ -946,6 +946,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 }
 
 void CampaignDraw(const GameState& gs) {
+    SfxAmbience(0.08f);   // a low wind keeps the map from dead silence
     const Content& c = gs.content;
     const Camera2D cam = CampaignCamera(gs);
     const int nearSkirmish = NearestSkirmishIndex(gs);
