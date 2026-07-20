@@ -120,6 +120,14 @@ struct GameState {
     std::vector<InvItem> inventory;              // hero's tiled bag (D1)
     int                invCarry = -1;            // inventory item being moved (transient)
 
+    // Live diplomacy (C4): a runtime copy of Content::hostile. Wars between
+    // kingdoms (factions that field lords, plus the player) accumulate
+    // weariness from casualties, end in a truce, and rekindle when it lapses.
+    // Outlaw factions never treat. All flat numbers are TODO(balance).
+    std::vector<unsigned char> hostile;     // factions × factions, 1 = at war
+    std::vector<int>           warScore;    // casualties this war, per pair
+    std::vector<float>         truceDays;   // days of peace left, per pair
+
     // Battle handoff
     int              siegeTownIndex   = -1;      // assaulting this town (else -1)
     int              battlePartyIndex = -1;      // enemy: index into `parties`
@@ -130,3 +138,13 @@ struct GameState {
     std::vector<int> enemyLosses;                // enemy dead, for the battle report
     std::string      resultText;
 };
+
+// Whether two factions currently fight — the runtime diplomacy matrix when it
+// exists, falling back to the static Content relations. Use this (not
+// AreFactionsHostile) for anything happening in a live world.
+inline bool AtWar(const GameState& gs, int a, int b) {
+    const int n = gs.content.factions.size();
+    if (a < 0 || b < 0 || a == b) return AreFactionsHostile(gs.content, a, b);
+    if ((int)gs.hostile.size() == n * n) return gs.hostile[(size_t)a * n + b] != 0;
+    return AreFactionsHostile(gs.content, a, b);
+}

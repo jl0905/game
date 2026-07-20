@@ -108,6 +108,23 @@ bool SaveGame(const GameState& gs, const char* path) {
                   << gs.towns[t].garrison[tr] << '\n';
     }
 
+    // Live diplomacy: only pairs that differ from the base relations (or hold
+    // an active truce/war score) need recording; the rest re-derive on load.
+    {
+        const int nf = c.factions.size();
+        if ((int)gs.hostile.size() == nf * nf)
+            for (int a = 0; a < nf; ++a)
+                for (int b = a + 1; b < nf; ++b) {
+                    const size_t ij = (size_t)a * nf + b;
+                    const bool now  = gs.hostile[ij] != 0;
+                    if (now == AreFactionsHostile(c, a, b) &&
+                        gs.warScore[ij] == 0 && gs.truceDays[ij] <= 0) continue;
+                    f << "diplo " << c.factions[a].id << ' ' << c.factions[b].id << ' '
+                      << (now ? 1 : 0) << ' ' << gs.warScore[ij] << ' '
+                      << gs.truceDays[ij] << '\n';
+                }
+    }
+
     for (const Party& p : gs.parties) {
         if (!p.alive) continue;
         if (p.faction < 0 || p.faction >= c.factions.size()) continue;
@@ -203,6 +220,18 @@ bool LoadGame(GameState& gs, const char* path) {
             const int tr = c.troops.find(tid.c_str());
             if (idx >= 0 && idx < (int)gs.towns.size() && tr >= 0 && n > 0)
                 gs.towns[idx].garrison[tr] += n;
+        } else if (tag == "diplo") {
+            std::string ida, idb; int war = 0; int score = 0; float truce = 0;
+            ss >> ida >> idb >> war >> score >> truce;
+            const int a = c.factions.find(ida.c_str());
+            const int b = c.factions.find(idb.c_str());
+            const int nf = c.factions.size();
+            if (a >= 0 && b >= 0 && a != b && (int)gs.hostile.size() == nf * nf) {
+                const size_t ij = (size_t)a * nf + b, ji = (size_t)b * nf + a;
+                gs.hostile[ij] = gs.hostile[ji] = (unsigned char)(war ? 1 : 0);
+                gs.warScore[ij] = gs.warScore[ji] = score;
+                gs.truceDays[ij] = gs.truceDays[ji] = truce;
+            }
         } else if (tag == "party") {
             std::string fid; Vector2 pos{};
             ss >> fid >> pos.x >> pos.y;

@@ -81,7 +81,7 @@ std::vector<std::string> GatherLines(const GameState& gs, bool guards) {
                                        gs.towns[sg.town].name.c_str()));
     for (const Town& t : gs.towns)
         if (t.owner >= 0 && t.owner < c.factions.size() &&
-            AreFactionsHostile(c, t.owner, c.playerFaction))
+            AtWar(gs, t.owner, c.playerFaction))
             lines.push_back(TextFormat("%s flies the %s banner now. Dark days.",
                                        t.name.c_str(), c.factions[t.owner].name.c_str()));
     return lines;

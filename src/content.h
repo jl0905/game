@@ -117,6 +117,10 @@ struct FactionDef {
     // names (drawn as "Lord <name>"). Empty = the faction has no lords.
     std::vector<std::string> lords;
     int lordPartySize = 0;          // TODO(balance): order-of-hundreds army size
+
+    // Kingdoms wage declared wars and can swear truces (live diplomacy, C4);
+    // outlaw rabble fights everyone forever and never treats.
+    bool kingdom = false;
 };
 
 // The whole game catalogue. Everything is added in LoadDefaultContent(); to add

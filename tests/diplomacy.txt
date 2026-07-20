@@ -1,0 +1,8 @@
+# Diplomacy: the two crowns (player kingdom vs Sarleon) bleed each other via
+# lord sieges until war weariness forces a truce; the truce then lapses and
+# war rekindles. Outlaw factions must never appear in diplo lines.
+seed 7
+wait 600
+state
+wait 300
+state

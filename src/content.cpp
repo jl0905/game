@@ -159,6 +159,7 @@ void LoadDefaultContent(Content& c) {
     kingdom.id = "kingdom"; kingdom.name = "Your Warband";
     kingdom.color = BLUE; kingdom.behavior = PartyBehavior::Patrol;
     kingdom.recruitable = true;
+    kingdom.kingdom = true;
     kingdom.roster = { t_recruit, t_infantry, t_veteran, t_archer, t_knight };
     c.playerFaction = c.factions.add(kingdom);
 
@@ -184,6 +185,7 @@ void LoadDefaultContent(Content& c) {
     patrol.roster = { t_infantry, t_veteran, t_knight };
     patrol.lords = { "Aldric", "Corin" };
     patrol.lordPartySize = 120;     // TODO(balance)
+    patrol.kingdom = true;
     const int f_patrol = c.factions.add(patrol);
 
     // The rival crown: a lawful kingdom with a claim of its own. Hostile to
@@ -196,6 +198,7 @@ void LoadDefaultContent(Content& c) {
     sarleon.roster = { t_infantry, t_veteran, t_archer, t_knight };
     sarleon.lords = { "Aldemar", "Rowan" };
     sarleon.lordPartySize = 120;    // TODO(balance)
+    sarleon.kingdom = true;
     const int f_sarleon = c.factions.add(sarleon);
 
     // ---- Hero attributes (roadmap D3) ------------------------------------
@@ -226,7 +229,9 @@ void LoadDefaultContent(Content& c) {
         if (f != f_deserters) war(f_deserters, f);
     }
     war(f_sarleon, c.playerFaction);   // two crowns, one land
-    (void)f_patrol;   // the patrols keep the peace with both crowns
+    war(f_sarleon, f_patrol);          // ...and Sarleon presses its claim on the
+                                       // old order too. The patrols stay at
+                                       // peace with your warband only.
 }
 
 int LoadoutArmor(const Content& c, const Loadout& lo) {

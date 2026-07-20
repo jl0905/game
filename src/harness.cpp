@@ -115,7 +115,7 @@ struct Harness {
             for (int p = 0; p < (int)gs.parties.size(); ++p) {
                 const Party& e = gs.parties[p];
                 if (!e.alive || e.engaged) continue;
-                if (!AreFactionsHostile(gs.content, e.faction, gs.content.playerFaction)) continue;
+                if (!AtWar(gs, e.faction, gs.content.playerFaction)) continue;
                 const float d = Vector2Distance(e.pos, gs.player.pos);
                 if (e.lord.empty()) { if (d < bestD) { bestD = d; best = p; } }
                 else                { if (d < bestLordD) { bestLordD = d; bestLord = p; } }
@@ -189,6 +189,21 @@ struct Harness {
             std::printf("item: %s %s at (%d,%d)\n", it.isWeapon ? "weapon" : "armor",
                         it.isWeapon ? c.weapons[it.handle].id.c_str()
                                     : c.armor[it.handle].id.c_str(), it.x, it.y);
+        // Live diplomacy: every pair that differs from the base relations.
+        {
+            const int nf = c.factions.size();
+            if ((int)gs.hostile.size() == nf * nf)
+                for (int a = 0; a < nf; ++a)
+                    for (int b = a + 1; b < nf; ++b) {
+                        const bool now  = gs.hostile[(size_t)a * nf + b] != 0;
+                        const bool base = AreFactionsHostile(c, a, b);
+                        const float tr  = gs.truceDays[(size_t)a * nf + b];
+                        if (now != base || tr > 0)
+                            std::printf("diplo: %s vs %s %s truce=%.1f\n",
+                                        c.factions[a].id.c_str(), c.factions[b].id.c_str(),
+                                        now ? "war" : "peace", tr);
+                    }
+        }
         for (const AISiege& sg : gs.aiSieges)
             std::printf("aisiege: party=%d town=%d timer=%.1f\n", sg.party, sg.town, sg.timer);
         for (int s = 0; s < (int)gs.skirmishes.size(); ++s)

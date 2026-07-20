@@ -109,7 +109,7 @@ Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
     };
 
     Foe best;
-    if (AreFactionsHostile(c, e.faction, c.playerFaction) && gs.player.totalTroops() > 0 &&
+    if (AtWar(gs, e.faction, c.playerFaction) && gs.player.totalTroops() > 0 &&
         !beneathNotice(gs.player.totalTroops())) {
         const float d = Vector2Distance(e.pos, gs.player.pos);
         if (d < best.dist) best = { -1, gs.player.pos, gs.player.totalTroops(), d };
@@ -118,7 +118,7 @@ Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
         if (j == ei) continue;
         const Party& o = gs.parties[j];
         if (!o.alive || o.engaged) continue;
-        if (!AreFactionsHostile(c, e.faction, o.faction)) continue;
+        if (!AtWar(gs, e.faction, o.faction)) continue;
         if (beneathNotice(o.totalTroops())) continue;
         const float d = Vector2Distance(e.pos, o.pos);
         if (d < best.dist) best = { j, o.pos, o.totalTroops(), d };
@@ -162,6 +162,55 @@ void RemoveTroops(Party& p, int count) {
     }
 }
 
+// --- live diplomacy (C4): war weariness, truces, rekindled wars -------------
+constexpr int   WAR_WEARINESS = 40;    // TODO(balance): casualties that end a war
+constexpr float TRUCE_DAYS    = 4.0f;  // TODO(balance): days a sworn truce holds
+
+// Kingdoms treat; outlaw rabble never does (FactionDef::kingdom).
+bool IsKingdom(const Content& c, int f) {
+    return f >= 0 && f < c.factions.size() && c.factions[f].kingdom;
+}
+
+// Feed a war's butcher's bill; enough of it and the two kingdoms swear peace.
+void AddWarScore(GameState& gs, int a, int b, int casualties) {
+    const Content& c = gs.content;
+    const int n = c.factions.size();
+    if (a < 0 || b < 0 || a == b || casualties <= 0) return;
+    if ((int)gs.hostile.size() != (size_t)n * n) return;
+    if (!IsKingdom(c, a) || !IsKingdom(c, b)) return;
+    const size_t ij = (size_t)a * n + b, ji = (size_t)b * n + a;
+    if (!gs.hostile[ij]) return;
+    gs.warScore[ij] += casualties;
+    gs.warScore[ji] = gs.warScore[ij];
+    if (gs.warScore[ij] >= WAR_WEARINESS) {
+        gs.hostile[ij] = gs.hostile[ji] = 0;
+        gs.warScore[ij] = gs.warScore[ji] = 0;
+        gs.truceDays[ij] = gs.truceDays[ji] = TRUCE_DAYS;
+        gs.resultText = TextFormat("PEACE:  %s and %s, weary of war, swear a truce.",
+                                   c.factions[a].name.c_str(), c.factions[b].name.c_str());
+    }
+}
+
+// One world day passes: truces run down, and a lapsed truce between kingdoms
+// whose base relation is war rekindles the fighting.
+void DiplomacyDayTick(GameState& gs) {
+    const Content& c = gs.content;
+    const int n = c.factions.size();
+    if ((int)gs.hostile.size() != (size_t)n * n) return;
+    for (int a = 0; a < n; ++a)
+        for (int b = a + 1; b < n; ++b) {
+            const size_t ij = (size_t)a * n + b, ji = (size_t)b * n + a;
+            if (gs.truceDays[ij] <= 0) continue;
+            gs.truceDays[ij] -= 1.0f;
+            gs.truceDays[ji] = gs.truceDays[ij];
+            if (gs.truceDays[ij] <= 0 && AreFactionsHostile(c, a, b)) {
+                gs.hostile[ij] = gs.hostile[ji] = 1;
+                gs.resultText = TextFormat("WAR:  the truce lapses — %s and %s take up arms again!",
+                                           c.factions[a].name.c_str(), c.factions[b].name.c_str());
+            }
+        }
+}
+
 // Auto-resolve a skirmish the player chose not to join: pick a winner weighted
 // by strength, wipe the loser, and bloody the winner in proportion.
 void ResolveSkirmish(GameState& gs, Skirmish& sk) {
@@ -182,6 +231,7 @@ void ResolveSkirmish(GameState& gs, Skirmish& sk) {
     RemoveTroops(winner, GetRandomValue(loserStrength / 2, loserStrength));
     loser.alive = false;
     if (winner.totalTroops() <= 0) winner.alive = false;  // mutual annihilation
+    AddWarScore(gs, a.faction, b.faction, loserStrength);
 }
 
 // Camera centred on the player; used by input gathering and drawing.
@@ -250,11 +300,12 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
     a.engaged = false;
     if (!a.alive || sg.town < 0 || sg.town >= (int)gs.towns.size()) return;
     Town& t = gs.towns[sg.town];
-    if (!AreFactionsHostile(gs.content, a.faction, t.owner)) return;  // already flipped
+    if (!AtWar(gs, a.faction, t.owner)) return;  // already flipped, or peace broke out
 
     const int sa = a.totalTroops();
     const int sd = t.garrisonSize();
     if (sa <= 0) { a.alive = false; return; }
+    const int defender = t.owner;
 
     const bool taken = Frand(0, (float)(sa + sd)) < (float)sa;
     if (taken) {
@@ -270,6 +321,7 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
         for (int tr = 0; tr < (int)t.garrison.size() && loss > 0; ++tr)
             while (t.garrison[tr] > 0 && loss > 0) { t.garrison[tr]--; loss--; }
     }
+    AddWarScore(gs, a.faction, defender, sa - a.totalTroops() + sd - t.garrisonSize());
 }
 
 // Inventory grid geometry, shared by input gathering and drawing.
@@ -350,6 +402,11 @@ void CampaignInit(GameState& gs) {
     for (int f = 0; f < c.factions.size(); ++f)
         for (const std::string& name : c.factions[f].lords)
             gs.parties.push_back(MakeLordParty(c, f, name, FactionHome(gs, f)));
+
+    // Live diplomacy starts from the static relations table.
+    gs.hostile = c.hostile;
+    gs.warScore.assign(gs.hostile.size(), 0);
+    gs.truceDays.assign(gs.hostile.size(), 0.0f);
 }
 
 // A party index is usable as a live entry in gs.parties.
@@ -410,6 +467,17 @@ static void ApplyBattleResult(GameState& gs) {
 
     Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
     if (enemy) enemy->engaged = false;
+
+    // The butcher's bill of the player's own battles feeds war weariness.
+    {
+        int enemyFaction = enemy ? enemy->faction : -1;
+        if (gs.siegeTownIndex >= 0 && gs.siegeTownIndex < (int)gs.towns.size())
+            enemyFaction = gs.towns[gs.siegeTownIndex].owner;
+        int bill = 0;
+        for (int v : gs.playerLosses) bill += v;
+        for (int v : gs.enemyLosses)  bill += v;
+        AddWarScore(gs, gs.content.playerFaction, enemyFaction, bill);
+    }
 
     // Siege outcome: the garrison takes its casualties; a captured settlement
     // changes hands (villages are "sacked", walls are "stormed").
@@ -628,7 +696,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     // ---- enter (friendly) or assault (hostile) a settlement ----
     if (in.clickSettlement >= 0 && in.clickSettlement < (int)gs.towns.size()) {
         Town& t = gs.towns[in.clickSettlement];
-        if (AreFactionsHostile(c, t.owner, c.playerFaction)) {
+        if (AtWar(gs, t.owner, c.playerFaction)) {
             if (t.garrisonSize() <= 0) {
                 // Nobody mans the walls — it simply changes hands.
                 t.owner = c.playerFaction;
@@ -681,7 +749,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 float bestD   = 1e9f;
                 for (int ti = 0; ti < (int)gs.towns.size(); ++ti) {
                     const Town& t = gs.towns[ti];
-                    if (!AreFactionsHostile(c, e.faction, t.owner)) continue;
+                    if (!AtWar(gs, e.faction, t.owner)) continue;
                     if (t.garrisonSize() * 2 > e.totalTroops()) continue;  // TODO(balance)
                     const float d = Vector2Distance(e.pos, t.pos);
                     if (d < bestD) { bestD = d; bestTown = ti; }
@@ -723,7 +791,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             for (int j = i + 1; j < (int)gs.parties.size(); ++j) {
                 Party& b = gs.parties[j];
                 if (!b.alive || b.engaged) continue;
-                if (!AreFactionsHostile(c, a.faction, b.faction)) continue;
+                if (!AtWar(gs, a.faction, b.faction)) continue;
                 if (Vector2Distance(a.pos, b.pos) < PARTY_COLLIDE_DIST) {
                     a.engaged = b.engaged = true;
                     Skirmish sk;
@@ -746,7 +814,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if (gs.aiSieges[s].party == i) { besiegingIdx = s; break; }
                 if (besiegingIdx < 0) continue;   // locked in a skirmish; join it instead
             }
-            if (AreFactionsHostile(c, e.faction, c.playerFaction) &&
+            if (AtWar(gs, e.faction, c.playerFaction) &&
                 gs.player.totalTroops() > 0 &&
                 Vector2Distance(e.pos, gs.player.pos) < PLAYER_COLLIDE_DIST) {
                 if (besiegingIdx >= 0) {           // you fall upon the siege camp
@@ -822,6 +890,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.gold += income - wages;
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.",
                                        gs.day, income, wages);
+            DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
 
             // Every owner musters one soldier a day toward their garrison cap
             // (roadmap B3c). TODO(balance): the rate.
