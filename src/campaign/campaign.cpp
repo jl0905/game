@@ -2541,6 +2541,16 @@ void CampaignDraw(const GameState& gs) {
         ui::Text(what, 10, 38, 17, Fade(RAYWHITE, 0.65f));
     }
 
+    // Every door on one line (T7): the keys players kept not finding.
+    {
+        const char* keys = "[P]arty  [C]haracter  [I] bag  [B] ledger  "
+                           "[O]ptions  [F5-F7] quicksave  [Esc,Esc] save+quit  "
+                           "(load: title screen, L)";
+        DrawRectangle(0, GetScreenHeight() - 26, GetScreenWidth(), 26,
+                      Fade(BLACK, 0.45f));
+        ui::Text(keys, 10, GetScreenHeight() - 22, 15, Fade(RAYWHITE, 0.75f));
+    }
+
     // Time state, top-right: the world is frozen until you move or wait.
     const char* clock = gs.timeFlowing ? "TIME FLOWING" : "TIME PAUSED  (move, or hold SPACE)";
     ui::Text(clock, GetScreenWidth() - ui::Measure(clock, 20) - 12, 8, 20,

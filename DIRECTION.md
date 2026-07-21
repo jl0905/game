@@ -602,10 +602,11 @@ this is the feedback the flat numbers were waiting for.
   `tests/horses.owb` + `tests/horses.txt` watch enemies 3→0 as horses
   0→3. Also fixed en route: stun could chain-lock (added post-stun
   immunity). Follow-up: catching a loose horse to remount.
-- [ ] **T7. Save/load discoverability.** Saving/loading exists (F5-F7
-  slots, dawn autosave, title Load menu) but the player didn't find it —
-  surface it: an Esc pause row on the map naming the keys, and a saved
-  toast when a slot writes.
+- [x] **T7. Save/load discoverability.** Shipped: a persistent key footer
+  on the campaign map — party, character, bag, ledger, options,
+  F5-F7 quicksave, Esc-Esc save+quit, and where Load lives (title, L,
+  clickable). The systems existed (N3/Q5/H3); the player couldn't find
+  them, which is a UI bug by definition. Track T complete.
 
 ## Sequencing guidance
 
