@@ -238,9 +238,11 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   the bridge passes hilliness/forest to `BattleSetup`, so battles follow a
   modded biome while the battle module stays world-blind. Verified: a
   hacked threshold turns the whole world to forest at the modded speed.
-- [ ] **K9. Balance-pass prep.** One document listing every TODO(balance)
-  constant with its file, current flat value, and intended feel — the
-  worksheet a human playtesting pass needs. (Numbers stay flat until then.)
+- [x] **K9. Balance-pass prep.** Shipped: `BALANCE.md` — every TODO(balance)
+  constant (core `base::*` set, campaign pulse, economy, battle feel,
+  structural stubs) with its site, current flat value and intended feel,
+  plus a how-to-run-a-tuning-session footer. Numbers stay flat until a
+  human plays through the sheet.
 
 ## Track L — Cohesion & integration (user directive 2026-07-21)
 
