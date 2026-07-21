@@ -511,8 +511,10 @@ full career, and the last Warband textures.
   *windowed gather*, so headless sims never see it and every script is
   bit-identical (63/63 unchanged proves it). Arena bouts skip it — the
   ring waits for no plans.
-- [ ] **R3. Roster polish.** Veterancy pips on the party screen (XP toward
-  the next rank as a bar), wage column, and a party-cap readout.
+- [x] **R3. Roster polish.** Shipped: the party screen shows Troops N/cap
+  (renown's cap made visible), a per-line g/day wage column, and a
+  veterancy bar per upgradable line (gold filling to lime at promotable).
+  Draw-only; sim untouched (63/63). Track R complete.
 - [x] **R4. World events.** Shipped: `EventDef` registry (news line with
   the settlement's name, prosperity/stock deltas, outlaw bands raised) —
   Good Harvest, Murrain, and A Bandit King Rises registered; one fires

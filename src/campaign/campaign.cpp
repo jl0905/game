@@ -3012,8 +3012,9 @@ void PartyDraw(const GameState& gs) {
                       gs.towns[ti].prosperity / 100;
 
     ui::Title("YOUR WARBAND", panelX, 60, 44, GOLD);
-    ui::Text(TextFormat("Gold: %d    Troops: %d    Daily: +%d income  -%d wages  (%+d)",
-                        gs.gold, gs.player.totalTroops(), income, wages, income - wages),
+    ui::Text(TextFormat("Gold: %d    Troops: %d / %d    Daily: +%d income  -%d wages  (%+d)",
+                        gs.gold, gs.player.totalTroops(), PartyCap(gs),
+                        income, wages, income - wages),
              panelX, 120, 22, income >= wages ? RAYWHITE : Fade(RED, 0.9f));
     ui::Text("Survivors of won battles earn experience; spend it to promote them.",
              panelX, 150, 18, Fade(RAYWHITE, 0.7f));
@@ -3024,16 +3025,25 @@ void PartyDraw(const GameState& gs) {
         const TroopDef& td = c.troops[t];
         const int xp = (t < (int)gs.troopXp.size()) ? gs.troopXp[t] : 0;
         DrawHoverRow(panelX, y, layout::PANEL_W, layout::PARTY_ROW_H);
-        ui::Text(TextFormat("[%d]  %-10s x%-3d   XP %d", slot + 1, td.name.c_str(),
-                            gs.player.troopCounts[t], xp),
+        ui::Text(TextFormat("[%d]  %-10s x%-3d", slot + 1, td.name.c_str(),
+                            gs.player.troopCounts[t]),
                  panelX, y, 24, RAYWHITE);
+        // Wage column (R3): what this line costs the ledger each day.
+        ui::Text(TextFormat("%2d g/day", gs.player.troopCounts[t] * td.wage),
+                 panelX + 250, y + 4, 17, Fade(RAYWHITE, 0.55f));
         if (td.upgradesTo >= 0) {
             const bool can = xp >= td.upgradeXp;
-            ui::Text(TextFormat("-> %s  (%d XP)", c.troops[td.upgradesTo].name.c_str(),
-                                td.upgradeXp),
-                     panelX + 360, y + 3, 18, can ? LIME : Fade(RAYWHITE, 0.45f));
+            // Veterancy pip (R3): seasoning toward the next rank as a bar.
+            const float fill = td.upgradeXp > 0
+                ? fminf(1.0f, (float)xp / (float)td.upgradeXp) : 0.0f;
+            DrawRectangle(panelX + 340, y + 8, 90, 8, Fade(BLACK, 0.5f));
+            DrawRectangle(panelX + 340, y + 8, (int)(90 * fill), 8,
+                          can ? LIME : Fade(GOLD, 0.8f));
+            DrawRectangleLines(panelX + 340, y + 8, 90, 8, Fade(RAYWHITE, 0.3f));
+            ui::Text(TextFormat("-> %s", c.troops[td.upgradesTo].name.c_str()),
+                     panelX + 442, y + 3, 18, can ? LIME : Fade(RAYWHITE, 0.45f));
         } else {
-            ui::Text("(elite)", panelX + 360, y + 3, 18, Fade(GOLD, 0.6f));
+            ui::Text("(elite)", panelX + 340, y + 3, 18, Fade(GOLD, 0.6f));
         }
         y += layout::PARTY_ROW_H;
     }
