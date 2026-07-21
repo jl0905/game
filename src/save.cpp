@@ -95,6 +95,10 @@ bool SaveGame(const GameState& gs, const char* path) {
           << it.x << ' ' << it.y << '\n';
     }
 
+    // The sworn liege (F2).
+    if (gs.liege >= 0 && gs.liege < c.factions.size())
+        f << "liege " << c.factions[gs.liege].id << '\n';
+
     // Standing with each faction (F1).
     for (int fa = 0; fa < c.factions.size() && fa < (int)gs.relations.size(); ++fa)
         if (gs.relations[fa] != 0)
@@ -268,6 +272,10 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
+        } else if (tag == "liege") {
+            std::string fid;
+            ss >> fid;
+            gs.liege = c.factions.find(fid.c_str());
         } else if (tag == "relation") {
             std::string fid; int v = 0;
             ss >> fid >> v;

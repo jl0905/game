@@ -1,0 +1,12 @@
+# Vassalage (direction F2): swear to a crown at its settlement, receive a
+# village fief, inherit the crown's wars, and keep it all through a save.
+seed 25
+enter 3            # Jelkala, held by the patrol crown (at peace with you)
+swear              # V: take the oath
+state              # expect liege=patrol, Emberfall owner=kingdom (your fief),
+                   # and diplo lines showing you at the patrol's wars
+leave
+save vassal_test.owb
+load vassal_test.owb
+state              # expect liege and the fief to survive the reload
+quit

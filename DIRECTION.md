@@ -58,8 +58,12 @@ flat.
   block on the character sheet, saved, in the harness dump. Deltas flat
   TODO(balance). Follow-ups: per-lord scores; effects (recruit prices,
   vassalage gates) arrive with F2.
-- [ ] **F2. Vassalage.** Swear to a king: get a settlement fief, owe wartime
-  muster (join your liege's siege target); lords react by relation.
+- [x] **F2. Vassalage (v1).** Shipped: press V at a settlement of a kingdom
+  you're at peace with (standing ≥ 0) to swear — the crown grants one of
+  its villages as a fief, and your wars align with the liege's (re-synced
+  daily as diplomacy shifts). Persists in saves; harness `swear` + `liege=`
+  dump; `tests/vassalage.txt`. Follow-ups: muster obligations (ride to the
+  liege's sieges), renouncing the oath, per-lord reactions.
 - [ ] **F3. Player kingdom.** Rebel or conquer unowned: your own faction
   banner/colour, grant fiefs to hired lords (mercenary captains → vassals),
   other crowns react (F1) — the Warband endgame.

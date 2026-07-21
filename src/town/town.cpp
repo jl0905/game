@@ -227,6 +227,37 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- swear fealty to this settlement's crown (V) ----
+    // A free captain in good standing may take the oath at any settlement of
+    // a lord-fielding kingdom he is at peace with. The crown grants a village
+    // fief when it has one to give. TODO(balance): the standing requirement.
+    if (cin.swear && gs.liege < 0) {
+        const int f = gs.towns[gs.currentSettlement].owner;
+        const bool kingdom = f >= 0 && f != c.playerFaction &&
+                             c.factions[f].kingdom && !c.factions[f].lords.empty();
+        const int standing = (f >= 0 && f < (int)gs.relations.size()) ? gs.relations[f] : 0;
+        if (kingdom && !AtWar(gs, f, c.playerFaction) && standing >= 0) {
+            gs.liege = f;
+            AlignWarsWithLiege(gs);
+            int fief = -1;
+            for (int t = 0; t < (int)gs.towns.size(); ++t)
+                if (gs.towns[t].owner == f && gs.towns[t].type == SettlementType::Village) {
+                    fief = t;
+                    break;
+                }
+            if (fief >= 0) {
+                gs.towns[fief].owner = c.playerFaction;
+                gs.resultText = TextFormat("You are sworn to %s. %s is your fief.",
+                                           c.factions[f].name.c_str(),
+                                           gs.towns[fief].name.c_str());
+            } else {
+                gs.resultText = TextFormat("You are sworn to %s. No fief yet - earn one.",
+                                           c.factions[f].name.c_str());
+            }
+            SfxPlay(Sfx::Fanfare);
+        }
+    }
+
     // ---- enter the tournament ring (T, towns only) ----
     if (cin.tournament &&
         gs.towns[gs.currentSettlement].type == SettlementType::Town) {

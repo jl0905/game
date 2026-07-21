@@ -145,6 +145,11 @@ struct GameState {
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 
+    // Vassalage (F2): the kingdom the player has sworn to, or -1 while a free
+    // captain. Swearing aligns the player's wars with the liege's and grants
+    // a village fief. TODO(balance): oath requirements, muster obligations.
+    int liege = -1;
+
     // Relations (F1): the player's personal standing with each faction,
     // -100..100, moved by deeds (battles, raids, aid). Report-only for now;
     // vassalage (F2) and quest givers (F4) will read it. TODO(balance).
@@ -174,6 +179,21 @@ struct GameState {
     std::vector<std::string> battleReport;
     float                    battleReportTimer = 0;
 };
+
+// A sworn vassal fights his liege's wars: copy the liege's stance toward every
+// third faction onto the player, and keep the peace between the two. Called
+// when the oath is sworn and every world day (diplomacy shifts under it).
+inline void AlignWarsWithLiege(GameState& gs) {
+    const int n = gs.content.factions.size();
+    const int p = gs.content.playerFaction, L = gs.liege;
+    if (L < 0 || L >= n || p < 0 || (int)gs.hostile.size() != n * n) return;
+    for (int f = 0; f < n; ++f) {
+        if (f == p || f == L) continue;
+        gs.hostile[(size_t)p * n + f] = gs.hostile[(size_t)f * n + p] =
+            gs.hostile[(size_t)L * n + f];
+    }
+    gs.hostile[(size_t)p * n + L] = gs.hostile[(size_t)L * n + p] = 0;
+}
 
 // Whether two factions currently fight — the runtime diplomacy matrix when it
 // exists, falling back to the static Content relations. Use this (not

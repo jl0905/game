@@ -754,6 +754,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.interact = IsKeyPressed(KEY_E);
         in.openMarket = IsKeyPressed(KEY_M);
         in.tournament = IsKeyPressed(KEY_T);
+        in.swear      = IsKeyPressed(KEY_V);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }
@@ -1125,6 +1126,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if (t.stock[g] < cap) t.stock[g]++;
             }
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
+            AlignWarsWithLiege(gs); // a vassal's wars follow the crown's (F2)
 
             // Caravans (E3): any faction holding two settlements keeps one
             // convoy on the road between them.
