@@ -15,6 +15,14 @@ A small Mount & Blade–style game in **C++17** using **[raylib](https://www.ray
   with a four-directional (Mount & Blade style) melee system. Casualties and the
   outcome carry back to the campaign.
 
+## Creative direction
+
+**`DIRECTION.md` is the authoritative feature backlog and creative direction.**
+When working under the autonomous-improvement goal (or choosing what to build
+next), read it first, pick the highest-priority unblocked item, and check it
+off there (with a one-line shipped note) in the same commit as the feature.
+`ROADMAP.md` is the completed historical backlog — don't add to it.
+
 ## Design principles (read before changing anything)
 
 1. **Data-driven, not hard-coded.** Armour, weapons, troops, and factions are
