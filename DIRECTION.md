@@ -421,6 +421,31 @@ adds per line of code. Structure first, numbers flat, as ever.
   the war. All gates flat TODO(balance). Follow-up: loyalist lords
   hunting the usurper specifically; a coronation moment.
 
+## Track P — Sixth wave: the cost of war
+
+War should scar the map, not just the rosters.
+
+- [x] **P1. Village raiding.** Shipped: hostile villages join the assault
+  prompt — [1] take it, [2] put it to the torch. A raid fights the same
+  battle but the aftermath differs: 100–150 gold + up to 8 wares into
+  the saddlebags, prosperity −50 (floor 30), the banner stays; −3 honor,
+  −15 standing, +1 renown (infamy is fame). Warring lords bleed enemy
+  villages the same way daily (−10 prosperity, −1 stock within 200 u,
+  with a warning when it's yours). `tests/raid.txt` burns Tulga. All
+  flat TODO(balance).
+- [ ] **P2. Relief battles.** An AI lord reaching a besieged friendly town
+  joins the defence: the assault fights garrison + relief together
+  (the N6 follow-up, now that scale is proven).
+- [ ] **P3. Companion voices.** Companions carry a temperament: the
+  honorable object to raids and may leave over a black name; the grim
+  demand spoils. Personality read from `TroopDef`, spoken via dialogue.
+- [ ] **P4. The first hour.** New-player toasts (first battle, first town,
+  first quest), a "what now?" objective line on the HUD, and the title
+  screen naming the goal: every banner on the map yours.
+- [ ] **P5. Supply lines.** Parties carry food days (grain from markets);
+  a starving host sheds men daily — the logistics layer that makes
+  raiding and caravans strategic.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

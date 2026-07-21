@@ -3,6 +3,7 @@
 # grant survives saves.
 seed 33
 enter 2            # storm Tulga, the deserters' village
+siege 1            # take it (P1 prompt)
 block on
 tick 200
 state              # expect Tulga owner=kingdom

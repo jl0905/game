@@ -1,0 +1,13 @@
+# Village raiding (direction P1): a hostile village offers storm OR raid;
+# raiding loots gold and wares and crashes prosperity but leaves the banner,
+# at the price of honor and standing. Infamy still counts as fame.
+seed 33
+state              # baseline: gold 300, honor 0, Tulga owner=deserters
+enter 2            # the fields of Tulga
+siege 2            # put it to the torch
+block on
+tick 200           # the fight for the granaries plays out
+state              # expect: Tulga still owner=deserters, prosper crashed,
+                   # gold up, saddlebags full, honor=-3, deserters -15,
+                   # renown up despite the black deed
+quit

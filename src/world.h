@@ -250,6 +250,8 @@ struct GameState {
     int   siegeCampPrep = 0;    // what is being built: 1 ladders, 2 tower
     float siegeCampDays = 0;    // build days left
     int   siegeLaunchPrep = 0;  // engines of the assault being fought (transient)
+    bool  raidingVillage  = false;   // this village fight is a raid, not a
+                                     // conquest (P1; transient)
 
     // Battle handoff
     bool             arenaFight = false;         // tournament bout, not a real battle (G2)

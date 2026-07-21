@@ -782,7 +782,30 @@ static void ApplyBattleResult(GameState& gs) {
             t.garrison[i] -= gs.enemyLosses[i];
             if (t.garrison[i] < 0) t.garrison[i] = 0;
         }
-        if (gs.battleWon) {
+        if (gs.battleWon && gs.raidingVillage) {
+            // A raid (P1): the banner stays, the countryside burns. Gold and
+            // wares out, prosperity crashed, a black mark on your name.
+            // TODO(balance): all of it.
+            const int loot = 100 + GetRandomValue(0, 50);
+            gs.gold += loot;
+            if ((int)gs.goods.size() < gs.content.goods.size())
+                gs.goods.assign(gs.content.goods.size(), 0);
+            int carried = 0, taken = 0;
+            for (int q : gs.goods) carried += q;
+            for (int g = 0; g < (int)t.stock.size() &&
+                            g < gs.content.goods.size(); ++g)
+                while (t.stock[g] > 0 && carried < GOODS_CAP && taken < 8) {
+                    t.stock[g]--; gs.goods[g]++; carried++; taken++;
+                }
+            t.prosperity = std::max(30, t.prosperity - 50);
+            NudgeRelation(gs, t.owner, -15);
+            gs.honor  -= 3;
+            gs.renown += 1;   // infamy is still fame
+            gs.resultText = TextFormat(
+                "%s BURNS.  Loot: %d gold, %d wares. Word of it spreads.",
+                t.name.c_str(), loot, taken);
+            gs.battleReport.push_back(std::string(t.name) + " BURNS");
+        } else if (gs.battleWon) {
             NudgeRelation(gs, t.owner, -20);   // you took their land
             t.owner = gs.content.playerFaction;
             const int loot = 50 + GetRandomValue(0, 100);   // TODO(balance)
@@ -799,13 +822,16 @@ static void ApplyBattleResult(GameState& gs) {
         }
         const std::string fallenS = LossSummary(gs.content, gs.playerLosses);
         if (!fallenS.empty()) gs.resultText += "   Fallen: " + fallenS;
-        gs.battleReport.push_back(gs.battleWon ? std::string(t.name) + " IS TAKEN"
-                                               : "THE ASSAULT IS REPELLED");
+        if (!(gs.battleWon && gs.raidingVillage))   // raids reported above
+            gs.battleReport.push_back(gs.battleWon
+                                          ? std::string(t.name) + " IS TAKEN"
+                                          : "THE ASSAULT IS REPELLED");
         const std::string slainS = LossSummary(gs.content, gs.enemyLosses);
         if (!slainS.empty())  gs.battleReport.push_back("Garrison slain:  " + slainS);
         if (!fallenS.empty()) gs.battleReport.push_back("Your fallen:  " + fallenS);
         gs.siegeTownIndex   = -1;
         gs.siegeLaunchPrep  = 0;   // the engines burned with the assault (N1)
+        gs.raidingVillage   = false;
         gs.battlePartyIndex = -1;
         gs.battleAllyIndex  = -1;
         gs.allyLosses.clear();
@@ -1250,17 +1276,30 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     // the garrison musters on. TODO(balance): build times.
     if (gs.siegePrompt >= 0 && in.menuChoice != 0) {
         const int target = gs.siegePrompt;
+        const bool village = gs.towns[target].type == SettlementType::Village;
         gs.siegePrompt = -1;
         switch (in.menuChoice) {
-            case 1:   // storm now — the gate and the standing ladders
+            case 1:   // take it — walls storm at the gate, fields just fight
                 gs.siegeLaunchPrep  = 0;
+                gs.raidingVillage   = false;
                 gs.siegeTownIndex   = target;
                 gs.battlePartyIndex = -1;
                 gs.battleAllyIndex  = -1;
                 gs.screen = Screen::Battle;
                 return;
-            case 2:   // a day's carpentry: two more ladders
-            case 3: { // two days: a siege tower
+            case 2:
+                if (village) {   // put it to the torch (P1): same fight,
+                    gs.raidingVillage   = true;   // different aftermath
+                    gs.siegeLaunchPrep  = 0;
+                    gs.siegeTownIndex   = target;
+                    gs.battlePartyIndex = -1;
+                    gs.battleAllyIndex  = -1;
+                    gs.screen = Screen::Battle;
+                    return;
+                }
+                [[fallthrough]];
+            case 3: { // engineering (walled targets only, N1)
+                if (village) break;
                 gs.siegeCampTown = target;
                 gs.siegeCampPrep = in.menuChoice - 1;
                 gs.siegeCampDays = (float)(in.menuChoice - 1);
@@ -1315,16 +1354,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 t.owner = c.playerFaction;
                 gs.resultText = TextFormat("%s is undefended. It is yours.", t.name.c_str());
             } else if (gs.player.totalTroops() > 0) {
-                if (t.type == SettlementType::Village) {
-                    // An open raid: no walls, nothing to engineer.
-                    gs.siegeLaunchPrep  = 0;
-                    gs.siegeTownIndex   = in.clickSettlement;
-                    gs.battlePartyIndex = -1;
-                    gs.battleAllyIndex  = -1;
-                    gs.screen = Screen::Battle;
-                    return;
-                }
-                // Walls ahead (N1): storm now, or camp and build engines.
+                // Walls or fields, the same question opens (N1/P1):
+                // conquest, engineering, or — at a village — plunder.
                 gs.siegePrompt = in.clickSettlement;
             }
         } else {
@@ -1711,6 +1742,26 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
             // Engines take shape in the siege camp (N1).
             if (gs.siegeCampTown >= 0) gs.siegeCampDays -= 1.0f;
+
+            // Warring lords bleed the countryside they march through (P1):
+            // an enemy lord near a village drains its prosperity and stock.
+            // TODO(balance): the reach and the bleed.
+            for (const Party& p : gs.parties) {
+                if (!p.alive || p.engaged || p.lord.empty()) continue;
+                for (int ti = 0; ti < (int)gs.towns.size(); ++ti) {
+                    Town& t = gs.towns[ti];
+                    if (t.type != SettlementType::Village) continue;
+                    if (!AtWar(gs, p.faction, t.owner)) continue;
+                    if (Vector2Distance(p.pos, t.pos) > 200.0f) continue;
+                    t.prosperity = std::max(30, t.prosperity - 10);
+                    for (int g = 0; g < (int)t.stock.size(); ++g)
+                        if (t.stock[g] > 0) { t.stock[g]--; break; }
+                    if (t.owner == c.playerFaction)
+                        gs.resultText = TextFormat(
+                            "Lord %s is bleeding %s dry!", p.lord.c_str(),
+                            t.name.c_str());
+                }
+            }
 
             // Bandit dens breed a fresh band every other day (H2).
             for (Lair& l : gs.lairs) {
@@ -2140,12 +2191,20 @@ void CampaignDraw(const GameState& gs) {
         const int px = GetScreenWidth() / 2 - 260, py = 200;
         DrawRectangle(px - 16, py - 16, 552, 208, Fade(BLACK, 0.8f));
         DrawRectangleLines(px - 16, py - 16, 552, 208, GOLD);
-        ui::Title(TextFormat("THE WALLS OF %s", t.name.c_str()), px, py, 30, GOLD);
+        const bool village = t.type == SettlementType::Village;
+        ui::Title(TextFormat(village ? "THE FIELDS OF %s" : "THE WALLS OF %s",
+                             t.name.c_str()), px, py, 30, GOLD);
         ui::Text(TextFormat("Garrison: %d — and it musters daily while you wait.",
                             t.garrisonSize()), px, py + 44, 18, Fade(RAYWHITE, 0.8f));
-        ui::Text("[1] Storm now      (the gate and two ladders)", px, py + 78, 20, RAYWHITE);
-        ui::Text("[2] Build ladders  (1 day: two more climbing points)", px, py + 106, 20, RAYWHITE);
-        ui::Text("[3] Build a tower  (2 days: a wide rolling ramp as well)", px, py + 134, 20, RAYWHITE);
+        if (village) {
+            ui::Text("[1] Take it        (fight, and fly your banner)", px, py + 78, 20, RAYWHITE);
+            ui::Text("[2] Put it to the torch  (loot and burn; a black deed)", px, py + 106, 20,
+                     Fade(RED, 0.9f));
+        } else {
+            ui::Text("[1] Storm now      (the gate and two ladders)", px, py + 78, 20, RAYWHITE);
+            ui::Text("[2] Build ladders  (1 day: two more climbing points)", px, py + 106, 20, RAYWHITE);
+            ui::Text("[3] Build a tower  (2 days: a wide rolling ramp as well)", px, py + 134, 20, RAYWHITE);
+        }
         ui::Text("[Esc] Think better of it", px, py + 166, 18, Fade(RAYWHITE, 0.6f));
     }
     if (gs.siegeCampTown >= 0)

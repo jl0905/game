@@ -4,6 +4,7 @@ seed 33
 crown              # too soon: one settlement is no realm
 state              # expect no crowned flag, "hold two settlements" text
 enter 2            # storm Tulga, the deserters' village (garrison 4)
+siege 1            # take it (P1 prompt)
 block on
 tick 200           # the assault plays out
 state              # expect Tulga owner=kingdom after victory
