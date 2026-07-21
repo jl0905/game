@@ -1,0 +1,13 @@
+# The first hour (direction P4): one-time hint toasts fire on a captain's
+# firsts (victory / captives / loot) and never repeat; the map HUD carries a
+# contextual "what now?" line. Seen-bits persist in saves.
+seed 42
+state              # expect hints=0
+hunt 120           # the first victory of a career
+block on
+tick 150
+state              # expect hints>0 (victory bit, plus captives/loot if lucky)
+save hints_test.owb
+load hints_test.owb
+state              # the bits survive the reload - toasts never nag twice
+quit

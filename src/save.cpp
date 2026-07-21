@@ -148,6 +148,7 @@ bool SaveGame(const GameState& gs, const char* path) {
     if (gs.crowned) f << "crowned 1\n";
     if (gs.renown != 0 || gs.honor != 0)
         f << "fame " << gs.renown << ' ' << gs.honor << '\n';
+    if (gs.hintsSeen != 0) f << "hints " << gs.hintsSeen << '\n';
     if (gs.feastTown >= 0 && gs.feastFaction >= 0 &&
         gs.feastFaction < c.factions.size())
         f << "feast " << gs.feastTown << ' ' << c.factions[gs.feastFaction].id
@@ -368,6 +369,8 @@ bool LoadGame(GameState& gs, const char* path) {
             if (idx >= 0 && idx < (int)gs.lairs.size()) gs.lairs[idx].alive = false;
         } else if (tag == "fame") {
             ss >> gs.renown >> gs.honor;
+        } else if (tag == "hints") {
+            ss >> gs.hintsSeen;
         } else if (tag == "feast") {
             std::string fid; int att = 0;
             ss >> gs.feastTown >> fid >> gs.feastDays >> att;

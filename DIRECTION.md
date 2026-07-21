@@ -439,9 +439,12 @@ War should scar the map, not just the rosters.
 - [ ] **P3. Companion voices.** Companions carry a temperament: the
   honorable object to raids and may leave over a black name; the grim
   demand spoils. Personality read from `TroopDef`, spoken via dialogue.
-- [ ] **P4. The first hour.** New-player toasts (first battle, first town,
-  first quest), a "what now?" objective line on the HUD, and the title
-  screen naming the goal: every banner on the map yours.
+- [x] **P4. The first hour.** Shipped: one-time hint toasts on a captain's
+  firsts (victory → promote with P; captives → ransom with R; loot →
+  inventory I/E/Tab), a contextual "what now?" line on the map HUD
+  (thin band → recruit; unknown → win renown; sworn → serve; crowned →
+  N banners remain), and the title naming the goal. Seen-bits persist
+  (`hints` tag); `tests/first_hour.txt`.
 - [ ] **P5. Supply lines.** Parties carry food days (grain from markets);
   a starving host sheds men daily — the logistics layer that makes
   raiding and caravans strategic.

@@ -219,6 +219,9 @@ struct GameState {
     int renown = 0;
     int honor  = 0;
 
+    // First-hour hints (P4): one-time toasts, a bit each once shown.
+    unsigned hintsSeen = 0;   // 1 first victory, 2 first captives, 4 first loot
+
     // Prisoner lords (O2): named lords captured when you break their host.
     // Ransomed back to their crown for gold (they resent it) or released
     // (honor, gratitude); a captive does not respawn until freed.

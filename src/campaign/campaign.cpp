@@ -727,6 +727,13 @@ static void ApplyBattleResult(GameState& gs) {
         for (int v : gs.enemyLosses) slain += v;
         gs.renown += 1 + std::min(4, slain / 5);
 
+        // First victory (P4): tell a new captain what winning is for.
+        if (!(gs.hintsSeen & 1)) {
+            gs.hintsSeen |= 1;
+            gs.battleReport.push_back(
+                "Survivors earn experience - press P to promote them.");
+        }
+
         // The hero grows too: XP, levels, and attribute points to spend.
         Character& hero = gs.playerHero;
         hero.xp += HERO_XP_PER_WIN;
@@ -880,6 +887,11 @@ static void ApplyBattleResult(GameState& gs) {
         if (captives > 0) {
             gs.resultText += TextFormat("   Captives: %d", captives);
             gs.battleReport.push_back(TextFormat("Captives taken: %d  (ransom at a tavern)", captives));
+            if (!(gs.hintsSeen & 2)) {   // first captives (P4)
+                gs.hintsSeen |= 2;
+                gs.battleReport.push_back(
+                    "Captives pay: press R in any settlement's tavern.");
+            }
         }
 
         // Battlefield pickings: a fallen foe's gear sometimes ends up in the
@@ -894,6 +906,12 @@ static void ApplyBattleResult(GameState& gs) {
                                                : gs.content.armor[drop.handle].name.c_str();
                 gs.resultText += TextFormat("   Picked up: %s", nm);
                 gs.battleReport.push_back(TextFormat("Picked up: %s", nm));
+                if (!(gs.hintsSeen & 4)) {   // first loot (P4)
+                    gs.hintsSeen |= 4;
+                    gs.battleReport.push_back(
+                        "Loot lands in your bag - press I, then E to wear it "
+                        "(Tab fits companions).");
+                }
             }
         }
 
@@ -2212,6 +2230,23 @@ void CampaignDraw(const GameState& gs) {
                             gs.towns[gs.siegeCampTown].name.c_str(),
                             fmaxf(gs.siegeCampDays, 0.0f)),
                  10, 38, 18, GOLD);
+    else {
+        // "What now?" (P4): one contextual pointer, always current.
+        int banners = 0;
+        for (const Town& t : gs.towns)
+            if (t.owner != c.playerFaction) banners++;
+        const char* what =
+            gs.player.totalTroops() < 5
+                ? "Your band is thin - recruit in a friendly settlement (click one)."
+            : gs.crowned
+                ? TextFormat("Take the land: %d banner(s) still stand against yours.", banners)
+            : gs.liege >= 0
+                ? "Serve your liege: answer summons, take work (G), earn your place."
+            : gs.renown < RENOWN_TO_SWEAR
+                ? "Win battles and tourneys - with renown, a crown may take your oath (V)."
+                : "Trade, quest, and fight - or swear to a crown (V) and rise.";
+        ui::Text(what, 10, 38, 17, Fade(RAYWHITE, 0.65f));
+    }
 
     // Time state, top-right: the world is frozen until you move or wait.
     const char* clock = gs.timeFlowing ? "TIME FLOWING" : "TIME PAUSED  (move, or hold SPACE)";
@@ -3090,7 +3125,8 @@ void TitleDraw(const GameState& gs) {
     DrawRectangleGradientV(0, 0, w, hgt / 2, Fade(BLACK, 0.35f), Fade(BLACK, 0.0f));     // vignette for text
     const char* title = "OPENWARBAND";
     ui::Title(title, (w - ui::MeasureTitle(title, 84)) / 2, 150, 84, GOLD);
-    const char* sub = "raise a warband - take the land - hold it";
+    const char* sub = "raise a warband - take the land - hold it - "
+                      "until every banner on the map is yours";
     ui::Text(sub, (w - ui::Measure(sub, 22)) / 2, 260, 22, Fade(RAYWHITE, 0.7f));
 
     const bool haveSave = FileExists(AutoSavePath());

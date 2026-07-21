@@ -177,9 +177,10 @@ struct Harness {
                     WorldTerrainName(WorldTerrainAt(gs.content.map, gs.player.pos)),
                     OnRoad(gs, gs.player.pos) ? " road" : "",
                     TravelSpeedFactor(gs, gs.player.pos));
-        std::printf("hero: level=%d xp=%d points=%d renown=%d honor=%d cap=%d attrs=[",
+        std::printf("hero: level=%d xp=%d points=%d renown=%d honor=%d cap=%d "
+                    "hints=%u attrs=[",
                     gs.playerHero.level, gs.playerHero.xp, gs.playerHero.attrPoints,
-                    gs.renown, gs.honor, PartyCap(gs));
+                    gs.renown, gs.honor, PartyCap(gs), gs.hintsSeen);
         for (int a = 0; a < c.attributes.size(); ++a)
             std::printf("%s%s=%d", a ? " " : "", c.attributes[a].id.c_str(),
                         a < (int)gs.playerHero.attributes.size()
