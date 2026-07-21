@@ -536,6 +536,19 @@ static void NudgeRelation(GameState& gs, int faction, int delta) {
     gs.relations[faction] = std::clamp(gs.relations[faction] + delta, -100, 100);
 }
 
+// Pay out the active quest (F4) and clear it.
+static void CompleteQuest(GameState& gs) {
+    const QuestDef& qd = gs.content.quests[gs.activeQuest];
+    gs.gold += qd.goldReward;
+    NudgeRelation(gs, gs.questFaction, qd.relationReward);
+    gs.resultText = TextFormat("QUEST COMPLETE: %s  +%d gold", qd.name.c_str(),
+                               qd.goldReward);
+    gs.activeQuest = -1;
+    gs.questFaction = -1;
+    gs.questTown = -1;
+    gs.questProgress = 0;
+}
+
 static void ApplyBattleResult(GameState& gs) {
     // The aftermath card starts fresh each battle; branches below fill it.
     gs.battleReport.clear();
@@ -667,6 +680,14 @@ static void ApplyBattleResult(GameState& gs) {
         gs.battleReport.push_back(TextFormat("Loot: %d gold      Hero: +%d XP", loot, HERO_XP_PER_WIN));
         if (enemy) NudgeRelation(gs, enemy->faction, enemy->caravan ? -10 : -5);
         if (ally)  NudgeRelation(gs, ally->faction, +10);   // you bled beside them
+
+        // Bandit-hunt quests (F4) count broken outlaw bands.
+        if (gs.activeQuest >= 0 && enemy &&
+            gs.content.quests[gs.activeQuest].type == QuestType::HuntBandits &&
+            !gs.content.factions[enemy->faction].kingdom &&
+            ++gs.questProgress >= gs.content.quests[gs.activeQuest].amount)
+            CompleteQuest(gs);
+
         if (enemy) enemy->alive = false;
 
         // A share of the beaten foe yields rather than dies — captives to
@@ -755,6 +776,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.openMarket = IsKeyPressed(KEY_M);
         in.tournament = IsKeyPressed(KEY_T);
         in.swear      = IsKeyPressed(KEY_V);
+        in.quest      = IsKeyPressed(KEY_G);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }
@@ -899,6 +921,16 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 return;
             }
         } else {
+            // Grain deliveries (F4) pay at the destination gate.
+            if (gs.activeQuest >= 0 && in.clickSettlement == gs.questTown &&
+                c.quests[gs.activeQuest].type == QuestType::DeliverGrain) {
+                const int g = c.goods.find("grain");
+                const int need = c.quests[gs.activeQuest].amount;
+                if (g >= 0 && g < (int)gs.goods.size() && gs.goods[g] >= need) {
+                    gs.goods[g] -= need;
+                    CompleteQuest(gs);
+                }
+            }
             gs.currentSettlement = in.clickSettlement;
             gs.screen = Screen::Settlement;
             return;

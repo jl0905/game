@@ -145,6 +145,13 @@ struct GameState {
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 
+    // Active quest (F4): one at a time. `questTown` is the delivery target
+    // for DeliverGrain; `questFaction` earns the relation reward.
+    int activeQuest   = -1;   // quest handle, -1 none
+    int questFaction  = -1;   // the giver's faction
+    int questTown     = -1;   // delivery destination (DeliverGrain)
+    int questProgress = 0;    // parties broken so far (HuntBandits)
+
     // Vassalage (F2): the kingdom the player has sworn to, or -1 while a free
     // captain. Swearing aligns the player's wars with the liege's and grants
     // a village fief. TODO(balance): oath requirements, muster obligations.

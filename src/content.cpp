@@ -259,6 +259,15 @@ void LoadDefaultContent(Content& c) {
     c.enterprises.add({ "smithy",   "Smithy",     300, 15 });
     c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15 });
 
+    // ---- Quests (direction F4) -------------------------------------------
+    // Shapes only; givers rotate through them. TODO(balance): all rewards.
+    c.quests.add({ "hunt",  "Bandit Hunt",
+                   "Outlaws plague the roads. Break a band of them.",
+                   QuestType::HuntBandits, 1, 100, 5 });
+    c.quests.add({ "grain", "Grain Delivery",
+                   "The granary runs thin. Bring grain from afar.",
+                   QuestType::DeliverGrain, 5, 80, 5 });
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.

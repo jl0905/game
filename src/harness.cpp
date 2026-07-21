@@ -201,6 +201,10 @@ struct Harness {
                 std::printf("good: %s=%d\n", c.goods[g].id.c_str(), gs.goods[g]);
         if (gs.liege >= 0 && gs.liege < c.factions.size())
             std::printf("liege=%s\n", c.factions[gs.liege].id.c_str());
+        if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size())
+            std::printf("quest: %s progress=%d target=%d\n",
+                        c.quests[gs.activeQuest].id.c_str(), gs.questProgress,
+                        gs.questTown);
         for (int f = 0; f < c.factions.size() && f < (int)gs.relations.size(); ++f)
             if (gs.relations[f] != 0)
                 std::printf("relation: %s=%+d\n", c.factions[f].id.c_str(), gs.relations[f]);
@@ -413,6 +417,9 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "quest") {
+            CampaignInput cin; cin.quest = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "swear") {
             CampaignInput cin; cin.swear = true;
             h.Step(cin, BattleInput{});

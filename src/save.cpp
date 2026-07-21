@@ -95,6 +95,13 @@ bool SaveGame(const GameState& gs, const char* path) {
           << it.x << ' ' << it.y << '\n';
     }
 
+    // The active quest (F4).
+    if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size())
+        f << "quest " << c.quests[gs.activeQuest].id << ' '
+          << (gs.questFaction >= 0 && gs.questFaction < c.factions.size()
+                  ? c.factions[gs.questFaction].id : std::string("none"))
+          << ' ' << gs.questTown << ' ' << gs.questProgress << '\n';
+
     // The sworn liege (F2).
     if (gs.liege >= 0 && gs.liege < c.factions.size())
         f << "liege " << c.factions[gs.liege].id << '\n';
@@ -272,6 +279,11 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
+        } else if (tag == "quest") {
+            std::string qid, fid;
+            ss >> qid >> fid >> gs.questTown >> gs.questProgress;
+            gs.activeQuest  = c.quests.find(qid.c_str());
+            gs.questFaction = c.factions.find(fid.c_str());
         } else if (tag == "liege") {
             std::string fid;
             ss >> fid;

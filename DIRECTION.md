@@ -67,9 +67,13 @@ flat.
 - [ ] **F3. Player kingdom.** Rebel or conquer unowned: your own faction
   banner/colour, grant fiefs to hired lords (mercenary captains → vassals),
   other crowns react (F1) — the Warband endgame.
-- [ ] **F4. Quests (structure).** A `QuestDef` registry + simple givers
-  (guild master in towns, lords in halls): deliver goods, hunt bandits,
-  collect taxes. Rewards flat. This gives the early game purpose.
+- [x] **F4. Quests (v1).** Shipped: `QuestDef` registry (Bandit Hunt, Grain
+  Delivery), one active at a time, offered with G in any settlement
+  (rotating by settlement+day). Hunts complete on breaking an outlaw band;
+  deliveries pay at the destination gate and consume the cargo. Rewards
+  gold + relation with the giver's faction, all flat TODO(balance); saved;
+  harness `quest` + dump; `tests/quests.txt` plays both to completion.
+  Follow-ups: gate on a guild-master NPC, collect-taxes shape, lord quests.
 
 ## Track G — Combat & battlefield depth
 

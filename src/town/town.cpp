@@ -227,6 +227,39 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- ask the local giver for work (G) — one quest at a time (F4) ----
+    // The giver rotates through the quest shapes by settlement and day.
+    // Follow-up: gate on a guild-master NPC instead of anywhere in town.
+    if (cin.quest && gs.activeQuest < 0 && c.quests.size() > 0) {
+        const int q = (gs.currentSettlement + gs.day) % c.quests.size();
+        const QuestDef& qd = c.quests[q];
+        gs.activeQuest  = q;
+        gs.questFaction = gs.towns[gs.currentSettlement].owner;
+        gs.questTown    = -1;
+        gs.questProgress = 0;
+        if (qd.type == QuestType::DeliverGrain) {
+            // Deliver to the nearest settlement you can actually walk into.
+            float bestD = 1e9f;
+            for (int t = 0; t < (int)gs.towns.size(); ++t) {
+                if (t == gs.currentSettlement) continue;
+                if (AtWar(gs, gs.towns[t].owner, c.playerFaction)) continue;
+                const float d = Vector2Distance(gs.towns[gs.currentSettlement].pos,
+                                                gs.towns[t].pos);
+                if (d < bestD) { bestD = d; gs.questTown = t; }
+            }
+        }
+        if (qd.type == QuestType::DeliverGrain && gs.questTown < 0) {
+            gs.activeQuest = -1;   // nowhere to deliver: no quest today
+        } else {
+            gs.resultText = gs.questTown >= 0
+                ? TextFormat("%s: %s  Bring %d grain to %s.", qd.name.c_str(),
+                             qd.blurb.c_str(), qd.amount,
+                             gs.towns[gs.questTown].name.c_str())
+                : TextFormat("%s: %s  (%d gold)", qd.name.c_str(), qd.blurb.c_str(),
+                             qd.goldReward);
+        }
+    }
+
     // ---- swear fealty to this settlement's crown (V) ----
     // A free captain in good standing may take the oath at any settlement of
     // a lord-fielding kingdom he is at peace with. The crown grants a village

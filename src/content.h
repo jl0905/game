@@ -116,6 +116,18 @@ struct EnterpriseDef {
     int dailyIncome = 0;   // TODO(balance): base gold per day
 };
 
+// A quest shape (direction F4), offered by settlement givers. `amount` is the
+// count the type needs (parties to hunt, goods to carry).
+struct QuestDef {
+    std::string id;
+    std::string name;
+    std::string blurb;         // one line of giver flavour
+    QuestType   type = QuestType::HuntBandits;
+    int         amount = 1;    // TODO(balance)
+    int         goldReward = 0;      // TODO(balance)
+    int         relationReward = 0;  // TODO(balance)
+};
+
 // A hero attribute (roadmap D3). Pure structure: `hook` documents what the
 // attribute WILL modify once balancing begins; nothing reads values yet.
 struct AttributeDef {
@@ -171,6 +183,7 @@ struct Content {
     Registry<AttributeDef> attributes;
     Registry<GoodDef>      goods;
     Registry<EnterpriseDef> enterprises;
+    Registry<QuestDef>     quests;
     MapDef                 map;
 
     int playerFaction = -1;  // resolved after loading
