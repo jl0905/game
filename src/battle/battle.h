@@ -24,6 +24,11 @@ struct BattleSetup {
                                      // (empty when you fight alone)
     Loadout          heroLoadout;    // the player avatar's equipment
     int              heroMaxHp = 0;
+
+    // Per-troop gear overrides (K6): companions fitted from the player's bag
+    // fight in that gear instead of their catalogue loadout. Pairs of
+    // (troop handle, loadout); troops not listed use the content default.
+    std::vector<std::pair<int, Loadout>> gearOverrides;
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
 

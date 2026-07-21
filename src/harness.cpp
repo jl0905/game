@@ -247,6 +247,19 @@ struct Harness {
                 std::printf("market: %s stock=%d offset=%d\n", c.goods[g].id.c_str(),
                             tw.stock[g], tw.priceOffset[g]);
         }
+        for (const auto& p : gs.companionGear) {
+            if (p.first < 0 || p.first >= c.troops.size()) continue;
+            std::printf("cgear: %s", c.troops[p.first].id.c_str());
+            for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
+                if (s == (int)EquipSlot::Weapon) continue;
+                if (c.armor.valid(p.second.slots[s]))
+                    std::printf(" %s", c.armor[p.second.slots[s]].id.c_str());
+            }
+            std::printf(" |");
+            for (int w : p.second.weapons)
+                if (c.weapons.valid(w)) std::printf(" %s", c.weapons[w].id.c_str());
+            std::printf("\n");
+        }
         for (const InvItem& it : gs.inventory)
             std::printf("item: %s %s at (%d,%d)\n", it.isWeapon ? "weapon" : "armor",
                         it.isWeapon ? c.weapons[it.handle].id.c_str()
@@ -386,6 +399,9 @@ int RunScript(const char* path) {
             CampaignInput cin;
             if (h.gs.screen == Screen::Inventory) cin.leaveSettlement = true;
             else                                  cin.openInventory = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "target") {
+            CampaignInput cin; cin.invCycleTarget = true;
             h.Step(cin, BattleInput{});
         } else if (cmd == "equip") {
             CampaignInput cin;

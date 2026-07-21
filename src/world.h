@@ -152,6 +152,8 @@ struct GameState {
     std::vector<int>   troopXp;                  // player XP pool per troop type (C2)
     std::vector<int>   prisoners;                // captives by troop type (ransomable)
     std::vector<InvItem> inventory;              // hero's tiled bag (D1)
+    int                  invTarget = 0;          // who the bag fits: 0 hero, 1.. hired companions (K6)
+    std::vector<std::pair<int, Loadout>> companionGear;   // per-companion fitted gear (K6)
     std::vector<int>     goods;                  // trade goods held, per good type (E1)
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
@@ -222,6 +224,15 @@ struct GameState {
     std::vector<std::string> battleReport;
     float                    battleReportTimer = 0;
 };
+
+// The gear a hired companion fights in (K6): their fitted loadout if the
+// player has dressed them, created from the catalogue default on first use.
+inline Loadout& CompanionGear(GameState& gs, int troop) {
+    for (auto& p : gs.companionGear)
+        if (p.first == troop) return p.second;
+    gs.companionGear.push_back({ troop, gs.content.troops[troop].loadout });
+    return gs.companionGear.back().second;
+}
 
 // A sworn vassal fights his liege's wars: copy the liege's stance toward every
 // third faction onto the player, and keep the peace between the two. Called

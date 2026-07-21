@@ -706,9 +706,17 @@ struct BattleState {
     std::vector<float> dmg;
     SoldierGrid        grid;       // proximity index, rebuilt each tick (G1)
     std::vector<int>   targeted;   // how many foes aim at each soldier (J1)
+
+    // Per-troop fighting gear for this battle (K6): defaults + overrides.
+    std::vector<Loadout> troopGear;
 };
 
 BattleState B;
+
+const Loadout& TroopLoadout(const Content& c, int troop) {
+    if (troop >= 0 && troop < (int)B.troopGear.size()) return B.troopGear[troop];
+    return c.troops[troop].loadout;
+}
 
 // Pick an attack direction from accumulated mouse motion.
 AttackDir DirFromMotion(Vector2 m) {
@@ -717,9 +725,9 @@ AttackDir DirFromMotion(Vector2 m) {
     return m.y < 0 ? AttackDir::Up : AttackDir::Down;
 }
 
-const Loadout& TroopLoadout(const Content& c, int troop) {
-    return c.troops[troop].loadout;
-}
+// The gear a troop actually fights in: the per-battle table (content defaults
+// with the setup's K6 overrides applied), falling back to the catalogue.
+const Loadout& TroopLoadout(const Content& c, int troop);   // defined after BattleState
 
 // Combat stats come from the wielded weapon (WeaponDef), with bare-hand
 // fallbacks — this is the single place battle numbers are read from content.
@@ -1175,6 +1183,15 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.terrain.Generate(tcfg, ARENA);
     B.raining = tcfg.raining;
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
+
+    // Fighting gear (K6): catalogue defaults, then the setup's overrides.
+    B.troopGear.clear();
+    B.troopGear.reserve(c.troops.size());
+    for (int t = 0; t < c.troops.size(); ++t)
+        B.troopGear.push_back(c.troops[t].loadout);
+    for (const auto& ov : setup.gearOverrides)
+        if (ov.first >= 0 && ov.first < (int)B.troopGear.size())
+            B.troopGear[ov.first] = ov.second;
 
     SpawnLine(c, Team::Player, setup.playerTroops, -30.0f);
     if (B.hasWall) SpawnGarrison(c, setup.enemyTroops);   // walls + yard posts

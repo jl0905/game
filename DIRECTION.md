@@ -216,8 +216,13 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   saves; harness `rally` + muster/rally dumps; `tests/muster.txt`. Flat
   numbers TODO(balance). Follow-up: point lords at a *target settlement*
   rather than the ruler's position.
-- [ ] **K6. Fit companions from the bag.** Equip hired companions from the
-  tiled inventory (their Loadout is already per-troop data).
+- [x] **K6. Fit companions from the bag.** Shipped: Tab in the inventory
+  cycles the equip target (you, then each hired companion); equipping
+  swaps into a per-companion fitted Loadout, the displaced piece drops
+  back in the bag, and companions fight (and render) in their fitted gear
+  via a `BattleSetup::gearOverrides` contract extension. Persists in
+  saves; harness `target` + `cgear:` dump; `tests/companion_gear.txt`
+  dresses Rega in looted armour and reloads him.
 - [ ] **K7. UI polish pass.** Hover highlights on clickable rows, shared
   Gather/Draw layout constants, a town-HUD line listing the local keys
   (T bout, M market, G work, H hire, V oath, E talk).

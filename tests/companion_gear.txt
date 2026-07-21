@@ -1,0 +1,19 @@
+# Fit companions from the bag (direction K6): Tab retargets the inventory's
+# equip action onto a hired companion; the fitted gear persists in saves.
+seed 6
+enter 0
+hire               # Rega the Grim joins (gold 300 -> 200)
+leave
+hunt 120           # win a fight for battlefield pickings
+block on
+tick 150
+state              # expect an item: line (loot lands at the first free cell)
+inv
+target             # Tab: the bag now fits Rega
+equip 0 0          # dress him in the loot at (0,0)
+state              # expect a cgear: rega line carrying the new piece
+inv
+save cgear_test.owb
+load cgear_test.owb
+state              # expect the cgear line to survive the reload
+quit

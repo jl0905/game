@@ -54,5 +54,6 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         s.allyTroops = gs.parties[gs.battleAllyIndex].troopCounts;
     s.heroLoadout = gs.playerHero.loadout;
     s.heroMaxHp   = gs.playerHero.maxHp;
+    s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)
     return s;
 }

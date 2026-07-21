@@ -86,6 +86,21 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (int w : gs.playerHero.loadout.weapons)
         if (c.weapons.valid(w)) f << "carry " << c.weapons[w].id << '\n';
 
+    // Fitted companion gear (K6): worn slots and carried arsenal per hero.
+    for (const auto& p : gs.companionGear) {
+        if (p.first < 0 || p.first >= c.troops.size()) continue;
+        const std::string& tid = c.troops[p.first].id;
+        for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
+            if (s == (int)EquipSlot::Weapon) continue;
+            const int h = p.second.slots[s];
+            if (c.armor.valid(h))
+                f << "cwear " << tid << ' ' << SlotName((EquipSlot)s) << ' '
+                  << c.armor[h].id << '\n';
+        }
+        for (int w : p.second.weapons)
+            if (c.weapons.valid(w)) f << "ccarry " << tid << ' ' << c.weapons[w].id << '\n';
+    }
+
     // Tiled inventory contents.
     for (const InvItem& it : gs.inventory) {
         const bool ok = it.isWeapon ? c.weapons.valid(it.handle) : c.armor.valid(it.handle);
@@ -208,6 +223,7 @@ bool LoadGame(GameState& gs, const char* path) {
     std::string line;
     std::getline(f, line);   // finish the header line
     Party* cur = nullptr;    // party whose "troop" lines we're reading
+    int lastCcarryTroop = -1;   // first ccarry per companion clears the arsenal
     while (std::getline(f, line)) {
         std::istringstream ss(line);
         std::string tag;
@@ -306,6 +322,31 @@ bool LoadGame(GameState& gs, const char* path) {
             ss >> qid >> fid >> gs.questTown >> gs.questProgress;
             gs.activeQuest  = c.quests.find(qid.c_str());
             gs.questFaction = c.factions.find(fid.c_str());
+        } else if (tag == "cwear") {
+            std::string tid, slot, id;
+            ss >> tid >> slot >> id;
+            const int t = c.troops.find(tid.c_str());
+            const int s = SlotFromName(slot);
+            const int h = c.armor.find(id.c_str());
+            if (t >= 0 && s >= 0 && h >= 0) {
+                Loadout& lo = CompanionGear(gs, t);
+                lo.slots[s] = h;
+            }
+        } else if (tag == "ccarry") {
+            std::string tid, id;
+            ss >> tid >> id;
+            const int t = c.troops.find(tid.c_str());
+            const int h = c.weapons.find(id.c_str());
+            if (t >= 0 && h >= 0) {
+                Loadout& lo = CompanionGear(gs, t);
+                // First ccarry line replaces the catalogue arsenal wholesale.
+                if (lastCcarryTroop != t) {
+                    lo.weapons.clear();
+                    lo.slots[(int)EquipSlot::Weapon] = -1;
+                    lastCcarryTroop = t;
+                }
+                lo.addWeapon(h);
+            }
         } else if (tag == "muster") {
             ss >> gs.musterTown >> gs.musterDays;
         } else if (tag == "rally") {

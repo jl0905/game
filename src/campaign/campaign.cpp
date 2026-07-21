@@ -938,6 +938,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         }
         in.invPick  = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         in.invEquip = IsKeyPressed(KEY_E) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+        in.invCycleTarget = IsKeyPressed(KEY_TAB);
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) in.leaveSettlement = true;
         return in;
     }
@@ -1767,8 +1768,23 @@ static int ItemAtCell(const GameState& gs, int cx, int cy) {
     return -1;
 }
 
+// Hired companions in troop-registry order — the Tab targets after the hero.
+static std::vector<int> HiredCompanions(const GameState& gs) {
+    std::vector<int> out;
+    for (int t = 0; t < gs.content.troops.size(); ++t)
+        if (gs.content.troops[t].companion && t < (int)gs.player.troopCounts.size() &&
+            gs.player.troopCounts[t] > 0)
+            out.push_back(t);
+    return out;
+}
+
 void InventoryUpdate(GameState& gs, const CampaignInput& in) {
     const Content& c = gs.content;
+
+    // Tab cycles who the bag fits: the hero, then each hired companion (K6).
+    const std::vector<int> comps = HiredCompanions(gs);
+    if (in.invCycleTarget) gs.invTarget = (gs.invTarget + 1) % (1 + (int)comps.size());
+    if (gs.invTarget > (int)comps.size()) gs.invTarget = 0;
 
     if (in.invPick && in.invCellX >= 0) {
         if (gs.invCarry < 0) {
@@ -1787,7 +1803,9 @@ void InventoryUpdate(GameState& gs, const CampaignInput& in) {
         const int idx = ItemAtCell(gs, in.invCellX, in.invCellY);
         if (idx >= 0) {
             const InvItem it = gs.inventory[idx];
-            Loadout& lo = gs.playerHero.loadout;
+            Loadout& lo = gs.invTarget == 0
+                              ? gs.playerHero.loadout
+                              : CompanionGear(gs, comps[gs.invTarget - 1]);
             if (it.isWeapon) {
                 // Swap with the ACTIVE weapon in the arsenal.
                 const int active = lo.get(EquipSlot::Weapon);
@@ -1826,11 +1844,19 @@ void InventoryDraw(const GameState& gs) {
 
     const int ox = InvOriginX(), oy = InvOriginY();
     ui::Title("INVENTORY", ox, 60, 44, GOLD);
-    ui::Text("LMB pick up / place   E equip   Esc / I back", ox, 116, 20,
-             Fade(RAYWHITE, 0.7f));
+    ui::Text("LMB pick up / place   E equip   Tab fit hero/companion   Esc / I back",
+             ox, 116, 20, Fade(RAYWHITE, 0.7f));
 
-    // Hero equipment summary.
-    const Loadout& lo = gs.playerHero.loadout;
+    // Whose gear the bag fits right now (K6), and what they wear.
+    const std::vector<int> comps = HiredCompanions(gs);
+    const int  target = (gs.invTarget > (int)comps.size()) ? 0 : gs.invTarget;
+    const bool onHero = target == 0;
+    ui::Text(TextFormat("Fitting: %s",
+                        onHero ? "You" : c.troops[comps[target - 1]].name.c_str()),
+             ox + 560, 116, 20, GOLD);
+    const Loadout& lo =
+        onHero ? gs.playerHero.loadout
+               : CompanionGear(const_cast<GameState&>(gs), comps[target - 1]);
     int ey = 150;
     std::string worn = "Worn: ";
     for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {

@@ -49,6 +49,7 @@ struct CampaignInput {
     int     invCellX = -1, invCellY = -1;   // cell under the cursor this frame
     bool    invPick  = false;         // pick up / place at the cell (LMB)
     bool    invEquip = false;         // equip the item at the cell (E / RMB)
+    bool    invCycleTarget = false;   // Tab: fit the hero / a hired companion (K6)
 
     // character sheet
     bool    openCharacter = false;    // C on the map
