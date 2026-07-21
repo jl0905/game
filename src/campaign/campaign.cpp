@@ -995,6 +995,21 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Background) {
+        if (IsKeyPressed(KEY_ONE))   in.menuChoice = 1;
+        if (IsKeyPressed(KEY_TWO))   in.menuChoice = 2;
+        if (IsKeyPressed(KEY_THREE)) in.menuChoice = 3;
+        // Mouse: option bands mirror BackgroundDraw via the shared layout.
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int y0 = layout::TITLE_Y - 100;
+            const int rowH = layout::TITLE_ROW_H + 14;
+            const int row = ((int)m.y - y0) / rowH;
+            if (m.y >= y0 && row >= 0 && row < 3) in.menuChoice = row + 1;
+        }
+        return in;
+    }
+
     if (gs.screen == Screen::Victory) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) in.leaveSettlement = true;
         return in;
@@ -2633,8 +2648,8 @@ bool TitleUpdate(GameState& gs, const CampaignInput& in) {
     }
     if (in.menuChoice != 0) SfxPlay(Sfx::Click);
     switch (in.menuChoice) {
-        case 1:   // fresh world
-            gs.screen = Screen::Campaign;
+        case 1:   // fresh world — choose who you were first (N2)
+            gs.screen = Screen::Background;
             break;
         case 2:   // continue from the autosave, if there is one
             if (LoadGame(gs, AutoSavePath())) gs.resultText = "Welcome back.";
@@ -2689,6 +2704,81 @@ void TitleDraw(const GameState& gs) {
     option("[C]  Continue", haveSave ? RAYWHITE : Fade(RAYWHITE, 0.35f));
     option("[Esc]  Quit", Fade(RAYWHITE, 0.8f));
 
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Character creation (N2): who were you before the warband? A background
+// seeds gold, gear, fame and standing — flavour with mechanical teeth, all
+// flat TODO(balance).
+// ---------------------------------------------------------------------------
+
+void ApplyBackground(GameState& gs, int choice) {
+    const Content& c = gs.content;
+    const int patrol = c.factions.find("patrol");
+    switch (choice) {
+        case 1:   // A noble's second son: name, plate, and doors that open.
+            gs.renown += 5;
+            gs.gold   += 200;
+            NudgeRelation(gs, patrol, +10);
+            if (c.armor.find("helmet") >= 0)
+                gs.playerHero.loadout.set(EquipSlot::Head, c.armor.find("helmet"));
+            gs.resultText = "A noble's second son rides out for a name of his own.";
+            break;
+        case 2: {  // A merchant's heir: coin, cargo, and a clean ledger.
+            gs.gold += 400;
+            gs.honor += 1;
+            const int grain = c.goods.find("grain");
+            if (grain >= 0) {
+                if ((int)gs.goods.size() < c.goods.size())
+                    gs.goods.assign(c.goods.size(), 0);
+                gs.goods[grain] += 10;
+            }
+            gs.resultText = "A merchant's heir turns the family books into a warband.";
+            break;
+        }
+        case 3: {  // A deserter: hard men, hard name, light purse.
+            gs.gold = std::max(0, gs.gold - 150);
+            gs.renown += 1;
+            NudgeRelation(gs, patrol, -10);
+            const int brigand = c.troops.find("brigand");
+            if (brigand >= 0 && brigand < (int)gs.player.troopCounts.size())
+                gs.player.troopCounts[brigand] += 3;
+            gs.resultText = "A deserter gathers old comrades the crown would hang.";
+            break;
+        }
+        default: break;
+    }
+}
+
+void BackgroundUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.menuChoice >= 1 && in.menuChoice <= 3) {
+        ApplyBackground(gs, in.menuChoice);
+        SfxPlay(Sfx::Fanfare);
+        gs.screen = Screen::Campaign;
+    }
+}
+
+void BackgroundDraw(const GameState& gs) {
+    (void)gs;
+    BeginDrawing();
+    ClearBackground(Color{ 20, 22, 26, 255 });
+    const int w = GetScreenWidth();
+    const char* t = "WHO WERE YOU?";
+    ui::Title(t, (w - ui::MeasureTitle(t, 56)) / 2, 120, 56, GOLD);
+    int y = layout::TITLE_Y - 100;
+    auto option = [&](const char* head, const char* sub) {
+        DrawHoverRow(w / 2 - 330, y, 660, layout::TITLE_ROW_H);
+        ui::Text(head, w / 2 - 320, y, 26, RAYWHITE);
+        ui::Text(sub, w / 2 - 320, y + 26, 17, Fade(RAYWHITE, 0.6f));
+        y += layout::TITLE_ROW_H + 14;
+    };
+    option("[1]  A noble's second son",
+           "+5 renown, +200 gold, a helmet, the patrols' favour");
+    option("[2]  A merchant's heir",
+           "+400 gold, 10 sacks of grain, +1 honor");
+    option("[3]  A deserter",
+           "3 brigands at your back, -150 gold, the patrols' suspicion");
     EndDrawing();
 }
 

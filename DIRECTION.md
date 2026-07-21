@@ -335,9 +335,12 @@ adds per line of code. Structure first, numbers flat, as ever.
 - [ ] **N1. Siege engineering.** Ladders/siege tower as a pre-assault choice
   (build days vs casualties at the wall); defenders drop stones. Extends
   `BattleSetup` only.
-- [ ] **N2. Character creation.** A background-choice screen at New Game
-  (noble/merchant/deserter…) seeding gold, gear, renown, honor and a
-  starting relation — replayability at zero balance cost (flat numbers).
+- [x] **N2. Character creation.** Shipped: `Screen::Background` after New
+  Game — a noble's second son (+5 renown, +200 gold, helmet, patrol
+  favour), a merchant's heir (+400 gold, 10 grain, +1 honor), or a
+  deserter (3 brigands, −150 gold, patrol suspicion). `ApplyBackground`
+  is shared with the harness `background` command; mouse + keys via the
+  shared layout. All flat TODO(balance); `tests/background.txt`.
 - [ ] **N3. Save slots.** Named saves + a load menu on the title screen
   (the format already round-trips; this is UI + file listing).
 - [ ] **N4. Per-lord opinion.** Individual lords remember grants, rescues,

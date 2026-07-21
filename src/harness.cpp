@@ -147,6 +147,7 @@ struct Harness {
     const char* ScreenName() const {
         switch (gs.screen) {
             case Screen::Title:        return "Title";
+            case Screen::Background:   return "Background";
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
             case Screen::Market:       return "Market";
@@ -492,6 +493,11 @@ int RunScript(const char* path) {
             // Outfit a player trade convoy at the open market (M4).
             CampaignInput cin; cin.sendCaravan = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "background") {
+            // Character creation (N2): apply a background's start directly.
+            int b = 0; ss >> b;
+            ApplyBackground(h.gs, b);
+            std::printf("background %d: %s\n", b, h.gs.resultText.c_str());
         } else if (cmd == "fame") {
             // Scripting shortcut (M1): set renown/honor directly so scenarios
             // can stand at a chosen reputation without grinding battles.

@@ -8,8 +8,9 @@
 // ---------------------------------------------------------------------------
 
 // Top-level screen / flow state.
-enum class Screen { Title, Campaign, Settlement, Market, Dialogue, Party, Inventory,
-                    Character, Settings, Battle, BattleResult, Victory };
+enum class Screen { Title, Background, Campaign, Settlement, Market, Dialogue,
+                    Party, Inventory, Character, Settings, Battle, BattleResult,
+                    Victory };
 
 // Kind of settlement on the overworld. Drives the map icon and the greeting /
 // available actions on the settlement menu, not balance.

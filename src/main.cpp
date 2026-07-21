@@ -145,6 +145,13 @@ int main(int argc, char** argv) {
                 } else                            CampaignDraw(gs);
                 break;
             }
+            case Screen::Background: {                    // who were you? (N2)
+                const CampaignInput in = GatherCampaignInput(gs);
+                BackgroundUpdate(gs, in);
+                if (gs.screen == Screen::Background) BackgroundDraw(gs);
+                else                                 CampaignDraw(gs);
+                break;
+            }
             case Screen::Settings: {                      // options; paused
                 const CampaignInput in = GatherCampaignInput(gs);
                 SettingsUpdate(gs, in);

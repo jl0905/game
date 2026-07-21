@@ -1,0 +1,10 @@
+# Character creation (direction N2): a background seeds gold, gear, fame and
+# standing. The harness applies the choice directly; windowed play reaches the
+# same code through the screen after New Game.
+seed 42
+state              # baseline: gold 300, renown 0
+background 2       # a merchant's heir
+state              # expect gold 700, grain=10, honor=1
+background 3       # (stacking is a harness-only artifact; windowed picks once)
+state              # expect gold 550, 3 brigands, relation patrol=-10
+quit
