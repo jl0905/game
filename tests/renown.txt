@@ -1,0 +1,16 @@
+# Renown & honor (direction M1): victories build a name, the name gates
+# vassalage and carries a bigger warband, and fame survives saves.
+seed 42
+state              # expect renown=0 honor=0 cap=20 on the hero line
+enter 0
+swear              # refused: "win renown first" (standing fine, fame not)
+state              # expect liege=-1 still
+leave
+hunt 120           # win a fight — word of the victory travels
+block on
+tick 150
+state              # expect renown > 0 and the cap grown with it
+save fame_test.owb
+load fame_test.owb
+state              # expect the same renown/honor after the reload
+quit

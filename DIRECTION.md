@@ -275,6 +275,38 @@ does, the economy is a single flow, terrain matters on the march.
   counterpart of the player's promote button. Follow-up idea (cosmetic):
   villagers walking the roads between towns.
 
+## Track M — Third wave: reputation, command, and pageantry
+
+Everything Warband still does that we don't, ordered by how much world it
+adds per line of code. Structure first, numbers flat, as ever.
+
+- [x] **M1. Renown & honor.** Shipped: renown from victories (+1, +1 per 5
+  slain up to +4), championships (+5) and quests (+2); honor +1 per quest,
+  −1 per caravan raid. Renown gates vassalage (`RENOWN_TO_SWEAR` 5, with a
+  spoken refusal) and sets the party cap (`PartyCap` = 20 + renown,
+  enforced at the tavern with a message). Character sheet + harness hero
+  line show both; `fame` save tag; harness `fame R H` command for
+  scenarios; `tests/renown.txt`. All flat TODO(balance). Follow-up: honor
+  feeding per-lord opinions (M3/M5).
+- [ ] **M2. Battlefield orders.** Beyond formations: Hold Position (F1),
+  Follow Me (F2), Charge (F3) as squad commands the player barks mid-fight;
+  held soldiers keep formation under arrow fire, followers screen the hero.
+  The strategic layer of "player impact" (J3).
+- [ ] **M3. Fief grants.** A crowned player chooses which raised lord holds
+  each captured settlement (court dialogue); a lord defends and taxes his
+  own fief, and grants move per-lord standing when M1's honor exists.
+- [ ] **M4. Player caravans.** Spend gold at a market to send your own
+  convoy on a trade route (it uses the living-market prices); profits on
+  arrival, lost to bandits — the passive-income counterpart of enterprises.
+- [ ] **M5. Feasts & marriage (v1).** Kingdoms at peace throw a feast at a
+  town (lords gather); the player attends for standing, and courts a
+  noble for a marriage alliance (standing floor with the whole faction).
+  Structure-only pageantry — the social layer Warband's politics run on.
+- [ ] **M6. Town life.** Villagers walk the road network between
+  settlements (cosmetic parties that flee bandits), town scenes get
+  market-stall props near the plaza, and taverns a minstrel sting.
+  Pure feel; no new systems.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

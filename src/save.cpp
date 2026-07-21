@@ -123,6 +123,8 @@ bool SaveGame(const GameState& gs, const char* path) {
 
     // The claimed crown (F3).
     if (gs.crowned) f << "crowned 1\n";
+    if (gs.renown != 0 || gs.honor != 0)
+        f << "fame " << gs.renown << ' ' << gs.honor << '\n';
 
     // Standing duties (K5).
     if (gs.musterTown >= 0)
@@ -317,6 +319,8 @@ bool LoadGame(GameState& gs, const char* path) {
             int idx = -1;
             ss >> idx;
             if (idx >= 0 && idx < (int)gs.lairs.size()) gs.lairs[idx].alive = false;
+        } else if (tag == "fame") {
+            ss >> gs.renown >> gs.honor;
         } else if (tag == "crowned") {
             int v = 0;
             ss >> v;

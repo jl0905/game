@@ -195,6 +195,13 @@ struct GameState {
     Vector2 lordsRallyPos{};
     float   lordsRallyDays = 0;
 
+    // Renown & honor (M1): fame from victories/tournaments/quests, and a
+    // conscience moved by deeds. Renown gates vassalage and raises the
+    // party cap; honor is report-only until per-lord opinions exist.
+    // All thresholds flat TODO(balance).
+    int renown = 0;
+    int honor  = 0;
+
     // Relations (F1): the player's personal standing with each faction,
     // -100..100, moved by deeds (battles, raids, aid). Report-only for now;
     // vassalage (F2) and quest givers (F4) will read it. TODO(balance).
@@ -285,6 +292,13 @@ inline float TravelSpeedFactor(const GameState& gs, Vector2 p) {
     if (OnRoad(gs, p)) return 1.0f;
     return t == WorldTerrain::Forest ? m.biome.forestSpeed : m.biome.mountainSpeed;
 }
+
+// Party-size cap (M1): a base band plus one man per point of renown — fame
+// is what lets a captain hold a big warband together. TODO(balance).
+inline int PartyCap(const GameState& gs) { return 20 + gs.renown; }
+
+// Renown a crown demands before it accepts an oath (M1). TODO(balance).
+inline constexpr int RENOWN_TO_SWEAR = 5;
 
 // The gear a hired companion fights in (K6): their fitted loadout if the
 // player has dressed them, created from the catalogue default on first use.

@@ -171,8 +171,9 @@ struct Harness {
                     WorldTerrainName(WorldTerrainAt(gs.content.map, gs.player.pos)),
                     OnRoad(gs, gs.player.pos) ? " road" : "",
                     TravelSpeedFactor(gs, gs.player.pos));
-        std::printf("hero: level=%d xp=%d points=%d attrs=[", gs.playerHero.level,
-                    gs.playerHero.xp, gs.playerHero.attrPoints);
+        std::printf("hero: level=%d xp=%d points=%d renown=%d honor=%d cap=%d attrs=[",
+                    gs.playerHero.level, gs.playerHero.xp, gs.playerHero.attrPoints,
+                    gs.renown, gs.honor, PartyCap(gs));
         for (int a = 0; a < c.attributes.size(); ++a)
             std::printf("%s%s=%d", a ? " " : "", c.attributes[a].id.c_str(),
                         a < (int)gs.playerHero.attributes.size()
@@ -474,6 +475,11 @@ int RunScript(const char* path) {
             CampaignInput cin; ss >> cin.settingsRow;
             cin.settingsRow--;   // 1-based on the command line, like the keys
             h.Step(cin, BattleInput{});
+        } else if (cmd == "fame") {
+            // Scripting shortcut (M1): set renown/honor directly so scenarios
+            // can stand at a chosen reputation without grinding battles.
+            ss >> h.gs.renown >> h.gs.honor;
+            std::printf("fame: renown=%d honor=%d\n", h.gs.renown, h.gs.honor);
         } else if (cmd == "court") {
             // Open the castle court audience (skips the walk to the keep).
             if (h.gs.screen == Screen::Settlement) {

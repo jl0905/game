@@ -1,5 +1,6 @@
 # Lords in the hall (direction K2): oaths and work through conversation.
 seed 49
+fame 5 0           # meet the renown gate (M1)
 enter 1            # Praven, the patrol crown's castle (at peace with you)
 court              # the keep door leads to the lord's court
 state              # expect dialogue: Lord Aldric, court greeting

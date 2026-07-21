@@ -1,6 +1,7 @@
 # Muster obligations (direction K5): a sworn vassal is summoned to the
 # liege's sieges; riding to the invested town pays standing.
 seed 25
+fame 5 0           # meet the renown gate (M1)
 enter 3            # swear to the patrol crown at Jelkala
 swear
 leave

@@ -614,6 +614,8 @@ static void CompleteQuest(GameState& gs) {
     const QuestDef& qd = gs.content.quests[gs.activeQuest];
     gs.gold += qd.goldReward;
     NudgeRelation(gs, gs.questFaction, qd.relationReward);
+    gs.renown += 2;   // honest work builds a name (M1). TODO(balance)
+    gs.honor  += 1;
     gs.resultText = TextFormat("QUEST COMPLETE: %s  +%d gold", qd.name.c_str(),
                                qd.goldReward);
     gs.activeQuest = -1;
@@ -660,6 +662,7 @@ static void ApplyBattleResult(GameState& gs) {
             gs.battleReport.push_back("TOURNAMENT CHAMPION");
             gs.battleReport.push_back(TextFormat("Winnings: %d gold      Hero: +%d XP",
                                                  payout, HERO_XP_PER_WIN));
+            gs.renown += 5;   // the crowd remembers a champion (M1). TODO(balance)
         } else {
             gs.resultText = gs.arenaBet > 0
                 ? TextFormat("Cast out in round %d... your %d-gold stake is gone.",
@@ -688,6 +691,12 @@ static void ApplyBattleResult(GameState& gs) {
             gs.troopXp.assign(gs.content.troops.size(), 0);
         for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
             gs.troopXp[t] += gs.player.troopCounts[t] * XP_PER_SURVIVOR;
+
+        // Renown (M1): word of a victory travels — further when the field
+        // was bloody. TODO(balance): the scale.
+        int slain = 0;
+        for (int v : gs.enemyLosses) slain += v;
+        gs.renown += 1 + std::min(4, slain / 5);
 
         // The hero grows too: XP, levels, and attribute points to spend.
         Character& hero = gs.playerHero;
@@ -841,6 +850,7 @@ static void ApplyBattleResult(GameState& gs) {
             if (taken > 0) {
                 gs.resultText += TextFormat("   Plundered %d wares", taken);
                 gs.battleReport.push_back(TextFormat("Caravan plundered: %d wares", taken));
+                gs.honor -= 1;   // robbing merchants stains a name (M1). TODO(balance)
             }
         }
     } else {
@@ -2564,6 +2574,9 @@ void CharacterDraw(const GameState& gs) {
                         hero.level * 100,   // mirrors HeroXpToLevel; TODO(balance)
                         hero.attrPoints),
              panelX, 122, 22, RAYWHITE);
+    ui::Text(TextFormat("Renown: %d  (party cap %d)      Honor: %+d",
+                        gs.renown, PartyCap(gs), gs.honor),
+             panelX, 150, 20, Fade(GOLD, 0.9f));
 
     int y = layout::CHAR_Y;
     for (int a = 0; a < c.attributes.size(); ++a) {

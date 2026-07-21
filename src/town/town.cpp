@@ -99,6 +99,9 @@ std::string TrySwear(GameState& gs) {
     if (!kingdom) return "No crown holds court here.";
     if (AtWar(gs, f, c.playerFaction)) return "You are at war with this crown.";
     if (standing < 0) return "Your name is mud with this crown. Mend it first.";
+    if (gs.renown < RENOWN_TO_SWEAR)
+        return TextFormat("A crown wants proven captains. Win renown first (%d/%d).",
+                          gs.renown, RENOWN_TO_SWEAR);
     gs.liege = f;
     AlignWarsWithLiege(gs);
     int fief = -1;
@@ -426,7 +429,11 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         const std::vector<int>& roster = c.factions[c.playerFaction].roster;
         if (cin.recruitSlot < (int)roster.size()) {
             const TroopDef& td = c.troops[roster[cin.recruitSlot]];
-            if (gs.gold >= td.cost) {
+            if (gs.player.totalTroops() >= PartyCap(gs)) {
+                gs.resultText = TextFormat(
+                    "Your name only carries %d men. Win renown for more.",
+                    PartyCap(gs));
+            } else if (gs.gold >= td.cost) {
                 gs.gold -= td.cost;
                 gs.player.troopCounts[roster[cin.recruitSlot]]++;
                 SfxPlay(Sfx::Click);
