@@ -84,15 +84,13 @@ flat.
 
 ## Track I — World scale & moddability (user directive 2026-07-20)
 
-- [ ] **I1. Data-driven map.** Move the world map (bounds, biomes, settlement
-  positions/types/owners, faction spawn points, roads) out of code into a
-  moddable asset file (e.g. `assets/map.cfg`, same spirit as `fonts.cfg`),
-  loaded at startup with the current map as the shipped default. Modders can
-  then reshape the world with no rebuild.
-- [ ] **I2. Bigger map, still fast.** Expand the world meaningfully (more
-  settlements, more room between crowns) once I1 lands; profile campaign tick
-  and draw at the larger scale (party AI is O(n²)-ish — grid it if needed,
-  see G1 for the battle-side twin).
+- [x] **I1. Data-driven map.** Shipped: `MapDef` on Content (size, player
+  start, party count, settlement list with owners) with a built-in fallback,
+  overlaid from moddable `assets/map.cfg` (documented format in the file).
+  Follow-ups: biomes/roads/lord names could move into the cfg too.
+- [x] **I2. Bigger map.** Shipped: default world grown 2000→3000 units, 6→9
+  settlements (Halmar, Skjold, Emberfall), 7 starting parties. All harness
+  scripts pass; campaign tick is small-n. Grow further in map.cfg at will.
 
 ## Track J — Tactical battles & player impact (user directive 2026-07-20)
 

@@ -1,4 +1,6 @@
 #include "content.h"
+#include <fstream>
+#include <sstream>
 
 // ---------------------------------------------------------------------------
 // The base content set. This is the ONE place to add armour, weapons, troops
@@ -283,6 +285,57 @@ void LoadDefaultContent(Content& c) {
     war(f_vaeling, f_sarleon);         // the sea-kings raid the rival crown
     war(f_vaeling, f_patrol);          // ...and the old order's coasts alike;
                                        // they have no quarrel with you (yet).
+
+    // ---- Overworld map (direction I1) ------------------------------------
+    // Built-in default world, then the moddable overlay. assets/map.cfg ships
+    // with a larger map; this fallback keeps the game running without assets.
+    c.map = MapDef{};
+    c.map.towns = {
+        { { 400, 400 },   "Sargoth",  SettlementType::Town,    "player" },
+        { { 1600, 500 },  "Praven",   SettlementType::Castle,  "patrol" },
+        { { 500, 1550 },  "Tulga",    SettlementType::Village, "deserters" },
+        { { 1500, 1500 }, "Jelkala",  SettlementType::Town,    "patrol" },
+        { { 1000, 260 },  "Curaw",    SettlementType::Town,    "sarleon" },
+        { { 260, 1000 },  "Rivacheg", SettlementType::Castle,  "vaeling" },
+    };
+    // Same lookup order as the font loader: beside the exe (CMake copies the
+    // assets tree there), then the working directory and its parent.
+    const std::string candidates[] = {
+        IsWindowReady() ? std::string(GetApplicationDirectory()) + "assets/map.cfg"
+                        : "assets/map.cfg",
+        "assets/map.cfg", "../assets/map.cfg" };
+    for (const std::string& p : candidates)
+        if (FileExists(p.c_str())) { LoadMapConfig(c, p.c_str()); break; }
+}
+
+void LoadMapConfig(Content& c, const char* path) {
+    std::ifstream f(path);
+    if (!f) return;   // no cfg: the built-in default world stands
+
+    MapDef m = c.map;
+    bool clearedTowns = false;   // first `town` line replaces the default list
+    std::string line;
+    while (std::getline(f, line)) {
+        if (const auto hash = line.find('#'); hash != std::string::npos)
+            line.erase(hash);
+        std::istringstream ss(line);
+        std::string tag;
+        if (!(ss >> tag)) continue;
+        if (tag == "size")         ss >> m.size;
+        else if (tag == "start")   ss >> m.playerStart.x >> m.playerStart.y;
+        else if (tag == "parties") ss >> m.startingParties;
+        else if (tag == "town") {
+            MapDef::TownSpec t;
+            std::string type;
+            if (!(ss >> t.name >> type >> t.pos.x >> t.pos.y >> t.owner)) continue;
+            t.type = type == "village" ? SettlementType::Village
+                   : type == "castle"  ? SettlementType::Castle
+                                       : SettlementType::Town;
+            if (!clearedTowns) { m.towns.clear(); clearedTowns = true; }
+            m.towns.push_back(t);
+        }
+    }
+    if (!m.towns.empty()) c.map = m;   // a map with no settlements is a mistake
 }
 
 int LoadoutArmor(const Content& c, const Loadout& lo) {

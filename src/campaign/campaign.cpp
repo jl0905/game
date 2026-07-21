@@ -16,7 +16,10 @@
 
 namespace {
 
-constexpr float MAP_SIZE   = 2000.0f;
+// Runtime copy of Content::map.size (the map is data-driven; see assets/map.cfg).
+// Set once per world in CampaignInit; a file-local so every helper in this
+// module reads the live bounds without threading GameState through.
+float MAP_SIZE = 2000.0f;
 constexpr float PARTY_SPEED = 160.0f;
 
 float Frand(float a, float b) {
@@ -381,11 +384,13 @@ static bool AutoPlace(GameState& gs, InvItem it);
 void CampaignInit(GameState& gs) {
     const Content& c = gs.content;
 
+    MAP_SIZE = c.map.size;   // the world takes its bounds from the map def
+
     // Player party + hero avatar.
     gs.player = Party{};
     gs.player.isPlayer = true;
     gs.player.faction = c.playerFaction;
-    gs.player.pos = { MAP_SIZE / 2, MAP_SIZE / 2 };
+    gs.player.pos = c.map.playerStart;
     gs.player.troopCounts.assign(c.troops.size(), 0);
     if (const int r = c.troops.find("recruit");  r >= 0) gs.player.troopCounts[r] = 5;
     if (const int i = c.troops.find("infantry"); i >= 0) gs.player.troopCounts[i] = 2;
@@ -402,22 +407,19 @@ void CampaignInit(GameState& gs) {
     hl.addWeapon(c.weapons.find("spear"));   // swap between them in battle with Q
     hl.addWeapon(c.weapons.find("great"));
 
-    // Who holds what at the start: your warband holds Sargoth, the lawful
-    // patrols hold the castle and Jelkala, and deserters squat in Tulga —
-    // a hostile settlement on the map from day one (siege bait for B3).
-    const int f_kingdom   = c.playerFaction;
-    const int f_patrol    = c.factions.find("patrol");
-    const int f_deserters = c.factions.find("deserters");
-    const int f_sarleon   = c.factions.find("sarleon");
-    const int f_vaeling   = c.factions.find("vaeling");
-    gs.towns = {
-        { { 400, 400 },   "Sargoth",  SettlementType::Town,    f_kingdom },
-        { { 1600, 500 },  "Praven",   SettlementType::Castle,  f_patrol },
-        { { 500, 1550 },  "Tulga",    SettlementType::Village, f_deserters },
-        { { 1500, 1500 }, "Jelkala",  SettlementType::Town,    f_patrol },
-        { { 1000, 260 },  "Curaw",    SettlementType::Town,    f_sarleon },
-        { { 260, 1000 },  "Rivacheg", SettlementType::Castle,  f_vaeling },
-    };
+    // Settlements come from the map definition (assets/map.cfg or the built-in
+    // fallback). Owners are resolved from faction ids here, at world creation.
+    gs.towns.clear();
+    for (const MapDef::TownSpec& spec : c.map.towns) {
+        Town t;
+        t.pos  = spec.pos;
+        t.name = spec.name;
+        t.type = spec.type;
+        t.owner = spec.owner == "player" ? c.playerFaction
+                : spec.owner == "none"   ? -1
+                                         : c.factions.find(spec.owner.c_str());
+        gs.towns.push_back(t);
+    }
 
     // Garrison every owned settlement from its owner's roster. Relative sizes
     // are settlement identity (a castle holds more than a village);
@@ -449,7 +451,7 @@ void CampaignInit(GameState& gs) {
     gs.troopXp.assign(c.troops.size(), 0);
     gs.prisoners.assign(c.troops.size(), 0);
     const std::vector<int> roamers = RoamingFactions(c);
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < c.map.startingParties; ++i)
         gs.parties.push_back(MakeParty(c, roamers[i % roamers.size()], RandomEdgePos()));
 
     // Lords muster their hosts at a settlement their faction holds.

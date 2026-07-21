@@ -133,6 +133,23 @@ struct FactionDef {
     bool kingdom = false;
 };
 
+// The overworld map (direction I1): bounds, the player's start and every
+// settlement. LoadDefaultContent installs a built-in default; LoadMapConfig
+// then overlays assets/map.cfg when present, so modders reshape the world —
+// size, settlements, owners — without a rebuild.
+struct MapDef {
+    struct TownSpec {
+        Vector2        pos{};
+        std::string    name;                        // one token (map label)
+        SettlementType type = SettlementType::Town;
+        std::string    owner;                       // faction id, "player" or "none"
+    };
+    float                 size = 2000.0f;
+    Vector2               playerStart{ 1000.0f, 1000.0f };
+    int                   startingParties = 5;      // roaming parties at world start
+    std::vector<TownSpec> towns;
+};
+
 // The whole game catalogue. Everything is added in LoadDefaultContent(); to add
 // content you register more defs there — no other code needs to change.
 struct Content {
@@ -142,6 +159,7 @@ struct Content {
     Registry<FactionDef>   factions;
     Registry<AttributeDef> attributes;
     Registry<GoodDef>      goods;
+    MapDef                 map;
 
     int playerFaction = -1;  // resolved after loading
 
@@ -153,6 +171,11 @@ struct Content {
 // Registers the base (unbalanced) content set. Single source of truth for all
 // armour, weapons, troops and factions.
 void LoadDefaultContent(Content& c);
+
+// Overlay the moddable overworld map from a cfg file onto Content::map.
+// Missing file or field keeps the built-in default; called by
+// LoadDefaultContent with the standard assets path.
+void LoadMapConfig(Content& c, const char* path);
 
 // Total armour value of everything worn in `lo` (sums ArmorDef::armor).
 int LoadoutArmor(const Content& c, const Loadout& lo);
