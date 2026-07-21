@@ -1,0 +1,10 @@
+# Caravans carry real freight (goal 2026-07-21): wagons load surplus from the
+# origin's market stock, unload into the destination's, and the cargo shows in
+# the party dump and survives saves.
+seed 42
+wait 70            # let a world day pass — factions with two towns spawn convoys
+state              # expect caravan(cargo=N) parties with N > 0
+save cargo_test.owb
+load cargo_test.owb
+state              # cargo should survive the reload
+quit

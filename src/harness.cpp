@@ -206,9 +206,11 @@ struct Harness {
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             const Party& p = gs.parties[i];
             if (!p.alive) continue;
+            int freight = 0;
+            for (int q : p.cargo) freight += q;
             std::printf("party %d: faction=%s%s%s%s pos=(%.0f,%.0f) troops=%d state=%s fatigue=%.0f engaged=%d dist=%.0f\n",
                         i, c.factions[p.faction].id.c_str(),
-                        p.caravan ? " caravan" : "",
+                        p.caravan ? TextFormat(" caravan(cargo=%d)", freight) : "",
                         p.lord.empty() ? "" : " lord=", p.lord.c_str(),
                         p.pos.x, p.pos.y, p.totalTroops(), PartyStateName(p.state),
                         p.fatigue, p.engaged ? 1 : 0,

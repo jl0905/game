@@ -185,9 +185,13 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (const Party& p : gs.parties) {
         if (!p.alive) continue;
         if (p.faction < 0 || p.faction >= c.factions.size()) continue;
-        if (p.caravan)
+        if (p.caravan) {
             f << "cparty " << c.factions[p.faction].id << ' '
               << p.pos.x << ' ' << p.pos.y << ' ' << p.caravanTo << '\n';
+            for (int g = 0; g < (int)p.cargo.size() && g < c.goods.size(); ++g)
+                if (p.cargo[g] > 0)
+                    f << "ccargo " << c.goods[g].id << ' ' << p.cargo[g] << '\n';
+        }
         else {
             f << "party " << c.factions[p.faction].id << ' '
               << p.pos.x << ' ' << p.pos.y;
@@ -384,6 +388,15 @@ bool LoadGame(GameState& gs, const char* path) {
             else                 ss >> p.lord;   // optional trailing lord name
             gs.parties.push_back(p);
             cur = &gs.parties.back();
+        } else if (tag == "ccargo") {
+            std::string gid; int n = 0;
+            ss >> gid >> n;
+            const int g = c.goods.find(gid.c_str());
+            if (cur && cur->caravan && g >= 0 && n > 0) {
+                if ((int)cur->cargo.size() < c.goods.size())
+                    cur->cargo.assign(c.goods.size(), 0);
+                cur->cargo[g] = n;
+            }
         }
     }
     gs.screen = Screen::Campaign;

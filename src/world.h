@@ -37,6 +37,8 @@ struct Party {
     std::string      lord;               // lord's name; empty for ordinary parties
     bool             caravan = false;    // trade convoy plying owned settlements (E3)
     int              caravanTo = -1;     // destination town index while trading
+    std::vector<int> cargo;              // freight per good — real wares moved
+                                         // between town markets, spilt on plunder
     Vector2          wanderTarget{};
     float            thinkTimer = 0;
 

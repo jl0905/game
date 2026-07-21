@@ -64,6 +64,28 @@ Party MakeCaravan(const Content& c, int faction, Vector2 pos, int toTown) {
     return p;
 }
 
+// How many units of freight a caravan's wagons hold. TODO(balance).
+constexpr int CARAVAN_CARGO = 8;
+
+// Fill a caravan's wagons from its stop's market: it buys what the town has
+// most of, so surplus flows toward scarcity. Leaves the last unit of each
+// ware on the shelf for the player.
+void LoadCaravanCargo(const Content& c, Town& from, Party& p) {
+    if ((int)p.cargo.size() < c.goods.size()) p.cargo.assign(c.goods.size(), 0);
+    if ((int)from.stock.size() < c.goods.size()) return;
+    int held = 0;
+    for (int q : p.cargo) held += q;
+    while (held < CARAVAN_CARGO) {
+        int best = -1, bestStock = 1;   // never take a market's last unit
+        for (int g = 0; g < c.goods.size(); ++g)
+            if (from.stock[g] > bestStock) { bestStock = from.stock[g]; best = g; }
+        if (best < 0) break;
+        from.stock[best]--;
+        p.cargo[best]++;
+        held++;
+    }
+}
+
 Vector2 RandomEdgePos() {
     return { Frand(150, MAP_SIZE - 150), Frand(150, MAP_SIZE - 150) };
 }
@@ -764,11 +786,17 @@ static void ApplyBattleResult(GameState& gs) {
                 gs.goods.assign(gs.content.goods.size(), 0);
             int carried = 0;
             for (int q : gs.goods) carried += q;
+            // The convoy spills what it actually carries — plundered wares
+            // are real freight pulled out of the world's trade flow.
+            Party& convoy = gs.parties[gs.battlePartyIndex];
             int taken = 0;
-            for (int i = 0; i < 6 && carried < GOODS_CAP; ++i) {
-                gs.goods[GetRandomValue(0, gs.content.goods.size() - 1)]++;
-                carried++; taken++;
-            }
+            for (int g = 0; g < (int)convoy.cargo.size() &&
+                            g < gs.content.goods.size(); ++g)
+                while (convoy.cargo[g] > 0 && carried < GOODS_CAP) {
+                    convoy.cargo[g]--;
+                    gs.goods[g]++;
+                    carried++; taken++;
+                }
             if (taken > 0) {
                 gs.resultText += TextFormat("   Plundered %d wares", taken);
                 gs.battleReport.push_back(TextFormat("Caravan plundered: %d wares", taken));
@@ -1166,7 +1194,16 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     Town& dest = gs.towns[e.caravanTo];
                     if (Vector2Distance(e.pos, dest.pos) < 30.0f) {
                         dest.prosperity = std::min(dest.prosperity + 5, 150);  // TODO(balance)
+                        // Unload the freight into the destination's market —
+                        // caravans genuinely move wares between towns.
+                        if ((int)dest.stock.size() >= c.goods.size())
+                            for (int g = 0; g < (int)e.cargo.size() &&
+                                            g < c.goods.size(); ++g) {
+                                dest.stock[g] += e.cargo[g];
+                                e.cargo[g] = 0;
+                            }
                         e.caravanTo = NearestOwnedTown(gs, e.faction, e.pos, e.caravanTo);
+                        LoadCaravanCargo(c, dest, e);   // stock up for the next leg
                     }
                     if (e.caravanTo >= 0) {
                         target     = gs.towns[e.caravanTo].pos;
@@ -1403,8 +1440,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if (gs.towns[t].owner == f) { owned++; if (home < 0) home = t; }
                 if (owned < 2) continue;
                 const int to = NearestOwnedTown(gs, f, gs.towns[home].pos, home);
-                if (to >= 0)
+                if (to >= 0) {
                     gs.parties.push_back(MakeCaravan(c, f, gs.towns[home].pos, to));
+                    LoadCaravanCargo(c, gs.towns[home], gs.parties.back());
+                }
             }
 
             // Every owner musters one soldier a day toward their garrison cap
