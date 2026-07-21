@@ -69,6 +69,9 @@ struct BattleView {
     int     wallDefenders = 0;   // live garrison archers still on the wall
     bool    heroMounted = false;
     float   heroHorseHp = 0;
+    const char* order = "Charge";   // current battlefield order (M2)
+    float   ownAvgDistToAnchor = 0; // player troops' mean distance from their
+                                    // order anchor — lets scripts see obedience
     bool    over = false, won = false;
 };
 

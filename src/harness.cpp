@@ -299,11 +299,11 @@ struct Harness {
                                     ? c.weapons[v.heroWeapon].id.c_str() : "none";
             std::printf("battle: heroPos=(%.2f,%.2f,%.2f) yaw=%.3f pitch=%.3f "
                         "hp=%.0f/%.0f weapon=%s mounted=%d horse=%.0f allies=%d enemies=%d "
-                        "arrows=%d wall=%d over=%d won=%d\n",
+                        "arrows=%d wall=%d order=%s anchordist=%.1f over=%d won=%d\n",
                         v.heroPos.x, v.heroPos.y, v.heroPos.z, v.heroYaw, v.heroPitch,
                         v.heroHp, v.heroMaxHp, wname, v.heroMounted ? 1 : 0, v.heroHorseHp,
-                        v.aliveAllies, v.aliveEnemies,
-                        v.arrowsInFlight, v.wallDefenders, v.over ? 1 : 0, v.won ? 1 : 0);
+                        v.aliveAllies, v.aliveEnemies, v.arrowsInFlight, v.wallDefenders,
+                        v.order, v.ownAvgDistToAnchor, v.over ? 1 : 0, v.won ? 1 : 0);
         }
         if (gs.screen == Screen::Settlement) {
             const TownView v = GetTownView();
@@ -549,6 +549,12 @@ int RunScript(const char* path) {
             h.Step(CampaignInput{}, bin);
         } else if (cmd == "formation") {
             BattleInput bin; ss >> bin.formationSelect;
+            h.Step(CampaignInput{}, bin);
+        } else if (cmd == "order") {
+            // Battlefield orders (M2): hold / follow / charge.
+            std::string o; ss >> o;
+            BattleInput bin;
+            bin.order = o == "hold" ? 1 : o == "follow" ? 2 : 3;
             h.Step(CampaignInput{}, bin);
         } else if (cmd == "ranks") {
             std::string v; ss >> v;

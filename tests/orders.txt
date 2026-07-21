@@ -1,0 +1,16 @@
+# Battlefield orders (direction M2): F1 hold / F2 follow / F3 charge.
+# Held troops stay by the barked anchor (anchordist small); charging troops
+# run at the enemy (anchordist from the hero grows).
+seed 42
+hunt 120           # find a fight
+block on
+order hold         # form the line here and hold it
+tick 90
+state              # expect order=Hold position, anchordist a formation-width
+order charge       # loose them
+tick 240
+state              # expect order=Charge and a larger anchordist
+block on
+tick 400           # let the field decide
+state
+quit

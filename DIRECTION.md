@@ -288,10 +288,15 @@ adds per line of code. Structure first, numbers flat, as ever.
   line show both; `fame` save tag; harness `fame R H` command for
   scenarios; `tests/renown.txt`. All flat TODO(balance). Follow-up: honor
   feeding per-lord opinions (M3/M5).
-- [ ] **M2. Battlefield orders.** Beyond formations: Hold Position (F1),
-  Follow Me (F2), Charge (F3) as squad commands the player barks mid-fight;
-  held soldiers keep formation under arrow fire, followers screen the hero.
-  The strategic layer of "player impact" (J3).
+- [x] **M2. Battlefield orders.** Shipped: F1 Hold / F2 Follow / F3 Charge,
+  barked instantly mid-fight (no menu) — orders resolve orthogonally to
+  formation *shape* at the AI call site, so ComputeAI stayed order-blind:
+  Hold freezes the anchor where the order rang, Follow anchors on the
+  hero, Charge frees everyone (a shapeless Charge order defaults the
+  shape to Line). The war-cry banner shouts the order; the HUD shows
+  Order + Shape; `BattleView` gains order/anchordist so scripts can see
+  obedience; harness `order` command; `tests/orders.txt` holds a line at
+  3.2 u then charges to victory.
 - [ ] **M3. Fief grants.** A crowned player chooses which raised lord holds
   each captured settlement (court dialogue); a lord defends and taxes his
   own fief, and grants move per-lord standing when M1's honor exists.

@@ -406,6 +406,17 @@ void Terrain::Draw() const {
 // ===========================================================================
 enum class FormationType { Charge, Line, Square, Spread };
 
+// Battlefield orders (M2): free engagement, screen the hero, or hold ground.
+enum class OrderType { Charge, Follow, Hold };
+
+const char* OrderName(OrderType o) {
+    switch (o) {
+        case OrderType::Follow: return "Follow me";
+        case OrderType::Hold:   return "Hold position";
+        default:                return "Charge";
+    }
+}
+
 const char* FormationName(FormationType f) {
     switch (f) {
         case FormationType::Charge: return "Charge";
@@ -693,13 +704,20 @@ struct BattleState {
 
     // Formations / strategy menu.
     FormationType formation = FormationType::Charge;
+
+    // Battlefield orders (M2): what the player's own troops are doing with
+    // the formation shape — charging freely, following the hero's banner, or
+    // holding ground where the order was barked (F1/F2/F3 mid-fight).
+    OrderType order = OrderType::Charge;
+    Vector3   holdPos{};            // anchor frozen when Hold was ordered
     int   ranks = 3;
     bool  showMenu = false;
     int   ownCount = 0;             // player's own (non-ally) troop count
     int   enemyCount = 0;           // enemy line strength at the start
     bool  enemyHoldsLine = false;   // field armies form up before they charge
     bool  enemyCharged = false;     // the moment the whole line breaks forward
-    float cryTimer = 0;             // "THEY CHARGE!" banner fade
+    float cryTimer = 0;             // war-cry banner fade
+    const char* cryText = "THEY CHARGE!";   // what the banner shouts
 
     // Parallel-AI scratch, reused each frame to avoid per-frame allocation.
     std::vector<AICmd> cmds;
@@ -1268,6 +1286,9 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_TWO))   in.formationSelect = 2;
     if (IsKeyPressed(KEY_THREE)) in.formationSelect = 3;
     if (IsKeyPressed(KEY_FOUR))  in.formationSelect = 4;
+    if (IsKeyPressed(KEY_F1))    in.order = 1;   // hold position (M2)
+    if (IsKeyPressed(KEY_F2))    in.order = 2;   // follow me
+    if (IsKeyPressed(KEY_F3))    in.order = 3;   // charge
     if (IsKeyPressed(KEY_LEFT_BRACKET))  in.ranksDelta -= 1;
     if (IsKeyPressed(KEY_RIGHT_BRACKET)) in.ranksDelta += 1;
     return in;
@@ -1347,15 +1368,32 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         if (in.toggleMenu) B.showMenu = !B.showMenu;
         if (B.showMenu) {
             switch (in.formationSelect) {
-                case 1: B.formation = FormationType::Charge; break;
+                // Picking a shape implies an order (M2): Charge frees the
+                // line, any held shape means "form on me".
+                case 1: B.formation = FormationType::Charge;
+                        B.order = OrderType::Charge; break;
                 case 2: B.formation = FormationType::Line;   break;
                 case 3: B.formation = FormationType::Square; break;
                 case 4: B.formation = FormationType::Spread; break;
                 default: break;
             }
+            if (in.formationSelect >= 2 && B.order == OrderType::Charge)
+                B.order = OrderType::Follow;
             B.ranks += in.ranksDelta;
             if (B.ranks < 1) B.ranks = 1;
             if (B.ranks > 8) B.ranks = 8;
+        }
+
+        // ---- battlefield orders (M2): barked instantly, no menu ----
+        if (in.order != 0) {
+            switch (in.order) {
+                case 1: B.order = OrderType::Hold; B.holdPos = B.pPos; break;
+                case 2: B.order = OrderType::Follow; break;
+                default: B.order = OrderType::Charge; break;
+            }
+            B.cryTimer = 1.6f;   // the banner rings the order
+            B.cryText  = OrderName(B.order);
+            SfxPlay(Sfx::WarCry);
         }
 
         // ---- attack: HOLD LMB to ready a swing in the direction you move the
@@ -1424,7 +1462,18 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     }
 
     // ---------- soldier AI (multithreaded) ----------
-    const Vector3 anchor    = B.pPos;
+    // Orders (M2) resolve to an effective shape and anchor here, so ComputeAI
+    // stays order-blind: Charge frees everyone; Follow anchors the shape on
+    // the hero (a shapeless Charge formation defaults to Line); Hold freezes
+    // the anchor where the order was barked.
+    FormationType effFormation = B.formation;
+    Vector3       anchor       = B.pPos;
+    if (B.order == OrderType::Charge) {
+        effFormation = FormationType::Charge;
+    } else {
+        if (effFormation == FormationType::Charge) effFormation = FormationType::Line;
+        if (B.order == OrderType::Hold) anchor = B.holdPos;
+    }
     const float   anchorYaw = B.yaw;
     const int     n = (int)B.soldiers.size();
     if (!B.over && n > 0) {
@@ -1483,6 +1532,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             if (B.enemyCharged) {
                 B.cryTimer = 2.2f;
+                B.cryText  = "THEY CHARGE!";
                 SfxPlay(Sfx::WarCry);
             }
         }
@@ -1491,7 +1541,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         // snapshot. Nothing is mutated here, so there are no data races.
         ThreadPool::Global().For(0, n, 24, [&](int i) {
             if (B.soldiers[i].hp > 0 && !B.soldiers[i].escaped)
-                B.cmds[i] = ComputeAI(c, i, dt, B.formation, B.ranks, anchor, anchorYaw, B.ownCount);
+                B.cmds[i] = ComputeAI(c, i, dt, effFormation, B.ranks, anchor, anchorYaw, B.ownCount);
         });
         // Phase 2 — apply movement/state serially, accumulate damage, then deal it.
         B.dmg.assign(n, 0.0f);
@@ -1887,8 +1937,9 @@ void BattleDraw(const Content& c) {
     const char* dirName[] = { "UP", "DOWN", "LEFT", "RIGHT" };
     const int hwh = B.setup.heroLoadout.get(EquipSlot::Weapon);
     const char* wname = c.weapons.valid(hwh) ? c.weapons[hwh].name.c_str() : "Unarmed";
-    ui::Text(TextFormat("Weapon: %s    Orders: %s (ranks %d)", wname,
-                        FormationName(B.formation), B.ranks), 18, 60, 16, GOLD);
+    ui::Text(TextFormat("Weapon: %s    Order: %s [F1-F3]    Shape: %s (ranks %d)",
+                        wname, OrderName(B.order), FormationName(B.formation),
+                        B.ranks), 18, 60, 16, GOLD);
     if (B.readying)
         ui::Text(TextFormat("Readying swing: %s  (release!)", dirName[(int)B.attackDir]),
                  18, 82, 16, ORANGE);
@@ -1993,7 +2044,7 @@ void BattleDraw(const Content& c) {
     B.cryTimer = fmaxf(0.0f, B.cryTimer - GetFrameTime());
     if (B.cryTimer > 0 && B.introTimer <= 0 && !B.over) {
         const float a = fminf(B.cryTimer / 0.5f, 1.0f);
-        const char* head = "THEY CHARGE!";
+        const char* head = B.cryText;
         const int w = ui::MeasureTitle(head, 44);
         const int cy = GetScreenHeight() / 3;
         DrawRectangle(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.4f * a));
@@ -2037,6 +2088,18 @@ BattleView GetBattleView() {
         if (s.onWall && s.hp > 0) v.wallDefenders++;
     v.heroMounted = B.mounted;
     v.heroHorseHp = B.pHorseHp;
+    v.order       = OrderName(B.order);
+    {
+        const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;
+        int   own = 0;
+        float sum = 0;
+        for (const Soldier& s : B.soldiers)
+            if (s.team == Team::Player && !s.ally && s.hp > 0 && !s.escaped) {
+                own++;
+                sum += Vector3Distance(s.pos, a);
+            }
+        v.ownAvgDistToAnchor = own > 0 ? sum / own : 0;
+    }
     v.over         = B.over;
     v.won          = B.won;
     return v;
