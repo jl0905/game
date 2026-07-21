@@ -1,0 +1,11 @@
+# Lords recruit like the player (goal 2026-07-21): a mauled lord rides to his
+# own faction's settlement and takes on volunteers (+5/day) until over half
+# strength; watch lord troop counts recover across days instead of bleeding.
+seed 42
+wait 70
+state
+wait 70
+state
+wait 70
+state
+quit

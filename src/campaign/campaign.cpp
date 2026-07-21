@@ -226,10 +226,21 @@ constexpr float REST_REACH       = 30.0f;  // close enough to make camp
 bool UpdateRest(const GameState& gs, Party& e, float sim, Vector2& target) {
     if (e.restTown < 0) {
         e.fatigue += sim * FATIGUE_PER_SEC;
+        // A mauled lord counts as spent whatever the clock says: he rides
+        // home and stays until fresh volunteers bring him back over half
+        // strength (the daily recruit tick refills him there).
+        const bool mauled =
+            !e.lord.empty() && e.faction >= 0 &&
+            e.faction < gs.content.factions.size() &&
+            e.totalTroops() < gs.content.factions[e.faction].lordPartySize / 2;
+        if (mauled) e.fatigue = FATIGUE_LIMIT;
         if (e.fatigue < FATIGUE_LIMIT) return false;
         float best = 1e9f;
         for (int ti = 0; ti < (int)gs.towns.size(); ++ti) {
             if (AtWar(gs, e.faction, gs.towns[ti].owner)) continue;
+            // Lords head for their own banner's settlements — that is where
+            // fresh volunteers are (the daily recruit tick).
+            if (!e.lord.empty() && gs.towns[ti].owner != e.faction) continue;
             const float d = Vector2Distance(e.pos, gs.towns[ti].pos);
             if (d < best) { best = d; e.restTown = ti; }
         }
@@ -1458,6 +1469,26 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if ((int)t.garrison.size() < c.troops.size())
                         t.garrison.assign(c.troops.size(), 0);
                     t.garrison[roster[t.garrisonSize() % (int)roster.size()]]++;
+                }
+            }
+
+            // Lords recruit the way the player does: a lord camped by any
+            // friendly settlement takes on volunteers toward his full host,
+            // instead of armies materialising. TODO(balance): the rate.
+            constexpr int LORD_RECRUIT_RATE = 5;   // men per day at a settlement
+            for (Party& p : gs.parties) {
+                if (!p.alive || p.engaged || p.lord.empty()) continue;
+                if (p.faction < 0 || p.faction >= c.factions.size()) continue;
+                const std::vector<int>& roster = c.factions[p.faction].roster;
+                const int want = c.factions[p.faction].lordPartySize;
+                if (roster.empty() || p.totalTroops() >= want) continue;
+                for (const Town& t : gs.towns) {
+                    if (t.owner != p.faction ||
+                        Vector2Distance(p.pos, t.pos) > REST_REACH * 2) continue;
+                    for (int i = 0; i < LORD_RECRUIT_RATE &&
+                                    p.totalTroops() < want; ++i)
+                        p.troopCounts[roster[p.totalTroops() % (int)roster.size()]]++;
+                    break;
                 }
             }
             if (gs.gold < 0) {
