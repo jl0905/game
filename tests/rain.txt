@@ -1,0 +1,13 @@
+# Weather fights too (direction R1): on a rainy field, wet bowstrings throw
+# short (60% range) and nock slow (1.4x cadence). Rain falls by position,
+# and Tulga's fields sit under cloud.
+seed 33
+background 3       # three brigands make the fight a sure thing
+enter 2            # the fields of Tulga
+siege 2            # a raid in the rain
+state              # expect rain=1 on the battle line (archers close in
+                   # before loosing; the effect is the shorter engage range)
+block on
+tick 200
+state              # the raid resolves either way; the sky was the test
+quit

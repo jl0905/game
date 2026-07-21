@@ -498,6 +498,28 @@ full career, and the last Warband textures.
   day, not a career. `tests/autosave.txt` marches past a dawn and rewinds
   to it.
 
+## Track R — Eighth wave: texture and consequence
+
+- [x] **R1. Weather fights too.** Shipped: on a raining field archers
+  engage at 60% range and nock 1.4× slower — wet strings throw short.
+  `rain=` in the battle dump; `tests/rain.txt` raids Tulga under cloud.
+  Flat TODO(balance). Check the sky before you rely on archers.
+- [ ] **R2. Deployment.** A pre-battle beat: see the field, set formation
+  shape/ranks and your first order before the lines close. One decision
+  turns the opening from reflex into plan.
+- [ ] **R3. Roster polish.** Veterancy pips on the party screen (XP toward
+  the next rank as a bar), wage column, and a party-cap readout.
+- [ ] **R4. World events.** A data-driven `EventDef` registry (good
+  harvest, murrain, bandit king rises...) firing by day rotation:
+  prosperity/stock/spawn effects, announced as news. Modders add events
+  like they add goods.
+- [ ] **R5. Lords change banners.** An AI lord whose crown keeps losing
+  (war weariness high, opinion of his liege gone) defects to the
+  winning side — living politics between crowns, not just around the
+  player.
+- [ ] **R6. The standing bench.** Re-run --bench at each wave's end and
+  log it in BALANCE.md — regressions caught the cheap way.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

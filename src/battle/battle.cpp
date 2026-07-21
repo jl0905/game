@@ -1024,7 +1024,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     const bool ranged = wd && wd->isRanged();
     // Archers advance until comfortably inside missile range, then stand and
     // loose; melee closes to arm's reach.
-    const float engage = ranged ? wd->missileRange * 0.9f
+    // Rain fights too (R1): wet strings throw short. TODO(balance).
+    const float rainRange = B.raining ? 0.6f : 1.0f;
+    const float engage = ranged ? wd->missileRange * 0.9f * rainRange
                                 : WeaponReach(c, cmd.activeWeapon) * 0.8f;
 
     const bool commanded =
@@ -1065,6 +1067,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         if (s.team == Team::Player && B.pHp > 0 &&
             Vector3DistanceSqr(s.pos, B.pPos) < aura * aura)
             cdScale *= RALLY_COOLDOWN_SCALE;
+        if (ranged && B.raining) cdScale *= 1.4f;   // slow, sodden nocking (R1)
         cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon) * cdScale;
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
@@ -2135,6 +2138,7 @@ BattleView GetBattleView() {
     v.heroHorseHp = B.pHorseHp;
     v.order       = OrderName(B.order);
     v.climbPoints = (int)g_climbs.size();
+    v.raining     = B.raining;
     {
         const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;
         int   own = 0;

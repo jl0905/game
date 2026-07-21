@@ -81,6 +81,7 @@ struct BattleView {
     float   heroHorseHp = 0;
     const char* order = "Charge";   // current battlefield order (M2)
     int     climbPoints = 0;        // siege climbing lanes incl. tower (N1)
+    bool    raining = false;        // wet strings throw short (R1)
     float   ownAvgDistToAnchor = 0; // player troops' mean distance from their
                                     // order anchor — lets scripts see obedience
     bool    over = false, won = false;
