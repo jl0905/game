@@ -805,6 +805,20 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         for (int slot = 0; slot < 9; ++slot)
             if (IsKeyPressed(KEY_ONE + slot))
                 (shift ? in.sellGood : in.buyGood) = slot;
+        // Mouse (H3): click a ware row to buy one, right-click to sell one
+        // (rows of 32 px from y=230, mirroring MarketDraw).
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
+            IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+            const Vector2 m = GetMousePosition();
+            const int row = ((int)m.y - 230) / 32;
+            if (m.x >= 120 && m.x < 700 && m.y >= 230 &&
+                row >= 0 && row < gs.content.goods.size()) {
+                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || shift)
+                    in.sellGood = row;
+                else
+                    in.buyGood = row;
+            }
+        }
         in.buyEnterprise = IsKeyPressed(KEY_B);
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) in.leaveSettlement = true;
         return in;
@@ -814,6 +828,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_N))      in.menuChoice = 1;
         if (IsKeyPressed(KEY_C))      in.menuChoice = 2;
         if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 3;
+        // Mouse (H3): the three options are 52-px bands from y=380 (TitleDraw).
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int row = ((int)m.y - 380) / 52;
+            if (m.y >= 380 && row >= 0 && row < 3) in.menuChoice = row + 1;
+        }
         return in;
     }
 
@@ -827,6 +847,21 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         for (int slot = 0; slot < 9; ++slot)
             if (IsKeyPressed(KEY_ONE + slot))
                 (shift ? in.dismissSlot : in.upgradeSlot) = slot;
+        // Mouse (H3): click a roster row to promote, right-click to dismiss.
+        // Hit-boxes mirror PartyDraw's layout (rows of 34 px from y=200).
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
+            IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+            const Vector2 m = GetMousePosition();
+            const int panelX = GetScreenWidth() / 2 - 360;
+            const int row = ((int)m.y - 200) / 34;
+            if (m.x >= panelX && m.x < panelX + 560 && m.y >= 200 &&
+                row >= 0 && row < 9) {
+                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || shift)
+                    in.dismissSlot = row;
+                else
+                    in.upgradeSlot = row;
+            }
+        }
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) in.leaveSettlement = true;
         return in;
     }
@@ -834,6 +869,16 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (gs.screen == Screen::Character) {
         for (int slot = 0; slot < 9; ++slot)
             if (IsKeyPressed(KEY_ONE + slot)) in.spendAttr = slot;
+        // Mouse (H3): click an attribute row to spend a point (rows of 40 px
+        // from y=180, mirroring CharacterDraw).
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int panelX = GetScreenWidth() / 2 - 360;
+            const int row = ((int)m.y - 180) / 40;
+            if (m.x >= panelX && m.x < panelX + 560 && m.y >= 180 &&
+                row >= 0 && row < gs.content.attributes.size())
+                in.spendAttr = row;
+        }
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_C)) in.leaveSettlement = true;
         return in;
     }
@@ -1840,8 +1885,8 @@ void MarketDraw(const GameState& gs) {
     const Town& t = gs.towns[gs.currentSettlement];
     const int   x = 120;
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
-    ui::Text("1-9 buy one   Shift+1-9 sell one   Esc / M back", x, 116, 20,
-             Fade(RAYWHITE, 0.7f));
+    ui::Text("1-9 / click: buy one   Shift / right-click: sell one   Esc / M back",
+             x, 116, 20, Fade(RAYWHITE, 0.7f));
     int carried = 0;
     for (int q : gs.goods) carried += q;
     ui::Text(TextFormat("Gold: %d      Saddlebags: %d / %d", gs.gold, carried,
@@ -2002,7 +2047,7 @@ void PartyDraw(const GameState& gs) {
     DrawRectangleLines(paneX, 180, 420, 420, Fade(GOLD, 0.5f));
     ui::Text("Your ranks on parade", paneX + 8, 186, 18, Fade(RAYWHITE, 0.7f));
 
-    ui::Text("[1-9] promote one unit    [Shift+1-9] dismiss one    [Esc / P] back",
+    ui::Text("[1-9 / click] promote one    [Shift / right-click] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();
 }
@@ -2157,7 +2202,7 @@ void CharacterDraw(const GameState& gs) {
                  20, r > 0 ? LIME : r < 0 ? Fade(RED, 0.9f) : Fade(RAYWHITE, 0.8f));
         y += 26;
     }
-    ui::Text("[1-4] spend a point    [Esc / C] back to the map",
+    ui::Text("[1-4 / click a row] spend a point    [Esc / C] back to the map",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();
 }

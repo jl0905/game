@@ -125,8 +125,14 @@ flat.
   storms one — the den's defenders muster at double strength, victory
   burns it out for good, and the ash persists in saves. Flat numbers
   TODO(balance). `tests/lair.txt` burns the deserters' den.
-- [ ] **H3. Mouse-driven UI pass.** Clickable buttons/rows on the map, party,
-  inventory, and settlement screens (keyboard stays). Unblocks casual play.
+- [x] **H3. Mouse-driven UI pass (v1).** Shipped: click rows everywhere the
+  keyboard worked — title menu options, party roster (click promote /
+  right-click dismiss), character attributes, market wares (click buy /
+  right-click sell); the map (towns, dens) and inventory grid were already
+  mouse-driven. All hit-boxes mirror the draw layouts in Gather, so
+  simulation and the harness are untouched. Hint footers mention clicks.
+  Follow-ups: hover highlights, shared layout constants between
+  Gather/Draw instead of mirrored numbers.
 - [ ] **H4. Dialogue screens.** Talking to lords/NPCs opens a portrait dialogue
   screen (persuade/threaten/quest hooks) instead of floating text.
 
