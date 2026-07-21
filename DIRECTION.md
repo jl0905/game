@@ -174,6 +174,36 @@ flat.
   Follow-ups: an in-game settings screen; graphical upgrades (shadows,
   nicer sky, water) when cheap on the frame budget.
 
+## Track K — Second wave (deepening the shipped v1s)
+
+The first board is swept: every core Warband system exists in v1. This wave
+turns v1s into keepers. Ordered roughly by player-visible payoff.
+
+- [ ] **K1. In-game settings screen.** A `Screen::Settings` over the J4 cfg:
+  arrow/click through the options, write `assets/settings.cfg` back on exit.
+- [ ] **K2. Lords in the hall.** Talk (H4 screen) to a lord in his castle
+  keep: swear fealty / ask for quests / demand a fief there instead of
+  bare hotkeys — moves V and lord-flavour into conversation.
+- [ ] **K3. Tournament brackets & betting.** Multiple rounds with shrinking
+  fields, bet gold on yourself, renown ties into relations.
+- [ ] **K4. Per-soldier morale.** Replace G3's side-wide threshold: each
+  soldier weighs nearby deaths, leader down, hero aura; lines crumble from
+  the flanks instead of all at once.
+- [ ] **K5. Muster obligations.** A sworn vassal is summoned to the liege's
+  sieges (banner alert + relation penalty for ignoring it); a crowned
+  ruler can point raised lords at a target settlement.
+- [ ] **K6. Fit companions from the bag.** Equip hired companions from the
+  tiled inventory (their Loadout is already per-troop data).
+- [ ] **K7. UI polish pass.** Hover highlights on clickable rows, shared
+  Gather/Draw layout constants, a town-HUD line listing the local keys
+  (T bout, M market, G work, H hire, V oath, E talk).
+- [ ] **K8. Map biomes & roads into map.cfg.** The painted biome map, roads
+  and lord name pools move from code into the map file (finishes I1's
+  moddability).
+- [ ] **K9. Balance-pass prep.** One document listing every TODO(balance)
+  constant with its file, current flat value, and intended feel — the
+  worksheet a human playtesting pass needs. (Numbers stay flat until then.)
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
