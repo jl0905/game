@@ -478,6 +478,10 @@ int RunScript(const char* path) {
             CampaignInput cin; ss >> cin.settingsRow;
             cin.settingsRow--;   // 1-based on the command line, like the keys
             h.Step(cin, BattleInput{});
+        } else if (cmd == "sendcaravan") {
+            // Outfit a player trade convoy at the open market (M4).
+            CampaignInput cin; cin.sendCaravan = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "fame") {
             // Scripting shortcut (M1): set renown/honor directly so scenarios
             // can stand at a chosen reputation without grinding battles.

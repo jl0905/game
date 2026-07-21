@@ -304,9 +304,14 @@ adds per line of code. Structure first, numbers flat, as ever.
   `fief=` in the harness town dump; `tests/fief.txt` plays sack → crown →
   raise → grant → reload. Follow-up: per-lord standing moved by grants
   and refusals.
-- [ ] **M4. Player caravans.** Spend gold at a market to send your own
-  convoy on a trade route (it uses the living-market prices); profits on
-  arrival, lost to bandits — the passive-income counterpart of enterprises.
+- [x] **M4. Player caravans.** Shipped: [C] at any market outfits a convoy
+  (200 gold + the cargo's live book value); it loads the origin's cheap
+  produce (all caravans now carry true surplus, not just the fullest
+  shelf), plies markets at peace with you, sells each unit at the live
+  destination price and sends the proceeds home, then reloads on your
+  purse. Bandits smell it like any laden caravan. `ccost` save tag,
+  harness `sendcaravan`; `tests/player_caravan.txt` turns 56 gold of
+  cargo into 64. Follow-up: choosing the route; a caravan-lost notice.
 - [ ] **M5. Feasts & marriage (v1).** Kingdoms at peace throw a feast at a
   town (lords gather); the player attends for standing, and courts a
   noble for a marriage alliance (standing floor with the whole faction).

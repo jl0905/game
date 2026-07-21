@@ -1,0 +1,16 @@
+# Player caravans (direction M4): outfit a convoy at a market; it buys the
+# local surplus, sells at the next town's live prices, and the proceeds ride
+# home to your ledger. Bandits can smell it like any laden caravan.
+seed 3
+enter 0            # Sargoth's market
+market
+sendcaravan        # 200 outfit + the cargo's book value leave the purse
+state              # expect a kingdom caravan(cargo=N) party and lower gold
+market
+leave
+save pcaravan_test.owb
+load pcaravan_test.owb
+state              # expect the convoy (with cargo) to survive the reload
+wait 40            # let it walk its first leg
+state              # expect result= "Your caravan sold its load in ..." and gold up
+quit

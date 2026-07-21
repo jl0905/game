@@ -39,6 +39,8 @@ struct Party {
     int              caravanTo = -1;     // destination town index while trading
     std::vector<int> cargo;              // freight per good — real wares moved
                                          // between town markets, spilt on plunder
+    int              cargoCost = 0;      // what the load cost at its origin (M4):
+                                         // a player convoy's profit is revenue - this
     Vector2          wanderTarget{};
     float            thinkTimer = 0;
 

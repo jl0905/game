@@ -76,14 +76,43 @@ void LoadCaravanCargo(const Content& c, Town& from, Party& p) {
     int held = 0;
     for (int q : p.cargo) held += q;
     while (held < CARAVAN_CARGO) {
-        int best = -1, bestStock = 1;   // never take a market's last unit
-        for (int g = 0; g < c.goods.size(); ++g)
-            if (from.stock[g] > bestStock) { bestStock = from.stock[g]; best = g; }
+        // What the town *makes* (cheap source goods, offset < 100) is the
+        // true surplus — that's what pays at the far end. Fall back to the
+        // fullest shelf if the town produces nothing. Never take the last
+        // unit of a ware.
+        int best = -1, bestStock = 1;
+        for (int g = 0; g < c.goods.size(); ++g) {
+            const bool makes = g < (int)from.priceOffset.size() &&
+                               from.priceOffset[g] < 100;
+            if (makes && from.stock[g] > bestStock) {
+                bestStock = from.stock[g];
+                best = g;
+            }
+        }
+        if (best < 0)
+            for (int g = 0; g < c.goods.size(); ++g)
+                if (from.stock[g] > bestStock) { bestStock = from.stock[g]; best = g; }
         if (best < 0) break;
+        p.cargoCost += MarketBuyPrice(c, from, best);   // the load's book value (M4)
         from.stock[best]--;
         p.cargo[best]++;
         held++;
     }
+}
+
+// Where a convoy trades next (M4): faction caravans ply their own crown's
+// settlements; the player's convoys call at any market at peace with them.
+int NearestTradeStop(const GameState& gs, int faction, Vector2 pos, int avoid) {
+    if (faction != gs.content.playerFaction)
+        return NearestOwnedTown(gs, faction, pos, avoid);
+    int best = -1;
+    float bestD = 1e9f;
+    for (int t = 0; t < (int)gs.towns.size(); ++t) {
+        if (t == avoid || AtWar(gs, faction, gs.towns[t].owner)) continue;
+        const float d = Vector2Distance(pos, gs.towns[t].pos);
+        if (d < bestD) { bestD = d; best = t; }
+    }
+    return best;
 }
 
 Vector2 RandomEdgePos() {
@@ -945,6 +974,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             }
         }
         in.buyEnterprise = IsKeyPressed(KEY_B);
+        in.sendCaravan   = IsKeyPressed(KEY_C);   // outfit a convoy (M4)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) in.leaveSettlement = true;
         return in;
     }
@@ -1244,23 +1274,44 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // Caravans (E3) ply between their faction's settlements; arriving
             // fattens the destination's prosperity, then they walk the next leg.
             if (!haveTarget && e.caravan) {
-                if (e.caravanTo < 0 || e.caravanTo >= (int)gs.towns.size() ||
-                    gs.towns[e.caravanTo].owner != e.faction)
-                    e.caravanTo = NearestOwnedTown(gs, e.faction, e.pos, e.caravanTo);
+                const bool destBad =
+                    e.caravanTo < 0 || e.caravanTo >= (int)gs.towns.size() ||
+                    (e.faction == c.playerFaction
+                         ? AtWar(gs, e.faction, gs.towns[e.caravanTo].owner)
+                         : gs.towns[e.caravanTo].owner != e.faction);
+                if (destBad)
+                    e.caravanTo = NearestTradeStop(gs, e.faction, e.pos, e.caravanTo);
                 if (e.caravanTo >= 0) {
                     Town& dest = gs.towns[e.caravanTo];
                     if (Vector2Distance(e.pos, dest.pos) < 30.0f) {
                         dest.prosperity = std::min(dest.prosperity + 5, 150);  // TODO(balance)
                         // Unload the freight into the destination's market —
-                        // caravans genuinely move wares between towns.
+                        // caravans genuinely move wares between towns. A
+                        // player convoy sells its load (M4): each unit fetches
+                        // the live sell price as the shelf fills, and the
+                        // proceeds ride home to the ledger.
+                        int revenue = 0;
                         if ((int)dest.stock.size() >= c.goods.size())
                             for (int g = 0; g < (int)e.cargo.size() &&
-                                            g < c.goods.size(); ++g) {
-                                dest.stock[g] += e.cargo[g];
-                                e.cargo[g] = 0;
-                            }
-                        e.caravanTo = NearestOwnedTown(gs, e.faction, e.pos, e.caravanTo);
+                                            g < c.goods.size(); ++g)
+                                while (e.cargo[g] > 0) {
+                                    if (e.faction == c.playerFaction)
+                                        revenue += MarketSellPrice(c, dest, g);
+                                    dest.stock[g]++;
+                                    e.cargo[g]--;
+                                }
+                        if (e.faction == c.playerFaction && revenue > 0) {
+                            gs.gold += revenue;
+                            gs.resultText = TextFormat(
+                                "Your caravan sold its load in %s: +%d gold "
+                                "(cost %d).", dest.name.c_str(), revenue,
+                                e.cargoCost);
+                            e.cargoCost = 0;
+                        }
+                        e.caravanTo = NearestTradeStop(gs, e.faction, e.pos, e.caravanTo);
                         LoadCaravanCargo(c, dest, e);   // stock up for the next leg
+                        if (e.faction == c.playerFaction)
+                            gs.gold -= e.cargoCost;     // the buyer pays (M4)
                     }
                     if (e.caravanTo >= 0) {
                         target     = gs.towns[e.caravanTo].pos;
@@ -2193,6 +2244,32 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // Outfit a trade convoy (M4): it loads this market's surplus at the live
+    // buy prices (paid from your purse, on top of the outfit fee), plies the
+    // roads to markets at peace with you, and every sale rides home to the
+    // ledger. Bandits can smell it like any other laden caravan.
+    if (in.sendCaravan) {
+        constexpr int CARAVAN_OUTFIT = 200;   // TODO(balance)
+        if (gs.gold >= CARAVAN_OUTFIT) {
+            const int to = NearestTradeStop(gs, c.playerFaction, t.pos,
+                                            gs.currentSettlement);
+            if (to >= 0) {
+                gs.gold -= CARAVAN_OUTFIT;
+                gs.parties.push_back(
+                    MakeCaravan(c, c.playerFaction, t.pos, to));
+                LoadCaravanCargo(c, t, gs.parties.back());
+                gs.gold -= gs.parties.back().cargoCost;
+                gs.resultText = TextFormat(
+                    "Your caravan sets out for %s (outfit %d, cargo %d).",
+                    gs.towns[to].name.c_str(), CARAVAN_OUTFIT,
+                    gs.parties.back().cargoCost);
+                SfxPlay(Sfx::Click);
+            }
+        } else {
+            gs.resultText = "Outfitting a caravan costs 200 gold.";
+        }
+    }
+
     // Buy a business here (E4): towns only, one per town, deterministic pick
     // of the next unbuilt enterprise kind.
     if (in.buyEnterprise && t.type == SettlementType::Town &&
@@ -2219,7 +2296,8 @@ void MarketDraw(const GameState& gs) {
     const Town& t = gs.towns[gs.currentSettlement];
     const int   x = 120;
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
-    ui::Text("1-9 / click: buy one   Shift / right-click: sell one   Esc / M back",
+    ui::Text("1-9 / click: buy one   Shift / right-click: sell one   "
+             "[C] send a caravan (200)   Esc / M back",
              x, 116, 20, Fade(RAYWHITE, 0.7f));
     int carried = 0;
     for (int q : gs.goods) carried += q;

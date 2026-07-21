@@ -31,6 +31,7 @@ struct CampaignInput {
     bool    hire            = false;  // hire the tavern's companion (H)
 
     // market screen (rows are goods-registry order)
+    bool    sendCaravan = false;   // outfit a trade convoy here (M4, C at market)
     int     buyGood  = -1;            // good row to buy one unit of
     int     sellGood = -1;            // good row to sell one unit of (Shift+key)
     bool    buyEnterprise = false;    // buy a business in this town (B)

@@ -195,6 +195,7 @@ bool SaveGame(const GameState& gs, const char* path) {
             for (int g = 0; g < (int)p.cargo.size() && g < c.goods.size(); ++g)
                 if (p.cargo[g] > 0)
                     f << "ccargo " << c.goods[g].id << ' ' << p.cargo[g] << '\n';
+            if (p.cargoCost != 0) f << "ccost " << p.cargoCost << '\n';
         }
         else {
             f << "party " << c.factions[p.faction].id << ' '
@@ -399,6 +400,9 @@ bool LoadGame(GameState& gs, const char* path) {
             else                 ss >> p.lord;   // optional trailing lord name
             gs.parties.push_back(p);
             cur = &gs.parties.back();
+        } else if (tag == "ccost") {
+            int v = 0; ss >> v;
+            if (cur && cur->caravan) cur->cargoCost = v;
         } else if (tag == "ccargo") {
             std::string gid; int n = 0;
             ss >> gid >> n;
