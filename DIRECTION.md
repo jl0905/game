@@ -450,9 +450,14 @@ War should scar the map, not just the rosters.
   (thin band → recruit; unknown → win renown; sworn → serve; crowned →
   N banners remain), and the title naming the goal. Seen-bits persist
   (`hints` tag); `tests/first_hour.txt`.
-- [ ] **P5. Supply lines.** Parties carry food days (grain from markets);
-  a starving host sheds men daily — the logistics layer that makes
-  raiding and caravans strategic.
+- [x] **P5. Supply lines.** Shipped: the warband eats daily — 1 grain per
+  10 mouths from the saddlebags first, then forages at 3 gold per missing
+  unit; broke *and* breadless, men desert in the night (1 + men/10). The
+  ledger line reports which. Grain is now a strategic good: markets sell
+  it, raids loot it, caravans move it, armies starve without it.
+  `tests/supply.txt` forages day 1 and eats from the bags day 2. All
+  flat TODO(balance). Follow-up: AI hosts eating too (their side of the
+  logistics war).
 
 ## Sequencing guidance
 

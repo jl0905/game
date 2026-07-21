@@ -1716,8 +1716,34 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
                 wages += gs.player.troopCounts[t] * c.troops[t].wage;
             gs.gold += income - wages;
-            gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.",
-                                       gs.day, income, wages);
+
+            // Supply (P5): an army marches on its stomach. The warband eats
+            // grain from the saddlebags — one unit per ten mouths — then
+            // forages on coin; when both fail, hungry men drift away in the
+            // night. TODO(balance): rates and the forage price.
+            const int mouths = 1 + gs.player.totalTroops() / 10;
+            int eaten = 0;
+            const int grainG = c.goods.find("grain");
+            if (grainG >= 0 && grainG < (int)gs.goods.size())
+                while (eaten < mouths && gs.goods[grainG] > 0) {
+                    gs.goods[grainG]--;
+                    eaten++;
+                }
+            const int forage = (mouths - eaten) * 3;
+            std::string supplyNote;
+            if (eaten >= mouths) {
+                supplyNote = TextFormat("  Ate %d grain.", eaten);
+            } else if (gs.gold >= forage) {
+                gs.gold -= forage;
+                supplyNote = TextFormat("  Foraged (-%d gold).", forage);
+            } else {
+                const int lost = 1 + gs.player.totalTroops() / 10;
+                RemoveTroops(gs.player, lost);
+                supplyNote = TextFormat("  YOUR MEN STARVE - %d desert!", lost);
+            }
+
+            gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.%s",
+                                       gs.day, income, wages, supplyNote.c_str());
 
             // Markets live: a settlement produces what it makes (+1/day of
             // its cheap source goods, to a cap) and eats what it wants

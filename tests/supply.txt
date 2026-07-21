@@ -1,0 +1,15 @@
+# Supply lines (direction P5): the warband eats grain from the saddlebags
+# (1 per 10 mouths a day), forages on coin when the bags are empty, and
+# sheds deserters when both run out.
+seed 42
+wait 70            # day 1 on an empty bag: the band forages on coin
+state              # ledger notes "Foraged (-3 gold)" (a battle may overwrite
+                   # the line; the day-2 grain assertion below is the anchor)
+enter 0
+market
+buy grain 3        # stock the bags
+market
+leave
+wait 70            # day 2: the bags feed the band
+state              # expect "Ate 1 grain" and grain=2 in the saddlebags
+quit
