@@ -520,6 +520,9 @@ struct Soldier {
     float   walkPhase = 0;
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
+    bool    routed  = false;   // broke and running for the field edge (G3)
+    float   routTime = 0;      // seconds spent fleeing
+    bool    escaped = false;   // off the field alive — not a casualty
     int     activeWeapon = -1; // currently-wielded weapon handle
     bool    onWall = false;    // garrison archer posted on the siege wall
     float   trampleCd = 0;     // mounted: cooldown between trample hits
@@ -548,7 +551,7 @@ struct SoldierGrid {
         float maxX = -1e9f, maxZ = -1e9f;
         minX = 1e9f; minZ = 1e9f;
         for (const Soldier& s : sol) {
-            if (s.hp <= 0) continue;
+            if (s.hp <= 0 || s.escaped) continue;
             minX = fminf(minX, s.pos.x); maxX = fmaxf(maxX, s.pos.x);
             minZ = fminf(minZ, s.pos.z); maxZ = fmaxf(maxZ, s.pos.z);
         }
@@ -557,7 +560,7 @@ struct SoldierGrid {
         h = (int)((maxZ - minZ) / CELL) + 1;
         heads.assign((size_t)w * h, -1);
         for (int i = 0; i < n; ++i) {
-            if (sol[i].hp <= 0) continue;
+            if (sol[i].hp <= 0 || sol[i].escaped) continue;
             const int cell = CellZ(sol[i].pos.z) * w + CellX(sol[i].pos.x);
             next[i] = heads[cell];
             heads[cell] = i;
@@ -590,6 +593,15 @@ constexpr float PACE_MOVE_SCALE     = 0.85f;
 constexpr float RALLY_RADIUS         = 12.0f;
 constexpr float RALLY_COOLDOWN_SCALE = 0.75f;
 constexpr float RALLY_PULSE_TIME     = 4.0f;
+
+// Morale & rout (direction G3): a side whose fighting strength falls below the
+// threshold breaks — its soldiers stop fighting and run for their own field
+// edge, and whoever stays ahead of the blade long enough escapes the battle
+// alive (not a casualty). Wall garrisons hold to the death. Battles now end at
+// the decisive moment instead of the last corpse. TODO(balance): all three.
+constexpr float ROUT_THRESHOLD   = 0.30f;   // fighting fraction that breaks a side
+constexpr float ROUT_ESCAPE_TIME = 10.0f;   // seconds of flight to get away
+constexpr float ROUT_SPEED_SCALE = 1.15f;   // fear lends speed
 
 // Cavalry trample. TODO(balance): damage/cooldown; structure only.
 constexpr float TRAMPLE_DAMAGE   = 15.0f;
@@ -632,6 +644,12 @@ struct BattleState {
     // Hero battlefield impact (J3).
     float rallyPulse = 0;   // seconds of widened aura left after a hero kill
     int   heroKills  = 0;   // shown in the HUD; the player's mark on the field
+
+    // Morale & rout (G3).
+    int   startPlayerSide = 0, startEnemySide = 0;   // spawned strength per side
+    bool  playerSideRouted = false, enemySideRouted = false;
+    float routBanner = 0;                            // "THEY BREAK" fade
+    const char* routText = "";
 
     bool  over = false;
     bool  won = false;
@@ -898,6 +916,18 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     cmd.newSwing    = s.swing > 0 ? s.swing - dt * 4.0f : 0.0f;
     cmd.newTarget   = s.target;
 
+    // A broken soldier runs for his own field edge and never strikes back.
+    if (s.routed) {
+        cmd.newTarget = -1;
+        const Vector3 away = { 0, 0, s.team == Team::Player ? -1.0f : 1.0f };
+        cmd.yaw = atan2f(away.x, away.z);
+        const float ms = c.troops[s.troop].moveSpeed * ROUT_SPEED_SCALE *
+                         (s.dehorsed ? 0.5f : 1.0f);
+        cmd.step    = Vector3Scale(away, ms * dt);
+        cmd.walkAdd = dt * 12.0f;
+        return cmd;
+    }
+
     const Team foe = (s.team == Team::Player) ? Team::Enemy : Team::Player;
     const Loadout& lo = TroopLoadout(c, s.troop);
     const bool amRanged = c.weapons.valid(s.activeWeapon) &&
@@ -1117,6 +1147,8 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
         if (s.team == Team::Enemy) ++B.enemyCount;
     }
     B.enemyHoldsLine = !setup.siege;   // field armies form up; garrisons hold posts
+    B.startPlayerSide = (int)B.soldiers.size() - B.enemyCount;   // own + allies
+    B.startEnemySide  = B.enemyCount;
 
     B.heroArsenal.clear();
     for (int i = 0; i < setup.heroLoadout.weaponCount(); ++i)
@@ -1278,7 +1310,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             const float reach = WeaponReach(c, wh);
             B.cooldown = WeaponCooldown(c, wh);
             for (Soldier& s : B.soldiers) {
-                if (s.hp <= 0 || s.team != Team::Enemy) continue;
+                if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
                 Vector3 to = Vector3Subtract(s.pos, B.pPos);
                 to.y = 0;
                 const float d = Vector3Length(to);
@@ -1320,6 +1352,33 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         for (const Soldier& s : B.soldiers)
             if (s.hp > 0 && s.target >= 0 && s.target < n) B.targeted[s.target]++;
 
+        // Morale check (G3): count each side's soldiers still willing to fight;
+        // a side under the threshold breaks all at once. Wall posts stand.
+        {
+            int playerFighting = 0, enemyFighting = 0;
+            for (const Soldier& s : B.soldiers) {
+                if (s.hp <= 0 || s.routed || s.escaped) continue;
+                (s.team == Team::Enemy ? enemyFighting : playerFighting)++;
+            }
+            auto breakSide = [&](Team team, const char* text) {
+                for (Soldier& s : B.soldiers)
+                    if (s.team == team && s.hp > 0 && !s.onWall) s.routed = true;
+                B.routBanner = 2.5f;
+                B.routText   = text;
+                SfxPlay(Sfx::WarCry, 0.4f);
+            };
+            if (!B.enemySideRouted && B.startEnemySide > 0 &&
+                enemyFighting < B.startEnemySide * ROUT_THRESHOLD) {
+                B.enemySideRouted = true;
+                breakSide(Team::Enemy, "THE ENEMY BREAKS AND RUNS!");
+            }
+            if (!B.playerSideRouted && B.startPlayerSide > 0 &&
+                playerFighting < B.startPlayerSide * ROUT_THRESHOLD) {
+                B.playerSideRouted = true;
+                breakSide(Team::Player, "YOUR LINE BREAKS!");
+            }
+        }
+
         // A holding line breaks all at once: the first foe to close within
         // reach of any of them sends the whole army forward with a roar.
         if (B.enemyHoldsLine && !B.enemyCharged) {
@@ -1347,7 +1406,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         // Phase 1 — compute every soldier's intent in parallel from a read-only
         // snapshot. Nothing is mutated here, so there are no data races.
         ThreadPool::Global().For(0, n, 24, [&](int i) {
-            if (B.soldiers[i].hp > 0)
+            if (B.soldiers[i].hp > 0 && !B.soldiers[i].escaped)
                 B.cmds[i] = ComputeAI(c, i, dt, B.formation, B.ranks, anchor, anchorYaw, B.ownCount);
         });
         // Phase 2 — apply movement/state serially, accumulate damage, then deal it.
@@ -1355,7 +1414,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         float playerDamage = 0.0f;
         for (int i = 0; i < n; ++i) {
             Soldier& s = B.soldiers[i];
-            if (s.hp <= 0) continue;
+            if (s.hp <= 0 || s.escaped) continue;
+            if (s.routed) {
+                s.routTime += dt;
+                if (s.routTime > ROUT_ESCAPE_TIME) { s.escaped = true; continue; }
+            }
             const AICmd& cmd = B.cmds[i];
             s.yaw          = cmd.yaw;
             s.cooldown     = cmd.newCooldown;
@@ -1513,10 +1576,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     }
 
     // Tallies for the HUD and win/lose, computed after damage is applied.
+    // Only soldiers still willing to fight count toward the HUD and the win
+    // check — the routed are running, the escaped are gone (but alive: they
+    // are survivors, not casualties, in the outcome).
     B.aliveAllies = 0;
     B.aliveEnemies = 0;
     for (const Soldier& s : B.soldiers) {
-        if (s.hp <= 0) continue;
+        if (s.hp <= 0 || s.routed || s.escaped) continue;
         (s.team == Team::Enemy ? B.aliveEnemies : B.aliveAllies)++;
     }
 
@@ -1615,6 +1681,7 @@ void BattleDraw(const Content& c) {
     const float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
 
     for (const Soldier& s : B.soldiers) {
+        if (s.escaped) continue;   // off the field, alive
         if (s.hp <= 0) {
             const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
             DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
@@ -1809,6 +1876,12 @@ void BattleDraw(const Content& c) {
     }
 
     // The line breaks: a short red flash of intent.
+    B.routBanner = fmaxf(0.0f, B.routBanner - GetFrameTime());
+    if (B.routBanner > 0 && B.introTimer <= 0 && !B.over) {
+        const float ra = fminf(B.routBanner / 0.5f, 1.0f);
+        const int   rw = ui::Measure(B.routText, 40);
+        ui::Title(B.routText, (GetScreenWidth() - rw) / 2, 150, 40, Fade(GOLD, ra));
+    }
     B.cryTimer = fmaxf(0.0f, B.cryTimer - GetFrameTime());
     if (B.cryTimer > 0 && B.introTimer <= 0 && !B.over) {
         const float a = fminf(B.cryTimer / 0.5f, 1.0f);

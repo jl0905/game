@@ -67,9 +67,14 @@ flat.
 - [ ] **G2. Tournaments.** Arena in towns: bracketed melee rounds with borrowed
   gear, bet gold, renown reward. Reuses the battle module with a
   `BattleSetup` arena flag (no terrain gen, ring walls).
-- [ ] **G3. Morale & rout.** Soldiers flee at low team morale (deaths, leader
-  down); routed enemies scatter and can be run down. Ends battles without
-  killing every last soldier — Warband's decisive-moment feel.
+- [x] **G3. Morale & rout.** Shipped: a side whose fighting strength drops
+  under 30% breaks all at once — its soldiers drop their targets and run for
+  their own field edge (can still be cut down), escape alive after 10 s of
+  flight (survivors, not casualties), wall garrisons hold to the death, and
+  the win check counts only willing fighters, so battles end at the decisive
+  moment. THEY BREAK banner + war-cry sting. Flat numbers TODO(balance).
+  Follow-up: per-soldier morale (leader death, hero aura) instead of one
+  side-wide threshold.
 - [ ] **G4. Shield/armor matter (structure).** Directional block vs swing dir
   for AI; shields degrade; horses can be killed under riders. Flat numbers.
 
