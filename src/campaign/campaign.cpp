@@ -1854,6 +1854,31 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // Engines take shape in the siege camp (N1).
             if (gs.siegeCampTown >= 0) gs.siegeCampDays -= 1.0f;
 
+            // AI armies eat too (Q2): a lord's host far from any friendly
+            // settlement sheds men daily — long campaigns starve, and wars
+            // end because armies wither, not only because they bleed.
+            // TODO(balance): reach and rate.
+            constexpr float SUPPLY_REACH = 600.0f;
+            for (Party& p : gs.parties) {
+                if (!p.alive || p.engaged || p.lord.empty()) continue;
+                float nearest = 1e9f;
+                for (const Town& t : gs.towns)
+                    if (!AtWar(gs, p.faction, t.owner))
+                        nearest = fminf(nearest,
+                                        Vector2Distance(p.pos, t.pos));
+                if (nearest > SUPPLY_REACH)
+                    RemoveTroops(c, p, 1 + p.totalTroops() / 20);
+            }
+
+            // Renown fades (Q4): a week without new deeds costs a point —
+            // the treadmill that keeps a long game moving. TODO(balance).
+            if (gs.day > 0 && gs.day % 7 == 0 && gs.renown > 0) {
+                gs.renown--;
+                gs.resultText = TextFormat(
+                    "Day %d:  the bards move on to newer songs (renown %d).",
+                    gs.day, gs.renown);
+            }
+
             // Warring lords bleed the countryside they march through (P1):
             // an enemy lord near a village drains its prosperity and stock.
             // TODO(balance): the reach and the bleed.

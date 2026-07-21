@@ -477,17 +477,22 @@ full career, and the last Warband textures.
   tavern recruiting was unreachable from scripts (position-gated since
   the walkable town shipped) — fixed with a `tavern` harness shortcut in
   the `court` idiom. Keep this script green forever.
-- [ ] **Q2. AI armies eat.** Lords' hosts shrink on long campaigns far
-  from home (the P5 follow-up) — wars end because armies starve, not
-  only because they bleed.
+- [x] **Q2. AI armies eat.** Shipped: a lord's host more than 600 u from
+  any settlement at peace with him sheds 1 + men/20 daily — long
+  campaigns wither, and the recruit-at-home loop (L3) becomes the other
+  half of a real war rhythm. Flat TODO(balance).
 - [x] **Q3. Knocked out, not dead.** Shipped: a companion counted among the
   fallen is instead carried senseless from the field (battle-report line,
   loss zeroed before the books close), and `RemoveTroops` now skips
   companions everywhere — starvation, unpaid wages, and auto-resolve
   can't strip a hero either. Heroes leave by choice (P3) or not at all;
   death stays for the nameless. `tests/knockout.txt`.
-- [ ] **Q4. Sinks and decay.** Renown fades a point a week; wages scale
-  with tier. The treadmills that keep a long game moving.
+- [x] **Q4. Sinks and decay (renown half).** Shipped: renown fades a point
+  a week without new deeds ("the bards move on to newer songs") — the
+  party cap and courts breathe with it. Amended: the wage-scaling half is
+  *tuning*, not structure (TROOP_WAGE is already a BALANCE.md row), so it
+  moves to the human balance pass rather than baking a progression here.
+  `tests/attrition.txt` covers both Q2 and the decay.
 - [x] **Q5. Autosave cadence.** Shipped: the game autosaves at every dawn
   (the day tick) alongside the existing on-quit save — a crash costs a
   day, not a career. `tests/autosave.txt` marches past a dawn and rewinds

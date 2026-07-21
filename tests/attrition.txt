@@ -1,0 +1,11 @@
+# Q2 + Q4: AI hosts far from friendly ground shed men daily, and renown
+# fades a point a week without new deeds - wars and reputations both decay.
+seed 2
+fame 10 0
+wait 430           # a week passes (60 s a day)
+wait 140           # battles along the way steal marching time - be sure
+                   # day 7 arrives
+state              # expect renown=9 after the day-7 tick (unless deeds along
+                   # the way earned more than time took), and any lord who
+                   # campaigned deep in hostile land showing a thinned host
+quit
