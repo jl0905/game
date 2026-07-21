@@ -37,6 +37,11 @@ void CampaignDraw(const GameState& gs);
 void MarketUpdate(GameState& gs, const CampaignInput& in);
 void MarketDraw(const GameState& gs);
 
+// Live prices (base × town offset × scarcity) — the market screen, the
+// harness dump, and any trader AI must all quote the same numbers.
+int MarketBuyPrice(const Content& c, const Town& t, int g);
+int MarketSellPrice(const Content& c, const Town& t, int g);
+
 // Party management screen (roster + veterancy upgrades), opened with P.
 void PartyUpdate(GameState& gs, const CampaignInput& in);
 void PartyDraw(const GameState& gs);

@@ -1,0 +1,16 @@
+# Living markets (goal 2026-07-21): settlements produce their source goods and
+# consume their imports daily, and prices scale with scarcity — watch an
+# imported ware's stock drain and its price climb across four days.
+seed 3
+enter 0
+market
+state
+market
+leave
+wait 300           # ~4 world days of production and consumption
+enter 0
+market
+state              # imports scarcer and dearer; produce piled and cheaper
+market
+leave
+quit

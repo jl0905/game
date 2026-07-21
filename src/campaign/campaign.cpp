@@ -1408,12 +1408,23 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.",
                                        gs.day, income, wages);
 
-            // Markets restock one unit of each ware a day, up to the starting
-            // level — caravans (direction E3) will replace this flat regrowth.
+            // Markets live: a settlement produces what it makes (+1/day of
+            // its cheap source goods, to a cap) and eats what it wants
+            // (-1/day of its dear imports) — scarcity that caravans and the
+            // player's runs genuinely relieve. Castles just keep quarters
+            // stocked. TODO(balance): all rates and caps.
             for (Town& t : gs.towns) {
-                const int cap = t.type == SettlementType::Castle ? 5 : 10;  // TODO(balance)
-                for (int g = 0; g < (int)t.stock.size(); ++g)
-                    if (t.stock[g] < cap) t.stock[g]++;
+                const bool castle = t.type == SettlementType::Castle;
+                for (int g = 0; g < (int)t.stock.size(); ++g) {
+                    if (castle) {
+                        if (t.stock[g] < 5) t.stock[g]++;
+                        continue;
+                    }
+                    const bool makes = g < (int)t.priceOffset.size() &&
+                                       t.priceOffset[g] < 100;
+                    if (makes) { if (t.stock[g] < 20) t.stock[g]++; }
+                    else if (t.stock[g] > 0) t.stock[g]--;
+                }
             }
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
             AlignWarsWithLiege(gs); // a vassal's wars follow the crown's (F2)
@@ -2026,12 +2037,17 @@ void InventoryDraw(const GameState& gs) {
 // selling pays a flat fraction of the buy price so round-trips cost gold.
 // ---------------------------------------------------------------------------
 
-static int MarketBuyPrice(const Content& c, const Town& t, int g) {
+int MarketBuyPrice(const Content& c, const Town& t, int g) {
     const int offset = g < (int)t.priceOffset.size() ? t.priceOffset[g] : 100;
-    return c.goods[g].basePrice * offset / 100;
+    // Scarcity moves the needle: 4% per unit off a 10-unit par, clamped —
+    // a glut is cheap, an empty shelf dear, so deliveries (caravan or
+    // saddlebag) visibly shift the price. TODO(balance).
+    const int stock    = g < (int)t.stock.size() ? t.stock[g] : 0;
+    const int scarcity = Clamp(100 + (10 - stock) * 4, 70, 160);
+    return std::max(1, c.goods[g].basePrice * offset * scarcity / 10000);
 }
 
-static int MarketSellPrice(const Content& c, const Town& t, int g) {
+int MarketSellPrice(const Content& c, const Town& t, int g) {
     return MarketBuyPrice(c, t, g) * 3 / 4;   // TODO(balance): merchant's cut
 }
 
