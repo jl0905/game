@@ -32,6 +32,10 @@ struct BattleSetup {
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
 
+    // Time of day (O3): the campaign clock's day fraction (0..1) — night
+    // battles fight under a dark sky, dusk under amber. Presentation only.
+    float timeOfDay = 0.3f;
+
     // Siege engineering (N1): what the attackers built before the assault.
     // 0 = storm now (gate + the two standing ladders), 1 = built ladders
     // (two more climbing points), 2 = a siege tower (a wide rolling lane

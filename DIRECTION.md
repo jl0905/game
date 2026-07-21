@@ -393,9 +393,12 @@ adds per line of code. Structure first, numbers flat, as ever.
   again. `plord` save tag, harness `capture`/`ransomlords`/`releaselords`;
   `tests/prisoner_lords.txt` plays both fates. Flat TODO(balance).
   Follow-up: captives escaping over time; lords ransoming each other.
-- [ ] **O3. Night and dusk.** The day clock already names morning/evening:
-  tint the campaign map and battlefield lighting by hour; night battles
-  darker and closer. Presentation with tactical texture.
+- [x] **O3. Night and dusk.** Shipped: the campaign map already had its
+  veil and lit windows; the battlefield now joins the clock —
+  `BattleSetup::timeOfDay` carries the hour, the sky lerps blue noon /
+  amber dusk / deep night, and a screen veil presses close after dark
+  (under the HUD). Presentation only; the suite proves the sim
+  untouched. Track O complete.
 - [x] **O4. Arms from the forge.** Shipped: every town market has an ARMS
   counter — two pieces (one armour, one weapon) rotating by town and day,
   keys 7/8, flat 50 gold each, placed straight into the tiled bag the

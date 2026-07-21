@@ -56,6 +56,10 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     s.heroLoadout = gs.playerHero.loadout;
     s.heroMaxHp   = gs.playerHero.maxHp;
     s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)
+    // The hour rides into battle with you (O3). 60 s/day mirrors the
+    // campaign's DAY_LENGTH (TODO(balance) there).
+    s.timeOfDay = gs.dayTimer / 60.0f;
+
     // Battlefield biome from the moddable map (K8): the battle module stays
     // world-blind — it just receives the field it will be fought on.
     const MapDef& m = gs.content.map;

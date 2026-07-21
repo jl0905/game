@@ -1801,7 +1801,15 @@ void BattleDraw(const Content& c) {
 
     // ================= DRAW =================
     BeginDrawing();
-    ClearBackground(Color{ 92, 148, 214, 255 });   // also clears the DEPTH buffer
+    // The sky follows the campaign clock (O3): blue noon, amber dusk,
+    // deep night. Also clears the DEPTH buffer.
+    const float tod   = B.setup.timeOfDay;
+    const bool  night = tod >= 0.82f || tod < 0.06f;
+    Color sky = { 92, 148, 214, 255 };
+    if (night)              sky = { 26, 34, 60, 255 };
+    else if (tod >= 0.70f)  sky = { 178, 116, 84, 255 };   // dusk
+    else if (tod < 0.10f)   sky = { 148, 120, 104, 255 };  // dawn
+    ClearBackground(sky);
     // Sky: gradient with a low sun — or a leaden overcast when it rains.
     if (B.raining) {
         DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
@@ -1944,6 +1952,15 @@ void BattleDraw(const Content& c) {
     EndShaderMode();
 
     EndMode3D();
+
+    // Night presses close on the field (O3): a veil over the scene, under
+    // the HUD, so torches-and-steel reads without hiding the interface.
+    if (night)
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                      Fade(Color{ 10, 16, 40, 255 }, 0.28f));
+    else if (tod >= 0.70f && tod < 0.82f)
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                      Fade(Color{ 200, 120, 60, 255 }, 0.10f));
 
     // ---------- HUD ----------
     DrawRectangle(16, GetScreenHeight() - 46, 306, 28, Fade(BLACK, 0.55f));
