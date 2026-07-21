@@ -399,8 +399,11 @@ adds per line of code. Structure first, numbers flat, as ever.
 - [ ] **O4. Arms from the forge.** Towns with a smithy sell weapon/armour
   *pieces* at the market (stock from prosperity), closing the loop from
   iron → smithy → the inventory the player already fits companions from.
-- [ ] **O5. Modding guide.** MODDING.md: map.cfg, settings.cfg, fonts.cfg,
-  content registration, and the harness — one door for modders.
+- [x] **O5. Modding guide.** Shipped: `MODDING.md` — the two tiers (config
+  files with no rebuild: map.cfg incl. biome/road/lordnames tables,
+  settings.cfg, fonts.cfg; content registration in content.cpp with a
+  recipe per def type), plus how to test a mod with the harness and the
+  49-script scenario library.
 - [ ] **O6. Rebellion arcs.** A sworn vassal can scheme: gather lord
   opinions, declare for the crown you serve to be yours, and fight the
   civil war (the crowning move the sandbox is missing).
