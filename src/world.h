@@ -349,6 +349,24 @@ inline void NudgeRelation(GameState& gs, int faction, int delta) {
     if (faction == gs.spouseFaction && r < 0) r = 0;
 }
 
+// Relief battles (P2): the defending crown's lord close enough to a
+// settlement joins its garrison when the player assaults. The world is
+// frozen during a battle, so calling this at launch (to merge his host into
+// the setup) and again at the aftermath (to settle his fate) agrees.
+inline constexpr float RELIEF_REACH = 250.0f;   // TODO(balance)
+
+inline int ReliefLordFor(const GameState& gs, int town) {
+    if (town < 0 || town >= (int)gs.towns.size()) return -1;
+    const Town& t = gs.towns[town];
+    for (int i = 0; i < (int)gs.parties.size(); ++i) {
+        const Party& p = gs.parties[i];
+        if (!p.alive || p.engaged || p.lord.empty()) continue;
+        if (p.faction != t.owner) continue;
+        if (Vector2Distance(p.pos, t.pos) <= RELIEF_REACH) return i;
+    }
+    return -1;
+}
+
 // A named lord's stored opinion of the player (N4), created at 0 on first
 // touch. Read through EffectiveLordOpinion, which adds the player's honor.
 inline int& LordOpinion(GameState& gs, const std::string& name) {

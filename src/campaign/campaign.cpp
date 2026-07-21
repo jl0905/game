@@ -789,6 +789,25 @@ static void ApplyBattleResult(GameState& gs) {
             t.garrison[i] -= gs.enemyLosses[i];
             if (t.garrison[i] < 0) t.garrison[i] = 0;
         }
+
+        // The relief lord's fate (P2): the same lord found at launch. Beaten
+        // beside the walls he falls with them — and into your train (O2);
+        // victorious, his host stands (the garrison's books took the losses).
+        const int relief = ReliefLordFor(gs, gs.siegeTownIndex);
+        if (relief >= 0) {
+            Party& r = gs.parties[relief];
+            if (gs.battleWon) {
+                LordOpinion(gs, r.lord) -= 15;
+                gs.capturedLords.push_back({ r.lord, r.faction });
+                gs.battleReport.push_back(TextFormat(
+                    "Lord %s fell with the walls - taken prisoner!", r.lord.c_str()));
+                r.lord.clear();
+                r.alive = false;
+            } else {
+                gs.battleReport.push_back(TextFormat(
+                    "Lord %s's relief held the day.", r.lord.c_str()));
+            }
+        }
         if (gs.battleWon && gs.raidingVillage) {
             // A raid (P1): the banner stays, the countryside burns. Gold and
             // wares out, prosperity crashed, a black mark on your name.

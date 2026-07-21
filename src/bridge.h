@@ -43,6 +43,16 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     if (gs.siegeTownIndex >= 0 && gs.siegeTownIndex < (int)gs.towns.size()) {
         const Town& t = gs.towns[gs.siegeTownIndex];
         s.enemyTroops = t.garrison;
+        // A friendly lord in reach rides to the defence (P2): his host
+        // fights beside the garrison in the same battle.
+        const int relief = ReliefLordFor(gs, gs.siegeTownIndex);
+        if (relief >= 0) {
+            const Party& r = gs.parties[relief];
+            if (s.enemyTroops.size() < r.troopCounts.size())
+                s.enemyTroops.resize(r.troopCounts.size(), 0);
+            for (int i = 0; i < (int)r.troopCounts.size(); ++i)
+                s.enemyTroops[i] += r.troopCounts[i];
+        }
         s.campaignPos = t.pos;            // battlefield looks like the town's land
         s.siege       = true;
         s.siegeType   = t.type;

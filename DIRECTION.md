@@ -433,9 +433,14 @@ War should scar the map, not just the rosters.
   villages the same way daily (−10 prosperity, −1 stock within 200 u,
   with a warning when it's yours). `tests/raid.txt` burns Tulga. All
   flat TODO(balance).
-- [ ] **P2. Relief battles.** An AI lord reaching a besieged friendly town
-  joins the defence: the assault fights garrison + relief together
-  (the N6 follow-up, now that scale is proven).
+- [x] **P2. Relief battles.** Shipped: a defending crown's lord within
+  250 u joins the garrison when you assault — one battle against both
+  (`ReliefLordFor` in world.h, called identically at launch to merge his
+  host into `BattleSetup` and at the aftermath to settle his fate: beaten
+  he falls with the walls and into your train (O2 capture), victorious
+  his host stands). Storming a lord-guarded seat is now storming an army.
+  `tests/relief_battle.txt` breaks against 158 defenders at Curaw.
+  Flat TODO(balance).
 - [ ] **P3. Companion voices.** Companions carry a temperament: the
   honorable object to raids and may leave over a black name; the grim
   demand spoils. Personality read from `TroopDef`, spoken via dialogue.

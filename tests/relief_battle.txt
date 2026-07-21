@@ -1,0 +1,13 @@
+# Relief battles (direction P2): assaulting a settlement with a friendly
+# lord in reach merges his host into the defence - one battle, garrison and
+# relief together. Beaten relief lords are captured; victorious ones stand.
+seed 42
+state              # Aldemar and Rowan sit at Curaw (town 4), 150 men each
+enter 4            # the walls of Curaw
+siege 1            # storm now, into the teeth of the relief
+state              # expect a wall packed with defenders (wall= far beyond
+                   # what the 8-man garrison alone could man)
+block on
+tick 500           # the assault breaks against the numbers
+state              # expect the repelled result and the relief lord unharmed
+quit
