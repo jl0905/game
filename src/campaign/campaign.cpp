@@ -127,21 +127,27 @@ Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
 }
 
 // Where party `e` steers this tick, given the foe it has spotted (if any).
+// Also records what the party is *doing* in `e.state` for the map and harness.
 Vector2 SteerTarget(Party& e, PartyBehavior behavior, const Foe& foe, float sim) {
     if (foe.index != -2) {
         const bool couldWin = e.totalTroops() >= foe.strength / 2;
         switch (behavior) {
             case PartyBehavior::Aggressive:
-                if (foe.dist < 500) return foe.pos;                 // hunts eagerly
+                if (foe.dist < 500) { e.state = PartyState::Pursuing; return foe.pos; }
                 break;
             case PartyBehavior::Patrol:
-                if (foe.dist < 300 && couldWin) return foe.pos;     // opportunistic
+                if (foe.dist < 300 && couldWin) {                    // opportunistic
+                    e.state = PartyState::Pursuing;
+                    return foe.pos;
+                }
                 break;
             case PartyBehavior::Passive:
                 if (foe.dist < 220) {                               // flees
                     Vector2 away = Vector2Subtract(e.pos, foe.pos);
-                    if (Vector2Length(away) > 1)
+                    if (Vector2Length(away) > 1) {
+                        e.state = PartyState::Fleeing;
                         return Vector2Add(e.pos, Vector2Scale(Vector2Normalize(away), 200));
+                    }
                 }
                 break;
         }
@@ -151,7 +157,45 @@ Vector2 SteerTarget(Party& e, PartyBehavior behavior, const Foe& foe, float sim)
         e.wanderTarget = { Frand(100, MAP_SIZE - 100), Frand(100, MAP_SIZE - 100) };
         e.thinkTimer = Frand(3, 8);
     }
+    e.state = PartyState::Patrolling;
     return e.wanderTarget;
+}
+
+// --- fatigue & rest ---------------------------------------------------------
+// Marching tires a host. Past FATIGUE_LIMIT it breaks off whatever it was doing,
+// rides to the nearest settlement its faction is not at war with, and camps
+// there until rested. All flat, TODO(balance).
+constexpr float FATIGUE_PER_SEC  = 1.0f;
+constexpr float FATIGUE_LIMIT    = 45.0f;
+constexpr float REST_RECOVERY    = 6.0f;   // rests off ~7.5× faster than it tires
+constexpr float REST_REACH       = 30.0f;  // close enough to make camp
+
+// Steer a tired party home. Returns true (and fills `target`) while the party is
+// committed to resting, in which case no other objective applies this tick.
+bool UpdateRest(const GameState& gs, Party& e, float sim, Vector2& target) {
+    if (e.restTown < 0) {
+        e.fatigue += sim * FATIGUE_PER_SEC;
+        if (e.fatigue < FATIGUE_LIMIT) return false;
+        float best = 1e9f;
+        for (int ti = 0; ti < (int)gs.towns.size(); ++ti) {
+            if (AtWar(gs, e.faction, gs.towns[ti].owner)) continue;
+            const float d = Vector2Distance(e.pos, gs.towns[ti].pos);
+            if (d < best) { best = d; e.restTown = ti; }
+        }
+        if (e.restTown < 0) { e.fatigue = 0; return false; }   // nowhere to go home to
+    }
+
+    const Town& home = gs.towns[e.restTown];
+    if (Vector2Distance(e.pos, home.pos) > REST_REACH) {
+        e.state = PartyState::Travelling;
+        target  = home.pos;
+        return true;
+    }
+    e.state   = PartyState::Resting;
+    e.fatigue -= sim * REST_RECOVERY;
+    if (e.fatigue <= 0) { e.fatigue = 0; e.restTown = -1; }
+    target = e.pos;
+    return true;
 }
 
 // Remove up to `count` troops from a party, spread across its troop types.
@@ -761,11 +805,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             if (!e.alive || e.engaged) continue;
 
             Vector2 target;
-            bool haveTarget = false;
+            bool haveTarget = UpdateRest(gs, e, sim, target);
 
             // Lords wage the settlement war: march on the nearest hostile
             // settlement they outmatch and invest it on arrival.
-            if (!e.lord.empty()) {
+            if (!haveTarget && !e.lord.empty()) {
                 int  bestTown = -1;
                 float bestD   = 1e9f;
                 for (int ti = 0; ti < (int)gs.towns.size(); ++ti) {
@@ -778,6 +822,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 if (bestTown >= 0) {
                     if (bestD < SIEGE_REACH) {
                         e.engaged = true;
+                        e.state   = PartyState::Besieging;
                         gs.aiSieges.push_back({ i, bestTown, AI_SIEGE_TIME });
                         // Sound the alarm when it's YOUR settlement invested.
                         if (gs.towns[bestTown].owner == c.playerFaction)
@@ -786,8 +831,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                                                        e.lord.c_str());
                         continue;
                     }
-                    target = gs.towns[bestTown].pos;
+                    target     = gs.towns[bestTown].pos;
                     haveTarget = true;
+                    e.state    = PartyState::Travelling;
                 }
             }
 
@@ -815,6 +861,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 if (!AtWar(gs, a.faction, b.faction)) continue;
                 if (Vector2Distance(a.pos, b.pos) < PARTY_COLLIDE_DIST) {
                     a.engaged = b.engaged = true;
+                    a.state = b.state = PartyState::Engaged;
                     Skirmish sk;
                     sk.a = i; sk.b = j;
                     sk.timer = sk.duration = SKIRMISH_TIME;
@@ -1081,6 +1128,10 @@ void CampaignDraw(const GameState& gs) {
         ui::Text(isLord ? TextFormat("Lord %s %d", e.lord.c_str(), e.totalTroops())
                         : TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
                  (int)e.pos.x - 20, (int)e.pos.y - (isLord ? 44 : 36), 14, f.color);
+        // A small italic-feeling status word under the name, so the map reads as
+        // a living world of parties each about their own business.
+        ui::Text(PartyStateName(e.state), (int)e.pos.x - 20,
+                 (int)e.pos.y - (isLord ? 30 : 22), 11, Fade(f.color, 0.75f));
     }
 
     // Besieged settlements: a pulsing ring in the attacker's colour.

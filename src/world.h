@@ -38,6 +38,13 @@ struct Party {
     Vector2          wanderTarget{};
     float            thinkTimer = 0;
 
+    // Movement state (observational — see PartyState). `fatigue` grows while a
+    // party marches and drains while it rests at a friendly settlement; a tired
+    // party breaks off whatever it was doing and rides home to camp.
+    PartyState       state    = PartyState::Patrolling;
+    float            fatigue  = 0;
+    int              restTown = -1;   // settlement being rested at, or -1
+
     int totalTroops() const {
         int n = 0;
         for (int c : troopCounts) n += c;

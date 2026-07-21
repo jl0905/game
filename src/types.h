@@ -29,5 +29,24 @@ enum class AttackDir { Up, Down, Left, Right };
 // How a campaign party behaves when it has no immediate objective.
 enum class PartyBehavior { Passive, Patrol, Aggressive };
 
+// What a campaign party is *currently doing* — derived every tick from its
+// behaviour, its surroundings and its fatigue. Purely observational: the map
+// label, the party tooltip and the harness all read it, and it never feeds back
+// into balance. Add a state here and give it a name in PartyStateName().
+enum class PartyState { Patrolling, Travelling, Pursuing, Fleeing, Resting, Besieging, Engaged };
+
+inline const char* PartyStateName(PartyState s) {
+    switch (s) {
+        case PartyState::Patrolling:  return "patrolling";
+        case PartyState::Travelling:  return "travelling";
+        case PartyState::Pursuing:    return "pursuing";
+        case PartyState::Fleeing:     return "fleeing";
+        case PartyState::Resting:     return "resting";
+        case PartyState::Besieging:   return "besieging";
+        case PartyState::Engaged:     return "engaged";
+    }
+    return "?";
+}
+
 // Which side a combatant fights for in a battle.
 enum class Team { Player, Enemy };

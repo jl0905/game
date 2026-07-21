@@ -179,10 +179,11 @@ struct Harness {
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             const Party& p = gs.parties[i];
             if (!p.alive) continue;
-            std::printf("party %d: faction=%s%s%s pos=(%.0f,%.0f) troops=%d engaged=%d dist=%.0f\n",
+            std::printf("party %d: faction=%s%s%s pos=(%.0f,%.0f) troops=%d state=%s fatigue=%.0f engaged=%d dist=%.0f\n",
                         i, c.factions[p.faction].id.c_str(),
                         p.lord.empty() ? "" : " lord=", p.lord.c_str(),
-                        p.pos.x, p.pos.y, p.totalTroops(), p.engaged ? 1 : 0,
+                        p.pos.x, p.pos.y, p.totalTroops(), PartyStateName(p.state),
+                        p.fatigue, p.engaged ? 1 : 0,
                         Vector2Distance(p.pos, gs.player.pos));
         }
         for (const InvItem& it : gs.inventory)
