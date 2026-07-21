@@ -2543,9 +2543,9 @@ void CampaignDraw(const GameState& gs) {
 
     // Every door on one line (T7): the keys players kept not finding.
     {
-        const char* keys = "[P]arty  [C]haracter  [I] bag  [B] ledger  "
-                           "[O]ptions  [F5-F7] quicksave  [Esc,Esc] save+quit  "
-                           "(load: title screen, L)";
+        const char* keys = "[Wheel] zoom  [P]arty  [C]haracter  [I] bag  "
+                           "[B] ledger  [O]ptions  [F5-F7] quicksave  "
+                           "[Esc,Esc] save+quit  (load: title, L)";
         DrawRectangle(0, GetScreenHeight() - 26, GetScreenWidth(), 26,
                       Fade(BLACK, 0.45f));
         ui::Text(keys, 10, GetScreenHeight() - 22, 15, Fade(RAYWHITE, 0.75f));
