@@ -152,6 +152,11 @@ struct GameState {
     int questTown     = -1;   // delivery destination (DeliverGrain)
     int questProgress = 0;    // parties broken so far (HuntBandits)
 
+    // Player kingdom (F3): true once the player has claimed a crown. Crowning
+    // needs two settlements, turns every other crown hostile, and unlocks
+    // raising lords at owned settlements. TODO(balance): every requirement.
+    bool crowned = false;
+
     // Vassalage (F2): the kingdom the player has sworn to, or -1 while a free
     // captain. Swearing aligns the player's wars with the liege's and grants
     // a village fief. TODO(balance): oath requirements, muster obligations.

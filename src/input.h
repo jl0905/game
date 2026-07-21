@@ -33,6 +33,9 @@ struct CampaignInput {
     int     sellGood = -1;            // good row to sell one unit of (Shift+key)
     bool    buyEnterprise = false;    // buy a business in this town (B)
 
+    bool    crown    = false;         // claim your own crown on the map (K)
+    bool    raiseLord = false;        // raise a lord at your settlement (L)
+
     // party screen
     bool    openParty   = false;      // P on the map
     int     upgradeSlot = -1;         // troop row to promote one unit of

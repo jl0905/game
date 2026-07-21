@@ -778,6 +778,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.swear      = IsKeyPressed(KEY_V);
         in.quest      = IsKeyPressed(KEY_G);
         in.hire       = IsKeyPressed(KEY_H);
+        in.raiseLord  = IsKeyPressed(KEY_L);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }
@@ -855,6 +856,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
     if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
     in.restart   = IsKeyPressed(KEY_R);
+    in.crown     = IsKeyPressed(KEY_K);
     in.openParty = IsKeyPressed(KEY_P);
     in.openInventory = IsKeyPressed(KEY_I);
     in.openCharacter = IsKeyPressed(KEY_C);
@@ -889,6 +891,38 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     if (in.quickLoad) {
         if (LoadGame(gs, DefaultSavePath())) { gs.resultText = "Game loaded."; return; }
         gs.resultText = "No save to load.";
+    }
+
+    // ---- claim your own crown (F3) ----
+    // Two settlements make a realm. Crowning while sworn is rebellion: the
+    // oath breaks and the liege remembers. Every other crown answers a new
+    // claimant with war. TODO(balance): the settlement requirement, deltas.
+    if (in.crown && !gs.crowned) {
+        int owned = 0;
+        for (const Town& t : gs.towns)
+            if (t.owner == c.playerFaction) owned++;
+        if (owned >= 2) {
+            gs.crowned = true;
+            const int n = c.factions.size();
+            if (gs.liege >= 0) {
+                NudgeRelation(gs, gs.liege, -40);
+                if ((int)gs.hostile.size() == n * n)
+                    gs.hostile[(size_t)c.playerFaction * n + gs.liege] =
+                        gs.hostile[(size_t)gs.liege * n + c.playerFaction] = 1;
+                gs.liege = -1;
+            }
+            for (int f = 0; f < n; ++f) {
+                if (f == c.playerFaction || !c.factions[f].kingdom) continue;
+                NudgeRelation(gs, f, -20);
+                if ((int)gs.hostile.size() == n * n)
+                    gs.hostile[(size_t)c.playerFaction * n + f] =
+                        gs.hostile[(size_t)f * n + c.playerFaction] = 1;
+            }
+            gs.resultText = "YOU CLAIM A CROWN.  Every throne in the land answers with war.";
+            SfxPlay(Sfx::Fanfare);
+        } else {
+            gs.resultText = "A crown needs a realm: hold two settlements first.";
+        }
     }
 
     // ---- open the party management / inventory screens ----

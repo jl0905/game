@@ -64,9 +64,15 @@ flat.
   daily as diplomacy shifts). Persists in saves; harness `swear` + `liege=`
   dump; `tests/vassalage.txt`. Follow-ups: muster obligations (ride to the
   liege's sieges), renouncing the oath, per-lord reactions.
-- [ ] **F3. Player kingdom.** Rebel or conquer unowned: your own faction
-  banner/colour, grant fiefs to hired lords (mercenary captains → vassals),
-  other crowns react (F1) — the Warband endgame.
+- [x] **F3. Player kingdom (v1).** Shipped: hold two settlements and press K
+  to claim a crown — sworn oaths break as rebellion (liege −40 + war), every
+  other crown answers with war and −20 standing. A crowned ruler presses L
+  at an owned settlement to raise a vassal lord (300 gold, 60-man host,
+  4 max, named Bram/Edric/Sable/Corwin) who marches, sieges and respawns by
+  the ordinary lord AI. Saved; harness `crown`/`raiselord`;
+  `tests/player_kingdom.txt` plays sack → crown → raise → reload. All flat
+  TODO(balance). Follow-ups: granting specific fiefs to lords, faction
+  colour/banner picker, crown victory ceremony.
 - [x] **F4. Quests (v1).** Shipped: `QuestDef` registry (Bandit Hunt, Grain
   Delivery), one active at a time, offered with G in any settlement
   (rotating by settlement+day). Hunts complete on breaking an outlaw band;

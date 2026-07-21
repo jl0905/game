@@ -227,6 +227,34 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- raise a lord for your crown (L) — player kingdom (F3) ----
+    // A crowned ruler musters a vassal host at any settlement they hold; the
+    // new lord marches, sieges and respawns via the ordinary lord AI.
+    if (cin.raiseLord && gs.crowned &&
+        gs.towns[gs.currentSettlement].owner == c.playerFaction) {
+        constexpr int RAISE_LORD_COST = 300;   // TODO(balance)
+        static const char* NAMES[] = { "Bram", "Edric", "Sable", "Corwin" };
+        int myLords = 0;
+        for (const Party& p : gs.parties)
+            if (p.alive && p.faction == c.playerFaction && !p.lord.empty()) myLords++;
+        if (gs.gold >= RAISE_LORD_COST && myLords < 4) {
+            gs.gold -= RAISE_LORD_COST;
+            Party p;   // mirrors campaign's MakeLordParty (module-local there)
+            p.faction = c.playerFaction;
+            p.lord = NAMES[myLords % 4];
+            p.pos = p.wanderTarget = gs.towns[gs.currentSettlement].pos;
+            p.troopCounts.assign(c.troops.size(), 0);
+            const std::vector<int>& roster = c.factions[c.playerFaction].roster;
+            for (int i = 0; i < c.factions[c.playerFaction].lordPartySize &&
+                            !roster.empty(); ++i)
+                p.troopCounts[roster[i % (int)roster.size()]]++;
+            gs.parties.push_back(p);
+            gs.resultText = TextFormat("Lord %s raises your banner with %d men.",
+                                       p.lord.c_str(), p.totalTroops());
+            SfxPlay(Sfx::Fanfare);
+        }
+    }
+
     // ---- hire the tavern's companion (H) — unique heroes for hire (H1) ----
     // Each settlement's tavern hosts one companion (rotating by index); a
     // hero already riding with you cannot be hired twice.

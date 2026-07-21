@@ -102,6 +102,9 @@ bool SaveGame(const GameState& gs, const char* path) {
                   ? c.factions[gs.questFaction].id : std::string("none"))
           << ' ' << gs.questTown << ' ' << gs.questProgress << '\n';
 
+    // The claimed crown (F3).
+    if (gs.crowned) f << "crowned 1\n";
+
     // The sworn liege (F2).
     if (gs.liege >= 0 && gs.liege < c.factions.size())
         f << "liege " << c.factions[gs.liege].id << '\n';
@@ -279,6 +282,10 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
+        } else if (tag == "crowned") {
+            int v = 0;
+            ss >> v;
+            gs.crowned = v != 0;
         } else if (tag == "quest") {
             std::string qid, fid;
             ss >> qid >> fid >> gs.questTown >> gs.questProgress;

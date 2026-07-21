@@ -229,6 +229,7 @@ void LoadDefaultContent(Content& c) {
     kingdom.color = BLUE; kingdom.behavior = PartyBehavior::Patrol;
     kingdom.recruitable = true;
     kingdom.kingdom = true;
+    kingdom.lordPartySize = 60;   // TODO(balance): a raised lord's host (F3)
     kingdom.roster = { t_recruit, t_infantry, t_veteran, t_archer, t_knight };
     c.playerFaction = c.factions.add(kingdom);
 

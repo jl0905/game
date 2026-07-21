@@ -1,0 +1,19 @@
+# Player kingdom (direction F3): two settlements earn a crown; crowning turns
+# every throne hostile, and a crowned ruler raises lords at their settlements.
+seed 33
+crown              # too soon: one settlement is no realm
+state              # expect no crowned flag, "hold two settlements" text
+enter 2            # storm Tulga, the deserters' village (garrison 4)
+block on
+tick 200           # the assault plays out
+state              # expect Tulga owner=kingdom after victory
+crown              # now the claim stands
+state              # expect crowned=1, diplo wars vs patrol/vaeling, relations -20
+enter 2            # your new village
+raiselord          # muster Lord Bram (300 gold)
+state              # expect a kingdom lord party with 60 men
+leave
+save crown_test.owb
+load crown_test.owb
+state              # expect crowned flag and the lord to survive the reload
+quit
