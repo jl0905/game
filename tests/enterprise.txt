@@ -1,0 +1,11 @@
+# Enterprises (direction E4): buy a business at a town market, it pays daily
+# by prosperity, and it persists in saves.
+seed 17
+enter 0            # Sargoth, your own town
+market
+enterprise         # buy the mill: 300 gold -> 0
+state              # expect gold=0, "enterprise: mill in Sargoth"
+save enterprise_test.owb
+load enterprise_test.owb
+state              # expect the enterprise line to survive the reload
+quit

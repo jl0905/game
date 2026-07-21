@@ -477,6 +477,7 @@ void CampaignInit(GameState& gs) {
                                                                : PRICE_AT_MARKET;
     }
     gs.goods.assign(c.goods.size(), 0);
+    gs.enterpriseAt.assign(gs.towns.size(), -1);
 
     gs.parties.clear();
     gs.skirmishes.clear();
@@ -715,6 +716,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         for (int slot = 0; slot < 9; ++slot)
             if (IsKeyPressed(KEY_ONE + slot))
                 (shift ? in.sellGood : in.buyGood) = slot;
+        in.buyEnterprise = IsKeyPressed(KEY_B);
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) in.leaveSettlement = true;
         return in;
     }
@@ -1047,6 +1049,20 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             for (const Town& t : gs.towns)
                 if (t.owner == c.playerFaction)
                     income += SettlementIncome(t.type) * t.prosperity / 100;
+
+            // Enterprises pay by prosperity — and hostile hands seize them.
+            for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti) {
+                const int e = gs.enterpriseAt[ti];
+                if (!c.enterprises.valid(e)) continue;
+                if (AtWar(gs, gs.towns[ti].owner, c.playerFaction)) {
+                    gs.enterpriseAt[ti] = -1;
+                    gs.resultText = TextFormat("Your %s in %s is SEIZED by the enemy!",
+                                               c.enterprises[e].name.c_str(),
+                                               gs.towns[ti].name.c_str());
+                    continue;
+                }
+                income += c.enterprises[e].dailyIncome * gs.towns[ti].prosperity / 100;
+            }
             int wages = 0;
             for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
                 wages += gs.player.troopCounts[t] * c.troops[t].wage;
@@ -1621,6 +1637,21 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // Buy a business here (E4): towns only, one per town, deterministic pick
+    // of the next unbuilt enterprise kind.
+    if (in.buyEnterprise && t.type == SettlementType::Town &&
+        gs.currentSettlement < (int)gs.enterpriseAt.size() &&
+        gs.enterpriseAt[gs.currentSettlement] < 0 && c.enterprises.size() > 0) {
+        const int kind = gs.currentSettlement % c.enterprises.size();
+        const EnterpriseDef& e = c.enterprises[kind];
+        if (gs.gold >= e.cost) {
+            gs.gold -= e.cost;
+            gs.enterpriseAt[gs.currentSettlement] = kind;
+            gs.resultText = TextFormat("You now own the %s of %s.",
+                                       e.name.c_str(), t.name.c_str());
+        }
+    }
+
     if (in.leaveSettlement) gs.screen = Screen::Settlement;   // back to the streets
 }
 
@@ -1638,6 +1669,22 @@ void MarketDraw(const GameState& gs) {
     for (int q : gs.goods) carried += q;
     ui::Text(TextFormat("Gold: %d      Saddlebags: %d / %d", gs.gold, carried,
                         GOODS_CAP), x, 150, 24, RAYWHITE);
+
+    // Enterprise line (E4): what you own here, or the offer to buy.
+    if (t.type == SettlementType::Town && gs.currentSettlement < (int)gs.enterpriseAt.size()) {
+        const int owned = gs.enterpriseAt[gs.currentSettlement];
+        if (c.enterprises.valid(owned))
+            ui::Text(TextFormat("Your %s pays %d a day (by prosperity).",
+                                c.enterprises[owned].name.c_str(),
+                                c.enterprises[owned].dailyIncome),
+                     x, 180, 20, Fade(GOLD, 0.9f));
+        else if (c.enterprises.size() > 0) {
+            const EnterpriseDef& e = c.enterprises[gs.currentSettlement % c.enterprises.size()];
+            ui::Text(TextFormat("[B] Buy the %s  -  %d gold, pays %d a day",
+                                e.name.c_str(), e.cost, e.dailyIncome),
+                     x, 180, 20, Fade(RAYWHITE, 0.8f));
+        }
+    }
 
     int y = 200;
     ui::Text("     ware          buy   sell   stock   yours", x, y, 18,
@@ -1737,6 +1784,11 @@ void PartyDraw(const GameState& gs) {
     for (const Town& tw : gs.towns)
         if (tw.owner == c.playerFaction)
             income += SettlementIncome(tw.type) * tw.prosperity / 100;
+    for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
+        if (c.enterprises.valid(gs.enterpriseAt[ti]) &&
+            !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
+            income += c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
+                      gs.towns[ti].prosperity / 100;
 
     ui::Title("YOUR WARBAND", panelX, 60, 44, GOLD);
     ui::Text(TextFormat("Gold: %d    Troops: %d    Daily: +%d income  -%d wages  (%+d)",

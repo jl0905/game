@@ -44,9 +44,11 @@ flat.
   survive saves. Flat numbers TODO(balance) — the +5/arrival fills the cap
   in days; a real rate wants the balance pass. Follow-up: relation penalty
   for raiding waits on F1 relations.
-- [ ] **E4. Landowning / enterprises.** Buy a productive enterprise in a town
-  (mill, smithy, dyeworks — content defs); daily income scaled by prosperity;
-  lost if the town falls to a faction at war with you.
+- [x] **E4. Landowning / enterprises.** Shipped: `EnterpriseDef` registry
+  (mill, smithy, dyeworks), one per town, bought with B at the market;
+  daily income scales with prosperity; seized (with news) when the town's
+  owner is at war with you; persists in saves; harness `enterprise` command
+  + `tests/enterprise.txt`. Flat numbers TODO(balance). Track E complete.
 
 ## Track F — Politics & kingdom play
 

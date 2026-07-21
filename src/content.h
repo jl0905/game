@@ -106,6 +106,16 @@ struct GoodDef {
     Color       tint      = BEIGE;  // market-row swatch
 };
 
+// A productive enterprise the player can buy in a town (direction E4):
+// pays daily income scaled by the town's prosperity, lost if the town falls
+// to an enemy of the player.
+struct EnterpriseDef {
+    std::string id;
+    std::string name;
+    int cost        = 0;   // TODO(balance): purchase price
+    int dailyIncome = 0;   // TODO(balance): base gold per day
+};
+
 // A hero attribute (roadmap D3). Pure structure: `hook` documents what the
 // attribute WILL modify once balancing begins; nothing reads values yet.
 struct AttributeDef {
@@ -160,6 +170,7 @@ struct Content {
     Registry<FactionDef>   factions;
     Registry<AttributeDef> attributes;
     Registry<GoodDef>      goods;
+    Registry<EnterpriseDef> enterprises;
     MapDef                 map;
 
     int playerFaction = -1;  // resolved after loading

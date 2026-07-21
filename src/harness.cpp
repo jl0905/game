@@ -195,6 +195,11 @@ struct Harness {
         for (int g = 0; g < c.goods.size() && g < (int)gs.goods.size(); ++g)
             if (gs.goods[g] > 0)
                 std::printf("good: %s=%d\n", c.goods[g].id.c_str(), gs.goods[g]);
+        for (int t = 0; t < (int)gs.enterpriseAt.size() && t < (int)gs.towns.size(); ++t)
+            if (c.enterprises.valid(gs.enterpriseAt[t]))
+                std::printf("enterprise: %s in %s\n",
+                            c.enterprises[gs.enterpriseAt[t]].id.c_str(),
+                            gs.towns[t].name.c_str());
         if (gs.screen == Screen::Market && gs.currentSettlement >= 0) {
             const Town& tw = gs.towns[gs.currentSettlement];
             int carried = 0;
@@ -399,6 +404,9 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "enterprise") {
+            CampaignInput cin; cin.buyEnterprise = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "join") {
             CampaignInput cin; ss >> cin.joinSide;
             h.Step(cin, BattleInput{});

@@ -142,6 +142,7 @@ struct GameState {
     std::vector<int>   prisoners;                // captives by troop type (ransomable)
     std::vector<InvItem> inventory;              // hero's tiled bag (D1)
     std::vector<int>     goods;                  // trade goods held, per good type (E1)
+    std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 
     // Live diplomacy (C4): a runtime copy of Content::hostile. Wars between

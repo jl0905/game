@@ -253,6 +253,12 @@ void LoadDefaultContent(Content& c) {
     c.goods.add({ "salt",  "Salt",   10, true,  Color{ 235, 235, 245, 255 } });
     c.goods.add({ "spice", "Spice",  10, false, ORANGE });
 
+    // ---- Enterprises (direction E4) --------------------------------------
+    // One per town at most; bought at the market. TODO(balance): all numbers.
+    c.enterprises.add({ "mill",     "Grain Mill", 300, 15 });
+    c.enterprises.add({ "smithy",   "Smithy",     300, 15 });
+    c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15 });
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.

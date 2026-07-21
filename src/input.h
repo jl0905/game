@@ -27,6 +27,7 @@ struct CampaignInput {
     // market screen (rows are goods-registry order)
     int     buyGood  = -1;            // good row to buy one unit of
     int     sellGood = -1;            // good row to sell one unit of (Shift+key)
+    bool    buyEnterprise = false;    // buy a business in this town (B)
 
     // party screen
     bool    openParty   = false;      // P on the map

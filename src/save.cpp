@@ -116,6 +116,8 @@ bool SaveGame(const GameState& gs, const char* path) {
               << gs.towns[t].stock[g] << ' ' << gs.towns[t].priceOffset[g] << '\n';
         if (gs.towns[t].prosperity != 100)
             f << "prosper " << t << ' ' << gs.towns[t].prosperity << '\n';
+        if (t < (int)gs.enterpriseAt.size() && c.enterprises.valid(gs.enterpriseAt[t]))
+            f << "enterprise " << t << ' ' << c.enterprises[gs.enterpriseAt[t]].id << '\n';
     }
 
     // Live diplomacy: only pairs that differ from the base relations (or hold
@@ -261,6 +263,12 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
+        } else if (tag == "enterprise") {
+            int idx = -1; std::string eid;
+            ss >> idx >> eid;
+            const int e = c.enterprises.find(eid.c_str());
+            if (idx >= 0 && idx < (int)gs.enterpriseAt.size() && e >= 0)
+                gs.enterpriseAt[idx] = e;
         } else if (tag == "prosper") {
             int idx = -1, v = 100;
             ss >> idx >> v;
