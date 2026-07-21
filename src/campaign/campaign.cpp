@@ -1539,20 +1539,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
 }
 
-void CampaignDraw(const GameState& gs) {
-    SfxAmbience(0.08f);   // a low wind keeps the map from dead silence
-    const Content& c = gs.content;
-    const Camera2D cam = CampaignCamera(gs);
-    const int nearSkirmish = NearestSkirmishIndex(gs);
-
-    SfxAmbience(0.07f);   // a soft wind over the overworld
-
-    BeginDrawing();
-    ClearBackground(Color{ 40, 58, 36, 255 });   // beyond the map's edge
-
-    BeginMode2D(cam);
-    // Painted ground: biome patches from the SAME noise that shapes battle
-    // terrain, so the map foreshadows the battlefield you'd fight on.
+namespace {
+// Painted ground: biome patches from the SAME noise that shapes battle
+// terrain, so the map foreshadows the battlefield you'd fight on. Drawn in
+// world coordinates; called once into the cached map texture (L5).
+void PaintMapGround() {
     constexpr int CELL = 100;
     for (int gy = 0; gy < (int)MAP_SIZE / CELL; ++gy) {
         for (int gx = 0; gx < (int)MAP_SIZE / CELL; ++gx) {
@@ -1588,13 +1579,63 @@ void CampaignDraw(const GameState& gs) {
             }
         }
     }
+}
 
-    // Roads thread the settlements together.
+// Roads thread the settlements together. Positions never move, so these are
+// cached with the ground; only ownership (drawn per-frame) changes.
+void PaintMapRoads(const GameState& gs) {
     for (int a = 0; a < (int)gs.towns.size(); ++a)
         for (int b = a + 1; b < (int)gs.towns.size(); ++b)
             if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) < ROAD_LINK_DIST)
                 DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 5,
                            Fade(Color{ 128, 106, 76, 255 }, 0.45f));
+}
+
+// The cached map ground (L5): biome paint + roads rendered once into a
+// half-resolution texture instead of ~900 cells and thousands of triangles
+// every frame. Rebuilt if the map size changes (a new map.cfg mid-run).
+constexpr float MAP_TEX_SCALE = 0.5f;   // texels per world unit
+
+const Texture2D& CachedMapTexture(const GameState& gs) {
+    static RenderTexture2D tex{};
+    static float builtFor = -1;
+    if (builtFor != MAP_SIZE) {
+        if (tex.id) UnloadRenderTexture(tex);
+        tex = LoadRenderTexture((int)(MAP_SIZE * MAP_TEX_SCALE),
+                                (int)(MAP_SIZE * MAP_TEX_SCALE));
+        Camera2D shrink{};
+        shrink.zoom = MAP_TEX_SCALE;
+        BeginTextureMode(tex);
+        ClearBackground(Color{ 40, 58, 36, 255 });
+        BeginMode2D(shrink);
+        PaintMapGround();
+        PaintMapRoads(gs);
+        EndMode2D();
+        EndTextureMode();
+        builtFor = MAP_SIZE;
+    }
+    return tex.texture;
+}
+}   // namespace
+
+void CampaignDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    const Camera2D cam = CampaignCamera(gs);
+    const int nearSkirmish = NearestSkirmishIndex(gs);
+
+    SfxAmbience(0.07f);   // a soft wind over the overworld
+
+    const Texture2D& map = CachedMapTexture(gs);   // before BeginDrawing
+
+    BeginDrawing();
+    ClearBackground(Color{ 40, 58, 36, 255 });   // beyond the map's edge
+
+    BeginMode2D(cam);
+    // Render textures are Y-flipped; the negative source height rights it.
+    DrawTexturePro(map,
+                   Rectangle{ 0, 0, (float)map.width, -(float)map.height },
+                   Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, Vector2{ 0, 0 }, 0,
+                   WHITE);
 
     DrawRectangleLinesEx(Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, 6, DARKBROWN);
 

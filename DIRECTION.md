@@ -233,6 +233,33 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   constant with its file, current flat value, and intended feel — the
   worksheet a human playtesting pass needs. (Numbers stay flat until then.)
 
+## Track L — Cohesion & integration (user directive 2026-07-21)
+
+Connect the shipped systems into one living world: NPCs do what the player
+does, the economy is a single flow, terrain matters on the march.
+
+- [x] **L1. Terrain travel speed.** Shipped: the map-paint noise classifies
+  any point (`WorldTerrainAt`) — forests 0.7×, mountains 0.55×, for player
+  and AI parties alike; the drawn road network is now queryable (`OnRoad`)
+  and negates the penalty. HUD + harness show the going. Flat TODO(balance).
+- [x] **L2. Caravans carry real freight.** Shipped: wagons load up to 8 units
+  of the origin's surplus stock, unload into the destination's market, and
+  plunder spills the actual cargo. Persists (`ccargo`); dump shows
+  `caravan(cargo=N)`.
+- [x] **L3. Lords recruit like the player.** Shipped: a lord under half
+  strength rides to his own banner's settlement and takes +5 volunteers/day
+  until whole; respawn timers remain only for the fallen.
+- [x] **L4. Living markets.** Shipped: towns produce their source goods
+  (+1/day, cap 20) and consume imports (−1/day); prices quote
+  base × offset × scarcity (4%/unit off a 10-unit par, clamped), exported
+  as `MarketBuyPrice/SellPrice` so every consumer quotes the same number.
+- [x] **L5. Cached map paint.** Shipped: biome ground + roads render once
+  into a half-resolution RenderTexture (rebuilt if map size changes) and
+  blit as one quad — ~900 rects and thousands of triangles off every
+  campaign frame. Settlements/parties/ownership still draw live.
+- [ ] **L6. NPC parity next steps.** Lords buy gear upgrades / bandits
+  prefer fat caravans as prey / villagers walk the roads between towns.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
