@@ -564,6 +564,32 @@ full career, and the last Warband textures.
   worth. `tests/purse.txt` balances the books to the gold. Rates flat
   TODO(balance).
 
+## Track T — Playtest one (user feedback, 2026-07-21)
+
+The first human playtest report. Balance changes here are sanctioned —
+this is the feedback the flat numbers were waiting for.
+
+- [x] **T1. Combat feel ("attacks do no damage").** Diagnosed by probe: no
+  code glitch — damage always landed, but static shield guards soaked
+  silently, 100 HP × 10 dmg meant ten unseen hits per man, and there was
+  no hit reaction. Shipped: hit-stun (0.45 s reel on any solid blow —
+  melee and arrows both; the victim can't move or riposte), reactive
+  guards (a shield-bearer covers where he was last struck, so varying
+  your swing direction gets through — spam is punished, craft rewarded),
+  and the first playtest-tuned number: hero swings deal 2.5×. Verified:
+  a lone hero with varied swings now cuts down three shielded recruits;
+  one-note spam still fails.
+- [ ] **T2. Map zoom.** Campaign camera zooms with the mouse wheel.
+- [ ] **T3. Settlement silhouettes.** Villages/castles/towns readable at a
+  glance — distinct size, shape and banner, no parenthesis needed.
+- [ ] **T4. Travel-pace indicator.** A visible cue when terrain slows the
+  party (mud-trail, color, speed text) or roads speed it.
+- [ ] **T5. Mounted combat identity.** Horseback attacks differ from foot:
+  reach bonus, momentum damage on the pass, no thrust-from-saddle.
+- [ ] **T6. Horses as entities.** Kill the rider, not the horse: a slain
+  rider's mount wanders the field riderless (catchable later?); dead
+  horses already drop their riders to foot.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

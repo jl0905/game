@@ -559,6 +559,9 @@ struct Soldier {
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
     float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
+    float   stun = 0;          // hit-stun (T): reeling, can't move or swing
+    int     guardDir = -1;     // reactive shield guard (T): covers where last
+                               // struck; -1 = the old positional habit
     float   nerve = NERVE_MAX; // courage left (K4); at 0 the soldier breaks
     bool    routed  = false;   // broke and running for the field edge (G3)
     float   routTime = 0;      // seconds spent fleeing
@@ -856,6 +859,12 @@ void SpawnDust(Vector3 at) {
 
 // All damage to a soldier routes through here so a mounted target's horse
 // soaks its share of the blow — and can die under the rider.
+// Hit-stun (T): a blow that lands (not soaked to a scratch) staggers the
+// victim — no moving, no swinging while reeling. This is what makes blocking
+// and swing-direction craft matter. TODO(balance): duration/threshold.
+constexpr float STUN_TIME     = 0.45f;
+constexpr float STUN_MIN_DMG  = 4.0f;   // shield-soaked taps don't stagger
+
 void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     if (IsMounted(c, s)) {
         const float toHorse = dmg * HORSE_HIT_SHARE;
@@ -865,6 +874,10 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     }
     s.hp -= dmg;
     s.flash = 1.0f;
+    if (dmg >= STUN_MIN_DMG) {
+        s.stun  = STUN_TIME;   // reeling (T)
+        s.swing = 0;           // whatever he was winding up is lost
+    }
     SpawnBlood(s.pos);
     // Volume falls off with distance from the hero (rough but effective).
     const float d = Vector3Distance(s.pos, B.pPos);
@@ -923,8 +936,11 @@ bool HasShield(const Content& c, const Soldier& o) {
            c.weapons[o.activeWeapon].wclass == WeaponClass::OneHanded;
 }
 
-// The side a soldier guards this moment — a deterministic habit (G4).
+// The side a soldier guards this moment: where he was last struck (T,
+// reactive — so an attacker who varies his swings gets through), falling
+// back to the old positional habit before first blood (G4).
 int GuardDir(int idx, const Soldier& s) {
+    if (s.guardDir >= 0) return s.guardDir;
     return (idx * 5 + (int)(s.walkPhase * 3.0f)) & 3;
 }
 
@@ -933,7 +949,10 @@ int GuardDir(int idx, const Soldier& s) {
 float ShieldSoak(const Content& c, int victimIdx, Soldier& v, int swingDir,
                  float damage) {
     if (swingDir < 0 || !HasShield(c, v) || v.shieldHp <= 0) return damage;
-    if (GuardDir(victimIdx, v) != swingDir) return damage;
+    if (GuardDir(victimIdx, v) != swingDir) {
+        v.guardDir = swingDir;   // he covers the side that just bled (T)
+        return damage;
+    }
     v.shieldHp -= SHIELD_WEAR_PER_HIT;
     return damage * SHIELD_BLOCK_FACTOR;
 }
@@ -1483,6 +1502,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             const int wh = B.setup.heroLoadout.get(EquipSlot::Weapon);
             const float reach = WeaponReach(c, wh);
             B.cooldown = WeaponCooldown(c, wh);
+            // The hero hits like a hero: the first user-playtest balance
+            // change (T) — with flat 100/10 numbers a player needed ten
+            // clean hits per man while three men killed him in five
+            // seconds, which read as "my attacks do nothing".
+            const float HERO_DAMAGE_FACTOR = 2.5f;   // playtest-tuned 2026-07-21
             for (Soldier& s : B.soldiers) {
                 if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
                 Vector3 to = Vector3Subtract(s.pos, B.pPos);
@@ -1493,7 +1517,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     // ~120° frontal arc; armour soaks per hit, and a raised
                     // shield meets the hero's chosen swing direction (G4).
                     const int vi = (int)(&s - &B.soldiers[0]);
-                    float dmg = ApplyArmor(WeaponDamage(c, wh),
+                    float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR,
                                            LoadoutArmor(c, TroopLoadout(c, s.troop)));
                     const float before = dmg;
                     dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
@@ -1620,6 +1644,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 s.routTime += dt;
                 if (s.routTime > ROUT_ESCAPE_TIME) { s.escaped = true; continue; }
             }
+            // Reeling from a blow (T): a stunned soldier neither moves nor
+            // swings — the opening that blocking and swing-craft buy you.
+            if (s.stun > 0) {
+                s.stun -= dt;
+                s.cooldown = fmaxf(s.cooldown, 0.2f);   // no instant riposte
+                continue;
+            }
+
             const AICmd& cmd = B.cmds[i];
             s.yaw          = cmd.yaw;
             s.cooldown     = cmd.newCooldown;
@@ -2196,6 +2228,7 @@ BattleView GetBattleView() {
     v.order       = OrderName(B.order);
     v.climbPoints = (int)g_climbs.size();
     v.raining     = B.raining;
+    v.heroKills   = B.heroKills;
     {
         const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;
         int   own = 0;
