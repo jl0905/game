@@ -1,0 +1,11 @@
+# Terrain travel speed: forests and mountains slow the party, roads negate
+# the penalty. The state line reports terrain/speed at the player's position.
+seed 42
+state              # starting terrain at (1500,1500)
+walk 1 0 3         # march east across open ground
+state
+walk 0 1 5         # push south — the noise field varies terrain en route
+state
+walk -1 -1 5
+state
+quit

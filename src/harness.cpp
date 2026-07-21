@@ -164,9 +164,13 @@ struct Harness {
 
     void DumpState() const {
         const Content& c = gs.content;
-        std::printf("screen=%s day=%d gold=%d pos=(%.0f,%.0f) party=%d timeFlowing=%d\n",
+        std::printf("screen=%s day=%d gold=%d pos=(%.0f,%.0f) party=%d timeFlowing=%d "
+                    "terrain=%s%s speed=%.2f\n",
                     ScreenName(), gs.day, gs.gold, gs.player.pos.x, gs.player.pos.y,
-                    gs.player.totalTroops(), gs.timeFlowing ? 1 : 0);
+                    gs.player.totalTroops(), gs.timeFlowing ? 1 : 0,
+                    WorldTerrainName(WorldTerrainAt(gs.player.pos)),
+                    OnRoad(gs, gs.player.pos) ? " road" : "",
+                    TravelSpeedFactor(gs, gs.player.pos));
         std::printf("hero: level=%d xp=%d points=%d attrs=[", gs.playerHero.level,
                     gs.playerHero.xp, gs.playerHero.attrPoints);
         for (int a = 0; a < c.attributes.size(); ++a)

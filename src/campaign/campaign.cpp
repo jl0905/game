@@ -1127,7 +1127,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
     if (moving) {
         move = Vector2Normalize(move);
-        gs.player.pos = Vector2Add(gs.player.pos, Vector2Scale(move, PARTY_SPEED * dt));
+        gs.player.pos = Vector2Add(gs.player.pos,
+            Vector2Scale(move, PARTY_SPEED * TravelSpeedFactor(gs, gs.player.pos) * dt));
     }
     gs.player.pos.x = Clamp(gs.player.pos.x, 0, MAP_SIZE);
     gs.player.pos.y = Clamp(gs.player.pos.y, 0, MAP_SIZE);
@@ -1228,7 +1229,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
             const Vector2 dir = Vector2Subtract(target, e.pos);
             if (Vector2Length(dir) > 5)
-                e.pos = Vector2Add(e.pos, Vector2Scale(Vector2Normalize(dir), PARTY_SPEED * 0.7f * sim));
+                e.pos = Vector2Add(e.pos, Vector2Scale(Vector2Normalize(dir),
+                    PARTY_SPEED * 0.7f * TravelSpeedFactor(gs, e.pos) * sim));
             // Keep parties on the map — a fleeing party would otherwise run off
             // the edge forever (unreachable, yet still counted as alive).
             e.pos.x = Clamp(e.pos.x, 0, MAP_SIZE);
@@ -1509,7 +1511,7 @@ void CampaignDraw(const GameState& gs) {
     // Roads thread the settlements together.
     for (int a = 0; a < (int)gs.towns.size(); ++a)
         for (int b = a + 1; b < (int)gs.towns.size(); ++b)
-            if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) < 1350)
+            if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) < ROAD_LINK_DIST)
                 DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 5,
                            Fade(Color{ 128, 106, 76, 255 }, 0.45f));
 
@@ -1679,8 +1681,17 @@ void CampaignDraw(const GameState& gs) {
                     : dayFrac < 0.70f ? "afternoon"
                     : dayFrac < 0.82f ? "evening" : "night";
     DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
-    ui::Text(TextFormat("Day %d, %s   Gold: %d   Party: %d", gs.day, tod, gs.gold,
-                        gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
+    {
+        const WorldTerrain wt = WorldTerrainAt(gs.player.pos);
+        const bool road = OnRoad(gs, gs.player.pos);
+        const char* going = road                          ? "on the road"
+                            : wt == WorldTerrain::Forest   ? "in the woods (slow)"
+                            : wt == WorldTerrain::Mountain ? "in the mountains (slow)"
+                                                           : "on open ground";
+        ui::Text(TextFormat("Day %d, %s   Gold: %d   Party: %d   %s", gs.day, tod,
+                            gs.gold, gs.player.totalTroops(), going),
+                 10, 8, 20, RAYWHITE);
+    }
 
     // Time state, top-right: the world is frozen until you move or wait.
     const char* clock = gs.timeFlowing ? "TIME FLOWING" : "TIME PAUSED  (move, or hold SPACE)";
