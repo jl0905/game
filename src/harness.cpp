@@ -219,6 +219,11 @@ struct Harness {
                 std::printf("  \"%s\"\n", l.c_str());
         }
         if (gs.crowned) std::printf("crowned=1\n");
+        if (gs.musterTown >= 0)
+            std::printf("muster: town=%d days=%.1f\n", gs.musterTown, gs.musterDays);
+        if (gs.lordsRally)
+            std::printf("rally: pos=(%.0f,%.0f) days=%.1f\n", gs.lordsRallyPos.x,
+                        gs.lordsRallyPos.y, gs.lordsRallyDays);
         if (gs.liege >= 0 && gs.liege < c.factions.size())
             std::printf("liege=%s\n", c.factions[gs.liege].id.c_str());
         if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size())
@@ -463,6 +468,9 @@ int RunScript(const char* path) {
             h.Step(cin, BattleInput{});
         } else if (cmd == "raid") {
             CampaignInput cin; ss >> cin.clickLair;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "rally") {
+            CampaignInput cin; cin.rallyLords = true;
             h.Step(cin, BattleInput{});
         } else if (cmd == "crown") {
             CampaignInput cin; cin.crown = true;

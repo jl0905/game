@@ -36,6 +36,7 @@ struct CampaignInput {
     bool    buyEnterprise = false;    // buy a business in this town (B)
 
     bool    crown    = false;         // claim your own crown on the map (K)
+    bool    rallyLords = false;       // crowned: call your lords to the banner (J)
     bool    raiseLord = false;        // raise a lord at your settlement (L)
 
     // party screen

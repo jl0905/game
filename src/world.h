@@ -182,6 +182,15 @@ struct GameState {
     // a village fief. TODO(balance): oath requirements, muster obligations.
     int liege = -1;
 
+    // Muster (K5): the liege's summons to a siege — answer it by riding to
+    // the invested town before the days run out, or pay in standing. And the
+    // crown's rally: a crowned ruler calls raised lords to the banner.
+    int     musterTown = -1;   // besieged town you are summoned to, -1 none
+    float   musterDays = 0;    // days left to answer
+    bool    lordsRally = false;
+    Vector2 lordsRallyPos{};
+    float   lordsRallyDays = 0;
+
     // Relations (F1): the player's personal standing with each faction,
     // -100..100, moved by deeds (battles, raids, aid). Report-only for now;
     // vassalage (F2) and quest givers (F4) will read it. TODO(balance).

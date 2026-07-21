@@ -208,9 +208,14 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   2/s. Nerve at 0 breaks that one soldier; the side-wide banner rings
   when half a side has fled. Arena bouts and wall garrisons never rout.
   All flat TODO(balance).
-- [ ] **K5. Muster obligations.** A sworn vassal is summoned to the liege's
-  sieges (banner alert + relation penalty for ignoring it); a crowned
-  ruler can point raised lords at a target settlement.
+- [x] **K5. Muster obligations.** Shipped: when the liege's lords invest a
+  settlement, the sworn are summoned (banner alert, 3 days): riding to
+  the siege pays +10 standing, ignoring it costs −15. A crowned ruler
+  presses J to rally raised lords to the banner for 3 days (verified:
+  Lord Bram marched 1500 units to within 5 of it). Duties persist in
+  saves; harness `rally` + muster/rally dumps; `tests/muster.txt`. Flat
+  numbers TODO(balance). Follow-up: point lords at a *target settlement*
+  rather than the ruler's position.
 - [ ] **K6. Fit companions from the bag.** Equip hired companions from the
   tiled inventory (their Loadout is already per-troop data).
 - [ ] **K7. UI polish pass.** Hover highlights on clickable rows, shared

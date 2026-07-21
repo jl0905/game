@@ -1,0 +1,14 @@
+# Muster obligations (direction K5): a sworn vassal is summoned to the
+# liege's sieges; riding to the invested town pays standing.
+seed 25
+enter 3            # swear to the patrol crown at Jelkala
+swear
+leave
+wait 100           # the patrol lords take the field; a summons arrives
+state              # expect muster: town=6 (Halmar invested by your liege)
+walk 0.965 0.262 6.2   # ride hard for Halmar
+state              # expect "You answered your liege's summons", patrol +10
+save muster_test.owb
+load muster_test.owb
+state              # expect relation: patrol=+10 to survive the reload
+quit

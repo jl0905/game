@@ -967,6 +967,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
     in.restart   = IsKeyPressed(KEY_R);
     in.crown     = IsKeyPressed(KEY_K);
+    in.rallyLords = IsKeyPressed(KEY_J);
     in.openParty = IsKeyPressed(KEY_P);
     in.openInventory = IsKeyPressed(KEY_I);
     in.openCharacter = IsKeyPressed(KEY_C);
@@ -1004,6 +1005,14 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     if (in.quickLoad) {
         if (LoadGame(gs, DefaultSavePath())) { gs.resultText = "Game loaded."; return; }
         gs.resultText = "No save to load.";
+    }
+
+    // ---- call your lords to the banner (K5, crowned only) ----
+    if (in.rallyLords && gs.crowned) {
+        gs.lordsRally     = true;
+        gs.lordsRallyPos  = gs.player.pos;
+        gs.lordsRallyDays = 3.0f;   // TODO(balance)
+        gs.resultText = "Your lords ride to your banner.";
     }
 
     // ---- claim your own crown (F3) ----
@@ -1122,6 +1131,18 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     gs.player.pos.x = Clamp(gs.player.pos.x, 0, MAP_SIZE);
     gs.player.pos.y = Clamp(gs.player.pos.y, 0, MAP_SIZE);
 
+    // Answering the summons (K5): reach the invested town while it stands.
+    if (gs.musterTown >= 0) {
+        if (gs.liege < 0) {
+            gs.musterTown = -1;   // the oath is gone, and the duty with it
+        } else if (Vector2Distance(gs.player.pos, gs.towns[gs.musterTown].pos) <
+                   SIEGE_REACH * 1.5f) {
+            NudgeRelation(gs, gs.liege, +10);
+            gs.resultText = "You answered your liege's summons. It is remembered.";
+            gs.musterTown = -1;
+        }
+    }
+
     // ---- world simulation (advances only while time flows) ----
     if (sim > 0.0f) {
         // Roaming + pursuit: each free party steers by its behaviour toward the
@@ -1153,6 +1174,14 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // A crowned ruler's rally overrides a lord's own plans (K5).
+            if (!haveTarget && !e.lord.empty() && e.faction == c.playerFaction &&
+                gs.lordsRally) {
+                target     = gs.lordsRallyPos;
+                haveTarget = true;
+                e.state    = PartyState::Travelling;
+            }
+
             // Lords wage the settlement war: march on the nearest hostile
             // settlement they outmatch and invest it on arrival.
             if (!haveTarget && !e.lord.empty()) {
@@ -1175,6 +1204,14 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                             gs.resultText = TextFormat("%s IS UNDER SIEGE by Lord %s!",
                                                        gs.towns[bestTown].name.c_str(),
                                                        e.lord.c_str());
+                        // A liege's siege summons the sworn (K5).
+                        else if (e.faction == gs.liege && gs.musterTown < 0) {
+                            gs.musterTown = bestTown;
+                            gs.musterDays = 3.0f;   // TODO(balance)
+                            gs.resultText = TextFormat(
+                                "YOUR LIEGE SUMMONS YOU to the siege of %s! Ride to it.",
+                                gs.towns[bestTown].name.c_str());
+                        }
                         continue;
                     }
                     target     = gs.towns[bestTown].pos;
@@ -1329,6 +1366,15 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
             AlignWarsWithLiege(gs); // a vassal's wars follow the crown's (F2)
+
+            // Ignored summons cost standing (K5); rally orders lapse.
+            if (gs.musterTown >= 0 && (gs.musterDays -= 1.0f) <= 0) {
+                NudgeRelation(gs, gs.liege, -15);
+                gs.resultText = "You ignored your liege's summons. It is remembered.";
+                gs.musterTown = -1;
+            }
+            if (gs.lordsRally && (gs.lordsRallyDays -= 1.0f) <= 0)
+                gs.lordsRally = false;
 
             // Bandit dens breed a fresh band every other day (H2).
             for (Lair& l : gs.lairs) {

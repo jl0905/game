@@ -109,6 +109,13 @@ bool SaveGame(const GameState& gs, const char* path) {
     // The claimed crown (F3).
     if (gs.crowned) f << "crowned 1\n";
 
+    // Standing duties (K5).
+    if (gs.musterTown >= 0)
+        f << "muster " << gs.musterTown << ' ' << gs.musterDays << '\n';
+    if (gs.lordsRally)
+        f << "rally " << gs.lordsRallyPos.x << ' ' << gs.lordsRallyPos.y << ' '
+          << gs.lordsRallyDays << '\n';
+
     // The sworn liege (F2).
     if (gs.liege >= 0 && gs.liege < c.factions.size())
         f << "liege " << c.factions[gs.liege].id << '\n';
@@ -299,6 +306,11 @@ bool LoadGame(GameState& gs, const char* path) {
             ss >> qid >> fid >> gs.questTown >> gs.questProgress;
             gs.activeQuest  = c.quests.find(qid.c_str());
             gs.questFaction = c.factions.find(fid.c_str());
+        } else if (tag == "muster") {
+            ss >> gs.musterTown >> gs.musterDays;
+        } else if (tag == "rally") {
+            gs.lordsRally = true;
+            ss >> gs.lordsRallyPos.x >> gs.lordsRallyPos.y >> gs.lordsRallyDays;
         } else if (tag == "liege") {
             std::string fid;
             ss >> fid;
