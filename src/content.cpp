@@ -303,6 +303,16 @@ void LoadDefaultContent(Content& c) {
     vaeling.kingdom = true;
     const int f_vaeling = c.factions.add(vaeling);
 
+    // The small folk (M6): traders and pilgrims walking the roads between
+    // settlements. Passive (they flee trouble), at peace with every crown;
+    // the blanket outlaw wars below make them bandit prey automatically.
+    FactionDef travellers;
+    travellers.id = "travellers"; travellers.name = "Travellers";
+    travellers.color = Color{ 200, 190, 150, 255 };
+    travellers.behavior = PartyBehavior::Passive;
+    travellers.roster = { t_recruit };
+    c.factions.add(travellers);
+
     // ---- Trade goods (direction E1) --------------------------------------
     // Stackable market wares. basePrice is a flat placeholder; per-town
     // spreads live on Town::priceOffset. TODO(balance): all prices.

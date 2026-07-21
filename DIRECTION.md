@@ -321,10 +321,14 @@ adds per line of code. Structure first, numbers flat, as ever.
   `spouse` save tags; `tests/feast.txt` attends and weds Lady Mira.
   Follow-ups: spouse gameplay (intercession, heirs), lords gathering at
   the hall, feast scenes.
-- [ ] **M6. Town life.** Villagers walk the road network between
-  settlements (cosmetic parties that flee bandits), town scenes get
-  market-stall props near the plaza, and taverns a minstrel sting.
-  Pure feel; no new systems.
+- [x] **M6. Town life (v1: the roads).** Shipped: a `travellers` faction —
+  the small folk — keeps up to 3 bands walking town to town via the
+  caravan machinery (they trade in a small way, and freight-scenting
+  bandits hunt their packs; the blanket outlaw wars made them prey with
+  zero extra code). `TradesAnywhere` generalises landless traders.
+  Descoped to a follow-up (pure scene dressing, no system value): market
+  stall props, minstrel sting — do these in a dedicated art/audio pass
+  with real assets rather than more procedural boxes.
 
 ## Sequencing guidance
 

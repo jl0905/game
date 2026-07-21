@@ -100,10 +100,18 @@ void LoadCaravanCargo(const Content& c, Town& from, Party& p) {
     }
 }
 
-// Where a convoy trades next (M4): faction caravans ply their own crown's
-// settlements; the player's convoys call at any market at peace with them.
+// Landless traders (the player's convoys, the travelling small folk, M6)
+// call at any market at peace with them; a crown's caravans ply its own.
+bool TradesAnywhere(const GameState& gs, int faction) {
+    if (faction == gs.content.playerFaction) return true;
+    for (const Town& t : gs.towns)
+        if (t.owner == faction) return false;
+    return true;
+}
+
+// Where a convoy trades next (M4).
 int NearestTradeStop(const GameState& gs, int faction, Vector2 pos, int avoid) {
-    if (faction != gs.content.playerFaction)
+    if (!TradesAnywhere(gs, faction))
         return NearestOwnedTown(gs, faction, pos, avoid);
     int best = -1;
     float bestD = 1e9f;
@@ -1279,7 +1287,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             if (!haveTarget && e.caravan) {
                 const bool destBad =
                     e.caravanTo < 0 || e.caravanTo >= (int)gs.towns.size() ||
-                    (e.faction == c.playerFaction
+                    (TradesAnywhere(gs, e.faction)
                          ? AtWar(gs, e.faction, gs.towns[e.caravanTo].owner)
                          : gs.towns[e.caravanTo].owner != e.faction);
                 if (destBad)
@@ -1600,6 +1608,31 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 if (to >= 0) {
                     gs.parties.push_back(MakeCaravan(c, f, gs.towns[home].pos, to));
                     LoadCaravanCargo(c, gs.towns[home], gs.parties.back());
+                }
+            }
+
+            // The small folk take the roads (M6): keep a few traveller
+            // bands walking town to town. They trade in a small way (the
+            // caravan machinery), and bandits smell their packs.
+            // TODO(balance): how many.
+            {
+                const int f_trav = c.factions.find("travellers");
+                if (f_trav >= 0 && !gs.towns.empty()) {
+                    int walking = 0;
+                    for (const Party& p : gs.parties)
+                        if (p.alive && p.faction == f_trav) walking++;
+                    if (walking < 3) {
+                        const int from = gs.day % (int)gs.towns.size();
+                        const int to = NearestTradeStop(gs, f_trav,
+                                                        gs.towns[from].pos, from);
+                        if (to >= 0 &&
+                            !AtWar(gs, f_trav, gs.towns[from].owner)) {
+                            gs.parties.push_back(MakeCaravan(
+                                c, f_trav, gs.towns[from].pos, to));
+                            LoadCaravanCargo(c, gs.towns[from],
+                                             gs.parties.back());
+                        }
+                    }
                 }
             }
 

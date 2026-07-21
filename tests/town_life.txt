@@ -1,0 +1,8 @@
+# Town life (direction M6): traveller bands - the small folk - walk the
+# roads between settlements with packs the bandits can smell.
+seed 42
+wait 70            # a world day passes; the roads fill
+state              # expect faction=travellers caravan parties walking
+wait 140
+state              # more of them, walking town to town (cap 3 alive)
+quit
