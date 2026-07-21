@@ -14,6 +14,11 @@ const char* DefaultSavePath();
 // "autosave.owb" in the same place (written when the game quits).
 const char* AutoSavePath();
 
+// Save slots (N3): three named quicksave files beside the autosave, and a
+// cheap header peek (day/gold) for the load menu's listing.
+const char* SaveSlotPath(int slot);              // 1..3
+bool PeekSave(const char* path, int& day, int& gold);
+
 bool SaveGame(const GameState& gs, const char* path);
 
 // Requires gs.content to be loaded. On success the world is replaced by the

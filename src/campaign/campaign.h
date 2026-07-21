@@ -33,6 +33,10 @@ void CampaignDraw(const GameState& gs);
 
 // (The settlement itself is a walkable 3D scene — see src/town/town.h.)
 
+// Load menu (N3): pick the autosave or a quicksave slot from the title.
+void LoadMenuUpdate(GameState& gs, const CampaignInput& in);
+void LoadMenuDraw(const GameState& gs);
+
 // Character creation (N2): the background-choice screen after New Game, and
 // the shared effect application (also driven by the harness `background` cmd).
 void BackgroundUpdate(GameState& gs, const CampaignInput& in);

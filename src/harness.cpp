@@ -148,6 +148,7 @@ struct Harness {
         switch (gs.screen) {
             case Screen::Title:        return "Title";
             case Screen::Background:   return "Background";
+            case Screen::LoadMenu:     return "LoadMenu";
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
             case Screen::Market:       return "Market";
@@ -493,6 +494,14 @@ int RunScript(const char* path) {
             // Outfit a player trade convoy at the open market (M4).
             CampaignInput cin; cin.sendCaravan = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "saveslot") {
+            int n = 1; ss >> n;
+            std::printf("saveslot %d: %s\n", n,
+                        SaveGame(h.gs, SaveSlotPath(n)) ? "ok" : "FAILED");
+        } else if (cmd == "loadslot") {
+            int n = 1; ss >> n;
+            std::printf("loadslot %d: %s\n", n,
+                        LoadGame(h.gs, SaveSlotPath(n)) ? "ok" : "FAILED");
         } else if (cmd == "background") {
             // Character creation (N2): apply a background's start directly.
             int b = 0; ss >> b;

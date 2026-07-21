@@ -1,0 +1,13 @@
+# Save slots (direction N3): three quicksave slots beside the autosave
+# (F5-F7 windowed; saveslot/loadslot here), sharing SaveSlotPath with the
+# title's load menu.
+seed 42
+background 2       # merchant start: gold 700
+saveslot 2
+walk 1 0 3         # spend some world time and gold position
+state
+loadslot 2         # back to the moment of the save
+state              # expect gold 700 and pos (1500,1500) again
+loadslot 3         # an empty slot fails loudly, harming nothing
+state
+quit

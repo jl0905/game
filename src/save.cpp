@@ -56,6 +56,29 @@ const char* AutoSavePath() {
     return SavePathNamed(path, sizeof(path), "autosave.owb");
 }
 
+const char* SaveSlotPath(int slot) {
+    static char path[512];
+    char name[32];
+    std::snprintf(name, sizeof(name), "slot_%d.owb", slot);
+    return SavePathNamed(path, sizeof(path), name);
+}
+
+bool PeekSave(const char* path, int& day, int& gold) {
+    std::ifstream f(path);
+    if (!f) return false;
+    day = 0; gold = 0;
+    std::string line;
+    while (std::getline(f, line)) {
+        std::istringstream ss(line);
+        std::string tag;
+        if (!(ss >> tag)) continue;
+        if (tag == "day")  ss >> day;
+        if (tag == "gold") ss >> gold;
+        if (tag == "playerpos") break;   // header tags live at the top
+    }
+    return true;
+}
+
 bool SaveGame(const GameState& gs, const char* path) {
     const Content& c = gs.content;
     std::ofstream f(path);

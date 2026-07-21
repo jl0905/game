@@ -341,8 +341,11 @@ adds per line of code. Structure first, numbers flat, as ever.
   deserter (3 brigands, −150 gold, patrol suspicion). `ApplyBackground`
   is shared with the harness `background` command; mouse + keys via the
   shared layout. All flat TODO(balance); `tests/background.txt`.
-- [ ] **N3. Save slots.** Named saves + a load menu on the title screen
-  (the format already round-trips; this is UI + file listing).
+- [x] **N3. Save slots.** Shipped: F5/F6/F7 quicksave to three slots from
+  the saddle; the title gains [L] Load Game → `Screen::LoadMenu` listing
+  autosave + slots with a peeked "day N, gold G" line (`PeekSave`), empty
+  rows greyed. `SaveSlotPath` shared with harness `saveslot`/`loadslot`;
+  `tests/save_slots.txt` rewinds a march and survives an empty-slot load.
 - [ ] **N4. Per-lord opinion.** Individual lords remember grants, rescues,
   battles beside them; gates their vote when M-wave politics deepen
   (crown council, elections). Honor finally gets a reader.

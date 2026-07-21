@@ -137,7 +137,7 @@ namespace layout {
 constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 5;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 constexpr int MARKET_X0  = 120, MARKET_X1      = 700;
-constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 3;
+constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 4;
 constexpr int PARTY_Y    = 200, PARTY_ROW_H    = 34, PARTY_SLOTS = 9;
 constexpr int CHAR_Y     = 180, CHAR_ROW_H     = 40;
 constexpr int PANEL_HALF = 360, PANEL_W        = 560;
@@ -983,7 +983,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (gs.screen == Screen::Title) {
         if (IsKeyPressed(KEY_N))      in.menuChoice = 1;
         if (IsKeyPressed(KEY_C))      in.menuChoice = 2;
-        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 3;
+        if (IsKeyPressed(KEY_L))      in.menuChoice = 3;   // load menu (N3)
+        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 4;
         in.openSettings = IsKeyPressed(KEY_O);
         // Mouse (H3): option bands quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -992,6 +993,19 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (m.y >= layout::TITLE_Y && row >= 0 && row < layout::TITLE_ROWS)
                 in.menuChoice = row + 1;
         }
+        return in;
+    }
+
+    if (gs.screen == Screen::LoadMenu) {
+        for (int r = 0; r < 4; ++r)
+            if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int row = ((int)m.y - layout::TITLE_Y) / layout::TITLE_ROW_H;
+            if (m.y >= layout::TITLE_Y && row >= 0 && row < 4)
+                in.menuChoice = row + 1;
+        }
+        if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }
 
@@ -1085,6 +1099,9 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                 Vector2Distance(world, gs.lairs[i].pos) < TOWN_CLICK_RADIUS)
                 in.clickLair = i;
     }
+    if (IsKeyPressed(KEY_F5)) in.saveSlot = 1;   // quicksave slots (N3)
+    if (IsKeyPressed(KEY_F6)) in.saveSlot = 2;
+    if (IsKeyPressed(KEY_F7)) in.saveSlot = 3;
     if (IsKeyDown(KEY_W)) in.move.y -= 1;
     if (IsKeyDown(KEY_S)) in.move.y += 1;
     if (IsKeyDown(KEY_A)) in.move.x -= 1;
@@ -1196,6 +1213,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         gs.settingsBack = Screen::Campaign;
         gs.screen = Screen::Settings;
         return;
+    }
+
+    // Quicksave (N3): three slots on F5-F7, right from the saddle.
+    if (in.saveSlot >= 1 && in.saveSlot <= 3) {
+        const bool ok = SaveGame(gs, SaveSlotPath(in.saveSlot));
+        gs.resultText = ok ? TextFormat("Saved to slot %d.", in.saveSlot)
+                           : "The save failed.";
     }
 
     // ---- enter (friendly) or assault (hostile) a settlement ----
@@ -2655,11 +2679,60 @@ bool TitleUpdate(GameState& gs, const CampaignInput& in) {
             if (LoadGame(gs, AutoSavePath())) gs.resultText = "Welcome back.";
             gs.screen = Screen::Campaign;   // load failure = new game
             break;
-        case 3:
+        case 3:   // pick a save (N3)
+            gs.screen = Screen::LoadMenu;
+            break;
+        case 4:
             return false;
         default: break;
     }
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// Load menu (N3): the autosave and three quicksave slots, with a peeked
+// day/gold line per file so the choice means something.
+// ---------------------------------------------------------------------------
+
+void LoadMenuUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.leaveSettlement) { gs.screen = Screen::Title; return; }
+    if (in.menuChoice >= 1 && in.menuChoice <= 4) {
+        const char* path = in.menuChoice == 1 ? AutoSavePath()
+                                              : SaveSlotPath(in.menuChoice - 1);
+        if (LoadGame(gs, path)) {
+            gs.resultText = "Welcome back.";
+            gs.screen = Screen::Campaign;
+        }
+        // A missing file just stays on the menu — the row said "empty".
+    }
+}
+
+void LoadMenuDraw(const GameState& gs) {
+    (void)gs;
+    BeginDrawing();
+    ClearBackground(Color{ 20, 22, 26, 255 });
+    const int w = GetScreenWidth();
+    const char* t = "LOAD GAME";
+    ui::Title(t, (w - ui::MeasureTitle(t, 56)) / 2, 180, 56, GOLD);
+    int y = layout::TITLE_Y;
+    auto row = [&](int i, const char* label, const char* path) {
+        DrawHoverRow(w / 2 - 260, y, 520, layout::TITLE_ROW_H);
+        int day = 0, gold = 0;
+        const bool have = PeekSave(path, day, gold);
+        const char* txt = have
+            ? TextFormat("[%d]  %-10s day %d, %d gold", i, label, day, gold)
+            : TextFormat("[%d]  %-10s (empty)", i, label);
+        ui::Text(txt, w / 2 - 250, y + 10, 26,
+                 have ? RAYWHITE : Fade(RAYWHITE, 0.35f));
+        y += layout::TITLE_ROW_H;
+    };
+    row(1, "Autosave", AutoSavePath());
+    row(2, "Slot 1", SaveSlotPath(1));
+    row(3, "Slot 2", SaveSlotPath(2));
+    row(4, "Slot 3", SaveSlotPath(3));
+    ui::Text("[Esc] back      (save on the map with F5 / F6 / F7)",
+             w / 2 - 250, y + 16, 18, Fade(RAYWHITE, 0.6f));
+    EndDrawing();
 }
 
 void TitleDraw(const GameState& gs) {
@@ -2702,6 +2775,7 @@ void TitleDraw(const GameState& gs) {
     };
     option("[N]  New Game", RAYWHITE);
     option("[C]  Continue", haveSave ? RAYWHITE : Fade(RAYWHITE, 0.35f));
+    option("[L]  Load Game", RAYWHITE);
     option("[Esc]  Quit", Fade(RAYWHITE, 0.8f));
 
     EndDrawing();
