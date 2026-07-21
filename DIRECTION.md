@@ -534,9 +534,13 @@ full career, and the last Warband textures.
 
 ## Track S — Ninth wave: a ruler's hands
 
-- [ ] **S1. Sue for peace.** A crowned player ends a war from the ledger:
-  tribute scaled by the war's score, a truce that holds like the AI's.
-  Wars you start, you can end.
+- [x] **S1. Sue for peace.** Shipped: the ledger's war rows are numbered —
+  press the number, pay tribute (100 + 5×war score), and an ordinary
+  truce begins (+5 standing with the relieved crown). Kingdoms only:
+  outlaw wars read "(no quarter)", a rule the first test run enforced
+  after happily buying silence from the Raiders. AI always accepts (v1;
+  acceptance conditions are a follow-up). `tests/sue_peace.txt` rebels
+  then buys the peace back. Flat TODO(balance).
 - [x] **S2. Garrison your walls.** Shipped: F leaves a soldier (from your
   fullest line; companions never garrison), Shift+F recalls one (cap
   respected) at your own settlements. Garrisons already fought,

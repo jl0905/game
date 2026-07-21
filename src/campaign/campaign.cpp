@@ -1130,6 +1130,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Kingdom) {
+        for (int r = 0; r < 9; ++r)   // sue for peace by war row (S1)
+            if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_B))
             in.leaveSettlement = true;
         return in;
@@ -3165,7 +3167,41 @@ bool TitleUpdate(GameState& gs, const CampaignInput& in) {
 // ---------------------------------------------------------------------------
 
 void KingdomUpdate(GameState& gs, const CampaignInput& in) {
-    if (in.leaveSettlement) gs.screen = Screen::Campaign;
+    if (in.leaveSettlement) { gs.screen = Screen::Campaign; return; }
+
+    // Sue for peace (S1): pick a war row (1-9), pay tribute scaled by its
+    // score, and the guns fall silent under an ordinary truce. Wars you
+    // start, you can end. TODO(balance): tribute; AI always accepts (v1).
+    if (in.menuChoice >= 1) {
+        const Content& c = gs.content;
+        const int n = c.factions.size();
+        if ((int)gs.hostile.size() != (size_t)n * n) return;
+        int row = 0;
+        for (int f = 0; f < n; ++f) {
+            if (f == c.playerFaction || !AtWar(gs, c.playerFaction, f)) continue;
+            if (!c.factions[f].kingdom) continue;   // outlaws never treat
+            if (++row != in.menuChoice) continue;
+            const size_t ij = (size_t)c.playerFaction * n + f;
+            const size_t ji = (size_t)f * n + c.playerFaction;
+            const int tribute = 100 + gs.warScore[ij] * 5;   // TODO(balance)
+            if (gs.gold < tribute) {
+                gs.resultText = TextFormat(
+                    "Peace with %s asks %d gold in tribute. You lack it.",
+                    c.factions[f].name.c_str(), tribute);
+                return;
+            }
+            gs.gold -= tribute;
+            gs.hostile[ij] = gs.hostile[ji] = 0;
+            gs.warScore[ij] = gs.warScore[ji] = 0;
+            gs.truceDays[ij] = gs.truceDays[ji] = 4.0f;   // mirrors TRUCE_DAYS
+            NudgeRelation(gs, f, +5);
+            gs.resultText = TextFormat(
+                "PEACE:  %d gold in tribute buys silence with %s.",
+                tribute, c.factions[f].name.c_str());
+            SfxPlay(Sfx::Fanfare);
+            return;
+        }
+    }
 }
 
 void KingdomDraw(const GameState& gs) {
@@ -3250,11 +3286,24 @@ void KingdomDraw(const GameState& gs) {
     ry += 12;
     ui::Text("WARS", rx, ry, 22, GOLD); ry += 30;
     bool atPeaceAll = true;
-    for (int f = 0; f < c.factions.size(); ++f) {
+    int warRow = 0;
+    const int nf = c.factions.size();
+    for (int f = 0; f < nf; ++f) {
         if (f == c.playerFaction || !AtWar(gs, c.playerFaction, f)) continue;
         atPeaceAll = false;
-        ui::Text(TextFormat("At war with %s", c.factions[f].name.c_str()), rx, ry,
-                 19, Fade(RED, 0.9f));
+        if (!c.factions[f].kingdom) {   // outlaws never treat
+            ui::Text(TextFormat("At war with %-10s  (no quarter)",
+                                c.factions[f].name.c_str()),
+                     rx, ry, 19, Fade(RED, 0.7f));
+            ry += 26;
+            continue;
+        }
+        warRow++;
+        const int tribute = (int)gs.hostile.size() == nf * nf
+            ? 100 + gs.warScore[(size_t)c.playerFaction * nf + f] * 5 : 100;
+        ui::Text(TextFormat("[%d] At war with %-10s  sue for peace: %d gold",
+                            warRow, c.factions[f].name.c_str(), tribute),
+                 rx, ry, 19, Fade(RED, 0.9f));
         ry += 26;
     }
     if (atPeaceAll)

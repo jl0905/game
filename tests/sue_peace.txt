@@ -1,0 +1,19 @@
+# Sue for peace (direction S1): a ruler ends a war from the ledger - tribute
+# scaled by the war's score buys an ordinary truce. Wars you start, you end.
+seed 25
+fame 5 0
+enter 3            # swear to the patrol crown
+swear
+leave
+fame 15 10
+enter 3
+court
+topic 6            # rebellion: war with Patrol
+leave              # the court door
+leave              # the town gate
+ledger
+state              # expect a numbered war row with the tribute price
+topic 1            # pay the tribute
+state              # expect PEACE in result=, gold down 100, no war rows
+ledger
+quit
