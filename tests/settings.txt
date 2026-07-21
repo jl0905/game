@@ -1,0 +1,12 @@
+# Settings screen (direction K1): toggle options, save the cfg on exit.
+# Presentation-only: nothing here may change simulation state.
+seed 45
+settings           # O opens the options
+state              # expect screen=Settings
+setopt 3           # particles off
+setopt 5           # invert Y on
+setopt 3           # ...and back on: the cfg the exit writes must round-trip
+setopt 5           # unchanged, so the repo asset keeps its documented values
+settings           # Esc: writes assets/settings.cfg, back to the map
+state              # expect screen=Campaign, world untouched (gold=300 party=7)
+quit

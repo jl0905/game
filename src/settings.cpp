@@ -26,6 +26,31 @@ bool TruthValue(const std::string& v) { return v == "1" || v == "on" || v == "tr
 
 Settings& GetSettings() { return g_settings; }
 
+void SaveSettings() {
+    std::string path = SettingsPath();
+    if (path.empty()) path = "assets/settings.cfg";
+    std::ofstream f(path);
+    if (!f) return;
+    const Settings& s = g_settings;
+    // Keep the file self-documenting: the settings screen rewrites it on
+    // every exit, so the docs must survive the round-trip.
+    f << "# OpenWarband settings. Missing keys keep their defaults. The in-game\n"
+         "# settings screen (O) rewrites this file on exit.\n"
+         "#   width / height   window size in pixels (takes effect on restart)\n"
+         "#   fullscreen       on | off\n"
+         "#   loddist          soldiers beyond this distance draw as simple silhouettes\n"
+         "#                    (lower = faster on weak GPUs, higher = prettier)\n"
+         "#   particles        on | off   blood and hoof-dust puffs\n"
+         "#   volume           0.0 .. 1.0 master audio volume\n"
+         "#   inverty          on | off   flip vertical mouse look\n\n"
+      << "width " << s.windowWidth << "\nheight " << s.windowHeight
+      << "\nfullscreen " << (s.fullscreen ? "on" : "off")
+      << "\nloddist " << (int)s.lodDistance
+      << "\nparticles " << (s.particles ? "on" : "off")
+      << "\nvolume " << TextFormat("%.2f", s.masterVolume)
+      << "\ninverty " << (s.invertY ? "on" : "off") << '\n';
+}
+
 void LoadSettings() {
     const std::string path = SettingsPath();
     if (path.empty()) return;

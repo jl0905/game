@@ -156,6 +156,9 @@ struct GameState {
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 
+    // Where the settings screen returns to when it closes (K1).
+    Screen settingsBack = Screen::Title;
+
     // Dialogue screen (H4): who the player is talking to and what they said.
     // Filled by the town scene when a conversation opens; transient.
     std::string              dialogueName;

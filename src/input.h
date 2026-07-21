@@ -52,6 +52,10 @@ struct CampaignInput {
     bool    openCharacter = false;    // C on the map
     int     spendAttr     = -1;       // attribute row to put a point into
 
+    // settings screen (K1)
+    bool    openSettings = false;     // O on the map / title
+    int     settingsRow  = -1;        // option row to toggle/cycle
+
     // title screen: 1 = new game, 2 = continue (autosave), 3 = quit
     int     menuChoice = 0;
 

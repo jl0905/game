@@ -22,3 +22,7 @@ Settings& GetSettings();
 
 // Overlay assets/settings.cfg onto the defaults (missing file/keys keep them).
 void LoadSettings();
+
+// Write the current settings back to the cfg they were loaded from (or the
+// default assets path). Called when the settings screen closes (K1).
+void SaveSettings();

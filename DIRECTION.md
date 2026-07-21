@@ -179,8 +179,12 @@ flat.
 The first board is swept: every core Warband system exists in v1. This wave
 turns v1s into keepers. Ordered roughly by player-visible payoff.
 
-- [ ] **K1. In-game settings screen.** A `Screen::Settings` over the J4 cfg:
-  arrow/click through the options, write `assets/settings.cfg` back on exit.
+- [x] **K1. In-game settings screen.** Shipped: press O on the title or the
+  map — number keys or clicks cycle fullscreen, draw distance (30–90),
+  particles, volume and invert-Y live; Esc writes the cfg back (with its
+  documentation preserved) and returns whence it came. Presentation-only
+  by design: `tests/settings.txt` proves the sim is untouched and the cfg
+  round-trips.
 - [ ] **K2. Lords in the hall.** Talk (H4 screen) to a lord in his castle
   keep: swear fealty / ask for quests / demand a fief there instead of
   bare hotkeys — moves V and lord-flavour into conversation.

@@ -1,4 +1,5 @@
 #include "campaign.h"
+#include "../settings.h"
 #include "../gfx.h"
 #include "../battle/character.h"   // roster parade preview (read-only reuse)
 #include "../save.h"
@@ -800,6 +801,19 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Settings) {
+        for (int row = 0; row < 5; ++row)
+            if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
+        // Mouse (H3 pattern): rows of 44 px from y=200.
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int row = ((int)m.y - 200) / 44;
+            if (m.y >= 200 && row >= 0 && row < 5) in.settingsRow = row;
+        }
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_O)) in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::Dialogue) {
         if (IsKeyPressed(KEY_ONE)) in.menuChoice = 1;
         if (IsKeyPressed(KEY_TWO)) in.menuChoice = 2;
@@ -835,6 +849,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_N))      in.menuChoice = 1;
         if (IsKeyPressed(KEY_C))      in.menuChoice = 2;
         if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 3;
+        in.openSettings = IsKeyPressed(KEY_O);
         // Mouse (H3): the three options are 52-px bands from y=380 (TitleDraw).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 m = GetMousePosition();
@@ -935,6 +950,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     in.openCharacter = IsKeyPressed(KEY_C);
     in.quickSave = IsKeyPressed(KEY_F5);
     in.quickLoad = IsKeyPressed(KEY_F9);
+    in.openSettings = IsKeyPressed(KEY_O);
     return in;
 }
 
@@ -1009,6 +1025,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
     if (in.openCharacter) {
         gs.screen = Screen::Character;
+        return;
+    }
+    if (in.openSettings) {
+        gs.settingsBack = Screen::Campaign;
+        gs.screen = Screen::Settings;
         return;
     }
 
@@ -1933,6 +1954,67 @@ void MarketDraw(const GameState& gs) {
 }
 
 // ---------------------------------------------------------------------------
+// Settings screen (direction K1): a thin UI over src/settings — cycle the J4
+// options live and write the cfg back on exit. Presentation only; nothing
+// here touches simulation state.
+// ---------------------------------------------------------------------------
+
+void SettingsUpdate(GameState& gs, const CampaignInput& in) {
+    Settings& s = GetSettings();
+    switch (in.settingsRow) {
+        case 0:
+            s.fullscreen = !s.fullscreen;
+            if (IsWindowReady()) ToggleFullscreen();
+            break;
+        case 1:   // draw distance steps through the sensible band
+            s.lodDistance = s.lodDistance >= 90.0f ? 30.0f : s.lodDistance + 15.0f;
+            break;
+        case 2:
+            s.particles = !s.particles;
+            break;
+        case 3:   // volume steps 0 / .25 / .5 / .75 / 1
+            s.masterVolume += 0.25f;
+            if (s.masterVolume > 1.01f) s.masterVolume = 0.0f;
+            if (IsAudioDeviceReady()) SetMasterVolume(s.masterVolume);
+            break;
+        case 4:
+            s.invertY = !s.invertY;
+            break;
+        default: break;
+    }
+    if (in.leaveSettlement) {
+        SaveSettings();
+        gs.screen = gs.settingsBack;
+    }
+}
+
+void SettingsDraw(const GameState& gs) {
+    (void)gs;
+    const Settings& s = GetSettings();
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int x = GetScreenWidth() / 2 - 300;
+    ui::Title("SETTINGS", x, 60, 44, GOLD);
+    ui::Text("[1-5 / click] change    [Esc / O] save and back", x, 120, 20,
+             Fade(RAYWHITE, 0.7f));
+
+    int y = 200;
+    auto row = [&](int i, const char* label, const char* value) {
+        ui::Text(TextFormat("[%d]  %-18s %s", i + 1, label, value), x, y, 24, RAYWHITE);
+        y += 44;
+    };
+    row(0, "Fullscreen",    s.fullscreen ? "on" : "off");
+    row(1, "Draw distance", TextFormat("%.0f", s.lodDistance));
+    row(2, "Particles",     s.particles ? "on" : "off");
+    row(3, "Volume",        TextFormat("%.0f%%", s.masterVolume * 100));
+    row(4, "Invert look Y", s.invertY ? "on" : "off");
+
+    ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
+             x, y + 20, 18, Fade(RAYWHITE, 0.55f));
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
 // Party management (roadmap D2): roster review + spending veterancy (C2).
 // Rows are troop types the player owns, in troop-registry order.
 // ---------------------------------------------------------------------------
@@ -2092,6 +2174,11 @@ void VictoryDraw(const GameState& gs) {
 }
 
 bool TitleUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.openSettings) {
+        gs.settingsBack = Screen::Title;
+        gs.screen = Screen::Settings;
+        return true;
+    }
     if (in.menuChoice != 0) SfxPlay(Sfx::Click);
     switch (in.menuChoice) {
         case 1:   // fresh world

@@ -80,6 +80,9 @@ struct Harness {
             case Screen::Dialogue:
                 DialogueUpdate(gs, cin);   // the town scene stays live behind it
                 break;
+            case Screen::Settings:
+                SettingsUpdate(gs, cin);
+                break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
@@ -148,6 +151,7 @@ struct Harness {
             case Screen::Settlement:   return "Settlement";
             case Screen::Market:       return "Market";
             case Screen::Dialogue:     return "Dialogue";
+            case Screen::Settings:     return "Settings";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -433,6 +437,15 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "settings") {
+            CampaignInput cin;
+            if (h.gs.screen == Screen::Settings) cin.leaveSettlement = true;
+            else                                 cin.openSettings = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "setopt") {
+            CampaignInput cin; ss >> cin.settingsRow;
+            cin.settingsRow--;   // 1-based on the command line, like the keys
+            h.Step(cin, BattleInput{});
         } else if (cmd == "talk") {
             // Open a conversation with the nearest NPC (skips the walk-up).
             if (h.gs.screen == Screen::Settlement) {

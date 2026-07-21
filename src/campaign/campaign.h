@@ -45,6 +45,10 @@ void PartyDraw(const GameState& gs);
 void InventoryUpdate(GameState& gs, const CampaignInput& in);
 void InventoryDraw(const GameState& gs);
 
+// Settings screen (K1), opened with O from the title or the map.
+void SettingsUpdate(GameState& gs, const CampaignInput& in);
+void SettingsDraw(const GameState& gs);
+
 // Character sheet (level / XP / attributes), opened with C.
 void CharacterUpdate(GameState& gs, const CampaignInput& in);
 void CharacterDraw(const GameState& gs);
