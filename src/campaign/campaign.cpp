@@ -433,6 +433,14 @@ void CampaignInit(GameState& gs) {
             t.garrison[roster[i % (int)roster.size()]]++;
     }
 
+    // Stock every settlement's market and empty the hero's saddlebags.
+    // TODO(balance): starting stock and per-town price spreads are flat.
+    for (Town& t : gs.towns) {
+        t.stock.assign(c.goods.size(), 10);
+        t.priceOffset.assign(c.goods.size(), 100);
+    }
+    gs.goods.assign(c.goods.size(), 0);
+
     gs.parties.clear();
     gs.skirmishes.clear();
     gs.aiSieges.clear();
@@ -641,7 +649,17 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (IsKeyPressed(KEY_ONE + slot)) in.recruitSlot = slot;
         in.ransom   = IsKeyPressed(KEY_R);
         in.interact = IsKeyPressed(KEY_E);
+        in.openMarket = IsKeyPressed(KEY_M);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
+        return in;
+    }
+
+    if (gs.screen == Screen::Market) {
+        const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+        for (int slot = 0; slot < 9; ++slot)
+            if (IsKeyPressed(KEY_ONE + slot))
+                (shift ? in.sellGood : in.buyGood) = slot;
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) in.leaveSettlement = true;
         return in;
     }
 
@@ -958,6 +976,12 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.gold += income - wages;
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.",
                                        gs.day, income, wages);
+
+            // Markets restock one unit of each ware a day, up to the starting
+            // level — caravans (direction E3) will replace this flat regrowth.
+            for (Town& t : gs.towns)
+                for (int g = 0; g < (int)t.stock.size(); ++g)
+                    if (t.stock[g] < 10) t.stock[g]++;   // TODO(balance)
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
 
             // Every owner musters one soldier a day toward their garrison cap
@@ -1453,6 +1477,79 @@ void InventoryDraw(const GameState& gs) {
             ui::Text(line1, bx, by, 20, RAYWHITE);
             ui::Text(line2, bx, by + 26, 18, Fade(RAYWHITE, 0.75f));
         }
+    }
+
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace (direction E1): buy/sell stackable trade goods at a settlement.
+// Prices come from GoodDef::basePrice scaled by the town's per-good offset;
+// selling pays a flat fraction of the buy price so round-trips cost gold.
+// ---------------------------------------------------------------------------
+
+static int MarketBuyPrice(const Content& c, const Town& t, int g) {
+    const int offset = g < (int)t.priceOffset.size() ? t.priceOffset[g] : 100;
+    return c.goods[g].basePrice * offset / 100;
+}
+
+static int MarketSellPrice(const Content& c, const Town& t, int g) {
+    return MarketBuyPrice(c, t, g) * 3 / 4;   // TODO(balance): merchant's cut
+}
+
+void MarketUpdate(GameState& gs, const CampaignInput& in) {
+    const Content& c = gs.content;
+    if (gs.currentSettlement < 0 || gs.currentSettlement >= (int)gs.towns.size()) {
+        gs.screen = Screen::Campaign;   // market with no settlement: bail out
+        return;
+    }
+    Town& t = gs.towns[gs.currentSettlement];
+
+    if (in.buyGood >= 0 && in.buyGood < c.goods.size()) {
+        const int g     = in.buyGood;
+        const int price = MarketBuyPrice(c, t, g);
+        if (t.stock[g] > 0 && gs.gold >= price) {
+            gs.gold -= price;
+            t.stock[g]--;
+            gs.goods[g]++;
+        }
+    }
+    if (in.sellGood >= 0 && in.sellGood < c.goods.size()) {
+        const int g = in.sellGood;
+        if (gs.goods[g] > 0) {
+            gs.gold += MarketSellPrice(c, t, g);
+            gs.goods[g]--;
+            t.stock[g]++;
+        }
+    }
+
+    if (in.leaveSettlement) gs.screen = Screen::Settlement;   // back to the streets
+}
+
+void MarketDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+
+    const Town& t = gs.towns[gs.currentSettlement];
+    const int   x = 120;
+    ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
+    ui::Text("1-9 buy one   Shift+1-9 sell one   Esc / M back", x, 116, 20,
+             Fade(RAYWHITE, 0.7f));
+    ui::Text(TextFormat("Gold: %d", gs.gold), x, 150, 24, RAYWHITE);
+
+    int y = 200;
+    ui::Text("     ware          buy   sell   stock   yours", x, y, 18,
+             Fade(RAYWHITE, 0.5f));
+    y += 30;
+    for (int g = 0; g < c.goods.size(); ++g) {
+        const GoodDef& gd = c.goods[g];
+        DrawRectangle(x, y + 3, 16, 16, gd.tint);
+        ui::Text(TextFormat("[%d] %-12s %4d  %4d   %4d    %4d", g + 1,
+                            gd.name.c_str(), MarketBuyPrice(c, t, g),
+                            MarketSellPrice(c, t, g), t.stock[g], gs.goods[g]),
+                 x + 26, y, 20, RAYWHITE);
+        y += 32;
     }
 
     EndDrawing();

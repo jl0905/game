@@ -59,6 +59,12 @@ struct Town {
     int            owner = -1;   // owning faction handle; changes at runtime (sieges)
     std::vector<int> garrison;   // defending troops, parallel to Content::troops
 
+    // Marketplace (direction E1), parallel to Content::goods. `priceOffset` is
+    // a percentage of GoodDef::basePrice (100 = base) — per-town spreads are
+    // the structural hook for prosperity/caravans; values stay flat for now.
+    std::vector<int> stock;        // units for sale
+    std::vector<int> priceOffset;  // TODO(balance): percent of base price
+
     int garrisonSize() const {
         int n = 0;
         for (int c : garrison) n += c;
@@ -125,6 +131,7 @@ struct GameState {
     std::vector<int>   troopXp;                  // player XP pool per troop type (C2)
     std::vector<int>   prisoners;                // captives by troop type (ransomable)
     std::vector<InvItem> inventory;              // hero's tiled bag (D1)
+    std::vector<int>     goods;                  // trade goods held, per good type (E1)
     int                invCarry = -1;            // inventory item being moved (transient)
 
     // Live diplomacy (C4): a runtime copy of Content::hostile. Wars between

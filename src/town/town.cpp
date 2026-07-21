@@ -227,6 +227,13 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- browse the market stalls (M) ----
+    if (cin.openMarket) {
+        gs.screen = Screen::Market;
+        if (IsWindowReady()) EnableCursor();
+        return false;
+    }
+
     // ---- step through the tavern door (E), or back out again ----
     if (cin.interact && (T.inside || TownAtTavern())) {
         T.inside = !T.inside;

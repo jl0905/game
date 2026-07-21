@@ -137,6 +137,14 @@ int main(int argc, char** argv) {
                 else                              CampaignDraw(gs);
                 break;
             }
+            case Screen::Market: {                        // buy/sell goods; paused
+                const CampaignInput in = GatherCampaignInput(gs);
+                MarketUpdate(gs, in);
+                if (gs.screen == Screen::Market) MarketDraw(gs);
+                else if (gs.screen == Screen::Settlement) { TownInit(gs); TownDraw(gs); }
+                else                                      CampaignDraw(gs);
+                break;
+            }
             case Screen::Party: {                         // roster + upgrades; paused
                 const CampaignInput in = GatherCampaignInput(gs);
                 PartyUpdate(gs, in);

@@ -69,6 +69,10 @@ struct Harness {
             case Screen::Settlement:
                 if (!TownUpdate(gs, STEP, bin, cin)) townLive = false;
                 break;
+            case Screen::Market:
+                MarketUpdate(gs, cin);
+                if (gs.screen != Screen::Market) townLive = false;   // re-init streets
+                break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
@@ -135,6 +139,7 @@ struct Harness {
             case Screen::Title:        return "Title";
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
+            case Screen::Market:       return "Market";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -185,6 +190,15 @@ struct Harness {
                         p.pos.x, p.pos.y, p.totalTroops(), PartyStateName(p.state),
                         p.fatigue, p.engaged ? 1 : 0,
                         Vector2Distance(p.pos, gs.player.pos));
+        }
+        for (int g = 0; g < c.goods.size() && g < (int)gs.goods.size(); ++g)
+            if (gs.goods[g] > 0)
+                std::printf("good: %s=%d\n", c.goods[g].id.c_str(), gs.goods[g]);
+        if (gs.screen == Screen::Market && gs.currentSettlement >= 0) {
+            const Town& tw = gs.towns[gs.currentSettlement];
+            for (int g = 0; g < c.goods.size() && g < (int)tw.stock.size(); ++g)
+                std::printf("market: %s stock=%d offset=%d\n", c.goods[g].id.c_str(),
+                            tw.stock[g], tw.priceOffset[g]);
         }
         for (const InvItem& it : gs.inventory)
             std::printf("item: %s %s at (%d,%d)\n", it.isWeapon ? "weapon" : "armor",
@@ -365,6 +379,22 @@ int RunScript(const char* path) {
                 h.townLive   = false;
             }
             std::printf("%s %s: %s\n", cmd.c_str(), p.c_str(), ok ? "ok" : "FAILED");
+        } else if (cmd == "market") {
+            CampaignInput cin;
+            if (h.gs.screen == Screen::Market) cin.leaveSettlement = true;
+            else                               cin.openMarket = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "buy" || cmd == "sell") {
+            std::string id; int n = 1;
+            ss >> id >> n;
+            const int g = h.gs.content.goods.find(id.c_str());
+            if (g < 0) {
+                std::fprintf(stderr, "harness: unknown good '%s'\n", id.c_str());
+            } else for (int i = 0; i < n; ++i) {
+                CampaignInput cin;
+                (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
+                h.Step(cin, BattleInput{});
+            }
         } else if (cmd == "join") {
             CampaignInput cin; ss >> cin.joinSide;
             h.Step(cin, BattleInput{});

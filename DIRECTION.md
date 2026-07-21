@@ -25,10 +25,11 @@ flat.
 
 ## Track E — Economy & trade (Warband's backbone)
 
-- [ ] **E1. Marketplace.** Goods as content defs (grain, iron, wool, tools,
-  spice…) with per-settlement stock and price offsets by settlement type.
-  Buy/sell screen in settlements (extend the tavern/menu flow). Prices flat
-  TODO(balance); structure supports later supply/demand.
+- [x] **E1. Marketplace.** Shipped: `GoodDef` registry (6 wares), per-town
+  `stock`/`priceOffset`, `Screen::Market` opened with M inside a settlement,
+  sell pays 3/4 of buy (flat TODO(balance)), daily +1 restock, saved/loaded,
+  harness `market`/`buy`/`sell` + `tests/market.txt`. Follow-ups: an on-screen
+  [M] hint in the town HUD; a market stall building as the trigger.
 - [ ] **E2. Inventory-driven trade loop.** Goods occupy inventory tiles
   (reuse D1 grid); party carry capacity from party size. Sell price differs
   by settlement → the classic buy-low/sell-high caravan loop exists.
@@ -81,10 +82,42 @@ flat.
 - [ ] **H4. Dialogue screens.** Talking to lords/NPCs opens a portrait dialogue
   screen (persuade/threaten/quest hooks) instead of floating text.
 
+## Track I — World scale & moddability (user directive 2026-07-20)
+
+- [ ] **I1. Data-driven map.** Move the world map (bounds, biomes, settlement
+  positions/types/owners, faction spawn points, roads) out of code into a
+  moddable asset file (e.g. `assets/map.cfg`, same spirit as `fonts.cfg`),
+  loaded at startup with the current map as the shipped default. Modders can
+  then reshape the world with no rebuild.
+- [ ] **I2. Bigger map, still fast.** Expand the world meaningfully (more
+  settlements, more room between crowns) once I1 lands; profile campaign tick
+  and draw at the larger scale (party AI is O(n²)-ish — grid it if needed,
+  see G1 for the battle-side twin).
+
+## Track J — Tactical battles & player impact (user directive 2026-07-20)
+
+- [ ] **J1. Targeting AI.** Soldiers pick targets sensibly instead of nearest-
+  only: prefer threats attacking them or allies, spread across enemies rather
+  than dogpiling one, archers prefer unshielded/high-value targets. Builds on
+  G1's spatial grid.
+- [ ] **J2. Slower, more tactical pacing.** Structural knobs for pace (swing
+  cooldowns, movement speeds, engagement distances) routed through content
+  defs so pacing is tunable data (numbers flat, TODO(balance)) — battles
+  should read as lines meeting, not instant blenders.
+- [ ] **J3. Player impact.** The hero should visibly matter: nearby-troop
+  rally/morale aura hooks, killing-blow feedback, order responsiveness —
+  fighting well should swing a close battle.
+- [ ] **J4. Settings & graphics options.** A settings screen (and
+  `assets/settings.cfg`): resolution/fullscreen, draw distance/LOD radius,
+  particles on/off, audio volumes, invert-Y, key hints. Graphical upgrades
+  (shadows, nicer sky, water) welcome when cheap on the frame budget.
+
 ## Sequencing guidance
 
-E1→E2 first (marketplace was explicitly requested and unblocks E3/E4/F4-goods
-quests), G1 in parallel whenever a session wants an engine task. F-track after
+User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
+(data-driven map) are the current top priorities, with J4 (settings) as a good
+standalone session task. E1→E2 next (marketplace was explicitly requested and
+unblocks E3/E4/F4-goods quests). F-track after
 E-track exists to pay for it. Prefer finishing a track's structure over
 starting a new one; prefer one shipped, tested, committed feature per session
 over two half-features.

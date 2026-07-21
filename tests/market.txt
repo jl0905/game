@@ -1,0 +1,20 @@
+# Marketplace (direction E1): buy/sell goods, restock, save/load round-trip.
+seed 7
+enter 0            # Sargoth is friendly on day one
+market             # M at the stalls
+state              # expect screen=Market, stock=10 each, 300 gold
+buy grain 3        # 3 x 10g
+buy iron 1
+state              # expect gold=260, grain=3 iron=1, grain stock=7
+sell grain 1       # merchant pays 7 (3/4 of 10)
+state              # expect gold=267, grain=2, stock back to 8
+save market_test.owb
+load market_test.owb
+enter 0
+market
+state              # expect goods and stock to survive the reload
+market             # leave back to the streets
+leave
+quit
+# (Daily restock exists but is not asserted here: letting a world day pass
+#  hands settlements to the AI war and the market may no longer be enterable.)

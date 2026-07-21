@@ -239,6 +239,16 @@ void LoadDefaultContent(Content& c) {
     vaeling.kingdom = true;
     const int f_vaeling = c.factions.add(vaeling);
 
+    // ---- Trade goods (direction E1) --------------------------------------
+    // Stackable market wares. basePrice is a flat placeholder; per-town
+    // spreads live on Town::priceOffset. TODO(balance): all prices.
+    c.goods.add({ "grain", "Grain",  10, BEIGE });
+    c.goods.add({ "wool",  "Wool",   10, RAYWHITE });
+    c.goods.add({ "iron",  "Iron",   10, GRAY });
+    c.goods.add({ "tools", "Tools",  10, LIGHTGRAY });
+    c.goods.add({ "salt",  "Salt",   10, Color{ 235, 235, 245, 255 } });
+    c.goods.add({ "spice", "Spice",  10, ORANGE });
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.

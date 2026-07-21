@@ -22,6 +22,11 @@ struct CampaignInput {
     bool    ransom          = false;  // sell captives at the tavern (R)
     bool    interact        = false;  // enter/leave a building (E)
     bool    leaveSettlement = false;
+    bool    openMarket      = false;  // browse the settlement market (M)
+
+    // market screen (rows are goods-registry order)
+    int     buyGood  = -1;            // good row to buy one unit of
+    int     sellGood = -1;            // good row to sell one unit of (Shift+key)
 
     // party screen
     bool    openParty   = false;      // P on the map

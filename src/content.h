@@ -95,6 +95,16 @@ struct TroopDef {
     Color       accent = WHITE;    // small identifying plume/banner colour
 };
 
+// A tradable good (direction E1). Goods are stackable quantities — unlike
+// armour/weapons they never occupy inventory tiles; the player's holdings and
+// each settlement's stock are simple counts parallel to this registry.
+struct GoodDef {
+    std::string id;
+    std::string name;
+    int         basePrice = 0;   // TODO(balance): gold per unit before offsets
+    Color       tint      = BEIGE;  // market-row swatch
+};
+
 // A hero attribute (roadmap D3). Pure structure: `hook` documents what the
 // attribute WILL modify once balancing begins; nothing reads values yet.
 struct AttributeDef {
@@ -131,6 +141,7 @@ struct Content {
     Registry<TroopDef>     troops;
     Registry<FactionDef>   factions;
     Registry<AttributeDef> attributes;
+    Registry<GoodDef>      goods;
 
     int playerFaction = -1;  // resolved after loading
 

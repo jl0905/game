@@ -33,6 +33,10 @@ void CampaignDraw(const GameState& gs);
 
 // (The settlement itself is a walkable 3D scene — see src/town/town.h.)
 
+// Settlement marketplace (buy/sell trade goods), opened with M in a settlement.
+void MarketUpdate(GameState& gs, const CampaignInput& in);
+void MarketDraw(const GameState& gs);
+
 // Party management screen (roster + veterancy upgrades), opened with P.
 void PartyUpdate(GameState& gs, const CampaignInput& in);
 void PartyDraw(const GameState& gs);

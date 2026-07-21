@@ -95,6 +95,11 @@ bool SaveGame(const GameState& gs, const char* path) {
           << it.x << ' ' << it.y << '\n';
     }
 
+    // Trade goods in the saddlebags (E1).
+    for (int g = 0; g < c.goods.size() && g < (int)gs.goods.size(); ++g)
+        if (gs.goods[g] > 0)
+            f << "good " << c.goods[g].id << ' ' << gs.goods[g] << '\n';
+
     // Settlement ownership (towns themselves are recreated by CampaignInit;
     // only who holds them is state). Keyed by index — the town list is static.
     for (int t = 0; t < (int)gs.towns.size(); ++t) {
@@ -106,6 +111,9 @@ bool SaveGame(const GameState& gs, const char* path) {
             if (gs.towns[t].garrison[tr] > 0)
                 f << "garrison " << t << ' ' << c.troops[tr].id << ' '
                   << gs.towns[t].garrison[tr] << '\n';
+        for (int g = 0; g < (int)gs.towns[t].stock.size() && g < c.goods.size(); ++g)
+            f << "stock " << t << ' ' << c.goods[g].id << ' '
+              << gs.towns[t].stock[g] << ' ' << gs.towns[t].priceOffset[g] << '\n';
     }
 
     // Live diplomacy: only pairs that differ from the base relations (or hold
@@ -209,6 +217,20 @@ bool LoadGame(GameState& gs, const char* path) {
             it.isWeapon = (kind == "weapon");
             it.handle = it.isWeapon ? c.weapons.find(id.c_str()) : c.armor.find(id.c_str());
             if (it.handle >= 0) gs.inventory.push_back(it);
+        } else if (tag == "good") {
+            std::string id; int n = 0;
+            ss >> id >> n;
+            const int g = c.goods.find(id.c_str());
+            if (g >= 0 && g < (int)gs.goods.size() && n > 0) gs.goods[g] = n;
+        } else if (tag == "stock") {
+            int idx = -1, n = 0, off = 100; std::string gid;
+            ss >> idx >> gid >> n >> off;
+            const int g = c.goods.find(gid.c_str());
+            if (idx >= 0 && idx < (int)gs.towns.size() && g >= 0 &&
+                g < (int)gs.towns[idx].stock.size()) {
+                gs.towns[idx].stock[g] = n;
+                gs.towns[idx].priceOffset[g] = off;
+            }
         } else if (tag == "garrisonreset") {
             int idx = -1;
             ss >> idx;
