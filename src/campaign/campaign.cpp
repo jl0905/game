@@ -1899,6 +1899,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // World events (R4): every third day something happens somewhere
+            // — announced as news, felt in the markets, or on the roads.
+            // TODO(balance): the cadence.
+            if (c.events.size() > 0 && !gs.towns.empty() && gs.day % 3 == 1) {
+                const EventDef& ev = c.events[(gs.day / 3) % c.events.size()];
+                Town& t = gs.towns[gs.day % (int)gs.towns.size()];
+                t.prosperity = std::clamp(t.prosperity + ev.prosperityDelta, 30, 150);
+                for (int g = 0; g < (int)t.stock.size(); ++g)
+                    t.stock[g] = std::max(0, t.stock[g] + ev.stockDelta);
+                const int raiders = c.factions.find("raiders");
+                for (int n = 0; n < ev.spawnParties && raiders >= 0; ++n)
+                    gs.parties.push_back(MakeParty(c, raiders,
+                        { t.pos.x + Frand(-120, 120), t.pos.y + Frand(-120, 120) }));
+                gs.resultText = TextFormat(ev.news.c_str(), t.name.c_str());
+            }
+
             // Bandit dens breed a fresh band every other day (H2).
             for (Lair& l : gs.lairs) {
                 if (!l.alive) continue;

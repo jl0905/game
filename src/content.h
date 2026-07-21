@@ -132,6 +132,18 @@ struct QuestDef {
     int         relationReward = 0;  // TODO(balance)
 };
 
+// A world event (R4): fires at a settlement on the day rotation and is
+// announced as news. Registered like any other content — modders add events
+// the way they add goods. All numbers flat TODO(balance).
+struct EventDef {
+    std::string id;
+    std::string name;
+    std::string news;             // "%s" is the struck settlement's name
+    int prosperityDelta = 0;      // applied to the settlement, clamped 30..150
+    int stockDelta      = 0;      // per good, floored at 0
+    int spawnParties    = 0;      // outlaw bands raised at the site
+};
+
 // A hero attribute (roadmap D3). Pure structure: `hook` documents what the
 // attribute WILL modify once balancing begins; nothing reads values yet.
 struct AttributeDef {
@@ -209,6 +221,7 @@ struct Content {
     Registry<GoodDef>      goods;
     Registry<EnterpriseDef> enterprises;
     Registry<QuestDef>     quests;
+    Registry<EventDef>     events;
     MapDef                 map;
 
     int playerFaction = -1;  // resolved after loading

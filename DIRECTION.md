@@ -509,10 +509,12 @@ full career, and the last Warband textures.
   turns the opening from reflex into plan.
 - [ ] **R3. Roster polish.** Veterancy pips on the party screen (XP toward
   the next rank as a bar), wage column, and a party-cap readout.
-- [ ] **R4. World events.** A data-driven `EventDef` registry (good
-  harvest, murrain, bandit king rises...) firing by day rotation:
-  prosperity/stock/spawn effects, announced as news. Modders add events
-  like they add goods.
+- [x] **R4. World events.** Shipped: `EventDef` registry (news line with
+  the settlement's name, prosperity/stock deltas, outlaw bands raised) —
+  Good Harvest, Murrain, and A Bandit King Rises registered; one fires
+  every third day at a rotating settlement. Modders add events like they
+  add goods (MODDING.md updated). `tests/world_events.txt` watches the
+  harvest lift Praven to 120. Flat TODO(balance).
 - [ ] **R5. Lords change banners.** An AI lord whose crown keeps losing
   (war weariness high, opinion of his liege gone) defects to the
   winning side — living politics between crowns, not just around the

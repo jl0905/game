@@ -343,6 +343,16 @@ void LoadDefaultContent(Content& c) {
                    "The granary runs thin. Bring grain from afar.",
                    QuestType::DeliverGrain, 5, 80, 5 });
 
+    // ---- World events (R4) ------------------------------------------------
+    // Fired on the day rotation at a rotating settlement, announced as news.
+    // TODO(balance): every number.
+    c.events.add({ "harvest", "Good Harvest",
+                   "The harvest at %s is the best in years.", 20, 3, 0 });
+    c.events.add({ "murrain", "Murrain",
+                   "A murrain strikes the herds at %s.", -20, -2, 0 });
+    c.events.add({ "banditking", "A Bandit King Rises",
+                   "Masterless men flock to a bandit king near %s!", -10, 0, 2 });
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.

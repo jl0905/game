@@ -1,0 +1,11 @@
+# World events (direction R4): every third day the EventDef registry fires
+# at a rotating settlement - a harvest, a murrain, a bandit king - announced
+# as news and felt in prosperity, stock, and the roads.
+seed 2
+state              # baseline: Praven (town 1) prosper=100
+wait 70            # day 1: the rotation fires event 0 (Good Harvest) at town 1
+state              # expect Praven prosper=120 and the harvest news in result=
+wait 210           # day 4: event 1 (Murrain) strikes town 4 (Curaw) - though
+state              # caravan arrivals churn prosperity, so the Praven beat
+                   # above is the deterministic assertion
+quit

@@ -57,9 +57,11 @@ no other code changes:
   (`Aggressive|Patrol|Passive`), `roster`, optional `lords` + `lordPartySize`
   and `kingdom = true`. Declare wars in the relations block at the end
   (`war(a, b)`); unmarked pairs are at peace.
-- **Goods / enterprises / quests**: one-line `c.goods.add`,
-  `c.enterprises.add`, `c.quests.add` entries — markets, businesses and the
-  job board pick them up automatically.
+- **Goods / enterprises / quests / events**: one-line `c.goods.add`,
+  `c.enterprises.add`, `c.quests.add`, `c.events.add` entries — markets,
+  businesses, the job board, and the world-news rotation pick them up
+  automatically. An `EventDef` carries a news line (`%s` = the settlement),
+  prosperity/stock deltas, and how many outlaw bands it raises.
 
 ## Testing your mod
 
