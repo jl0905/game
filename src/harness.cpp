@@ -480,7 +480,10 @@ int RunScript(const char* path) {
             CampaignInput cin; cin.swear = true;
             h.Step(cin, BattleInput{});
         } else if (cmd == "tournament") {
+            std::string bet;
+            ss >> bet;
             CampaignInput cin; cin.tournament = true;
+            cin.tournamentBet = (bet == "bet");
             h.Step(cin, BattleInput{});
         } else if (cmd == "enterprise") {
             CampaignInput cin; cin.buyEnterprise = true;

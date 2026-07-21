@@ -568,11 +568,21 @@ static void ApplyBattleResult(GameState& gs) {
     // captives or war score touch the world — only the purse and the champion's
     // renown. TODO(balance): purse size.
     if (gs.arenaFight) {
+        // A won round advances the bracket (K3); the third crowns a champion.
+        if (gs.battleWon && gs.arenaRound < 3) {
+            gs.arenaRound++;
+            gs.screen = Screen::Battle;   // straight into the next round
+            gs.resultText = TextFormat("Round %d!  The field narrows.", gs.arenaRound);
+            gs.battlePartyIndex = -1;
+            gs.battleAllyIndex  = -1;
+            return;
+        }
         gs.arenaFight = false;
-        gs.currentSettlement = -1;   // the bout spills back onto the map
+        gs.currentSettlement = -1;   // the bracket spills back onto the map
         if (gs.battleWon) {
-            const int purse = 150;
-            gs.gold += purse;
+            const int purse  = 150;                 // TODO(balance)
+            const int payout = purse + gs.arenaBet * 3;   // stake pays 3x
+            gs.gold += payout;
             Character& hero = gs.playerHero;
             hero.xp += HERO_XP_PER_WIN;
             while (hero.xp >= HeroXpToLevel(hero.level)) {
@@ -580,14 +590,23 @@ static void ApplyBattleResult(GameState& gs) {
                 hero.level++;
                 hero.attrPoints++;
             }
-            gs.resultText = TextFormat("TOURNAMENT CHAMPION!  The purse is %d gold.", purse);
+            gs.resultText = gs.arenaBet > 0
+                ? TextFormat("TOURNAMENT CHAMPION!  Purse %d + winnings %d gold.",
+                             purse, gs.arenaBet * 3)
+                : TextFormat("TOURNAMENT CHAMPION!  The purse is %d gold.", purse);
             gs.battleReport.push_back("TOURNAMENT CHAMPION");
-            gs.battleReport.push_back(TextFormat("Purse: %d gold      Hero: +%d XP",
-                                                 purse, HERO_XP_PER_WIN));
+            gs.battleReport.push_back(TextFormat("Winnings: %d gold      Hero: +%d XP",
+                                                 payout, HERO_XP_PER_WIN));
         } else {
-            gs.resultText = "Unhorsed in the ring... better luck next bout.";
+            gs.resultText = gs.arenaBet > 0
+                ? TextFormat("Cast out in round %d... your %d-gold stake is gone.",
+                             gs.arenaRound, gs.arenaBet)
+                : TextFormat("Cast out in round %d... better luck next bracket.",
+                             gs.arenaRound);
             gs.battleReport.push_back("DEFEATED IN THE RING");
         }
+        gs.arenaRound = 0;
+        gs.arenaBet   = 0;
         gs.battlePartyIndex = -1;
         gs.battleAllyIndex  = -1;
         gs.allyLosses.clear();
@@ -793,6 +812,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.interact = IsKeyPressed(KEY_E);
         in.openMarket = IsKeyPressed(KEY_M);
         in.tournament = IsKeyPressed(KEY_T);
+        in.tournamentBet = in.tournament &&
+                           (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
         in.swear      = IsKeyPressed(KEY_V);
         in.quest      = IsKeyPressed(KEY_G);
         in.hire       = IsKeyPressed(KEY_H);
@@ -960,7 +981,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
     if (gs.screen == Screen::BattleResult) {
         ApplyBattleResult(gs);
-        gs.screen = Screen::Campaign;
+        // The aftermath may chain into another fight (tournament rounds, K3);
+        // only settle back onto the map when it didn't redirect.
+        if (gs.screen == Screen::BattleResult) gs.screen = Screen::Campaign;
     }
     gs.battleReportTimer = fmaxf(0.0f, gs.battleReportTimer - dt);
 

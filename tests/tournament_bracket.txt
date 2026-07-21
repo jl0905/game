@@ -1,0 +1,98 @@
+# Tournament bracket & betting (direction K3): three narrowing rounds; a
+# 50-gold stake rides on the championship. The scripted hero carries rounds
+# one and two with the crowd of borrowed blades; the final duel is a real
+# sword fight and the blind script loses it — stake gone, world untouched.
+# (A windowed human can win the duel; that is the point of J3.)
+seed 1
+enter 0
+tournament bet     # Shift+T: 300 -> 250 gold, 50 staked
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 60           # the remaining rounds resolve; the duel is lost blind
+state             # expect "Cast out in round 3", gold=250, party=7 untouched
+quit

@@ -197,6 +197,8 @@ struct GameState {
 
     // Battle handoff
     bool             arenaFight = false;         // tournament bout, not a real battle (G2)
+    int              arenaRound = 0;             // 1..3 while a bracket runs (K3)
+    int              arenaBet   = 0;             // gold staked on yourself (K3)
     int              siegeTownIndex   = -1;      // assaulting this town (else -1)
     int              battlePartyIndex = -1;      // enemy: index into `parties`
     int              battleAllyIndex  = -1;      // friendly party joining you, or -1

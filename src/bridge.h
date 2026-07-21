@@ -21,10 +21,16 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         s.arena = true;
         s.playerTroops.assign(c.troops.size(), 0);
         s.enemyTroops.assign(c.troops.size(), 0);
+        // The bracket narrows (K3): an even melee (4-beside-you v 4), then
+        // 2 v 2, then the final duel, hero against champion — your own blade
+        // is the edge in every round. TODO(balance): field sizes.
+        const int round  = gs.arenaRound > 0 ? gs.arenaRound : 1;
         const int mine   = c.troops.find("recruit");
         const int theirs = c.troops.find("brigand");
-        if (mine >= 0)   s.playerTroops[mine] = 3;                  // TODO(balance)
-        if (theirs >= 0) s.enemyTroops[theirs] = 4;                 // TODO(balance)
+        const int allies  = round == 1 ? 4 : round == 2 ? 2 : 0;
+        const int enemies = round == 1 ? 4 : round == 2 ? 2 : 1;
+        if (mine >= 0)   s.playerTroops[mine] = allies;
+        if (theirs >= 0) s.enemyTroops[theirs] = enemies;
         s.heroLoadout = Loadout{};
         s.heroLoadout.addWeapon(c.weapons.find("sword"));           // practice blade
         s.heroMaxHp = gs.playerHero.maxHp;

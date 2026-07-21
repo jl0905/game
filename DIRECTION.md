@@ -192,8 +192,15 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   the same extracted TrySwear/TryQuest logic, so both paths stay in step.
   Harness `court`; `tests/lord_court.txt`. Follow-up: per-lord audiences
   (any lord present, not just the crown's first name).
-- [ ] **K3. Tournament brackets & betting.** Multiple rounds with shrinking
-  fields, bet gold on yourself, renown ties into relations.
+- [x] **K3. Tournament brackets & betting.** Shipped: three narrowing rounds
+  (even 4v4 melee → 2v2 → a true final duel, hero against champion);
+  Shift+T stakes 50 gold that pays 3× on the championship on top of the
+  150 purse; elimination in any round ends the bracket and eats the stake.
+  Fixed en route: the aftermath can now chain into a follow-on battle
+  (CampaignUpdate no longer stomps the redirect). The blind harness carries
+  rounds 1–2 but loses the duel — winning it takes real swordsmanship,
+  which is the J3 point. Flat numbers TODO(balance). Follow-up: renown →
+  relations on championship.
 - [ ] **K4. Per-soldier morale.** Replace G3's side-wide threshold: each
   soldier weighs nearby deaths, leader down, hero aura; lines crumble from
   the flanks instead of all at once.

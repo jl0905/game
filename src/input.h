@@ -24,7 +24,8 @@ struct CampaignInput {
     bool    interact        = false;  // enter/leave a building (E)
     bool    leaveSettlement = false;
     bool    openMarket      = false;  // browse the settlement market (M)
-    bool    tournament      = false;  // enter the arena bout in a town (T)
+    bool    tournament      = false;  // enter the arena bracket in a town (T)
+    bool    tournamentBet   = false;  // ...staking gold on yourself (Shift+T)
     bool    swear           = false;  // swear fealty at a kingdom's settlement (V)
     bool    quest           = false;  // ask the local giver for work (G)
     bool    hire            = false;  // hire the tavern's companion (H)

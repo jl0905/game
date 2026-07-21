@@ -352,10 +352,17 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     // ---- swear fealty to this settlement's crown (V; also at court, K2) ----
     if (cin.swear && gs.liege < 0) TrySwear(gs);
 
-    // ---- enter the tournament ring (T, towns only) ----
+    // ---- enter the tournament bracket (T, towns only; Shift+T stakes gold) ----
     if (cin.tournament &&
         gs.towns[gs.currentSettlement].type == SettlementType::Town) {
         gs.arenaFight = true;
+        gs.arenaRound = 1;
+        gs.arenaBet   = 0;
+        constexpr int ARENA_STAKE = 50;   // TODO(balance): pays 3x as champion
+        if (cin.tournamentBet && gs.gold >= ARENA_STAKE) {
+            gs.gold -= ARENA_STAKE;
+            gs.arenaBet = ARENA_STAKE;
+        }
         gs.screen = Screen::Battle;
         if (IsWindowReady()) EnableCursor();
         return false;
