@@ -93,6 +93,8 @@ struct TroopDef {
     bool        mounted   = false; // rides a horse: drawn mounted, tramples on the charge
     bool        companion = false; // a unique named hero-for-hire (H1): at most one
                                    // in the party, hired in taverns, in no roster
+    std::string temper;            // companion voice (P3): "honorable" objects to
+                                   // black deeds and may leave; "grim" approves
     Loadout     loadout;           // default gear (drives stats + look)
     Color       accent = WHITE;    // small identifying plume/banner colour
 };

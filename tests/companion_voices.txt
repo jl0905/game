@@ -1,0 +1,16 @@
+# Companion voices (direction P3): temperaments speak at the raid fire, and
+# an honorable companion walks out while your honor sits at -3 or worse.
+seed 2
+background 3       # three brigands make the raid a sure thing
+enter 1            # Praven's tavern hosts Malin Longeye (honorable)
+hire
+leave
+state              # expect malin=1 in the troops line
+enter 2            # the fields of Tulga
+siege 2            # put it to the torch with an oath-keeper watching
+block on
+tick 200
+state              # expect Tulga BURNS, honor=-3, Malin still riding
+wait 70            # dawn comes
+state              # expect malin gone and the parting words in result=
+quit

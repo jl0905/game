@@ -831,6 +831,18 @@ static void ApplyBattleResult(GameState& gs) {
                 "%s BURNS.  Loot: %d gold, %d wares. Word of it spreads.",
                 t.name.c_str(), loot, taken);
             gs.battleReport.push_back(std::string(t.name) + " BURNS");
+            // The company has opinions (P3): temperaments speak at the fire.
+            for (int tr = 0; tr < gs.content.troops.size(); ++tr) {
+                if (!gs.content.troops[tr].companion ||
+                    gs.player.troopCounts[tr] <= 0) continue;
+                const TroopDef& td = gs.content.troops[tr];
+                if (td.temper == "honorable")
+                    gs.battleReport.push_back(TextFormat(
+                        "%s: \"I wanted no part of this.\"", td.name.c_str()));
+                else if (td.temper == "grim")
+                    gs.battleReport.push_back(TextFormat(
+                        "%s grins: \"Good haul.\"", td.name.c_str()));
+            }
         } else if (gs.battleWon) {
             NudgeRelation(gs, t.owner, -20);   // you took their land
             t.owner = gs.content.playerFaction;
@@ -1744,6 +1756,21 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.%s",
                                        gs.day, income, wages, supplyNote.c_str());
+
+            // A black name costs company (P3): each dawn, one honorable
+            // companion walks out while your honor sits at -3 or worse.
+            // TODO(balance): the threshold.
+            if (gs.honor <= -3)
+                for (int tr = 0; tr < c.troops.size(); ++tr) {
+                    const TroopDef& td = c.troops[tr];
+                    if (!td.companion || td.temper != "honorable" ||
+                        gs.player.troopCounts[tr] <= 0) continue;
+                    gs.player.troopCounts[tr] = 0;
+                    gs.resultText = TextFormat(
+                        "%s leaves your company: \"Find a better road, or "
+                        "find another sword.\"", td.name.c_str());
+                    break;   // one departure a day — a slow bleed, not a rout
+                }
 
             // Markets live: a settlement produces what it makes (+1/day of
             // its cheap source goods, to a cap) and eats what it wants

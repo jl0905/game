@@ -441,9 +441,15 @@ War should scar the map, not just the rosters.
   his host stands). Storming a lord-guarded seat is now storming an army.
   `tests/relief_battle.txt` breaks against 158 defenders at Curaw.
   Flat TODO(balance).
-- [ ] **P3. Companion voices.** Companions carry a temperament: the
-  honorable object to raids and may leave over a black name; the grim
-  demand spoils. Personality read from `TroopDef`, spoken via dialogue.
+- [x] **P3. Companion voices.** Shipped: `TroopDef::temper` — Malin and
+  Torva are honorable, Rega is grim. At a raid's fire the honorable
+  object and the grim grin (battle-report lines); each dawn your honor
+  sits at −3 or worse, one honorable companion walks out with parting
+  words. Amended P2 en route: relief armies only reach *walled* sieges —
+  villages fall or burn before help arrives (also restores the meaning of
+  every storm-Tulga scenario, which had silently begun fighting Lord
+  Vex's 150). `tests/companion_voices.txt` plays hire → burn → objection
+  → departure. Track P complete.
 - [x] **P4. The first hour.** Shipped: one-time hint toasts on a captain's
   firsts (victory → promote with P; captives → ransom with R; loot →
   inventory I/E/Tab), a contextual "what now?" line on the map HUD

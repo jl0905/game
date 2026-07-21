@@ -358,6 +358,9 @@ inline constexpr float RELIEF_REACH = 250.0f;   // TODO(balance)
 inline int ReliefLordFor(const GameState& gs, int town) {
     if (town < 0 || town >= (int)gs.towns.size()) return -1;
     const Town& t = gs.towns[town];
+    // Villages fall (or burn) before help can arrive — relief armies only
+    // reach fights that take time: walled sieges.
+    if (t.type == SettlementType::Village) return -1;
     for (int i = 0; i < (int)gs.parties.size(); ++i) {
         const Party& p = gs.parties[i];
         if (!p.alive || p.engaged || p.lord.empty()) continue;
