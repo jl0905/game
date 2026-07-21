@@ -55,5 +55,10 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     s.heroLoadout = gs.playerHero.loadout;
     s.heroMaxHp   = gs.playerHero.maxHp;
     s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)
+    // Battlefield biome from the moddable map (K8): the battle module stays
+    // world-blind — it just receives the field it will be fought on.
+    const MapDef& m = gs.content.map;
+    s.hilliness     = Clamp(0.5f + 0.5f * BiomeHillNoise(m, s.campaignPos), 0.0f, 1.0f);
+    s.forestDensity = Clamp(0.5f + 0.5f * BiomeForestNoise(m, s.campaignPos), 0.0f, 1.0f);
     return s;
 }

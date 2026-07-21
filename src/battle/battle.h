@@ -32,6 +32,12 @@ struct BattleSetup {
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
 
+    // World biome at the battlefield (K8): computed by the orchestrator from
+    // the moddable map so battle terrain follows a modded biome without this
+    // module knowing the world. Negative = derive from campaignPos as before.
+    float hilliness     = -1.0f;     // 0..1
+    float forestDensity = -1.0f;     // 0..1
+
     // Siege assaults (roadmap B3b): towns and castles defend from behind a
     // wall with a single gate; villages are open raids.
     bool           siege = false;

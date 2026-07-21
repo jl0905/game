@@ -407,6 +407,21 @@ void LoadMapConfig(Content& c, const char* path) {
             MapDef::LairSpec l;
             if (ss >> l.faction >> l.pos.x >> l.pos.y) m.lairs.push_back(l);
         }
+        else if (tag == "biome") {
+            // biome HILLFX HILLFY FORFX FORFY FORTHRESH MTNTHRESH FORSPD MTNSPD
+            MapDef::BiomeSpec b = m.biome;
+            if (ss >> b.hillFreqX >> b.hillFreqY >> b.forestFreqX >> b.forestFreqY
+                   >> b.forestThreshold >> b.mountainThreshold
+                   >> b.forestSpeed >> b.mountainSpeed)
+                m.biome = b;
+        }
+        else if (tag == "road") ss >> m.roadLinkDist >> m.roadWidth;
+        else if (tag == "lordnames") {
+            std::vector<std::string> names;
+            std::string n;
+            while (ss >> n) names.push_back(n);
+            if (!names.empty()) m.lordNames = names;
+        }
         else if (tag == "town") {
             MapDef::TownSpec t;
             std::string type;

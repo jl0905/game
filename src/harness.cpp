@@ -168,7 +168,7 @@ struct Harness {
                     "terrain=%s%s speed=%.2f\n",
                     ScreenName(), gs.day, gs.gold, gs.player.pos.x, gs.player.pos.y,
                     gs.player.totalTroops(), gs.timeFlowing ? 1 : 0,
-                    WorldTerrainName(WorldTerrainAt(gs.player.pos)),
+                    WorldTerrainName(WorldTerrainAt(gs.content.map, gs.player.pos)),
                     OnRoad(gs, gs.player.pos) ? " road" : "",
                     TravelSpeedFactor(gs, gs.player.pos));
         std::printf("hero: level=%d xp=%d points=%d attrs=[", gs.playerHero.level,

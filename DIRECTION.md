@@ -229,9 +229,15 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   (`DrawHoverRow`, draw-only so the sim never sees it), and the town HUD
   now lists the local keys (T bout, M market, G work, H hire, V oath,
   E talk).
-- [ ] **K8. Map biomes & roads into map.cfg.** The painted biome map, roads
-  and lord name pools move from code into the map file (finishes I1's
-  moddability).
+- [x] **K8. Map biomes & roads into map.cfg.** Shipped: `MapDef::BiomeSpec`
+  (noise frequencies, forest/mountain thresholds, march speeds), road
+  link-distance/width, and the raised-lord name pool all load from
+  `assets/map.cfg` (`biome`/`road`/`lordnames`, documented in the file; the
+  pool size is also the raised-lord cap). One biome field now drives the
+  map paint, terrain classification, travel speed AND the battlefield —
+  the bridge passes hilliness/forest to `BattleSetup`, so battles follow a
+  modded biome while the battle module stays world-blind. Verified: a
+  hacked threshold turns the whole world to forest at the modded speed.
 - [ ] **K9. Balance-pass prep.** One document listing every TODO(balance)
   constant with its file, current flat value, and intended feel — the
   worksheet a human playtesting pass needs. (Numbers stay flat until then.)

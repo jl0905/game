@@ -1578,14 +1578,13 @@ namespace {
 // Painted ground: biome patches from the SAME noise that shapes battle
 // terrain, so the map foreshadows the battlefield you'd fight on. Drawn in
 // world coordinates; called once into the cached map texture (L5).
-void PaintMapGround() {
+void PaintMapGround(const MapDef& m) {
     constexpr int CELL = 100;
     for (int gy = 0; gy < (int)MAP_SIZE / CELL; ++gy) {
         for (int gx = 0; gx < (int)MAP_SIZE / CELL; ++gx) {
-            const float wx = gx * CELL + CELL * 0.5f;
-            const float wy = gy * CELL + CELL * 0.5f;
-            const float n1 = sinf(wx * 0.0031f) * cosf(wy * 0.0027f);   // hills
-            const float n2 = sinf(wx * 0.0012f + wy * 0.0019f);         // forests
+            const Vector2 wp{ gx * CELL + CELL * 0.5f, gy * CELL + CELL * 0.5f };
+            const float n1 = BiomeHillNoise(m, wp);
+            const float n2 = BiomeForestNoise(m, wp);
             const Color ground = { (unsigned char)(66 + 20.0f * n1),
                                    (unsigned char)(98 + 14.0f * n2),
                                    (unsigned char)(48 + 10.0f * n1), 255 };
@@ -1593,7 +1592,7 @@ void PaintMapGround() {
 
             unsigned int h = (unsigned)(gx * 73856093) ^ (unsigned)(gy * 19349663);
             h ^= h >> 13;
-            if (n2 > 0.35f) {   // forest clumps
+            if (n2 > m.biome.forestThreshold) {   // forest clumps
                 for (int t = 0; t < 5; ++t) {
                     h = h * 1664525u + 1013904223u;
                     const float tx = gx * CELL + (h & 63) + 16;
@@ -1601,7 +1600,7 @@ void PaintMapGround() {
                     DrawTriangle({ tx, ty }, { tx + 10, ty }, { tx + 5, ty - 16 },
                                  Color{ 34, 66, 34, 255 });
                 }
-            } else if (n1 > 0.55f) {   // mountain ridges
+            } else if (n1 > m.biome.mountainThreshold) {   // mountain ridges
                 for (int t = 0; t < 3; ++t) {
                     h = h * 1664525u + 1013904223u;
                     const float tx = gx * CELL + (h & 63) + 12;
@@ -1621,7 +1620,8 @@ void PaintMapGround() {
 void PaintMapRoads(const GameState& gs) {
     for (int a = 0; a < (int)gs.towns.size(); ++a)
         for (int b = a + 1; b < (int)gs.towns.size(); ++b)
-            if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) < ROAD_LINK_DIST)
+            if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) <
+                gs.content.map.roadLinkDist)
                 DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 5,
                            Fade(Color{ 128, 106, 76, 255 }, 0.45f));
 }
@@ -1643,7 +1643,7 @@ const Texture2D& CachedMapTexture(const GameState& gs) {
         BeginTextureMode(tex);
         ClearBackground(Color{ 40, 58, 36, 255 });
         BeginMode2D(shrink);
-        PaintMapGround();
+        PaintMapGround(gs.content.map);
         PaintMapRoads(gs);
         EndMode2D();
         EndTextureMode();
@@ -1839,7 +1839,7 @@ void CampaignDraw(const GameState& gs) {
                     : dayFrac < 0.82f ? "evening" : "night";
     DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
     {
-        const WorldTerrain wt = WorldTerrainAt(gs.player.pos);
+        const WorldTerrain wt = WorldTerrainAt(gs.content.map, gs.player.pos);
         const bool road = OnRoad(gs, gs.player.pos);
         const char* going = road                          ? "on the road"
                             : wt == WorldTerrain::Forest   ? "in the woods (slow)"

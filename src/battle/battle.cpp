@@ -1173,6 +1173,13 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B = BattleState{};
     B.setup = setup;
     TerrainConfig tcfg = TerrainConfigFromWorld(setup.campaignPos);
+    // A modded world biome (K8) overrides the built-in noise when provided.
+    if (setup.hilliness >= 0) {
+        tcfg.hilliness   = Clamp(setup.hilliness, 0.0f, 1.0f);
+        tcfg.mountainous = tcfg.hilliness > 0.72f;
+    }
+    if (setup.forestDensity >= 0)
+        tcfg.forestDensity = Clamp(setup.forestDensity, 0.0f, 1.0f);
     if (setup.arena) {   // a flat sanded ring under an open sky (G2)
         tcfg.hilliness = 0;
         tcfg.forestDensity = 0;

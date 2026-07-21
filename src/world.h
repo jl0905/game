@@ -235,11 +235,17 @@ struct GameState {
 
 enum class WorldTerrain { Plains, Forest, Mountain };
 
-inline WorldTerrain WorldTerrainAt(Vector2 p) {
-    const float n1 = sinf(p.x * 0.0031f) * cosf(p.y * 0.0027f);   // hills
-    const float n2 = sinf(p.x * 0.0012f + p.y * 0.0019f);         // forests
-    if (n2 > 0.35f) return WorldTerrain::Forest;
-    if (n1 > 0.55f) return WorldTerrain::Mountain;
+// The biome noise itself (K8): parameters come from the moddable map.
+inline float BiomeHillNoise(const MapDef& m, Vector2 p) {
+    return sinf(p.x * m.biome.hillFreqX) * cosf(p.y * m.biome.hillFreqY);
+}
+inline float BiomeForestNoise(const MapDef& m, Vector2 p) {
+    return sinf(p.x * m.biome.forestFreqX + p.y * m.biome.forestFreqY);
+}
+
+inline WorldTerrain WorldTerrainAt(const MapDef& m, Vector2 p) {
+    if (BiomeForestNoise(m, p) > m.biome.forestThreshold) return WorldTerrain::Forest;
+    if (BiomeHillNoise(m, p) > m.biome.mountainThreshold) return WorldTerrain::Mountain;
     return WorldTerrain::Plains;
 }
 
@@ -251,34 +257,33 @@ inline const char* WorldTerrainName(WorldTerrain t) {
     }
 }
 
-// Roads join settlements closer than ROAD_LINK_DIST (the drawn network); a
-// party within ROAD_WIDTH of a link travels at full pace whatever the ground.
-inline constexpr float ROAD_LINK_DIST = 1350.0f;
-inline constexpr float ROAD_WIDTH     = 20.0f;   // TODO(balance)
-
+// Roads join settlements closer than MapDef::roadLinkDist (the drawn
+// network); within roadWidth of a link a party travels at full pace.
 inline bool OnRoad(const GameState& gs, Vector2 p) {
+    const MapDef& m = gs.content.map;
     for (int a = 0; a < (int)gs.towns.size(); ++a)
         for (int b = a + 1; b < (int)gs.towns.size(); ++b) {
             const Vector2 ta = gs.towns[a].pos, tb = gs.towns[b].pos;
-            if (Vector2Distance(ta, tb) >= ROAD_LINK_DIST) continue;
+            if (Vector2Distance(ta, tb) >= m.roadLinkDist) continue;
             const Vector2 ab = Vector2Subtract(tb, ta);
             const float len2 = Vector2LengthSqr(ab);
             if (len2 <= 1.0f) continue;
             const float t = Clamp(Vector2DotProduct(Vector2Subtract(p, ta), ab) / len2,
                                   0.0f, 1.0f);
             const Vector2 close = Vector2Add(ta, Vector2Scale(ab, t));
-            if (Vector2Distance(p, close) < ROAD_WIDTH) return true;
+            if (Vector2Distance(p, close) < m.roadWidth) return true;
         }
     return false;
 }
 
 // Travel pace at a point: forests and mountains slow every party (player and
-// AI alike); a road negates the penalty. TODO(balance): the factors.
+// AI alike); a road negates the penalty. Factors live in the map (K8).
 inline float TravelSpeedFactor(const GameState& gs, Vector2 p) {
-    const WorldTerrain t = WorldTerrainAt(p);
+    const MapDef& m = gs.content.map;
+    const WorldTerrain t = WorldTerrainAt(m, p);
     if (t == WorldTerrain::Plains) return 1.0f;
     if (OnRoad(gs, p)) return 1.0f;
-    return t == WorldTerrain::Forest ? 0.7f : 0.55f;
+    return t == WorldTerrain::Forest ? m.biome.forestSpeed : m.biome.mountainSpeed;
 }
 
 // The gear a hired companion fights in (K6): their fitted loadout if the

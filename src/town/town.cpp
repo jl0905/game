@@ -303,15 +303,15 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     if (cin.raiseLord && gs.crowned &&
         gs.towns[gs.currentSettlement].owner == c.playerFaction) {
         constexpr int RAISE_LORD_COST = 300;   // TODO(balance)
-        static const char* NAMES[] = { "Bram", "Edric", "Sable", "Corwin" };
+        const std::vector<std::string>& names = c.map.lordNames;   // moddable (K8)
         int myLords = 0;
         for (const Party& p : gs.parties)
             if (p.alive && p.faction == c.playerFaction && !p.lord.empty()) myLords++;
-        if (gs.gold >= RAISE_LORD_COST && myLords < 4) {
+        if (gs.gold >= RAISE_LORD_COST && myLords < (int)names.size()) {
             gs.gold -= RAISE_LORD_COST;
             Party p;   // mirrors campaign's MakeLordParty (module-local there)
             p.faction = c.playerFaction;
-            p.lord = NAMES[myLords % 4];
+            p.lord = names[myLords % (int)names.size()];
             p.pos = p.wanderTarget = gs.towns[gs.currentSettlement].pos;
             p.troopCounts.assign(c.troops.size(), 0);
             const std::vector<int>& roster = c.factions[c.playerFaction].roster;

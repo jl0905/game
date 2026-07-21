@@ -174,11 +174,26 @@ struct MapDef {
         Vector2     pos{};
         std::string faction;
     };
+    // Biome field (K8): one noise formula paints the map, classifies terrain
+    // for travel speed, and seeds battlefields — modded here, felt everywhere.
+    struct BiomeSpec {
+        float hillFreqX   = 0.0031f, hillFreqY   = 0.0027f;
+        float forestFreqX = 0.0012f, forestFreqY = 0.0019f;
+        float forestThreshold   = 0.35f;   // n2 above this = forest
+        float mountainThreshold = 0.55f;   // n1 above this = mountain
+        float forestSpeed   = 0.7f;        // TODO(balance): march factors
+        float mountainSpeed = 0.55f;
+    };
     float                 size = 2000.0f;
     Vector2               playerStart{ 1000.0f, 1000.0f };
     int                   startingParties = 5;      // roaming parties at world start
     std::vector<TownSpec> towns;
     std::vector<LairSpec> lairs;
+    BiomeSpec             biome;
+    float                 roadLinkDist = 1350.0f;   // towns closer than this are joined
+    float                 roadWidth    = 20.0f;     // within this of a link = on the road
+    std::vector<std::string> lordNames =            // pool for player-raised lords (F3)
+        { "Bram", "Edric", "Sable", "Corwin" };
 };
 
 // The whole game catalogue. Everything is added in LoadDefaultContent(); to add
