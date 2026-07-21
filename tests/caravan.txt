@@ -1,0 +1,12 @@
+# Caravans & prosperity (direction E3): factions holding two settlements put a
+# convoy on the road; arrivals fatten the destination's prosperity. Sarleon
+# (Curaw+Halmar) and vaeling (Rivacheg+Skjold) qualify at world start.
+seed 13
+wait 65            # day 1 ticks: caravans muster
+state              # expect at least one "party N: faction=... caravan ..."
+wait 130           # two more days on the road
+state              # expect some town with prosper>100 once a leg completes
+save caravan_test.owb
+load caravan_test.owb
+state              # caravan flags and prosperity survive the reload
+quit

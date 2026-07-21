@@ -37,9 +37,13 @@ flat.
   TODO(balance); `tests/trade_loop.txt` proves a profitable run. Deviation
   from the original note: goods stayed stackable counts rather than moving
   into the D1 tile grid — stacks fit wares better than footprints.
-- [ ] **E3. Caravans & prosperity.** Faction caravan parties travel between
-  owned settlements; arriving raises settlement prosperity (drives income);
-  raiding caravans yields goods + relation penalty. Prosperity in saves.
+- [x] **E3. Caravans & prosperity.** Shipped: any faction holding two
+  settlements keeps a lightly-guarded convoy on the road between them;
+  each arrival adds +5 prosperity (cap 150), prosperity scales settlement
+  income, beaten caravans spill up to 6 wares into the saddlebags, and both
+  survive saves. Flat numbers TODO(balance) — the +5/arrival fills the cap
+  in days; a real rate wants the balance pass. Follow-up: relation penalty
+  for raiding waits on F1 relations.
 - [ ] **E4. Landowning / enterprises.** Buy a productive enterprise in a town
   (mill, smithy, dyeworks — content defs); daily income scaled by prosperity;
   lost if the town falls to a faction at war with you.

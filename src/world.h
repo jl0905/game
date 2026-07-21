@@ -35,6 +35,8 @@ struct Party {
     bool             alive = true;
     bool             engaged = false;    // locked in a world-map skirmish/siege
     std::string      lord;               // lord's name; empty for ordinary parties
+    bool             caravan = false;    // trade convoy plying owned settlements (E3)
+    int              caravanTo = -1;     // destination town index while trading
     Vector2          wanderTarget{};
     float            thinkTimer = 0;
 
@@ -58,6 +60,10 @@ struct Town {
     SettlementType type  = SettlementType::Town;
     int            owner = -1;   // owning faction handle; changes at runtime (sieges)
     std::vector<int> garrison;   // defending troops, parallel to Content::troops
+
+    // Prosperity (direction E3): percent scale on this settlement's daily
+    // income, fattened by arriving caravans. TODO(balance): growth/cap.
+    int prosperity = 100;
 
     // Marketplace (direction E1), parallel to Content::goods. `priceOffset` is
     // a percentage of GoodDef::basePrice (100 = base) — per-town spreads are

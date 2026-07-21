@@ -114,6 +114,8 @@ bool SaveGame(const GameState& gs, const char* path) {
         for (int g = 0; g < (int)gs.towns[t].stock.size() && g < c.goods.size(); ++g)
             f << "stock " << t << ' ' << c.goods[g].id << ' '
               << gs.towns[t].stock[g] << ' ' << gs.towns[t].priceOffset[g] << '\n';
+        if (gs.towns[t].prosperity != 100)
+            f << "prosper " << t << ' ' << gs.towns[t].prosperity << '\n';
     }
 
     // Live diplomacy: only pairs that differ from the base relations (or hold
@@ -136,10 +138,15 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (const Party& p : gs.parties) {
         if (!p.alive) continue;
         if (p.faction < 0 || p.faction >= c.factions.size()) continue;
-        f << "party " << c.factions[p.faction].id << ' '
-          << p.pos.x << ' ' << p.pos.y;
-        if (!p.lord.empty()) f << ' ' << p.lord;   // one-token lord names
-        f << '\n';
+        if (p.caravan)
+            f << "cparty " << c.factions[p.faction].id << ' '
+              << p.pos.x << ' ' << p.pos.y << ' ' << p.caravanTo << '\n';
+        else {
+            f << "party " << c.factions[p.faction].id << ' '
+              << p.pos.x << ' ' << p.pos.y;
+            if (!p.lord.empty()) f << ' ' << p.lord;   // one-token lord names
+            f << '\n';
+        }
         WriteTroops(f, c, "troop", p.troopCounts);
     }
     return f.good();
@@ -254,7 +261,11 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
-        } else if (tag == "party") {
+        } else if (tag == "prosper") {
+            int idx = -1, v = 100;
+            ss >> idx >> v;
+            if (idx >= 0 && idx < (int)gs.towns.size()) gs.towns[idx].prosperity = v;
+        } else if (tag == "party" || tag == "cparty") {
             std::string fid; Vector2 pos{};
             ss >> fid >> pos.x >> pos.y;
             const int fh = c.factions.find(fid.c_str());
@@ -263,7 +274,8 @@ bool LoadGame(GameState& gs, const char* path) {
             p.faction = fh;
             p.pos = p.wanderTarget = pos;
             p.troopCounts.assign(c.troops.size(), 0);
-            ss >> p.lord;   // optional trailing lord name
+            if (tag == "cparty") { p.caravan = true; ss >> p.caravanTo; }
+            else                 ss >> p.lord;   // optional trailing lord name
             gs.parties.push_back(p);
             cur = &gs.parties.back();
         }

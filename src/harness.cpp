@@ -175,17 +175,18 @@ struct Harness {
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
         for (int t = 0; t < (int)gs.towns.size(); ++t) {
             const Town& tw = gs.towns[t];
-            std::printf("town %d: %s owner=%s garrison=%d dist=%.0f\n", t, tw.name.c_str(),
+            std::printf("town %d: %s owner=%s garrison=%d prosper=%d dist=%.0f\n", t, tw.name.c_str(),
                         (tw.owner >= 0 && tw.owner < c.factions.size())
                             ? c.factions[tw.owner].id.c_str() : "none",
-                        tw.garrisonSize(),
+                        tw.garrisonSize(), tw.prosperity,
                         Vector2Distance(tw.pos, gs.player.pos));
         }
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             const Party& p = gs.parties[i];
             if (!p.alive) continue;
-            std::printf("party %d: faction=%s%s%s pos=(%.0f,%.0f) troops=%d state=%s fatigue=%.0f engaged=%d dist=%.0f\n",
+            std::printf("party %d: faction=%s%s%s%s pos=(%.0f,%.0f) troops=%d state=%s fatigue=%.0f engaged=%d dist=%.0f\n",
                         i, c.factions[p.faction].id.c_str(),
+                        p.caravan ? " caravan" : "",
                         p.lord.empty() ? "" : " lord=", p.lord.c_str(),
                         p.pos.x, p.pos.y, p.totalTroops(), PartyStateName(p.state),
                         p.fatigue, p.engaged ? 1 : 0,

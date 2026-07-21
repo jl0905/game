@@ -38,6 +38,31 @@ Party MakeParty(const Content& c, int faction, Vector2 pos) {
     return p;
 }
 
+// Nearest settlement owned by `faction` other than `exclude`, or -1.
+int NearestOwnedTown(const GameState& gs, int faction, Vector2 from, int exclude) {
+    int best = -1;
+    float bestD = 1e9f;
+    for (int t = 0; t < (int)gs.towns.size(); ++t) {
+        if (t == exclude || gs.towns[t].owner != faction) continue;
+        const float d = Vector2Distance(from, gs.towns[t].pos);
+        if (d < bestD) { bestD = d; best = t; }
+    }
+    return best;
+}
+
+// A caravan (E3): a lightly-guarded trade convoy plying its faction's towns.
+Party MakeCaravan(const Content& c, int faction, Vector2 pos, int toTown) {
+    Party p;
+    p.faction = faction;
+    p.pos = p.wanderTarget = pos;
+    p.caravan = true;
+    p.caravanTo = toTown;
+    p.troopCounts.assign(c.troops.size(), 0);
+    const std::vector<int>& roster = c.factions[faction].roster;
+    if (!roster.empty()) p.troopCounts[roster[0]] = 3;   // TODO(balance): guards
+    return p;
+}
+
 Vector2 RandomEdgePos() {
     return { Frand(150, MAP_SIZE - 150), Frand(150, MAP_SIZE - 150) };
 }
@@ -626,6 +651,25 @@ static void ApplyBattleResult(GameState& gs) {
                 gs.battleReport.push_back(TextFormat("Picked up: %s", nm));
             }
         }
+
+        // Caravan plunder (E3): a beaten convoy spills its wares into the
+        // saddlebags, up to capacity. TODO(balance): the haul size.
+        if (gs.battlePartyIndex >= 0 && gs.battlePartyIndex < (int)gs.parties.size() &&
+            gs.parties[gs.battlePartyIndex].caravan && gs.content.goods.size() > 0) {
+            if ((int)gs.goods.size() < gs.content.goods.size())
+                gs.goods.assign(gs.content.goods.size(), 0);
+            int carried = 0;
+            for (int q : gs.goods) carried += q;
+            int taken = 0;
+            for (int i = 0; i < 6 && carried < GOODS_CAP; ++i) {
+                gs.goods[GetRandomValue(0, gs.content.goods.size() - 1)]++;
+                carried++; taken++;
+            }
+            if (taken > 0) {
+                gs.resultText += TextFormat("   Plundered %d wares", taken);
+                gs.battleReport.push_back(TextFormat("Caravan plundered: %d wares", taken));
+            }
+        }
     } else {
         gs.resultText = "DEFEAT...  You escape with the survivors.";
         gs.battleReport.push_back("DEFEAT");
@@ -837,6 +881,26 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             Vector2 target;
             bool haveTarget = UpdateRest(gs, e, sim, target);
 
+            // Caravans (E3) ply between their faction's settlements; arriving
+            // fattens the destination's prosperity, then they walk the next leg.
+            if (!haveTarget && e.caravan) {
+                if (e.caravanTo < 0 || e.caravanTo >= (int)gs.towns.size() ||
+                    gs.towns[e.caravanTo].owner != e.faction)
+                    e.caravanTo = NearestOwnedTown(gs, e.faction, e.pos, e.caravanTo);
+                if (e.caravanTo >= 0) {
+                    Town& dest = gs.towns[e.caravanTo];
+                    if (Vector2Distance(e.pos, dest.pos) < 30.0f) {
+                        dest.prosperity = std::min(dest.prosperity + 5, 150);  // TODO(balance)
+                        e.caravanTo = NearestOwnedTown(gs, e.faction, e.pos, e.caravanTo);
+                    }
+                    if (e.caravanTo >= 0) {
+                        target     = gs.towns[e.caravanTo].pos;
+                        haveTarget = true;
+                        e.state    = PartyState::Travelling;
+                    }
+                }
+            }
+
             // Lords wage the settlement war: march on the nearest hostile
             // settlement they outmatch and invest it on arrival.
             if (!haveTarget && !e.lord.empty()) {
@@ -981,7 +1045,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.day++;
             int income = 0;
             for (const Town& t : gs.towns)
-                if (t.owner == c.playerFaction) income += SettlementIncome(t.type);
+                if (t.owner == c.playerFaction)
+                    income += SettlementIncome(t.type) * t.prosperity / 100;
             int wages = 0;
             for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
                 wages += gs.player.troopCounts[t] * c.troops[t].wage;
@@ -997,6 +1062,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if (t.stock[g] < cap) t.stock[g]++;
             }
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
+
+            // Caravans (E3): any faction holding two settlements keeps one
+            // convoy on the road between them.
+            for (int f = 0; f < c.factions.size(); ++f) {
+                bool hasCaravan = false;
+                for (const Party& p : gs.parties)
+                    if (p.alive && p.caravan && p.faction == f) { hasCaravan = true; break; }
+                if (hasCaravan) continue;
+                int owned = 0, home = -1;
+                for (int t = 0; t < (int)gs.towns.size(); ++t)
+                    if (gs.towns[t].owner == f) { owned++; if (home < 0) home = t; }
+                if (owned < 2) continue;
+                const int to = NearestOwnedTown(gs, f, gs.towns[home].pos, home);
+                if (to >= 0)
+                    gs.parties.push_back(MakeCaravan(c, f, gs.towns[home].pos, to));
+            }
 
             // Every owner musters one soldier a day toward their garrison cap
             // (roadmap B3c). TODO(balance): the rate.
@@ -1654,7 +1735,8 @@ void PartyDraw(const GameState& gs) {
         wages += gs.player.troopCounts[t] * c.troops[t].wage;
     int income = 0;
     for (const Town& tw : gs.towns)
-        if (tw.owner == c.playerFaction) income += SettlementIncome(tw.type);
+        if (tw.owner == c.playerFaction)
+            income += SettlementIncome(tw.type) * tw.prosperity / 100;
 
     ui::Title("YOUR WARBAND", panelX, 60, 44, GOLD);
     ui::Text(TextFormat("Gold: %d    Troops: %d    Daily: +%d income  -%d wages  (%+d)",
