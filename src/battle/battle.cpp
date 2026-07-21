@@ -493,6 +493,7 @@ struct AICmd {
     float   hitDamage = 0;
     bool    shoot = false;   // loose a missile instead of a melee blow
     Vector3 shootAt{};       // where the missile is aimed
+    int     swingDir = -1;   // 0..3 melee swing direction (G4), -1 none
 };
 
 // A missile in flight. Team says who it can hurt (no friendly fire — allied
@@ -505,6 +506,14 @@ struct Arrow {
     float   life = ARROW_LIFETIME;
     bool    alive = true;
 };
+
+// Shields matter (direction G4): a shield-bearer meets a swing from his
+// guarded side with wood — and the wood wears out. The guard direction is a
+// deterministic per-soldier habit for now: structure, not a fencing brain.
+// TODO(balance): all three numbers.
+constexpr float SHIELD_HP           = 40.0f;
+constexpr float SHIELD_BLOCK_FACTOR = 0.35f;  // melee damage that gets through
+constexpr float SHIELD_WEAR_PER_HIT = 8.0f;
 
 struct Soldier {
     Vector3 pos;
@@ -520,6 +529,7 @@ struct Soldier {
     float   walkPhase = 0;
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
+    float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
     bool    routed  = false;   // broke and running for the field edge (G3)
     float   routTime = 0;      // seconds spent fleeing
     bool    escaped = false;   // off the field alive — not a casualty
@@ -868,6 +878,21 @@ bool HasShield(const Content& c, const Soldier& o) {
            c.weapons[o.activeWeapon].wclass == WeaponClass::OneHanded;
 }
 
+// The side a soldier guards this moment — a deterministic habit (G4).
+int GuardDir(int idx, const Soldier& s) {
+    return (idx * 5 + (int)(s.walkPhase * 3.0f)) & 3;
+}
+
+// Route one melee blow through the target's shield (G4): a swing into the
+// guarded side is mostly wood, and the wood wears. Returns the damage left.
+float ShieldSoak(const Content& c, int victimIdx, Soldier& v, int swingDir,
+                 float damage) {
+    if (swingDir < 0 || !HasShield(c, v) || v.shieldHp <= 0) return damage;
+    if (GuardDir(victimIdx, v) != swingDir) return damage;
+    v.shieldHp -= SHIELD_WEAR_PER_HIT;
+    return damage * SHIELD_BLOCK_FACTOR;
+}
+
 // Grid-accelerated scored target search: scan outward in growing radii and
 // keep the best-scoring candidate. One extra sweep after the first hit lets a
 // slightly-farther but better-scoring foe win without walking the whole map.
@@ -1006,7 +1031,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
         if (ranged)           { cmd.shoot = true; cmd.shootAt = tpos; }
         else if (targetPlayer) cmd.hitPlayer = true;
-        else                   cmd.hitSoldier = target;
+        else {
+            cmd.hitSoldier = target;
+            // Each soldier swings by habit, varied by his stride (G4).
+            cmd.swingDir = (i * 7 + (int)(s.walkPhase * 3.0f)) & 3;
+        }
     } else if (dist > (holding ? 0.4f : engage)) {
         // A dehorsed rider trudges at half pace (his boots, not his horse).
         const float ms = c.troops[s.troop].moveSpeed * PACE_MOVE_SCALE *
@@ -1323,9 +1352,15 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 const float d = Vector3Length(to);
                 if (d < reach + 0.6f && d > 0.01f &&
                     Vector3DotProduct(Vector3Normalize(to), fwd) > 0.4f) {
-                    // ~120° frontal arc; the target's armour soaks per hit.
-                    DamageSoldier(c, s, ApplyArmor(WeaponDamage(c, wh),
-                                                   LoadoutArmor(c, TroopLoadout(c, s.troop))));
+                    // ~120° frontal arc; armour soaks per hit, and a raised
+                    // shield meets the hero's chosen swing direction (G4).
+                    const int vi = (int)(&s - &B.soldiers[0]);
+                    float dmg = ApplyArmor(WeaponDamage(c, wh),
+                                           LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                    const float before = dmg;
+                    dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
+                    if (dmg < before) { SpawnSparks(s.pos); SfxPlay(Sfx::Clang, 0.6f); }
+                    DamageSoldier(c, s, dmg);
                     if (s.hp <= 0) {   // a kill by the hero's own hand rallies
                         B.heroKills++;
                         B.rallyPulse = RALLY_PULSE_TIME;
@@ -1460,9 +1495,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             // Armour soaks per hit, so reduction happens per blow, not per frame.
             if (cmd.hitSoldier >= 0)
-                B.dmg[cmd.hitSoldier] += ApplyArmor(
-                    cmd.hitDamage,
-                    LoadoutArmor(c, TroopLoadout(c, B.soldiers[cmd.hitSoldier].troop)));
+                B.dmg[cmd.hitSoldier] += ShieldSoak(
+                    c, cmd.hitSoldier, B.soldiers[cmd.hitSoldier], cmd.swingDir,
+                    ApplyArmor(cmd.hitDamage,
+                               LoadoutArmor(c, TroopLoadout(c, B.soldiers[cmd.hitSoldier].troop))));
             if (cmd.hitPlayer)
                 playerDamage += ApplyArmor(cmd.hitDamage,
                                            LoadoutArmor(c, B.setup.heroLoadout));
@@ -1534,13 +1570,19 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 a.alive = false;
                 continue;
             }
-            // Hit a soldier of the opposing team?
+            // Hit a soldier of the opposing team? A shield-bearer takes shafts
+            // on the wood while it lasts (G4).
             for (Soldier& s : B.soldiers) {
-                if (s.hp <= 0 || s.team == a.team) continue;
+                if (s.hp <= 0 || s.escaped || s.team == a.team) continue;
                 const Vector3 chest = Vector3Add(s.pos, { 0, 1.2f, 0 });
                 if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
-                    DamageSoldier(c, s, ApplyArmor(a.damage,
-                                                   LoadoutArmor(c, TroopLoadout(c, s.troop))));
+                    float dmg = ApplyArmor(a.damage,
+                                           LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                    if (HasShield(c, s) && s.shieldHp > 0) {
+                        dmg *= BLOCK_MISSILE_FACTOR;
+                        s.shieldHp -= SHIELD_WEAR_PER_HIT;
+                    }
+                    DamageSoldier(c, s, dmg);
                     a.alive = false;
                     break;
                 }

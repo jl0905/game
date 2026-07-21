@@ -101,8 +101,13 @@ flat.
   moment. THEY BREAK banner + war-cry sting. Flat numbers TODO(balance).
   Follow-up: per-soldier morale (leader death, hero aura) instead of one
   side-wide threshold.
-- [ ] **G4. Shield/armor matter (structure).** Directional block vs swing dir
-  for AI; shields degrade; horses can be killed under riders. Flat numbers.
+- [x] **G4. Shields matter (structure).** Shipped: soldiers swing with a
+  direction and shield-bearers hold a guard (deterministic habits for now);
+  a swing into the guard is mostly wood (35% through), each block and each
+  arrow taken on the shield wears it (40 HP), and the hero's aimed swing
+  direction is checked against the guard too (sparks + clang on wood).
+  Horses under riders were already mortal (cavalry work). Flat numbers
+  TODO(balance). Follow-ups: smarter guard choice, broken-shield visual.
 
 ## Track H — Feel & content
 
