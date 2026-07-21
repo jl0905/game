@@ -1527,13 +1527,32 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 if (p.faction < 0 || p.faction >= c.factions.size()) continue;
                 const std::vector<int>& roster = c.factions[p.faction].roster;
                 const int want = c.factions[p.faction].lordPartySize;
-                if (roster.empty() || p.totalTroops() >= want) continue;
+                if (roster.empty()) continue;
                 for (const Town& t : gs.towns) {
                     if (t.owner != p.faction ||
                         Vector2Distance(p.pos, t.pos) > REST_REACH * 2) continue;
-                    for (int i = 0; i < LORD_RECRUIT_RATE &&
-                                    p.totalTroops() < want; ++i)
-                        p.troopCounts[roster[p.totalTroops() % (int)roster.size()]]++;
+                    if (p.totalTroops() < want) {
+                        for (int i = 0; i < LORD_RECRUIT_RATE &&
+                                        p.totalTroops() < want; ++i)
+                            p.troopCounts[roster[p.totalTroops() %
+                                                 (int)roster.size()]]++;
+                    } else {
+                        // A full host drills instead (L6): a couple of men a
+                        // day step up their troop line, the way the player
+                        // promotes veterans. TODO(balance): the rate.
+                        constexpr int LORD_TRAIN_RATE = 2;
+                        int drilled = 0;
+                        for (int tt = 0; tt < (int)p.troopCounts.size() &&
+                                         drilled < LORD_TRAIN_RATE; ++tt) {
+                            const int up = c.troops[tt].upgradesTo;
+                            while (up >= 0 && p.troopCounts[tt] > 0 &&
+                                   drilled < LORD_TRAIN_RATE) {
+                                p.troopCounts[tt]--;
+                                p.troopCounts[up]++;
+                                drilled++;
+                            }
+                        }
+                    }
                     break;
                 }
             }

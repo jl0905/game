@@ -266,10 +266,12 @@ does, the economy is a single flow, terrain matters on the march.
   into a half-resolution RenderTexture (rebuilt if map size changes) and
   blit as one quad — ~900 rects and thousands of triangles off every
   campaign frame. Settlements/parties/ownership still draw live.
-- [ ] **L6. NPC parity next steps.** Shipped so far: bandits smell freight —
-  a laden caravan reads at half distance to Aggressive-behaviour parties,
-  so outlaws prey on the trade flow like the player. Remaining: lords buy
-  gear upgrades; villagers walk the roads between towns.
+- [x] **L6. NPC parity.** Shipped: bandits smell freight (a laden caravan
+  reads at half distance to Aggressive-behaviour parties, so outlaws prey
+  on the trade flow like the player), and a full-strength lord at his
+  settlement drills two men a day up their troop lines — the NPC
+  counterpart of the player's promote button. Follow-up idea (cosmetic):
+  villagers walking the roads between towns.
 
 ## Sequencing guidance
 
