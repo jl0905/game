@@ -271,6 +271,10 @@ struct Harness {
                         c.factions.valid(gs.feastFaction)
                             ? c.factions[gs.feastFaction].id.c_str() : "?",
                         gs.feastDays, gs.feastAttended ? 1 : 0);
+        for (const auto& pl : gs.capturedLords)
+            std::printf("plord: %s of %s\n", pl.first.c_str(),
+                        c.factions.valid(pl.second)
+                            ? c.factions[pl.second].id.c_str() : "?");
         for (const auto& p : gs.lordOpinion)
             if (p.second != 0)
                 std::printf("lop: %s=%+d (eff %+d)\n", p.first.c_str(), p.second,
@@ -522,6 +526,17 @@ int RunScript(const char* path) {
             int b = 0; ss >> b;
             ApplyBackground(h.gs, b);
             std::printf("background %d: %s\n", b, h.gs.resultText.c_str());
+        } else if (cmd == "capture") {
+            // Scenario shortcut (O2): put a named lord in the player's train.
+            std::string name, fid;
+            ss >> name >> fid;
+            const int fh = h.gs.content.factions.find(fid.c_str());
+            if (fh >= 0) h.gs.capturedLords.push_back({ name, fh });
+            std::printf("capture: %s of %s\n", name.c_str(), fid.c_str());
+        } else if (cmd == "ransomlords" || cmd == "releaselords") {
+            CampaignInput cin;
+            (cmd == "ransomlords" ? cin.ransomLords : cin.releaseLords) = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "fame") {
             // Scripting shortcut (M1): set renown/honor directly so scenarios
             // can stand at a chosen reputation without grinding battles.

@@ -380,9 +380,14 @@ adds per line of code. Structure first, numbers flat, as ever.
 - [ ] **O1. Kingdom ledger screen.** One screen for a ruler: fiefs and
   their lords (with opinions), armies afield, wars and truces, income by
   source. The data all exists; this is the view that makes it a kingdom.
-- [ ] **O2. Prisoner lords.** Breaking a lord's host can capture *him*:
-  ransom to his crown (gold, −opinion), or release (honor, +opinion) —
-  the captive-lord layer Warband's diplomacy turns on.
+- [x] **O2. Prisoner lords.** Shipped: breaking a lord's host takes him
+  prisoner (battle-report line; no respawn while he sits in your train).
+  At any settlement, U ransoms all captives to their crowns (200 gold a
+  head, −10 opinion each) and Y frees them (+2 honor, +20 opinion,
+  +5 crown standing each); either way a respawn is queued and he rides
+  again. `plord` save tag, harness `capture`/`ransomlords`/`releaselords`;
+  `tests/prisoner_lords.txt` plays both fates. Flat TODO(balance).
+  Follow-up: captives escaping over time; lords ransoming each other.
 - [ ] **O3. Night and dusk.** The day clock already names morning/evening:
   tint the campaign map and battlefield lighting by hour; night battles
   darker and closer. Presentation with tactical texture.

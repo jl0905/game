@@ -751,8 +751,15 @@ static void ApplyBattleResult(GameState& gs) {
     if (enemy) enemy->engaged = false;
 
     // Named lords remember the day (N4). TODO(balance): the deltas.
-    if (gs.battleWon && enemy && !enemy->lord.empty())
+    if (gs.battleWon && enemy && !enemy->lord.empty()) {
         LordOpinion(gs, enemy->lord) -= 15;   // you broke his host
+        // And took him (O2): a captive lord does not ride again until
+        // ransomed or released at a settlement (U / Y).
+        gs.capturedLords.push_back({ enemy->lord, enemy->faction });
+        gs.battleReport.push_back(
+            TextFormat("Lord %s is taken prisoner!", enemy->lord.c_str()));
+        enemy->lord.clear();   // no respawn while he sits in your train
+    }
     if (gs.battleWon && ally && !ally->lord.empty())
         LordOpinion(gs, ally->lord) += 10;    // you bled beside him
 
@@ -933,6 +940,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.quest      = IsKeyPressed(KEY_G);
         in.hire       = IsKeyPressed(KEY_H);
         in.raiseLord  = IsKeyPressed(KEY_L);
+        in.ransomLords  = IsKeyPressed(KEY_U);   // prisoner lords (O2)
+        in.releaseLords = IsKeyPressed(KEY_Y);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }

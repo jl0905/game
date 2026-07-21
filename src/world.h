@@ -219,6 +219,11 @@ struct GameState {
     int renown = 0;
     int honor  = 0;
 
+    // Prisoner lords (O2): named lords captured when you break their host.
+    // Ransomed back to their crown for gold (they resent it) or released
+    // (honor, gratitude); a captive does not respawn until freed.
+    std::vector<std::pair<std::string, int>> capturedLords;   // name, faction
+
     // Per-lord opinion (N4): named lords remember what you did to and for
     // them — grants, battles at their side, defeats at your hand. Honor is
     // added on top when the opinion is *read* (honest men are trusted a

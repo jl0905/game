@@ -158,6 +158,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (const auto& p : gs.lordOpinion)
         if (p.second != 0)
             f << "lop " << p.first << ' ' << p.second << '\n';
+    for (const auto& pl : gs.capturedLords)
+        if (pl.second >= 0 && pl.second < c.factions.size())
+            f << "plord " << pl.first << ' ' << c.factions[pl.second].id << '\n';
     if (gs.siegeCampTown >= 0)
         f << "scamp " << gs.siegeCampTown << ' ' << gs.siegeCampPrep << ' '
           << gs.siegeCampDays << '\n';
@@ -371,6 +374,12 @@ bool LoadGame(GameState& gs, const char* path) {
             gs.feastFaction  = c.factions.find(fid.c_str());
             gs.feastAttended = att != 0;
             if (gs.feastFaction < 0) gs.feastTown = -1;
+        } else if (tag == "plord") {
+            std::string name, fid;
+            ss >> name >> fid;
+            const int fh = c.factions.find(fid.c_str());
+            if (!name.empty() && fh >= 0)
+                gs.capturedLords.push_back({ name, fh });
         } else if (tag == "scamp") {
             ss >> gs.siegeCampTown >> gs.siegeCampPrep >> gs.siegeCampDays;
         } else if (tag == "lop") {

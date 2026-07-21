@@ -448,6 +448,34 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         }
     }
 
+    // ---- prisoner lords (O2): sell them back, or set them free ----
+    // Ransom pays 200 a head and the lord resents the ledger (-10); release
+    // pays nothing and is remembered kindly (+20 lord, +5 crown, +2 honor).
+    // Either way he rides again (respawn queued). TODO(balance): all of it.
+    if ((cin.ransomLords || cin.releaseLords) && !gs.capturedLords.empty()) {
+        std::string names;
+        for (const auto& pl : gs.capturedLords) {
+            if (!names.empty()) names += ", ";
+            names += pl.first;
+            if (cin.ransomLords) {
+                gs.gold += 200;
+                LordOpinion(gs, pl.first) -= 10;
+            } else {
+                gs.honor += 2;
+                LordOpinion(gs, pl.first) += 20;
+                NudgeRelation(gs, pl.second, +5);
+            }
+            gs.lordRespawns.push_back({ pl.second, pl.first, 10.0f });
+        }
+        gs.resultText = cin.ransomLords
+            ? TextFormat("Ransomed to their crowns: %s.  The gold is cold.",
+                         names.c_str())
+            : TextFormat("You free %s. Such things are not forgotten.",
+                         names.c_str());
+        gs.capturedLords.clear();
+        SfxPlay(Sfx::Fanfare);
+    }
+
     // ---- ransom captives (flat gold a head; TODO(balance)) ----
     if (TownAtTavern() && cin.ransom) {
         int heads = 0;

@@ -1,0 +1,22 @@
+# Prisoner lords (direction O2): breaking a lord's host takes him prisoner;
+# ransom him back (gold, resentment) or free him (honor, gratitude); either
+# way he rides again. Captives survive saves.
+seed 42
+capture Gorak raiders     # scenario shortcut for a hard-won capture
+capture Sigvald vaeling
+state                     # expect two plord: lines
+save plord_test.owb
+load plord_test.owb
+state                     # captives survive the reload
+enter 0
+ransomlords               # sell them back: +400 gold, both lords -10
+state                     # expect gold 700, lop lines at -10, no plord lines
+leave
+capture Toke vaeling
+enter 0
+releaselords              # set Toke free: +2 honor, +20 opinion, vaeling +5
+state                     # expect honor=2, lop Toke=+20, relation vaeling=+5
+leave
+wait 30                   # the freed and ransomed lords ride again
+state                     # expect lord=Gorak / Sigvald / Toke parties afield
+quit
