@@ -435,11 +435,21 @@ void CampaignInit(GameState& gs) {
             t.garrison[roster[i % (int)roster.size()]]++;
     }
 
-    // Stock every settlement's market and empty the hero's saddlebags.
-    // TODO(balance): starting stock and per-town price spreads are flat.
+    // Stock every settlement's market. Price spreads are settlement identity
+    // (the E2 trade loop): villages sell their raw produce cheap and pay dear
+    // for craftwork; towns are the mirror; castles are indifferent quarters
+    // with thin stock. TODO(balance): every number here.
+    constexpr int PRICE_AT_SOURCE = 70;    // where the good is made
+    constexpr int PRICE_AT_MARKET = 130;   // where it is wanted
     for (Town& t : gs.towns) {
-        t.stock.assign(c.goods.size(), 10);
+        const bool village = t.type == SettlementType::Village;
+        const bool castle  = t.type == SettlementType::Castle;
+        t.stock.assign(c.goods.size(), castle ? 5 : 10);
         t.priceOffset.assign(c.goods.size(), 100);
+        if (!castle)
+            for (int g = 0; g < c.goods.size(); ++g)
+                t.priceOffset[g] = (c.goods[g].raw == village) ? PRICE_AT_SOURCE
+                                                               : PRICE_AT_MARKET;
     }
     gs.goods.assign(c.goods.size(), 0);
 
@@ -981,9 +991,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
             // Markets restock one unit of each ware a day, up to the starting
             // level — caravans (direction E3) will replace this flat regrowth.
-            for (Town& t : gs.towns)
+            for (Town& t : gs.towns) {
+                const int cap = t.type == SettlementType::Castle ? 5 : 10;  // TODO(balance)
                 for (int g = 0; g < (int)t.stock.size(); ++g)
-                    if (t.stock[g] < 10) t.stock[g]++;   // TODO(balance)
+                    if (t.stock[g] < cap) t.stock[g]++;
+            }
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
 
             // Every owner musters one soldier a day toward their garrison cap
@@ -1507,10 +1519,13 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
     }
     Town& t = gs.towns[gs.currentSettlement];
 
+    int carried = 0;
+    for (int q : gs.goods) carried += q;
+
     if (in.buyGood >= 0 && in.buyGood < c.goods.size()) {
         const int g     = in.buyGood;
         const int price = MarketBuyPrice(c, t, g);
-        if (t.stock[g] > 0 && gs.gold >= price) {
+        if (t.stock[g] > 0 && gs.gold >= price && carried < GOODS_CAP) {
             gs.gold -= price;
             t.stock[g]--;
             gs.goods[g]++;
@@ -1538,7 +1553,10 @@ void MarketDraw(const GameState& gs) {
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
     ui::Text("1-9 buy one   Shift+1-9 sell one   Esc / M back", x, 116, 20,
              Fade(RAYWHITE, 0.7f));
-    ui::Text(TextFormat("Gold: %d", gs.gold), x, 150, 24, RAYWHITE);
+    int carried = 0;
+    for (int q : gs.goods) carried += q;
+    ui::Text(TextFormat("Gold: %d      Saddlebags: %d / %d", gs.gold, carried,
+                        GOODS_CAP), x, 150, 24, RAYWHITE);
 
     int y = 200;
     ui::Text("     ware          buy   sell   stock   yours", x, y, 18,

@@ -244,12 +244,14 @@ void LoadDefaultContent(Content& c) {
     // ---- Trade goods (direction E1) --------------------------------------
     // Stackable market wares. basePrice is a flat placeholder; per-town
     // spreads live on Town::priceOffset. TODO(balance): all prices.
-    c.goods.add({ "grain", "Grain",  10, BEIGE });
-    c.goods.add({ "wool",  "Wool",   10, RAYWHITE });
-    c.goods.add({ "iron",  "Iron",   10, GRAY });
-    c.goods.add({ "tools", "Tools",  10, LIGHTGRAY });
-    c.goods.add({ "salt",  "Salt",   10, Color{ 235, 235, 245, 255 } });
-    c.goods.add({ "spice", "Spice",  10, ORANGE });
+    // `raw` goods are village produce (cheap at the source, dear in towns);
+    // the rest is town craftwork flowing the other way — the E2 trade loop.
+    c.goods.add({ "grain", "Grain",  10, true,  BEIGE });
+    c.goods.add({ "wool",  "Wool",   10, true,  RAYWHITE });
+    c.goods.add({ "iron",  "Iron",   10, true,  GRAY });
+    c.goods.add({ "tools", "Tools",  10, false, LIGHTGRAY });
+    c.goods.add({ "salt",  "Salt",   10, true,  Color{ 235, 235, 245, 255 } });
+    c.goods.add({ "spice", "Spice",  10, false, ORANGE });
 
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`

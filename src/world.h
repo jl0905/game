@@ -83,6 +83,10 @@ struct InvItem {
 inline constexpr int INV_W = 10;   // inventory grid size, in cells
 inline constexpr int INV_H = 6;
 
+// How many trade-good units the party's saddlebags hold in total (E2).
+// TODO(balance): scale with party size / a pack-horse upgrade later.
+inline constexpr int GOODS_CAP = 30;
+
 // An AI army besieging a settlement; resolves on its own after `timer`.
 struct AISiege {
     int   party = -1;   // attacker, index into GameState::parties

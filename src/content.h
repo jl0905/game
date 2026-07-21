@@ -102,6 +102,7 @@ struct GoodDef {
     std::string id;
     std::string name;
     int         basePrice = 0;   // TODO(balance): gold per unit before offsets
+    bool        raw = true;      // village produce (cheap there) vs town craftwork
     Color       tint      = BEIGE;  // market-row swatch
 };
 

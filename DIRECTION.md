@@ -30,9 +30,13 @@ flat.
   sell pays 3/4 of buy (flat TODO(balance)), daily +1 restock, saved/loaded,
   harness `market`/`buy`/`sell` + `tests/market.txt`. Follow-ups: an on-screen
   [M] hint in the town HUD; a market stall building as the trigger.
-- [ ] **E2. Inventory-driven trade loop.** Goods occupy inventory tiles
-  (reuse D1 grid); party carry capacity from party size. Sell price differs
-  by settlement → the classic buy-low/sell-high caravan loop exists.
+- [x] **E2. Trade loop.** Shipped: goods carry a raw/craftwork identity;
+  villages price their produce at 70% and craftwork at 130% (towns mirror,
+  castles flat with thin stock), so buy-low/sell-high caravan runs pay.
+  Saddlebag capacity caps hauls at 30 units (GOODS_CAP). All numbers flat
+  TODO(balance); `tests/trade_loop.txt` proves a profitable run. Deviation
+  from the original note: goods stayed stackable counts rather than moving
+  into the D1 tile grid — stacks fit wares better than footprints.
 - [ ] **E3. Caravans & prosperity.** Faction caravan parties travel between
   owned settlements; arriving raises settlement prosperity (drives income);
   raiding caravans yields goods + relation penalty. Prosperity in saves.

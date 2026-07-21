@@ -196,6 +196,9 @@ struct Harness {
                 std::printf("good: %s=%d\n", c.goods[g].id.c_str(), gs.goods[g]);
         if (gs.screen == Screen::Market && gs.currentSettlement >= 0) {
             const Town& tw = gs.towns[gs.currentSettlement];
+            int carried = 0;
+            for (int q : gs.goods) carried += q;
+            std::printf("saddlebags=%d/%d\n", carried, GOODS_CAP);
             for (int g = 0; g < c.goods.size() && g < (int)tw.stock.size(); ++g)
                 std::printf("market: %s stock=%d offset=%d\n", c.goods[g].id.c_str(),
                             tw.stock[g], tw.priceOffset[g]);

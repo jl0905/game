@@ -1,0 +1,21 @@
+# Trade loop (direction E2): buy raw goods cheap in a village, sell dear in a
+# town. Emberfall (index 8) is a patrol village at peace with the player;
+# Sargoth (index 0) is your own town.
+seed 11
+enter 8            # Emberfall, village: grain offset 70 -> buys at 7
+market
+state              # expect saddlebags=0/30, grain offset=70
+buy grain 5        # 5 x 7 = 35 gold out
+state              # expect gold=265, grain=5
+market             # back to the streets
+leave
+enter 0            # Sargoth, town: grain offset 130 -> sells at 9
+market
+state              # expect offset=130
+sell grain 5       # 5 x 9 = 45 gold in — the caravan run pays
+state              # expect gold=310, grain=0
+buy spice 30       # craftwork is dear here AND the bags cap at 30
+state              # expect saddlebags capped at 30 or gold exhausted first
+market
+leave
+quit
