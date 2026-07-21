@@ -1,0 +1,34 @@
+# The campaign arc (direction Q1): one career, lived end to end - the
+# integration test that proves the systems hold together. Fame is used once,
+# where the renown grind is real but unbounded; everything else is played.
+seed 2
+background 1       # a noble's second son: renown 5, a helmet, doors open
+state              # expect renown=5, gold 500, patrol +10
+enter 0            # Sargoth: recruit and provision
+tavern             # the recruits wait by the hearth
+recruit 1 3        # three infantry for the line
+market
+buy grain 3        # the bags feed the band (P5)
+market
+leave
+state              # expect party ~10, grain=3
+hunt 120           # a career starts with a fight
+block on
+tick 150
+state              # expect a victory's renown and captives
+enter 3            # Jelkala: the patrol crown holds court
+swear              # the oath (renown 5 met by birth)
+state              # expect liege=patrol and a village fief flying kingdom
+leave
+fame 15 10         # years of service compressed: renown 15, honor 10
+enter 3
+court
+topic 6            # the crown should be mine
+state              # expect crowned=1, patrol lords defected, war with patrol
+leave
+wait 70            # the first day of the civil war
+state              # expect the realm ledgered: fiefs, wars, lords afield
+save arc_test.owb
+load arc_test.owb
+state              # a whole career survives one save
+quit

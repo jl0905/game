@@ -532,6 +532,16 @@ void TownTalkLord(GameState& gs) {
     gs.dialogueLines.push_back("Speak, captain. The court listens.");
 }
 
+// Walk (well, appear) at the tavern door — the harness's legs (Q1). The
+// windowed player walks there; scripts should not have to steer a scene.
+void TownGoTavern(GameState& gs) {
+    (void)gs;
+    if (T.tavern >= 0 && T.tavern < (int)T.buildings.size()) {
+        const Building& b = T.buildings[T.tavern];
+        T.pPos = { b.pos.x, 0, b.pos.z + b.size.z * 0.5f + 2.0f };
+    }
+}
+
 void TownTalkNearest(GameState& gs) {
     const Npc* best = nullptr;
     float bestD = 1e9f;

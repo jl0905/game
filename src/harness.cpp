@@ -423,6 +423,9 @@ int RunScript(const char* path) {
         } else if (cmd == "leave") {
             CampaignInput cin; cin.leaveSettlement = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "tavern") {
+            // Stand at the tavern door (Q1) — recruiting requires it.
+            if (h.gs.screen == Screen::Settlement) TownGoTavern(h.gs);
         } else if (cmd == "recruit") {
             int slot = 0, n = 1; ss >> slot >> n;
             for (int i = 0; i < n; ++i) {

@@ -465,6 +465,29 @@ War should scar the map, not just the rosters.
   flat TODO(balance). Follow-up: AI hosts eating too (their side of the
   logistics war).
 
+## Track Q — Seventh wave: the whole cloth
+
+The systems all exist; this wave is about them holding together over a
+full career, and the last Warband textures.
+
+- [x] **Q1. The campaign arc.** Shipped: `tests/campaign_arc.txt` lives a
+  career — noble birth, tavern recruiting, provisioning, a road victory,
+  the oath (Emberfall in fief), rebellion (both patrol lords turn), and
+  a crown that survives the save. It immediately surfaced real friction:
+  tavern recruiting was unreachable from scripts (position-gated since
+  the walkable town shipped) — fixed with a `tavern` harness shortcut in
+  the `court` idiom. Keep this script green forever.
+- [ ] **Q2. AI armies eat.** Lords' hosts shrink on long campaigns far
+  from home (the P5 follow-up) — wars end because armies starve, not
+  only because they bleed.
+- [ ] **Q3. Knocked out, not dead.** Companions fall unconscious instead
+  of dying (Warband's rule): they miss the rest of the fight and return
+  after, at most losing gear. Death stays for the nameless.
+- [ ] **Q4. Sinks and decay.** Renown fades a point a week; wages scale
+  with tier. The treadmills that keep a long game moving.
+- [ ] **Q5. Autosave cadence.** Autosave every world day (the slot exists;
+  this is the trigger) plus on quit — a crash costs a day, not a career.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

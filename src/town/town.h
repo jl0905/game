@@ -27,6 +27,8 @@ bool TownAtTavern();
 // NPC (harnesses may call it directly); Dialogue{Update,Draw} run the screen.
 void TownTalkNearest(GameState& gs);
 void TownTalkLord(GameState& gs);   // the castle court audience (K2)
+void TownGoTavern(GameState& gs);   // stand at the tavern door (harness
+                                    // shortcut, Q1 — recruiting lives there)
 void DialogueUpdate(GameState& gs, const CampaignInput& in);
 void DialogueDraw(const GameState& gs);
 
