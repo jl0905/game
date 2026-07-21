@@ -446,6 +446,12 @@ int RunScript(const char* path) {
             CampaignInput cin; ss >> cin.settingsRow;
             cin.settingsRow--;   // 1-based on the command line, like the keys
             h.Step(cin, BattleInput{});
+        } else if (cmd == "court") {
+            // Open the castle court audience (skips the walk to the keep).
+            if (h.gs.screen == Screen::Settlement) {
+                TownTalkLord(h.gs);
+                h.gs.screen = Screen::Dialogue;
+            }
         } else if (cmd == "talk") {
             // Open a conversation with the nearest NPC (skips the walk-up).
             if (h.gs.screen == Screen::Settlement) {

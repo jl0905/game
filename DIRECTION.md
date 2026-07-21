@@ -185,9 +185,13 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   documentation preserved) and returns whence it came. Presentation-only
   by design: `tests/settings.txt` proves the sim is untouched and the cfg
   round-trips.
-- [ ] **K2. Lords in the hall.** Talk (H4 screen) to a lord in his castle
-  keep: swear fealty / ask for quests / demand a fief there instead of
-  bare hotkeys — moves V and lord-flavour into conversation.
+- [x] **K2. Lords in the hall.** Shipped: a castle's keep door now opens the
+  lord's court (H4 dialogue, named for the crown's first lord): ask for
+  news, swear your sword (full F2 oath with spoken refusals — "your name
+  is mud", "you are at war"), or take work (F4). The V and G hotkeys share
+  the same extracted TrySwear/TryQuest logic, so both paths stay in step.
+  Harness `court`; `tests/lord_court.txt`. Follow-up: per-lord audiences
+  (any lord present, not just the crown's first name).
 - [ ] **K3. Tournament brackets & betting.** Multiple rounds with shrinking
   fields, bet gold on yourself, renown ties into relations.
 - [ ] **K4. Per-soldier morale.** Replace G3's side-wide threshold: each

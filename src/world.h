@@ -163,6 +163,7 @@ struct GameState {
     // Filled by the town scene when a conversation opens; transient.
     std::string              dialogueName;
     std::vector<std::string> dialogueLines;
+    bool                     dialogueLord = false;   // court audience (K2): oath/work topics
 
     // Active quest (F4): one at a time. `questTown` is the delivery target
     // for DeliverGrain; `questFaction` earns the relation reward.

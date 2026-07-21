@@ -26,6 +26,7 @@ bool TownAtTavern();
 // screen. TownTalkNearest fills GameState's dialogue fields from the closest
 // NPC (harnesses may call it directly); Dialogue{Update,Draw} run the screen.
 void TownTalkNearest(GameState& gs);
+void TownTalkLord(GameState& gs);   // the castle court audience (K2)
 void DialogueUpdate(GameState& gs, const CampaignInput& in);
 void DialogueDraw(const GameState& gs);
 

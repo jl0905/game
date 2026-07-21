@@ -815,8 +815,9 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Dialogue) {
-        if (IsKeyPressed(KEY_ONE)) in.menuChoice = 1;
-        if (IsKeyPressed(KEY_TWO)) in.menuChoice = 2;
+        if (IsKeyPressed(KEY_ONE))   in.menuChoice = 1;
+        if (IsKeyPressed(KEY_TWO))   in.menuChoice = 2;
+        if (IsKeyPressed(KEY_THREE)) in.menuChoice = 3;
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
         return in;
     }

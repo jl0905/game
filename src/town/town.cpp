@@ -87,6 +87,76 @@ std::vector<std::string> GatherLines(const GameState& gs, bool guards) {
     return lines;
 }
 
+// Take the oath at this settlement (F2). Returns what happened, or the
+// refusal — shared by the V hotkey and the lord's court dialogue (K2).
+std::string TrySwear(GameState& gs) {
+    const Content& c = gs.content;
+    if (gs.liege >= 0) return "You are already sworn.";
+    const int f = gs.towns[gs.currentSettlement].owner;
+    const bool kingdom = f >= 0 && f != c.playerFaction &&
+                         c.factions[f].kingdom && !c.factions[f].lords.empty();
+    const int standing = (f >= 0 && f < (int)gs.relations.size()) ? gs.relations[f] : 0;
+    if (!kingdom) return "No crown holds court here.";
+    if (AtWar(gs, f, c.playerFaction)) return "You are at war with this crown.";
+    if (standing < 0) return "Your name is mud with this crown. Mend it first.";
+    gs.liege = f;
+    AlignWarsWithLiege(gs);
+    int fief = -1;
+    for (int t = 0; t < (int)gs.towns.size(); ++t)
+        if (gs.towns[t].owner == f && gs.towns[t].type == SettlementType::Village) {
+            fief = t;
+            break;
+        }
+    std::string msg;
+    if (fief >= 0) {
+        gs.towns[fief].owner = c.playerFaction;
+        msg = TextFormat("You are sworn to %s. %s is your fief.",
+                         c.factions[f].name.c_str(), gs.towns[fief].name.c_str());
+    } else {
+        msg = TextFormat("You are sworn to %s. No fief yet - earn one.",
+                         c.factions[f].name.c_str());
+    }
+    gs.resultText = msg;
+    SfxPlay(Sfx::Fanfare);
+    return msg;
+}
+
+// Take the local giver's quest (F4). Returns the offer, or why there is none —
+// shared by the G hotkey and the lord's court dialogue (K2).
+std::string TryQuest(GameState& gs) {
+    const Content& c = gs.content;
+    if (gs.activeQuest >= 0) return "Finish the task you carry first.";
+    if (c.quests.size() == 0) return "No work today.";
+    const int q = (gs.currentSettlement + gs.day) % c.quests.size();
+    const QuestDef& qd = c.quests[q];
+    gs.activeQuest  = q;
+    gs.questFaction = gs.towns[gs.currentSettlement].owner;
+    gs.questTown    = -1;
+    gs.questProgress = 0;
+    if (qd.type == QuestType::DeliverGrain) {
+        // Deliver to the nearest settlement you can actually walk into.
+        float bestD = 1e9f;
+        for (int t = 0; t < (int)gs.towns.size(); ++t) {
+            if (t == gs.currentSettlement) continue;
+            if (AtWar(gs, gs.towns[t].owner, c.playerFaction)) continue;
+            const float d = Vector2Distance(gs.towns[gs.currentSettlement].pos,
+                                            gs.towns[t].pos);
+            if (d < bestD) { bestD = d; gs.questTown = t; }
+        }
+        if (gs.questTown < 0) {
+            gs.activeQuest = -1;   // nowhere to deliver: no quest today
+            return "No work today.";
+        }
+    }
+    const std::string msg = gs.questTown >= 0
+        ? TextFormat("%s: %s  Bring %d grain to %s.", qd.name.c_str(),
+                     qd.blurb.c_str(), qd.amount, gs.towns[gs.questTown].name.c_str())
+        : TextFormat("%s: %s  (%d gold)", qd.name.c_str(), qd.blurb.c_str(),
+                     qd.goldReward);
+    gs.resultText = msg;
+    return msg;
+}
+
 // Keep a point out of every building footprint (simple AABB push-out).
 Vector3 CollideBuildings(Vector3 p, float radius) {
     for (const Building& b : T.buildings) {
@@ -276,68 +346,11 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     }
 
     // ---- ask the local giver for work (G) — one quest at a time (F4) ----
-    // The giver rotates through the quest shapes by settlement and day.
     // Follow-up: gate on a guild-master NPC instead of anywhere in town.
-    if (cin.quest && gs.activeQuest < 0 && c.quests.size() > 0) {
-        const int q = (gs.currentSettlement + gs.day) % c.quests.size();
-        const QuestDef& qd = c.quests[q];
-        gs.activeQuest  = q;
-        gs.questFaction = gs.towns[gs.currentSettlement].owner;
-        gs.questTown    = -1;
-        gs.questProgress = 0;
-        if (qd.type == QuestType::DeliverGrain) {
-            // Deliver to the nearest settlement you can actually walk into.
-            float bestD = 1e9f;
-            for (int t = 0; t < (int)gs.towns.size(); ++t) {
-                if (t == gs.currentSettlement) continue;
-                if (AtWar(gs, gs.towns[t].owner, c.playerFaction)) continue;
-                const float d = Vector2Distance(gs.towns[gs.currentSettlement].pos,
-                                                gs.towns[t].pos);
-                if (d < bestD) { bestD = d; gs.questTown = t; }
-            }
-        }
-        if (qd.type == QuestType::DeliverGrain && gs.questTown < 0) {
-            gs.activeQuest = -1;   // nowhere to deliver: no quest today
-        } else {
-            gs.resultText = gs.questTown >= 0
-                ? TextFormat("%s: %s  Bring %d grain to %s.", qd.name.c_str(),
-                             qd.blurb.c_str(), qd.amount,
-                             gs.towns[gs.questTown].name.c_str())
-                : TextFormat("%s: %s  (%d gold)", qd.name.c_str(), qd.blurb.c_str(),
-                             qd.goldReward);
-        }
-    }
+    if (cin.quest) TryQuest(gs);
 
-    // ---- swear fealty to this settlement's crown (V) ----
-    // A free captain in good standing may take the oath at any settlement of
-    // a lord-fielding kingdom he is at peace with. The crown grants a village
-    // fief when it has one to give. TODO(balance): the standing requirement.
-    if (cin.swear && gs.liege < 0) {
-        const int f = gs.towns[gs.currentSettlement].owner;
-        const bool kingdom = f >= 0 && f != c.playerFaction &&
-                             c.factions[f].kingdom && !c.factions[f].lords.empty();
-        const int standing = (f >= 0 && f < (int)gs.relations.size()) ? gs.relations[f] : 0;
-        if (kingdom && !AtWar(gs, f, c.playerFaction) && standing >= 0) {
-            gs.liege = f;
-            AlignWarsWithLiege(gs);
-            int fief = -1;
-            for (int t = 0; t < (int)gs.towns.size(); ++t)
-                if (gs.towns[t].owner == f && gs.towns[t].type == SettlementType::Village) {
-                    fief = t;
-                    break;
-                }
-            if (fief >= 0) {
-                gs.towns[fief].owner = c.playerFaction;
-                gs.resultText = TextFormat("You are sworn to %s. %s is your fief.",
-                                           c.factions[f].name.c_str(),
-                                           gs.towns[fief].name.c_str());
-            } else {
-                gs.resultText = TextFormat("You are sworn to %s. No fief yet - earn one.",
-                                           c.factions[f].name.c_str());
-            }
-            SfxPlay(Sfx::Fanfare);
-        }
-    }
+    // ---- swear fealty to this settlement's crown (V; also at court, K2) ----
+    if (cin.swear && gs.liege < 0) TrySwear(gs);
 
     // ---- enter the tournament ring (T, towns only) ----
     if (cin.tournament &&
@@ -356,9 +369,17 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     }
 
     // ---- step through the tavern door (E), or back out again ----
+    // In a castle the keep door leads to the lord's court instead (K2).
     if (cin.interact && (T.inside || TownAtTavern())) {
-        T.inside = !T.inside;
-        if (T.inside) { T.iPos = { 0, 0, 3.5f }; T.yaw = PI; }
+        if (!T.inside &&
+            gs.towns[gs.currentSettlement].type == SettlementType::Castle) {
+            TownTalkLord(gs);
+            gs.screen = Screen::Dialogue;
+            if (IsWindowReady()) EnableCursor();
+        } else {
+            T.inside = !T.inside;
+            if (T.inside) { T.iPos = { 0, 0, 3.5f }; T.yaw = PI; }
+        }
     } else if (cin.interact) {
         // ---- or stop a passer-by for a word (H4) ----
         for (const Npc& n : T.npcs) {
@@ -448,6 +469,20 @@ TownView GetTownView() {
     return v;
 }
 
+void TownTalkLord(GameState& gs) {
+    const Content& c = gs.content;
+    const int owner = gs.towns[gs.currentSettlement].owner;
+    if (owner == c.playerFaction)
+        gs.dialogueName = "Your Castellan";
+    else if (c.factions.valid(owner) && !c.factions[owner].lords.empty())
+        gs.dialogueName = TextFormat("Lord %s", c.factions[owner].lords[0].c_str());
+    else
+        gs.dialogueName = "The Castellan";
+    gs.dialogueLord = true;
+    gs.dialogueLines.clear();
+    gs.dialogueLines.push_back("Speak, captain. The court listens.");
+}
+
 void TownTalkNearest(GameState& gs) {
     const Npc* best = nullptr;
     float bestD = 1e9f;
@@ -460,6 +495,7 @@ void TownTalkNearest(GameState& gs) {
                         gs.currentSettlement < (int)gs.towns.size() &&
                         gs.towns[gs.currentSettlement].type == SettlementType::Castle;
     gs.dialogueName = castle ? "Guardsman" : "Villager";
+    gs.dialogueLord = false;
     gs.dialogueLines.clear();
     gs.dialogueLines.push_back(best ? best->line : "Well met, captain.");
 }
@@ -469,6 +505,12 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
         const bool castle = gs.currentSettlement >= 0 &&
                             gs.towns[gs.currentSettlement].type == SettlementType::Castle;
         gs.dialogueLines = GatherLines(gs, castle);
+    } else if (in.menuChoice == 2 && gs.dialogueLord) {   // "I would swear my sword."
+        gs.dialogueLines.clear();
+        gs.dialogueLines.push_back(TrySwear(gs));
+    } else if (in.menuChoice == 3 && gs.dialogueLord) {   // "Have you work for me?"
+        gs.dialogueLines.clear();
+        gs.dialogueLines.push_back(TryQuest(gs));
     } else if (in.menuChoice == 2) {   // "Any work for a warband?"
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back("Work? The giver posts it - ask around town (G).");
@@ -507,8 +549,16 @@ void DialogueDraw(const GameState& gs) {
     }
 
     ui::Text("[1] What news of the war?", x, y + 30, 22, Fade(RAYWHITE, 0.85f));
-    ui::Text("[2] Any work for a warband?", x, y + 60, 22, Fade(RAYWHITE, 0.85f));
-    ui::Text("[Esc / E] Take your leave", x, y + 90, 20, Fade(RAYWHITE, 0.6f));
+    if (gs.dialogueLord) {
+        ui::Text("[2] I would swear my sword to this crown.", x, y + 60, 22,
+                 Fade(RAYWHITE, 0.85f));
+        ui::Text("[3] Have you work for my warband?", x, y + 90, 22,
+                 Fade(RAYWHITE, 0.85f));
+        ui::Text("[Esc / E] Take your leave", x, y + 120, 20, Fade(RAYWHITE, 0.6f));
+    } else {
+        ui::Text("[2] Any work for a warband?", x, y + 60, 22, Fade(RAYWHITE, 0.85f));
+        ui::Text("[Esc / E] Take your leave", x, y + 90, 20, Fade(RAYWHITE, 0.6f));
+    }
     EndDrawing();
 }
 

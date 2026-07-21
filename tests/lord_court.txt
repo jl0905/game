@@ -1,0 +1,13 @@
+# Lords in the hall (direction K2): oaths and work through conversation.
+seed 49
+enter 1            # Praven, the patrol crown's castle (at peace with you)
+court              # the keep door leads to the lord's court
+state              # expect dialogue: Lord Aldric, court greeting
+topic 3            # "Have you work for my warband?"
+state              # expect a quest line and quest: ... in the dump
+topic 2            # "I would swear my sword to this crown."
+state              # expect the oath line, liege=patrol, Emberfall yours
+leave              # take your leave of the court
+state              # expect screen=Settlement
+leave
+quit
