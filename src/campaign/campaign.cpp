@@ -966,6 +966,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_THREE)) in.menuChoice = 3;
         if (IsKeyPressed(KEY_FOUR))  in.menuChoice = 4;   // grant a fief (M3)
         if (IsKeyPressed(KEY_FIVE))  in.menuChoice = 5;   // marriage suit (M5)
+        if (IsKeyPressed(KEY_SIX))   in.menuChoice = 6;   // rebellion (O6)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
         return in;
     }

@@ -575,6 +575,51 @@ std::string TryGrantFief(GameState& gs) {
     return "No landless lord attends your court. Raise one first (L).";
 }
 
+// Rebellion (O6): a sworn vassal declares the crown should be theirs. Needs
+// a great name and lords willing to follow; the willing defect, the crown
+// answers with war, and the civil war begins. TODO(balance): every gate.
+std::string TryRebel(GameState& gs) {
+    const Content& c = gs.content;
+    constexpr int RENOWN_TO_REBEL  = 15;
+    constexpr int OPINION_TO_FOLLOW = 10;
+    if (gs.liege < 0) return "You serve no crown. There is nothing to usurp.";
+    const int crown = gs.liege;
+    if (gs.renown < RENOWN_TO_REBEL)
+        return TextFormat("Usurpers need a great name. Win renown first (%d/%d).",
+                          gs.renown, RENOWN_TO_REBEL);
+    // Count the crown's lords who would follow you.
+    int willing = 0, lords = 0;
+    for (const Party& p : gs.parties) {
+        if (!p.alive || p.faction != crown || p.lord.empty()) continue;
+        lords++;
+        if (EffectiveLordOpinion(gs, p.lord) >= OPINION_TO_FOLLOW) willing++;
+    }
+    if (lords > 0 && willing * 2 < lords)
+        return "No lord would follow you. Court them first.";
+    // The die is cast: the willing defect, the crown answers with war.
+    int defected = 0;
+    for (Party& p : gs.parties) {
+        if (!p.alive || p.faction != crown || p.lord.empty()) continue;
+        if (EffectiveLordOpinion(gs, p.lord) >= OPINION_TO_FOLLOW) {
+            p.faction = c.playerFaction;
+            defected++;
+        }
+    }
+    const int n = c.factions.size();
+    if ((int)gs.hostile.size() == n * n)
+        gs.hostile[(size_t)c.playerFaction * n + crown] =
+            gs.hostile[(size_t)crown * n + c.playerFaction] = 1;
+    NudgeRelation(gs, crown, -60);
+    gs.liege   = -1;
+    gs.crowned = true;
+    gs.honor  -= 2;   // an oath broken is an oath broken
+    gs.resultText = TextFormat(
+        "REBELLION!  %d lord(s) declare for you. %s answers with war.",
+        defected, c.factions[crown].name.c_str());
+    SfxPlay(Sfx::WarCry);
+    return gs.resultText;
+}
+
 void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     if (in.menuChoice == 1) {   // "What news of the war?"
         const bool castle = gs.currentSettlement >= 0 &&
@@ -589,6 +634,9 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryGrantFief(gs));
+    } else if (in.menuChoice == 6 && gs.dialogueLord) {   // rebellion (O6)
+        gs.dialogueLines.clear();
+        gs.dialogueLines.push_back(TryRebel(gs));
     } else if (in.menuChoice == 5 && gs.dialogueLord) {   // marriage suit (M5)
         gs.dialogueLines.clear();
         const int host = gs.feastFaction;
@@ -663,6 +711,12 @@ void DialogueDraw(const GameState& gs) {
             gs.spouseFaction < 0) {   // a feast's court makes matches (M5)
             ui::Text("[5] I seek a marriage alliance.", x, leaveY, 22,
                      Fade(PINK, 0.85f));
+            leaveY += 30;
+        }
+        if (gs.liege >= 0 &&
+            gs.towns[gs.currentSettlement].owner == gs.liege) {   // O6
+            ui::Text("[6] The crown should be mine.", x, leaveY, 22,
+                     Fade(RED, 0.85f));
             leaveY += 30;
         }
         ui::Text("[Esc / E] Take your leave", x, leaveY, 20, Fade(RAYWHITE, 0.6f));

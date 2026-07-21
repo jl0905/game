@@ -1,0 +1,23 @@
+# Rebellion (direction O6): a sworn vassal with a great name and willing
+# lords declares for the crown they serve. The willing defect, the crown
+# answers with war, and the usurper wears a crown into the civil war.
+seed 25
+fame 5 0           # meet the oath gate
+enter 3            # swear to the patrol crown at Jelkala
+swear
+state              # expect liege=patrol
+court
+topic 6            # too soon: "usurpers need a great name"
+state              # expect liege still patrol, crowned absent
+leave
+fame 15 10         # a great name - and honor that makes every lord willing
+enter 3
+court
+topic 6            # the die is cast
+state              # expect crowned=1, no liege, war with patrol,
+                   # Aldric/Corin parties now faction=kingdom
+leave
+save rebel_test.owb
+load rebel_test.owb
+state              # the rebellion survives the reload
+quit

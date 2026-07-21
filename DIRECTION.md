@@ -408,9 +408,15 @@ adds per line of code. Structure first, numbers flat, as ever.
   settings.cfg, fonts.cfg; content registration in content.cpp with a
   recipe per def type), plus how to test a mod with the harness and the
   49-script scenario library.
-- [ ] **O6. Rebellion arcs.** A sworn vassal can scheme: gather lord
-  opinions, declare for the crown you serve to be yours, and fight the
-  civil war (the crowning move the sandbox is missing).
+- [x] **O6. Rebellion arcs.** Shipped: court topic [6] at a liege
+  settlement — "The crown should be mine." Gated on renown 15 and a
+  majority of the crown's lords at effective opinion ≥ 10 (court them, or
+  let honor carry you), with spoken refusals. On success the willing
+  lords defect with their hosts, the crown answers with war (−60
+  standing), the oath breaks (−2 honor), and you are crowned into the
+  civil war. `tests/rebellion.txt` turns both patrol lords and reloads
+  the war. All gates flat TODO(balance). Follow-up: loyalist lords
+  hunting the usurper specifically; a coronation moment.
 
 ## Sequencing guidance
 
