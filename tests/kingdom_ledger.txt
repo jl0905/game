@@ -1,0 +1,10 @@
+# Kingdom ledger (direction O1): B opens the ruler's one-page view (fiefs,
+# lords, wars, income); Esc closes it back to the map. Read-only — opening
+# and closing it must not disturb the world.
+seed 42
+state
+ledger             # open the book
+state              # expect screen=Kingdom
+ledger             # close it
+state              # expect screen=Campaign, world untouched (gold 300, day 0)
+quit

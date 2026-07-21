@@ -33,6 +33,11 @@ void CampaignDraw(const GameState& gs);
 
 // (The settlement itself is a walkable 3D scene — see src/town/town.h.)
 
+// Kingdom ledger (O1): the ruler's one-screen view — fiefs and their lords,
+// armies afield, wars, and income by source. Read-only; B on the map.
+void KingdomUpdate(GameState& gs, const CampaignInput& in);
+void KingdomDraw(const GameState& gs);
+
 // Load menu (N3): pick the autosave or a quicksave slot from the title.
 void LoadMenuUpdate(GameState& gs, const CampaignInput& in);
 void LoadMenuDraw(const GameState& gs);

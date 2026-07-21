@@ -377,9 +377,14 @@ adds per line of code. Structure first, numbers flat, as ever.
 
 ## Track O — Fifth wave: rule what you won
 
-- [ ] **O1. Kingdom ledger screen.** One screen for a ruler: fiefs and
-  their lords (with opinions), armies afield, wars and truces, income by
-  source. The data all exists; this is the view that makes it a kingdom.
+- [x] **O1. Kingdom ledger screen.** Shipped: B on the map opens THE LEDGER
+  — rank line (free captain / sworn / crowned, renown, honor, spouse),
+  fiefs with prosperity and per-day pay (granted seats shown as "held by
+  Lord X" with their income kept by the lord), the income equation
+  (settlements + enterprises − wages, and what lords keep), lords afield
+  with strength/state/opinion, prisoners in your train, and current wars.
+  Read-only by design; Esc/B closes. Harness `ledger` +
+  `tests/kingdom_ledger.txt` proves opening it disturbs nothing.
 - [x] **O2. Prisoner lords.** Shipped: breaking a lord's host takes him
   prisoner (battle-report line; no respawn while he sits in your train).
   At any settlement, U ransoms all captives to their crowns (200 gold a

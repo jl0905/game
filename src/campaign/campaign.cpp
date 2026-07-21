@@ -1012,6 +1012,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Kingdom) {
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_B))
+            in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::LoadMenu) {
         for (int r = 0; r < 4; ++r)
             if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
@@ -1115,6 +1121,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                 Vector2Distance(world, gs.lairs[i].pos) < TOWN_CLICK_RADIUS)
                 in.clickLair = i;
     }
+    in.openLedger = IsKeyPressed(KEY_B);         // the kingdom ledger (O1)
     if (IsKeyPressed(KEY_F5)) in.saveSlot = 1;   // quicksave slots (N3)
     if (IsKeyPressed(KEY_F6)) in.saveSlot = 2;
     if (IsKeyPressed(KEY_F7)) in.saveSlot = 3;
@@ -1288,6 +1295,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             return;
         }
     }
+
+    if (in.openLedger) { gs.screen = Screen::Kingdom; return; }   // O1
 
     // Quicksave (N3): three slots on F5-F7, right from the saddle.
     if (in.saveSlot >= 1 && in.saveSlot <= 3) {
@@ -2790,6 +2799,113 @@ bool TitleUpdate(GameState& gs, const CampaignInput& in) {
         default: break;
     }
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// Kingdom ledger (O1): everything a ruler needs on one page. Read-only —
+// all of it is state the systems already keep; this is the view that makes
+// the holdings feel like a kingdom.
+// ---------------------------------------------------------------------------
+
+void KingdomUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.leaveSettlement) gs.screen = Screen::Campaign;
+}
+
+void KingdomDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int lx = 80, rx = GetScreenWidth() / 2 + 60;
+    ui::Title("THE LEDGER", lx, 40, 44, GOLD);
+
+    // ---- the realm's headline ----
+    const char* rank = gs.crowned ? "Crowned ruler"
+                       : gs.liege >= 0 ? TextFormat("Sworn to %s",
+                                                    c.factions[gs.liege].name.c_str())
+                                       : "Free captain";
+    ui::Text(TextFormat("%s      Renown %d   Honor %+d      Gold %d", rank,
+                        gs.renown, gs.honor, gs.gold), lx, 100, 22, RAYWHITE);
+    if (gs.spouseFaction >= 0)
+        ui::Text(TextFormat("Wed to Lady %s of %s", gs.spouseName.c_str(),
+                            c.factions[gs.spouseFaction].name.c_str()),
+                 lx, 128, 18, Fade(PINK, 0.85f));
+
+    // ---- fiefs and their income ----
+    int y = 170;
+    ui::Text("FIEFS", lx, y, 22, GOLD); y += 30;
+    int income = 0, granted = 0;
+    for (const Town& t : gs.towns) {
+        if (t.owner != c.playerFaction) continue;
+        const int pay = SettlementIncome(t.type) * t.prosperity / 100;
+        if (t.fiefLord.empty()) income += pay; else granted += pay;
+        ui::Text(TextFormat("%-11s %-8s prosper %d%%   %s", t.name.c_str(),
+                            SettlementTypeName(t.type), t.prosperity,
+                            t.fiefLord.empty()
+                                ? TextFormat("+%d/day", pay)
+                                : TextFormat("held by Lord %s", t.fiefLord.c_str())),
+                 lx, y, 19, t.fiefLord.empty() ? RAYWHITE : Fade(GOLD, 0.85f));
+        y += 26;
+        if (y > GetScreenHeight() - 160) break;
+    }
+    int wages = 0;
+    for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
+        wages += gs.player.troopCounts[t] * c.troops[t].wage;
+    int enterprise = 0;
+    for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
+        if (c.enterprises.valid(gs.enterpriseAt[ti]) &&
+            !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
+            enterprise += c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
+                          gs.towns[ti].prosperity / 100;
+    y += 8;
+    ui::Text(TextFormat("Income %d  +  enterprises %d  -  wages %d   =   %+d a day"
+                        "      (lords keep %d)",
+                        income, enterprise, wages, income + enterprise - wages,
+                        granted),
+             lx, y, 20, income + enterprise >= wages ? LIME : Fade(RED, 0.9f));
+
+    // ---- lords of the realm ----
+    int ry = 170;
+    ui::Text("LORDS AFIELD", rx, ry, 22, GOLD); ry += 30;
+    bool anyLord = false;
+    for (const Party& p : gs.parties) {
+        if (!p.alive || p.faction != c.playerFaction || p.lord.empty()) continue;
+        anyLord = true;
+        const int eff = EffectiveLordOpinion(const_cast<GameState&>(gs), p.lord);
+        ui::Text(TextFormat("Lord %-9s %3d men   %-10s opinion %+d",
+                            p.lord.c_str(), p.totalTroops(),
+                            PartyStateName(p.state), eff),
+                 rx, ry, 19, eff >= 0 ? RAYWHITE : Fade(RED, 0.9f));
+        ry += 26;
+    }
+    if (!anyLord) {
+        ui::Text("None ride under your banner.", rx, ry, 19, Fade(RAYWHITE, 0.5f));
+        ry += 26;
+    }
+    for (const auto& pl : gs.capturedLords) {
+        ui::Text(TextFormat("Lord %-9s of %s  — your prisoner", pl.first.c_str(),
+                            c.factions.valid(pl.second)
+                                ? c.factions[pl.second].name.c_str() : "?"),
+                 rx, ry, 19, Fade(ORANGE, 0.9f));
+        ry += 26;
+    }
+
+    // ---- wars ----
+    ry += 12;
+    ui::Text("WARS", rx, ry, 22, GOLD); ry += 30;
+    bool atPeaceAll = true;
+    for (int f = 0; f < c.factions.size(); ++f) {
+        if (f == c.playerFaction || !AtWar(gs, c.playerFaction, f)) continue;
+        atPeaceAll = false;
+        ui::Text(TextFormat("At war with %s", c.factions[f].name.c_str()), rx, ry,
+                 19, Fade(RED, 0.9f));
+        ry += 26;
+    }
+    if (atPeaceAll)
+        ui::Text("The realm is at peace.", rx, ry, 19, LIME);
+
+    ui::Text("[Esc / B] close the book", lx, GetScreenHeight() - 44, 20,
+             Fade(RAYWHITE, 0.7f));
+    EndDrawing();
 }
 
 // ---------------------------------------------------------------------------

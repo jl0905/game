@@ -33,6 +33,7 @@ struct CampaignInput {
     // market screen (rows are goods-registry order)
     bool    sendCaravan = false;   // outfit a trade convoy here (M4, C at market)
     int     saveSlot = 0;          // quicksave to slot 1..3 (N3, F5-F7 on the map)
+    bool    openLedger = false;    // kingdom ledger screen (O1, B on the map)
     bool    ransomLords  = false;  // prisoner lords (O2): sell them back (U)
     bool    releaseLords = false;  // ...or set them free (Y)
     int     buyGood  = -1;            // good row to buy one unit of

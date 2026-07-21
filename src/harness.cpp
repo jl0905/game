@@ -83,6 +83,9 @@ struct Harness {
             case Screen::Settings:
                 SettingsUpdate(gs, cin);
                 break;
+            case Screen::Kingdom:
+                KingdomUpdate(gs, cin);
+                break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
@@ -154,6 +157,7 @@ struct Harness {
             case Screen::Market:       return "Market";
             case Screen::Dialogue:     return "Dialogue";
             case Screen::Settings:     return "Settings";
+            case Screen::Kingdom:      return "Kingdom";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -526,6 +530,12 @@ int RunScript(const char* path) {
             int b = 0; ss >> b;
             ApplyBackground(h.gs, b);
             std::printf("background %d: %s\n", b, h.gs.resultText.c_str());
+        } else if (cmd == "ledger") {
+            // Toggle the kingdom ledger (O1) — open from the map, Esc closes.
+            CampaignInput cin;
+            if (h.gs.screen == Screen::Kingdom) cin.leaveSettlement = true;
+            else                                cin.openLedger = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "capture") {
             // Scenario shortcut (O2): put a named lord in the player's train.
             std::string name, fid;

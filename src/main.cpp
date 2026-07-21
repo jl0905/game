@@ -145,6 +145,13 @@ int main(int argc, char** argv) {
                 } else                            CampaignDraw(gs);
                 break;
             }
+            case Screen::Kingdom: {                       // the ledger (O1)
+                const CampaignInput in = GatherCampaignInput(gs);
+                KingdomUpdate(gs, in);
+                if (gs.screen == Screen::Kingdom) KingdomDraw(gs);
+                else                              CampaignDraw(gs);
+                break;
+            }
             case Screen::LoadMenu: {                      // pick a save (N3)
                 const CampaignInput in = GatherCampaignInput(gs);
                 LoadMenuUpdate(gs, in);
