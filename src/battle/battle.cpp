@@ -43,14 +43,18 @@ constexpr float WALL_BAND   = 1.4f;   // half-thickness of the blocked band
 constexpr float WALL_HEIGHT = 4.0f;
 constexpr float GATE_HALF   = 5.0f;   // half-width of the gate opening
 
-// Siege ladders: two fixed climbing points flanking the gate. A mover close
-// enough to a ladder may cross the wall band, arcing up over the rampart.
-constexpr float LADDER_X[2]  = { -14.0f, 14.0f };
-constexpr float LADDER_HALF  = 1.5f;   // half-width of the climbable lane
+// Siege climbing points (N1): every siege has two ladders flanking the gate;
+// engineering adds more ladders and, with a tower, one wide rolling lane.
+// Runtime state (filled in BattleInit from BattleSetup::siegePrep).
+constexpr float LADDER_HALF = 1.5f;    // half-width of a ladder lane
+constexpr float TOWER_HALF  = 3.5f;    // half-width of the tower's ramp
+struct ClimbPoint { float x; float half; bool tower; };
+std::vector<ClimbPoint> g_climbs;
 
 bool NearLadder(float x) {
-    return fabsf(x - LADDER_X[0]) <= LADDER_HALF ||
-           fabsf(x - LADDER_X[1]) <= LADDER_HALF;
+    for (const ClimbPoint& p : g_climbs)
+        if (fabsf(x - p.x) <= p.half) return true;
+    return false;
 }
 
 // Extra height a climber gains while inside the crossing band near a ladder —
@@ -1145,9 +1149,9 @@ Vector3 FunnelThroughGate(Vector3 pos, Vector3 goal) {
     const bool crossing = (pos.z - WALL_Z) * (goal.z - WALL_Z) < 0;
     if (!crossing) return goal;
     if (fabsf(pos.x) <= GATE_HALF * 0.8f || NearLadder(pos.x)) return goal;
-    float cx = 0.0f;                                     // gate, or closer ladder
-    for (const float lx : LADDER_X)
-        if (fabsf(pos.x - lx) < fabsf(pos.x - cx)) cx = lx;
+    float cx = 0.0f;                                     // gate, or closer climb
+    for (const ClimbPoint& p : g_climbs)
+        if (fabsf(pos.x - p.x) < fabsf(pos.x - cx)) cx = p.x;
     const float side = pos.z < WALL_Z ? -1.0f : 1.0f;
     return { cx, pos.y, WALL_Z + side * 2.5f };
 }
@@ -1208,6 +1212,20 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.terrain.Generate(tcfg, ARENA);
     B.raining = tcfg.raining;
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
+
+    // Siege engineering (N1): the standing pair of ladders, plus whatever
+    // the attackers built in camp. TODO(balance): positions and counts.
+    g_climbs.clear();
+    if (B.hasWall) {
+        g_climbs.push_back({ -14.0f, LADDER_HALF, false });
+        g_climbs.push_back({  14.0f, LADDER_HALF, false });
+        if (setup.siegePrep >= 1) {
+            g_climbs.push_back({ -26.0f, LADDER_HALF, false });
+            g_climbs.push_back({  26.0f, LADDER_HALF, false });
+        }
+        if (setup.siegePrep >= 2)
+            g_climbs.push_back({ -20.0f, TOWER_HALF, true });
+    }
 
     // Fighting gear (K6): catalogue defaults, then the setup's overrides.
     B.troopGear.clear();
@@ -1810,10 +1828,20 @@ void BattleDraw(const Content& c) {
             DrawCube({ cx - 1.0f, gy + WALL_HEIGHT + 0.35f, WALL_Z }, 1.2f, 0.7f, WALL_BAND * 2,
                      Color{ 130, 128, 132, 255 });   // crenellation
         }
-        // Siege ladders leaning against the outer face, rails + rungs.
-        for (const float lx : LADDER_X) {
+        // Climbing points (N1): ladders leaning on the outer face; a built
+        // siege tower is a rolling timber mass with its ramp on the rampart.
+        for (const ClimbPoint& cp : g_climbs) {
+            const float lx   = cp.x;
             const float gy   = B.terrain.HeightAt(lx, WALL_Z);
             const Color wood = { 122, 88, 54, 255 };
+            if (cp.tower) {
+                DrawCube({ lx, gy + (WALL_HEIGHT + 1.6f) * 0.5f, WALL_Z - 3.2f },
+                         TOWER_HALF * 2.0f, WALL_HEIGHT + 1.6f, 3.4f,
+                         Color{ 96, 70, 44, 255 });
+                DrawCube({ lx, gy + WALL_HEIGHT + 0.3f, WALL_Z - 1.0f },
+                         TOWER_HALF * 1.6f, 0.3f, 2.6f, wood);   // the ramp
+                continue;
+            }
             const Vector3 base{ lx, gy, WALL_Z - 2.6f };
             const Vector3 top { lx, gy + WALL_HEIGHT + 0.6f, WALL_Z - 0.6f };
             for (const float rx : { -0.7f, 0.7f })
@@ -2089,6 +2117,7 @@ BattleView GetBattleView() {
     v.heroMounted = B.mounted;
     v.heroHorseHp = B.pHorseHp;
     v.order       = OrderName(B.order);
+    v.climbPoints = (int)g_climbs.size();
     {
         const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;
         int   own = 0;

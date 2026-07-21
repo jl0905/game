@@ -238,6 +238,14 @@ struct GameState {
     std::vector<int>           warScore;    // casualties this war, per pair
     std::vector<float>         truceDays;   // days of peace left, per pair
 
+    // Siege engineering (N1): the assault choice at a walled settlement,
+    // and the camp where engines are built (days pass, garrisons muster on).
+    int   siegePrompt   = -1;   // walled town awaiting the choice (transient)
+    int   siegeCampTown = -1;   // camped outside this town building engines
+    int   siegeCampPrep = 0;    // what is being built: 1 ladders, 2 tower
+    float siegeCampDays = 0;    // build days left
+    int   siegeLaunchPrep = 0;  // engines of the assault being fought (transient)
+
     // Battle handoff
     bool             arenaFight = false;         // tournament bout, not a real battle (G2)
     int              arenaRound = 0;             // 1..3 while a bracket runs (K3)

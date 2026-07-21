@@ -46,6 +46,7 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         s.campaignPos = t.pos;            // battlefield looks like the town's land
         s.siege       = true;
         s.siegeType   = t.type;
+        s.siegePrep   = gs.siegeLaunchPrep;   // what the camp built (N1)
     } else {
         s.enemyTroops = gs.parties[gs.battlePartyIndex].troopCounts;
         s.campaignPos = gs.player.pos;

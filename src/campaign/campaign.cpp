@@ -798,6 +798,7 @@ static void ApplyBattleResult(GameState& gs) {
         if (!slainS.empty())  gs.battleReport.push_back("Garrison slain:  " + slainS);
         if (!fallenS.empty()) gs.battleReport.push_back("Your fallen:  " + fallenS);
         gs.siegeTownIndex   = -1;
+        gs.siegeLaunchPrep  = 0;   // the engines burned with the assault (N1)
         gs.battlePartyIndex = -1;
         gs.battleAllyIndex  = -1;
         gs.allyLosses.clear();
@@ -1118,8 +1119,15 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (Vector2Length(dir) > 8) in.move = Vector2Normalize(dir);
     }
     in.wait = IsKeyDown(KEY_SPACE);
-    if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
-    if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
+    if (gs.siegePrompt >= 0) {   // the assault choice eats 1-3 (N1)
+        if (IsKeyPressed(KEY_ONE))    in.menuChoice = 1;
+        if (IsKeyPressed(KEY_TWO))    in.menuChoice = 2;
+        if (IsKeyPressed(KEY_THREE))  in.menuChoice = 3;
+        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 4;
+    } else {
+        if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
+        if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
+    }
     in.restart   = IsKeyPressed(KEY_R);
     in.crown     = IsKeyPressed(KEY_K);
     in.rallyLords = IsKeyPressed(KEY_J);
@@ -1221,6 +1229,57 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         return;
     }
 
+    // The assault choice (N1): storm now, or camp and build engines while
+    // the garrison musters on. TODO(balance): build times.
+    if (gs.siegePrompt >= 0 && in.menuChoice != 0) {
+        const int target = gs.siegePrompt;
+        gs.siegePrompt = -1;
+        switch (in.menuChoice) {
+            case 1:   // storm now — the gate and the standing ladders
+                gs.siegeLaunchPrep  = 0;
+                gs.siegeTownIndex   = target;
+                gs.battlePartyIndex = -1;
+                gs.battleAllyIndex  = -1;
+                gs.screen = Screen::Battle;
+                return;
+            case 2:   // a day's carpentry: two more ladders
+            case 3: { // two days: a siege tower
+                gs.siegeCampTown = target;
+                gs.siegeCampPrep = in.menuChoice - 1;
+                gs.siegeCampDays = (float)(in.menuChoice - 1);
+                // The warband pitches camp under the walls.
+                const Vector2 tp = gs.towns[target].pos;
+                gs.player.pos = { tp.x + SIEGE_REACH, tp.y + SIEGE_REACH };
+                gs.resultText = in.menuChoice == 2
+                    ? "The camp rings with saws. Ladders by tomorrow."
+                    : "A tower rises in the camp. Two days.";
+                break;
+            }
+            default: break;   // thought better of it
+        }
+    }
+
+    // The siege camp (N1): stay close while the engines are built; wander
+    // off and the work is abandoned. Time must pass (wait/travel) to build.
+    if (gs.siegeCampTown >= 0) {
+        Town& target = gs.towns[gs.siegeCampTown];
+        if (!AtWar(gs, target.owner, c.playerFaction)) {
+            gs.siegeCampTown = -1;   // peace overtook the war
+        } else if (Vector2Distance(gs.player.pos, target.pos) >
+                   SIEGE_REACH * 4.0f) {
+            gs.siegeCampTown = -1;
+            gs.resultText = "The half-built engines are left to rot.";
+        } else if (gs.siegeCampDays <= 0) {
+            gs.siegeLaunchPrep  = gs.siegeCampPrep;   // the engines roll out
+            gs.siegeTownIndex   = gs.siegeCampTown;
+            gs.siegeCampTown    = -1;
+            gs.battlePartyIndex = -1;
+            gs.battleAllyIndex  = -1;
+            gs.screen = Screen::Battle;
+            return;
+        }
+    }
+
     // Quicksave (N3): three slots on F5-F7, right from the saddle.
     if (in.saveSlot >= 1 && in.saveSlot <= 3) {
         const bool ok = SaveGame(gs, SaveSlotPath(in.saveSlot));
@@ -1237,12 +1296,17 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 t.owner = c.playerFaction;
                 gs.resultText = TextFormat("%s is undefended. It is yours.", t.name.c_str());
             } else if (gs.player.totalTroops() > 0) {
-                // Storm it: the garrison fights on its home ground.
-                gs.siegeTownIndex   = in.clickSettlement;
-                gs.battlePartyIndex = -1;
-                gs.battleAllyIndex  = -1;
-                gs.screen = Screen::Battle;
-                return;
+                if (t.type == SettlementType::Village) {
+                    // An open raid: no walls, nothing to engineer.
+                    gs.siegeLaunchPrep  = 0;
+                    gs.siegeTownIndex   = in.clickSettlement;
+                    gs.battlePartyIndex = -1;
+                    gs.battleAllyIndex  = -1;
+                    gs.screen = Screen::Battle;
+                    return;
+                }
+                // Walls ahead (N1): storm now, or camp and build engines.
+                gs.siegePrompt = in.clickSettlement;
             }
         } else {
             // Grain deliveries (F4) pay at the destination gate.
@@ -1625,6 +1689,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
             if (gs.lordsRally && (gs.lordsRallyDays -= 1.0f) <= 0)
                 gs.lordsRally = false;
+
+            // Engines take shape in the siege camp (N1).
+            if (gs.siegeCampTown >= 0) gs.siegeCampDays -= 1.0f;
 
             // Bandit dens breed a fresh band every other day (H2).
             for (Lair& l : gs.lairs) {
@@ -2046,6 +2113,26 @@ void CampaignDraw(const GameState& gs) {
                             gs.gold, gs.player.totalTroops(), going),
                  10, 8, 20, RAYWHITE);
     }
+
+    // The assault choice (N1), centre stage until answered.
+    if (gs.siegePrompt >= 0 && gs.siegePrompt < (int)gs.towns.size()) {
+        const Town& t = gs.towns[gs.siegePrompt];
+        const int px = GetScreenWidth() / 2 - 260, py = 200;
+        DrawRectangle(px - 16, py - 16, 552, 208, Fade(BLACK, 0.8f));
+        DrawRectangleLines(px - 16, py - 16, 552, 208, GOLD);
+        ui::Title(TextFormat("THE WALLS OF %s", t.name.c_str()), px, py, 30, GOLD);
+        ui::Text(TextFormat("Garrison: %d — and it musters daily while you wait.",
+                            t.garrisonSize()), px, py + 44, 18, Fade(RAYWHITE, 0.8f));
+        ui::Text("[1] Storm now      (the gate and two ladders)", px, py + 78, 20, RAYWHITE);
+        ui::Text("[2] Build ladders  (1 day: two more climbing points)", px, py + 106, 20, RAYWHITE);
+        ui::Text("[3] Build a tower  (2 days: a wide rolling ramp as well)", px, py + 134, 20, RAYWHITE);
+        ui::Text("[Esc] Think better of it", px, py + 166, 18, Fade(RAYWHITE, 0.6f));
+    }
+    if (gs.siegeCampTown >= 0)
+        ui::Text(TextFormat("Siege camp at %s: %.0f day(s) until the engines are ready. Wait (SPACE).",
+                            gs.towns[gs.siegeCampTown].name.c_str(),
+                            fmaxf(gs.siegeCampDays, 0.0f)),
+                 10, 38, 18, GOLD);
 
     // Time state, top-right: the world is frozen until you move or wait.
     const char* clock = gs.timeFlowing ? "TIME FLOWING" : "TIME PAUSED  (move, or hold SPACE)";

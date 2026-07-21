@@ -158,6 +158,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (const auto& p : gs.lordOpinion)
         if (p.second != 0)
             f << "lop " << p.first << ' ' << p.second << '\n';
+    if (gs.siegeCampTown >= 0)
+        f << "scamp " << gs.siegeCampTown << ' ' << gs.siegeCampPrep << ' '
+          << gs.siegeCampDays << '\n';
 
     // Standing duties (K5).
     if (gs.musterTown >= 0)
@@ -368,6 +371,8 @@ bool LoadGame(GameState& gs, const char* path) {
             gs.feastFaction  = c.factions.find(fid.c_str());
             gs.feastAttended = att != 0;
             if (gs.feastFaction < 0) gs.feastTown = -1;
+        } else if (tag == "scamp") {
+            ss >> gs.siegeCampTown >> gs.siegeCampPrep >> gs.siegeCampDays;
         } else if (tag == "lop") {
             std::string name; int v = 0;
             ss >> name >> v;

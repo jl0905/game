@@ -1,0 +1,19 @@
+# Siege engineering (direction N1): walls offer a choice - storm now (gate +
+# 2 ladders), build ladders (1 day, 4 climbs), or a tower (2 days, 5 lanes
+# including a wide ramp). The camp persists in saves; the world stays live
+# while you build (relief armies and diplomacy can end a siege for you).
+seed 42
+enter 6            # Halmar, a walled Sarleon town - the prompt opens
+state              # expect siegeprompt: town=6
+siege 2            # a day's carpentry
+state              # expect siegecamp: town=6 prep=1 days=1.0
+save siege_test.owb
+load siege_test.owb
+state              # the camp survives a reload
+enter 4            # meanwhile: Curaw offers its own walls
+siege 1            # storm now - no engines, the gate and two ladders
+state              # expect screen=Battle with climbs=2
+block on
+tick 300
+state
+quit

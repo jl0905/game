@@ -32,6 +32,12 @@ struct BattleSetup {
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
 
+    // Siege engineering (N1): what the attackers built before the assault.
+    // 0 = storm now (gate + the two standing ladders), 1 = built ladders
+    // (two more climbing points), 2 = a siege tower (a wide rolling lane
+    // as well). Costs days on the campaign side; the garrison musters on.
+    int siegePrep = 0;
+
     // World biome at the battlefield (K8): computed by the orchestrator from
     // the moddable map so battle terrain follows a modded biome without this
     // module knowing the world. Negative = derive from campaignPos as before.
@@ -70,6 +76,7 @@ struct BattleView {
     bool    heroMounted = false;
     float   heroHorseHp = 0;
     const char* order = "Charge";   // current battlefield order (M2)
+    int     climbPoints = 0;        // siege climbing lanes incl. tower (N1)
     float   ownAvgDistToAnchor = 0; // player troops' mean distance from their
                                     // order anchor — lets scripts see obedience
     bool    over = false, won = false;

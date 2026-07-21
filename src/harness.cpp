@@ -260,6 +260,11 @@ struct Harness {
                             c.goods[g].id.c_str(), tw.stock[g], tw.priceOffset[g],
                             MarketBuyPrice(c, tw, g), MarketSellPrice(c, tw, g));
         }
+        if (gs.siegePrompt >= 0)
+            std::printf("siegeprompt: town=%d\n", gs.siegePrompt);
+        if (gs.siegeCampTown >= 0)
+            std::printf("siegecamp: town=%d prep=%d days=%.1f\n",
+                        gs.siegeCampTown, gs.siegeCampPrep, gs.siegeCampDays);
         if (gs.feastTown >= 0 && gs.feastDays > 0)
             std::printf("feast: town=%d faction=%s days=%.1f attended=%d\n",
                         gs.feastTown,
@@ -318,11 +323,12 @@ struct Harness {
                                     ? c.weapons[v.heroWeapon].id.c_str() : "none";
             std::printf("battle: heroPos=(%.2f,%.2f,%.2f) yaw=%.3f pitch=%.3f "
                         "hp=%.0f/%.0f weapon=%s mounted=%d horse=%.0f allies=%d enemies=%d "
-                        "arrows=%d wall=%d order=%s anchordist=%.1f over=%d won=%d\n",
+                        "arrows=%d wall=%d climbs=%d order=%s anchordist=%.1f over=%d won=%d\n",
                         v.heroPos.x, v.heroPos.y, v.heroPos.z, v.heroYaw, v.heroPitch,
                         v.heroHp, v.heroMaxHp, wname, v.heroMounted ? 1 : 0, v.heroHorseHp,
                         v.aliveAllies, v.aliveEnemies, v.arrowsInFlight, v.wallDefenders,
-                        v.order, v.ownAvgDistToAnchor, v.over ? 1 : 0, v.won ? 1 : 0);
+                        v.climbPoints, v.order, v.ownAvgDistToAnchor,
+                        v.over ? 1 : 0, v.won ? 1 : 0);
         }
         if (gs.screen == Screen::Settlement) {
             const TownView v = GetTownView();
@@ -497,6 +503,11 @@ int RunScript(const char* path) {
         } else if (cmd == "sendcaravan") {
             // Outfit a player trade convoy at the open market (M4).
             CampaignInput cin; cin.sendCaravan = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "siege") {
+            // Answer the assault-choice prompt (N1): 1 storm, 2 ladders,
+            // 3 tower, 4 walk away.
+            CampaignInput cin; ss >> cin.menuChoice;
             h.Step(cin, BattleInput{});
         } else if (cmd == "saveslot") {
             int n = 1; ss >> n;

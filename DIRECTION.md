@@ -332,9 +332,16 @@ adds per line of code. Structure first, numbers flat, as ever.
 
 ## Track N — Fourth wave: depth where players live
 
-- [ ] **N1. Siege engineering.** Ladders/siege tower as a pre-assault choice
-  (build days vs casualties at the wall); defenders drop stones. Extends
-  `BattleSetup` only.
+- [x] **N1. Siege engineering.** Shipped: walls now open a choice — storm
+  now (gate + the two standing ladders), build ladders (1 day: four
+  climbs), or a siege tower (2 days: a wide rolling ramp as well) —
+  via `BattleSetup::siegePrep` and runtime climb points (drawn: extra
+  ladders, a timber tower with its ramp on the rampart). The cost is
+  real time: the warband camps at the walls while the garrison musters
+  on, relief lords roam, and diplomacy can end the war under you (all
+  observed in play). Camp persists (`scamp` tag); harness `siege` cmd +
+  `climbs=` in the battle dump; `tests/siege_prep.txt`. Follow-ups:
+  defenders dropping stones; a relief-army set-piece battle.
 - [x] **N2. Character creation.** Shipped: `Screen::Background` after New
   Game — a noble's second son (+5 renown, +200 gold, helmet, patrol
   favour), a merchant's heir (+400 gold, 10 grain, +1 honor), or a
