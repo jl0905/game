@@ -589,11 +589,23 @@ this is the feedback the flat numbers were waiting for.
 - [x] **T4. Travel-pace indicator.** Shipped: a pace ring under your banner
   and the going named at your feet — green "road (full pace)", amber
   "forest −30%", slate "mountains −45%"; nothing shown on plain ground.
-- [ ] **T5. Mounted combat identity.** Horseback attacks differ from foot:
-  reach bonus, momentum damage on the pass, no thrust-from-saddle.
-- [ ] **T6. Horses as entities.** Kill the rider, not the horse: a slain
-  rider's mount wanders the field riderless (catchable later?); dead
-  horses already drop their riders to foot.
+- [x] **T5. Mounted combat identity.** Shipped: the saddle adds 0.9 reach
+  (hero and AI riders alike), and the hero's gallop adds weight — up to
+  +50% damage at full stride (momentum tracked from real movement).
+  Riding past at speed now hits like it should. Flat TODO(balance).
+- [x] **T6. Horses as entities.** Shipped: `HORSE_HIT_SHARE` 0.4→0.15
+  (playtest-driven: at 0.4 the horse died *with* its rider every time,
+  which is why no mount ever survived) — killing the man now leaves his
+  horse, which becomes a `LooseHorse` entity: wandering the field,
+  shying from fighters, drawn riderless. All three death paths (melee
+  sweep, hero swing, arrows) free the mount. Committed fixture
+  `tests/horses.owb` + `tests/horses.txt` watch enemies 3→0 as horses
+  0→3. Also fixed en route: stun could chain-lock (added post-stun
+  immunity). Follow-up: catching a loose horse to remount.
+- [ ] **T7. Save/load discoverability.** Saving/loading exists (F5-F7
+  slots, dawn autosave, title Load menu) but the player didn't find it —
+  surface it: an Esc pause row on the map naming the keys, and a saved
+  toast when a slot writes.
 
 ## Sequencing guidance
 

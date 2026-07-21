@@ -343,12 +343,13 @@ struct Harness {
                                     ? c.weapons[v.heroWeapon].id.c_str() : "none";
             std::printf("battle: heroPos=(%.2f,%.2f,%.2f) yaw=%.3f pitch=%.3f "
                         "hp=%.0f/%.0f weapon=%s mounted=%d horse=%.0f allies=%d enemies=%d "
-                        "arrows=%d wall=%d climbs=%d rain=%d kills=%d order=%s anchordist=%.1f over=%d won=%d\n",
+                        "arrows=%d wall=%d climbs=%d rain=%d kills=%d horses=%d order=%s anchordist=%.1f over=%d won=%d\n",
                         v.heroPos.x, v.heroPos.y, v.heroPos.z, v.heroYaw, v.heroPitch,
                         v.heroHp, v.heroMaxHp, wname, v.heroMounted ? 1 : 0, v.heroHorseHp,
                         v.aliveAllies, v.aliveEnemies, v.arrowsInFlight, v.wallDefenders,
-                        v.climbPoints, v.raining ? 1 : 0, v.heroKills, v.order,
-                        v.ownAvgDistToAnchor, v.over ? 1 : 0, v.won ? 1 : 0);
+                        v.climbPoints, v.raining ? 1 : 0, v.heroKills,
+                        v.looseHorses, v.order, v.ownAvgDistToAnchor,
+                        v.over ? 1 : 0, v.won ? 1 : 0);
         }
         if (gs.screen == Screen::Settlement) {
             const TownView v = GetTownView();

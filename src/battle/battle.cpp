@@ -46,6 +46,8 @@ constexpr float GATE_HALF   = 5.0f;   // half-width of the gate opening
 // Siege climbing points (N1): every siege has two ladders flanking the gate;
 // engineering adds more ladders and, with a tower, one wide rolling lane.
 // Runtime state (filled in BattleInit from BattleSetup::siegePrep).
+int g_dbgFrame = 0;   // DMG_DEBUG timestamping only
+
 constexpr float LADDER_HALF = 1.5f;    // half-width of a ladder lane
 constexpr float TOWER_HALF  = 3.5f;    // half-width of the tower's ramp
 struct ClimbPoint { float x; float half; bool tower; };
@@ -513,6 +515,17 @@ struct AICmd {
 
 // A missile in flight. Team says who it can hurt (no friendly fire — allied
 // archers shooting over a melee would otherwise slaughter their own side).
+// A masterless horse (T6): its rider fell, and it survives him — bolting,
+// then wandering the field, shying from the press. An entity of its own.
+struct LooseHorse {
+    Vector3 pos{};
+    Vector3 target{};
+    float   yaw = 0;
+    float   hp = 0;
+    float   wanderT = 0;
+    float   walkPhase = 0;
+};
+
 struct Arrow {
     Vector3 pos;
     Vector3 vel;
@@ -560,6 +573,7 @@ struct Soldier {
     int     slot = -1;         // formation slot (player's own troops only)
     float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
     float   stun = 0;          // hit-stun (T): reeling, can't move or swing
+    float   stunImmune = 0;    // post-stun grace — an opening, not a lock
     int     guardDir = -1;     // reactive shield guard (T): covers where last
                                // struck; -1 = the old positional habit
     float   nerve = NERVE_MAX; // courage left (K4); at 0 the soldier breaks
@@ -648,7 +662,9 @@ constexpr float TRAMPLE_RADIUS   = 1.3f;
 // Horses are mortal. TODO(balance): mount HP and the share of blows that
 // strike the mount instead of the rider.
 constexpr float HORSE_HP        = 60.0f;
-constexpr float HORSE_HIT_SHARE = 0.4f;
+constexpr float HORSE_HIT_SHARE = 0.15f;   // playtest-tuned (T6): at 0.4 the
+                                           // horse died with its rider; now
+                                           // killing the man leaves a mount
 
 struct BattleState {
     BattleSetup          setup;     // world-map snapshot this battle runs on
@@ -657,6 +673,9 @@ struct BattleState {
     bool                 raining = false;
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
+    std::vector<LooseHorse> looseHorses;   // mounts that outlived their riders (T6)
+    Vector3 prevHeroPos{};          // for momentum (T5): last frame's position
+    float   heroSpeed = 0;          // hero's current ground speed
 
     // Feedback particles (blood, hoof dust); purely visual.
     struct Puff { Vector3 pos, vel; float life; float maxLife; Color col; };
@@ -865,7 +884,25 @@ void SpawnDust(Vector3 at) {
 constexpr float STUN_TIME     = 0.45f;
 constexpr float STUN_MIN_DMG  = 4.0f;   // shield-soaked taps don't stagger
 
+// A slain rider's mount survives him (T6): it bolts free and wanders.
+void FreeHorse(const Content& c, const Soldier& s) {
+    if (!c.troops.valid(s.troop) || !c.troops[s.troop].mounted) return;
+    if (s.dehorsed || s.horseHp <= 0) return;
+    LooseHorse h;
+    h.pos = s.pos;
+    h.yaw = s.yaw;
+    h.hp  = s.horseHp;
+    h.target  = s.pos;
+    h.wanderT = 0;
+    B.looseHorses.push_back(h);
+}
+
 void DamageSoldier(const Content& c, Soldier& s, float dmg) {
+#ifdef DMG_DEBUG
+    if (s.hp - dmg <= 0 || (IsMounted(c, s) && s.horseHp - dmg * 0.4f <= 0))
+        printf("DEATHISH f=%d team=%d troop=%d dmg=%.1f hp=%.0f horse=%.0f\n",
+               g_dbgFrame, (int)s.team, s.troop, dmg, s.hp, s.horseHp);
+#endif
     if (IsMounted(c, s)) {
         const float toHorse = dmg * HORSE_HIT_SHARE;
         s.horseHp -= toHorse;
@@ -874,9 +911,10 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     }
     s.hp -= dmg;
     s.flash = 1.0f;
-    if (dmg >= STUN_MIN_DMG) {
-        s.stun  = STUN_TIME;   // reeling (T)
-        s.swing = 0;           // whatever he was winding up is lost
+    if (dmg >= STUN_MIN_DMG && s.stunImmune <= 0) {
+        s.stun       = STUN_TIME;          // reeling (T)
+        s.stunImmune = STUN_TIME + 0.9f;   // then finds his feet — a crowd
+        s.swing      = 0;                  // can't chain-lock a man forever
     }
     SpawnBlood(s.pos);
     // Volume falls off with distance from the hero (rough but effective).
@@ -1052,7 +1090,8 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     // Rain fights too (R1): wet strings throw short. TODO(balance).
     const float rainRange = B.raining ? 0.6f : 1.0f;
     const float engage = ranged ? wd->missileRange * 0.9f * rainRange
-                                : WeaponReach(c, cmd.activeWeapon) * 0.8f;
+                                : WeaponReach(c, cmd.activeWeapon) * 0.8f +
+                                      (IsMounted(c, s) ? 0.9f : 0.0f);   // T5
 
     const bool commanded =
         (s.team == Team::Player && !s.ally && formation != FormationType::Charge);
@@ -1350,6 +1389,7 @@ BattleInput GatherBattleInput() {
 
 bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutcome& out) {
     if (dt > 0.05f) dt = 0.05f;
+    g_dbgFrame++;
 
     // Deployment pause (R2): the field holds its breath while you set the
     // lines — shape (1-4), ranks ([/]), the opening order (F1-F3). You may
@@ -1440,6 +1480,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.pPos.y += B.vY * dt;
         if (B.pPos.y < groundY) { B.pPos.y = groundY; B.vY = 0; }
 
+        // Momentum bookkeeping (T5): how fast the hero actually moves.
+        {
+            Vector3 dp = Vector3Subtract(B.pPos, B.prevHeroPos);
+            dp.y = 0;
+            B.heroSpeed   = Vector3Length(dp) / fmaxf(dt, 1e-4f);
+            B.prevHeroPos = B.pPos;
+        }
+
         B.blocking = in.block;
         B.cooldown -= dt;
         if (B.swing > 0) B.swing -= dt * 4.0f;
@@ -1507,22 +1555,29 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             // clean hits per man while three men killed him in five
             // seconds, which read as "my attacks do nothing".
             const float HERO_DAMAGE_FACTOR = 2.5f;   // playtest-tuned 2026-07-21
+            // Mounted identity (T5): the saddle adds reach, and the gallop
+            // adds weight — up to +50% at full stride. TODO(balance).
+            const float mountReach = B.mounted ? 0.9f : 0.0f;
+            const float momentum   = B.mounted
+                ? 1.0f + 0.5f * fminf(1.0f, B.heroSpeed / 14.0f) : 1.0f;
             for (Soldier& s : B.soldiers) {
                 if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
                 Vector3 to = Vector3Subtract(s.pos, B.pPos);
                 to.y = 0;
                 const float d = Vector3Length(to);
-                if (d < reach + 0.6f && d > 0.01f &&
+                if (d < reach + mountReach + 0.6f && d > 0.01f &&
                     Vector3DotProduct(Vector3Normalize(to), fwd) > 0.4f) {
                     // ~120° frontal arc; armour soaks per hit, and a raised
                     // shield meets the hero's chosen swing direction (G4).
                     const int vi = (int)(&s - &B.soldiers[0]);
-                    float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR,
+                    float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR
+                                               * momentum,
                                            LoadoutArmor(c, TroopLoadout(c, s.troop)));
                     const float before = dmg;
                     dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
                     if (dmg < before) { SpawnSparks(s.pos); SfxPlay(Sfx::Clang, 0.6f); }
                     DamageSoldier(c, s, dmg);
+                    if (s.hp <= 0) FreeHorse(c, s);   // (T6)
                     if (s.hp <= 0) {   // a kill by the hero's own hand rallies
                         B.heroKills++;
                         B.rallyPulse = RALLY_PULSE_TIME;
@@ -1646,6 +1701,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             // Reeling from a blow (T): a stunned soldier neither moves nor
             // swings — the opening that blocking and swing-craft buy you.
+            s.stunImmune -= dt;
             if (s.stun > 0) {
                 s.stun -= dt;
                 s.cooldown = fmaxf(s.cooldown, 0.2f);   // no instant riposte
@@ -1720,6 +1776,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.nerve = fminf(NERVE_MAX, s.nerve + NERVE_REGEN * dt);   // courage returns
             if (B.dmg[i] > 0.0f) {
                 DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
+                if (s.hp <= 0) FreeHorse(c, s);  // the mount outlives him (T6)
                 // A death every witness feels (K4): friends flinch, foes cheer.
                 if (s.hp <= 0 && !B.setup.arena)
                     B.grid.ForNeighbors(s.pos, NERVE_WITNESS_R, [&](int j) {
@@ -1786,6 +1843,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         s.shieldHp -= SHIELD_WEAR_PER_HIT;
                     }
                     DamageSoldier(c, s, dmg);
+                    if (s.hp <= 0) FreeHorse(c, s);   // (T6)
                     a.alive = false;
                     break;
                 }
@@ -1815,6 +1873,37 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.arrows.erase(std::remove_if(B.arrows.begin(), B.arrows.end(),
                                       [](const Arrow& a) { return !a.alive; }),
                        B.arrows.end());
+
+        // ---------- masterless horses (T6) ----------
+        // They wander, shy from the nearest fighter, and keep off the walls.
+        for (LooseHorse& h : B.looseHorses) {
+            h.wanderT -= dt;
+            if (h.wanderT <= 0) {
+                h.wanderT = 2.0f + (float)(PuffRand() % 300) / 100.0f;
+                const float a = (float)(PuffRand() % 628) / 100.0f;
+                h.target = Vector3Add(h.pos, { sinf(a) * 14.0f, 0, cosf(a) * 14.0f });
+            }
+            // Shy of the press: drift away from close fighting men.
+            B.grid.ForNeighbors(h.pos, 5.0f, [&](int j) {
+                const Soldier& s = B.soldiers[j];
+                if (s.hp <= 0) return;
+                Vector3 away = Vector3Subtract(h.pos, s.pos);
+                away.y = 0;
+                if (Vector3Length(away) > 0.1f)
+                    h.target = Vector3Add(h.pos, Vector3Scale(
+                        Vector3Normalize(away), 16.0f));
+            });
+            Vector3 to = Vector3Subtract(h.target, h.pos);
+            to.y = 0;
+            if (Vector3Length(to) > 0.6f) {
+                h.yaw = atan2f(to.x, to.z);
+                h.pos = Vector3Add(h.pos,
+                                   Vector3Scale(Vector3Normalize(to), 4.5f * dt));
+                h.walkPhase += dt * 6.0f;
+            }
+            EnforceWall(h.pos);
+            h.pos.y = B.terrain.HeightAt(h.pos.x, h.pos.z);
+        }
 
         // blood puffs drift and fade
         for (auto& p : B.puffs) {
@@ -1998,6 +2087,12 @@ void BattleDraw(const Content& c) {
         if (frac < 0.999f)
             DrawCube({ s.pos.x, riderPos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,
                      s.team == Team::Enemy ? RED : GREEN);
+    }
+
+    // Masterless horses (T6): riderless, wandering, nobody's to command.
+    for (const LooseHorse& h : B.looseHorses) {
+        BlobShadow(B.terrain, h.pos.x, h.pos.z, 0.85f);
+        DrawHorse(h.pos, h.yaw, h.walkPhase);
     }
 
     // particles (blood, dust)
@@ -2229,6 +2324,7 @@ BattleView GetBattleView() {
     v.climbPoints = (int)g_climbs.size();
     v.raining     = B.raining;
     v.heroKills   = B.heroKills;
+    v.looseHorses = (int)B.looseHorses.size();
     {
         const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;
         int   own = 0;

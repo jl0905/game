@@ -83,6 +83,7 @@ struct BattleView {
     int     climbPoints = 0;        // siege climbing lanes incl. tower (N1)
     bool    raining = false;        // wet strings throw short (R1)
     int     heroKills = 0;          // kills by the hero's own hand
+    int     looseHorses = 0;        // mounts that outlived their riders (T6)
     float   ownAvgDistToAnchor = 0; // player troops' mean distance from their
                                     // order anchor — lets scripts see obedience
     bool    over = false, won = false;

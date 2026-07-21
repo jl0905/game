@@ -1,0 +1,11 @@
+# Horses as entities (direction T6): killing a mounted rider frees his
+# mount - it wanders the field masterless, shying from the fighting. The
+# fixture plants three sarleon knights in the player's path.
+load tests/horses.owb
+walk 1 0 0.6       # ride into the knights
+block on
+tick 13            # the melee takes its course; the first rider falls ~11s
+state              # expect horses>=1 with enemies+horses=3
+tick 3
+state              # more mounts masterless as the last knights fall
+quit
