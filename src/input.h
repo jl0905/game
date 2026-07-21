@@ -23,6 +23,7 @@ struct CampaignInput {
     bool    interact        = false;  // enter/leave a building (E)
     bool    leaveSettlement = false;
     bool    openMarket      = false;  // browse the settlement market (M)
+    bool    tournament      = false;  // enter the arena bout in a town (T)
 
     // market screen (rows are goods-registry order)
     int     buyGood  = -1;            // good row to buy one unit of

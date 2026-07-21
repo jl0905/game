@@ -541,6 +541,36 @@ static void ApplyBattleResult(GameState& gs) {
     gs.battleReport.clear();
     gs.battleReportTimer = 7.0f;   // presentational; drawn fading over the map
 
+    // Tournament bout (G2): borrowed fighters fought, so no casualties, loot,
+    // captives or war score touch the world — only the purse and the champion's
+    // renown. TODO(balance): purse size.
+    if (gs.arenaFight) {
+        gs.arenaFight = false;
+        gs.currentSettlement = -1;   // the bout spills back onto the map
+        if (gs.battleWon) {
+            const int purse = 150;
+            gs.gold += purse;
+            Character& hero = gs.playerHero;
+            hero.xp += HERO_XP_PER_WIN;
+            while (hero.xp >= HeroXpToLevel(hero.level)) {
+                hero.xp -= HeroXpToLevel(hero.level);
+                hero.level++;
+                hero.attrPoints++;
+            }
+            gs.resultText = TextFormat("TOURNAMENT CHAMPION!  The purse is %d gold.", purse);
+            gs.battleReport.push_back("TOURNAMENT CHAMPION");
+            gs.battleReport.push_back(TextFormat("Purse: %d gold      Hero: +%d XP",
+                                                 purse, HERO_XP_PER_WIN));
+        } else {
+            gs.resultText = "Unhorsed in the ring... better luck next bout.";
+            gs.battleReport.push_back("DEFEATED IN THE RING");
+        }
+        gs.battlePartyIndex = -1;
+        gs.battleAllyIndex  = -1;
+        gs.allyLosses.clear();
+        return;
+    }
+
     // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
         gs.player.troopCounts[t] -= gs.playerLosses[t];
@@ -723,6 +753,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.ransom   = IsKeyPressed(KEY_R);
         in.interact = IsKeyPressed(KEY_E);
         in.openMarket = IsKeyPressed(KEY_M);
+        in.tournament = IsKeyPressed(KEY_T);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }

@@ -1126,7 +1126,14 @@ std::vector<int> ComputeEnemyLosses() {
 void BattleInit(const Content& c, const BattleSetup& setup) {
     B = BattleState{};
     B.setup = setup;
-    const TerrainConfig tcfg = TerrainConfigFromWorld(setup.campaignPos);
+    TerrainConfig tcfg = TerrainConfigFromWorld(setup.campaignPos);
+    if (setup.arena) {   // a flat sanded ring under an open sky (G2)
+        tcfg.hilliness = 0;
+        tcfg.forestDensity = 0;
+        tcfg.hasRiver = false;
+        tcfg.mountainous = false;
+        tcfg.raining = false;
+    }
     B.terrain.Generate(tcfg, ARENA);
     B.raining = tcfg.raining;
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
@@ -1146,7 +1153,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
         if (s.team == Team::Player && !s.ally) ++B.ownCount;
         if (s.team == Team::Enemy) ++B.enemyCount;
     }
-    B.enemyHoldsLine = !setup.siege;   // field armies form up; garrisons hold posts
+    B.enemyHoldsLine = !setup.siege && !setup.arena;   // armies form up; bouts just start
     B.startPlayerSide = (int)B.soldiers.size() - B.enemyCount;   // own + allies
     B.startEnemySide  = B.enemyCount;
 
@@ -1160,7 +1167,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.pPos = { 0, B.terrain.HeightAt(0.0f, -38.0f), -38 };
     B.pMaxHp = (float)setup.heroMaxHp;
     B.pHp = B.pMaxHp;
-    B.mounted = !setup.siege;   // walls are stormed on foot
+    B.mounted = !setup.siege && !setup.arena;   // walls and rings are fought on foot
     B.pHorseHp = HORSE_HP;
 
     B.introTimer = 3.0f;

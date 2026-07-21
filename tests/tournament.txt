@@ -1,0 +1,12 @@
+# Tournament (direction G2): step into the ring at a town; the bout uses
+# borrowed fighters, so the warband is untouched win or lose.
+seed 21
+state              # party=7 before the bout
+enter 0            # Sargoth
+tournament         # T: into the ring
+tick 2             # tallies update on the first sim ticks
+state              # expect screen=Battle, allies=3 enemies=4
+block on
+tick 300           # the bout plays out on soldier AI
+state              # expect screen=Campaign, party STILL 7, purse or loss text
+quit

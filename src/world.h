@@ -159,6 +159,7 @@ struct GameState {
     std::vector<float>         truceDays;   // days of peace left, per pair
 
     // Battle handoff
+    bool             arenaFight = false;         // tournament bout, not a real battle (G2)
     int              siegeTownIndex   = -1;      // assaulting this town (else -1)
     int              battlePartyIndex = -1;      // enemy: index into `parties`
     int              battleAllyIndex  = -1;      // friendly party joining you, or -1

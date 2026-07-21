@@ -73,9 +73,12 @@ flat.
   rebuilt per tick) now backs target search, separation, line-break and
   trample checks. `--bench 1000` (2000 soldiers): 46.8→38.0 ms avg frame
   (21→26 FPS); the remainder is GPU render cost.
-- [ ] **G2. Tournaments.** Arena in towns: bracketed melee rounds with borrowed
-  gear, bet gold, renown reward. Reuses the battle module with a
-  `BattleSetup` arena flag (no terrain gen, ring walls).
+- [x] **G2. Tournaments (v1).** Shipped: `BattleSetup::arena` — press T in a
+  town for a bout on a flat sanded ring (no weather/mounts/battle lines):
+  hero with a practice blade + 3 borrowed recruits vs 4 brigands; the purse
+  is 150 gold + hero XP, and the real warband is untouched win or lose.
+  Flat numbers TODO(balance). Follow-ups: bracketed rounds, betting, ring
+  walls, a town-HUD hint for the T key.
 - [x] **G3. Morale & rout.** Shipped: a side whose fighting strength drops
   under 30% breaks all at once — its soldiers drop their targets and run for
   their own field edge (can still be cut down), escape alive after 10 s of

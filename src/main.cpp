@@ -139,7 +139,10 @@ int main(int argc, char** argv) {
                 const CampaignInput cin = GatherCampaignInput(gs);
                 const BattleInput   bin = GatherBattleInput();
                 if (TownUpdate(gs, dt, bin, cin)) TownDraw(gs);
-                else                              CampaignDraw(gs);
+                else if (gs.screen == Screen::Battle) {   // stepped into the ring
+                    BattleInit(gs.content, MakeBattleSetup(gs));
+                    BattleDraw(gs.content);
+                } else                            CampaignDraw(gs);
                 break;
             }
             case Screen::Market: {                        // buy/sell goods; paused

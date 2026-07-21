@@ -13,6 +13,26 @@
 // the fight happens at the settlement).
 inline BattleSetup MakeBattleSetup(const GameState& gs) {
     BattleSetup s;
+
+    // Tournament bout (G2): borrowed fighters and practice gear on both
+    // sides — the party and its equipment stay outside the ring.
+    if (gs.arenaFight) {
+        const Content& c = gs.content;
+        s.arena = true;
+        s.playerTroops.assign(c.troops.size(), 0);
+        s.enemyTroops.assign(c.troops.size(), 0);
+        const int mine   = c.troops.find("recruit");
+        const int theirs = c.troops.find("brigand");
+        if (mine >= 0)   s.playerTroops[mine] = 3;                  // TODO(balance)
+        if (theirs >= 0) s.enemyTroops[theirs] = 4;                 // TODO(balance)
+        s.heroLoadout = Loadout{};
+        s.heroLoadout.addWeapon(c.weapons.find("sword"));           // practice blade
+        s.heroMaxHp = gs.playerHero.maxHp;
+        if (gs.currentSettlement >= 0 && gs.currentSettlement < (int)gs.towns.size())
+            s.campaignPos = gs.towns[gs.currentSettlement].pos;
+        return s;
+    }
+
     s.playerTroops = gs.player.troopCounts;
     if (gs.siegeTownIndex >= 0 && gs.siegeTownIndex < (int)gs.towns.size()) {
         const Town& t = gs.towns[gs.siegeTownIndex];

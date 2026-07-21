@@ -227,6 +227,15 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- enter the tournament ring (T, towns only) ----
+    if (cin.tournament &&
+        gs.towns[gs.currentSettlement].type == SettlementType::Town) {
+        gs.arenaFight = true;
+        gs.screen = Screen::Battle;
+        if (IsWindowReady()) EnableCursor();
+        return false;
+    }
+
     // ---- browse the market stalls (M) ----
     if (cin.openMarket) {
         gs.screen = Screen::Market;

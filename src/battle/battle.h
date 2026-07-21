@@ -31,6 +31,11 @@ struct BattleSetup {
     // wall with a single gate; villages are open raids.
     bool           siege = false;
     SettlementType siegeType = SettlementType::Village;
+
+    // Tournament bout (direction G2): a flat sanded ring — no weather, no
+    // mounts, no battle lines; both sides are borrowed arena fighters and the
+    // outcome must not touch real troops (the campaign handles the purse).
+    bool arena = false;
 };
 
 // What the battle reports back once it ends.

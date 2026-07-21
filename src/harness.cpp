@@ -68,6 +68,10 @@ struct Harness {
                 break;
             case Screen::Settlement:
                 if (!TownUpdate(gs, STEP, bin, cin)) townLive = false;
+                if (gs.screen == Screen::Battle && !battleLive) {   // arena bout
+                    BattleInit(gs.content, MakeBattleSetup(gs));
+                    battleLive = true;
+                }
                 break;
             case Screen::Market:
                 MarketUpdate(gs, cin);
@@ -407,6 +411,9 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "tournament") {
+            CampaignInput cin; cin.tournament = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "enterprise") {
             CampaignInput cin; cin.buyEnterprise = true;
             h.Step(cin, BattleInput{});
