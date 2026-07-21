@@ -360,9 +360,14 @@ adds per line of code. Structure first, numbers flat, as ever.
   effective −10 speaks against your oath at court. LORDS block on the
   character sheet, `lop` save tag + harness dump; `tests/lord_opinion.txt`.
   Follow-up: opinions gating council votes/elections when crowns deepen.
-- [ ] **N5. Art/audio pass.** The M6 descope: stall props, minstrel sting,
-  plus battle-kill sting variety and a campaign music bed. Asset work,
-  not systems.
+- [x] **N5. Art/audio pass.** Shipped (all synthesized, matching the
+  existing procedural-audio approach): market stalls ring town plazas
+  (posts, goods-tinted canopies, wares crates — colours from the goods
+  catalogue); a plucked-lute minstrel loop plays in taverns (faint at the
+  door, full by the hearth); a low modal drone beds the campaign map
+  under the wind; and melee thuds rotate through three sibling voices so
+  a press of bodies doesn't drum one note. Presentation-only — the suite
+  proves the sim untouched.
 - [x] **N6. Battle scale stress.** Shipped: `--bench 1000` (2000 soldiers)
   re-measured at 33.3 ms avg / 39.5 p99 (was 38.0 post-grid) — the sim
   holds, render is the remaining cost. AI lord hosts raised 120→150

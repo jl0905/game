@@ -1923,6 +1923,7 @@ void CampaignDraw(const GameState& gs) {
     const int nearSkirmish = NearestSkirmishIndex(gs);
 
     SfxAmbience(0.07f);   // a soft wind over the overworld
+    SfxMusic(0.06f);      // and a low drone beneath it (N5)
 
     const Texture2D& map = CachedMapTexture(gs);   // before BeginDrawing
 

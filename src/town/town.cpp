@@ -45,6 +45,7 @@ struct TownScene {
     std::vector<Building> buildings;
     std::vector<Npc>      npcs;
     int     tavern = -1;
+    bool    stalls = false;   // market stalls ring the plaza (N5; towns only)
 
     Vector3 pPos{};
     float   yaw = 0, pitch = 0;
@@ -268,6 +269,7 @@ void TownInit(const GameState& gs) {
     T.tavern = 0;                      // first building is the tavern
     T.buildings[0].tavern = true;
     T.buildings[0].roof = GOLD;        // gilt roof so it reads from the street
+    T.stalls = true;                   // trade spills onto the plaza (N5)
 
     // Villagers: unarmed folk in simple clothes drifting between spots.
     const int a_tunic = c.armor.find("tunic");
@@ -711,6 +713,7 @@ void TownDraw(const GameState& gs) {
         EndShaderMode();
         EndMode3D();
 
+        SfxMinstrel(0.3f);   // the minstrel plays by the hearth (N5)
         // HUD: same tavern business, indoors where it belongs.
         DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
         ui::Text(TextFormat("The %s tavern  ·  Gold: %d   Party: %d", town.name.c_str(),
@@ -753,6 +756,9 @@ void TownDraw(const GameState& gs) {
     DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                            Color{ 132, 172, 220, 255 }, Color{ 222, 232, 240, 255 });
 
+    // Faint lute from the gold-roofed door when you stand near it (N5).
+    SfxMinstrel(TownAtTavern() ? 0.12f : 0.0f);
+
     BeginMode3D(cam);
     BeginShaderMode(GetLitShader());
     DrawPlane({ 0, 0, 0 }, { TOWN_EDGE * 2, TOWN_EDGE * 2 }, Color{ 96, 128, 72, 255 });
@@ -775,6 +781,25 @@ void TownDraw(const GameState& gs) {
         }
         if (b.tavern)   // hanging sign: a keg (or the lord's banner on a keep)
             DrawSphere({ b.pos.x, b.size.y + 3.4f, b.pos.z }, 0.7f, GOLD);
+    }
+
+    // Market stalls ring the plaza (N5): posts, a tinted canopy, and a
+    // crate of wares — colours pulled from the goods catalogue so the
+    // stalls read as the market they front.
+    if (T.stalls) {
+        for (int s = 0; s < 3; ++s) {
+            const float ang = 0.8f + s * 2.0f;
+            const float sx = sinf(ang) * 12.5f, sz = cosf(ang) * 12.5f;
+            const Color canopy = c.goods.size() > 0
+                ? c.goods[(s * 2) % c.goods.size()].tint : BEIGE;
+            for (const float px : { -1.2f, 1.2f })
+                for (const float pz : { -0.9f, 0.9f })
+                    DrawCube({ sx + px, 1.0f, sz + pz }, 0.18f, 2.0f, 0.18f,
+                             Color{ 110, 82, 52, 255 });
+            DrawCube({ sx, 2.05f, sz }, 3.0f, 0.14f, 2.2f, canopy);
+            DrawCube({ sx, 0.5f, sz }, 1.6f, 1.0f, 1.0f,
+                     Color{ 132, 100, 62, 255 });   // the wares crate
+        }
     }
 
     for (const Npc& n : T.npcs) {

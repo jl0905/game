@@ -13,6 +13,10 @@ Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
 Sound  g_wind = {};
 Sound  g_rain = {};
+Sound  g_lute = {};       // tavern minstrel loop (N5)
+Sound  g_music = {};      // campaign drone bed (N5)
+Sound  g_thudVar[2] = {}; // extra impact voices — variety in the melee (N5)
+int    g_thudNext = 0;
 bool   g_ready = false;
 
 // Build a 16-bit mono wave from a generator f(t seconds) in [-1, 1].
@@ -126,6 +130,38 @@ void SfxInit() {
         return hp * flutter * 0.5f;
     });
 
+    // Impact variety (N5): two sibling thuds at different pitches; SfxPlay
+    // rotates through them so a melee doesn't drum one note.
+    g_thudVar[0] = Synth(0.16f, [](float t) {
+        const float env = expf(-t * 30.0f);
+        return (sinf(2 * PI * (90.0f - 200.0f * t) * t) + Noise() * 0.4f) * env * 0.75f;
+    });
+    g_thudVar[1] = Synth(0.20f, [](float t) {
+        const float env = expf(-t * 22.0f);
+        return (sinf(2 * PI * (135.0f - 300.0f * t) * t) + Noise() * 0.3f) * env * 0.8f;
+    });
+
+    // Minstrel (N5): a plucked-lute figure in A minor, looping while the
+    // tavern holds you. Each note is a bright pluck decaying fast.
+    g_lute = Synth(4.0f, [](float t) {
+        constexpr float NOTES[8] = { 220.0f, 261.6f, 329.6f, 261.6f,
+                                     293.7f, 329.6f, 261.6f, 246.9f };
+        const int   step = (int)(t * 2.0f) % 8;         // two notes a second
+        const float lt   = t - (float)((int)(t * 2.0f)) * 0.5f;
+        const float f    = NOTES[step];
+        const float env  = expf(-lt * 6.0f);
+        return (sinf(2 * PI * f * lt) * 0.5f + sinf(2 * PI * f * 2.0f * lt) * 0.25f +
+                sinf(2 * PI * f * 3.0f * lt) * 0.1f) * env * 0.5f;
+    });
+
+    // Campaign bed (N5): a low fifth droning with a slow breath — presence
+    // without a tune you could tire of.
+    g_music = Synth(8.0f, [](float t) {
+        const float breath = 0.55f + 0.45f * sinf(2 * PI * t / 8.0f);
+        return (sinf(2 * PI * 98.0f * t) * 0.5f + sinf(2 * PI * 146.8f * t) * 0.3f +
+                sinf(2 * PI * 196.0f * t) * 0.12f) * breath * 0.5f;
+    });
+
     g_ready = true;
 }
 
@@ -134,6 +170,9 @@ void SfxShutdown() {
     for (Sound& s : g_sounds) UnloadSound(s);
     UnloadSound(g_wind);
     UnloadSound(g_rain);
+    UnloadSound(g_lute);
+    UnloadSound(g_music);
+    for (Sound& s : g_thudVar) UnloadSound(s);
     CloseAudioDevice();
     g_ready = false;
 }
@@ -150,12 +189,32 @@ void SfxRain(float volume) {
     if (volume > 0.01f && !IsSoundPlaying(g_rain)) PlaySound(g_rain);
 }
 
+void SfxMinstrel(float volume) {
+    if (!g_ready) return;
+    SetSoundVolume(g_lute, volume);
+    if (volume > 0.01f && !IsSoundPlaying(g_lute)) PlaySound(g_lute);
+}
+
+void SfxMusic(float volume) {
+    if (!g_ready) return;
+    SetSoundVolume(g_music, volume);
+    if (volume > 0.01f && !IsSoundPlaying(g_music)) PlaySound(g_music);
+}
+
 void SfxPlay(Sfx s, float volume) {
     if (!g_ready) return;
     const int i = (int)s;
     const double now = GetTime();
     if (now - g_lastPlay[i] < 0.05) return;   // rate limit per effect
     g_lastPlay[i] = now;
+    // Impact variety (N5): thuds rotate through sibling voices.
+    if (s == Sfx::Thud) {
+        Sound& v = (g_thudNext++ % 3 == 0) ? g_sounds[i]
+                                           : g_thudVar[g_thudNext % 2];
+        SetSoundVolume(v, volume);
+        PlaySound(v);
+        return;
+    }
     SetSoundVolume(g_sounds[i], volume);
     PlaySound(g_sounds[i]);
 }
