@@ -1035,6 +1035,11 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.raiseLord  = IsKeyPressed(KEY_L);
         in.ransomLords  = IsKeyPressed(KEY_U);   // prisoner lords (O2)
         in.releaseLords = IsKeyPressed(KEY_Y);
+        {   // garrison your walls (S2)
+            const bool shiftF = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+            in.garrisonOne   = IsKeyPressed(KEY_F) && !shiftF;
+            in.ungarrisonOne = IsKeyPressed(KEY_F) && shiftF;
+        }
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }

@@ -423,6 +423,14 @@ int RunScript(const char* path) {
         } else if (cmd == "leave") {
             CampaignInput cin; cin.leaveSettlement = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "garrison" || cmd == "ungarrison") {
+            // Man your walls (S2): move N soldiers party<->garrison.
+            int n = 1; ss >> n;
+            for (int i = 0; i < n; ++i) {
+                CampaignInput cin;
+                (cmd == "garrison" ? cin.garrisonOne : cin.ungarrisonOne) = true;
+                h.Step(cin, BattleInput{});
+            }
         } else if (cmd == "tavern") {
             // Stand at the tavern door (Q1) — recruiting requires it.
             if (h.gs.screen == Screen::Settlement) TownGoTavern(h.gs);

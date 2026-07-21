@@ -532,6 +532,27 @@ full career, and the last Warband textures.
   Track R 33.8 ms avg at 2000 soldiers — this wave's features landed
   free). Investigate any avg regression past ~15%.
 
+## Track S — Ninth wave: a ruler's hands
+
+- [ ] **S1. Sue for peace.** A crowned player ends a war from the ledger:
+  tribute scaled by the war's score, a truce that holds like the AI's.
+  Wars you start, you can end.
+- [x] **S2. Garrison your walls.** Shipped: F leaves a soldier (from your
+  fullest line; companions never garrison), Shift+F recalls one (cap
+  respected) at your own settlements. Garrisons already fought,
+  mustered, and persisted — this was the missing hand. Town HUD hint,
+  harness `garrison`/`ungarrison N`; `tests/garrison.txt` mans a stormed
+  Tulga and reloads the wall.
+- [ ] **S3. The wounded cart.** Half a battle's player losses are wounded,
+  not dead: they return to the roster after days of healing. Warband's
+  mercy, extended past companions.
+- [ ] **S4. Any lord's audience.** Court the lord actually present — talk
+  to a lord party adjacent on the map (parley), and courts name whoever
+  garrisons there, defectors included.
+- [ ] **S5. A ruler's purse audit.** Raised lords draw wages, garrisons eat
+  pay, tribute drains — the late-game sinks that keep gold meaningful
+  after the tenth town. (Structure; rates flat.)
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

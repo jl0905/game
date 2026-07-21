@@ -1,0 +1,19 @@
+# Garrison your walls (direction S2): deposit and recall troops at your own
+# settlements - the wall you stormed is finally yours to man. Persists in
+# saves like any garrison.
+seed 33
+enter 2            # the fields of Tulga
+siege 1            # take it
+block on
+tick 200
+state              # expect Tulga owner=kingdom, garrison=0, party ~7
+enter 2
+garrison 3         # three soldiers man the wall
+state              # expect garrison=3 and the party thinner by three
+ungarrison 1       # one comes back down
+state              # expect garrison=2
+leave
+save gar_test.owb
+load gar_test.owb
+state              # the manned wall survives the reload
+quit

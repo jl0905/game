@@ -448,6 +448,44 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         }
     }
 
+    // ---- garrison your walls (S2): F leaves a soldier, Shift+F recalls ----
+    // Your own settlements only. Deposits take from your fullest line
+    // (companions never garrison); recalls respect the party cap.
+    if ((cin.garrisonOne || cin.ungarrisonOne) &&
+        gs.towns[gs.currentSettlement].owner == c.playerFaction) {
+        Town& t = gs.towns[gs.currentSettlement];
+        if ((int)t.garrison.size() < c.troops.size())
+            t.garrison.assign(c.troops.size(), 0);
+        if (cin.garrisonOne) {
+            int best = -1;
+            for (int tr = 0; tr < (int)gs.player.troopCounts.size() &&
+                             tr < c.troops.size(); ++tr) {
+                if (c.troops[tr].companion) continue;
+                if (best < 0 || gs.player.troopCounts[tr] >
+                                gs.player.troopCounts[best])
+                    best = tr;
+            }
+            if (best >= 0 && gs.player.troopCounts[best] > 0) {
+                gs.player.troopCounts[best]--;
+                t.garrison[best]++;
+                gs.resultText = TextFormat("A %s joins the %s garrison (%d).",
+                                           c.troops[best].name.c_str(),
+                                           t.name.c_str(), t.garrisonSize());
+            }
+        } else if (gs.player.totalTroops() < PartyCap(gs)) {
+            for (int tr = 0; tr < (int)t.garrison.size() &&
+                             tr < c.troops.size(); ++tr)
+                if (t.garrison[tr] > 0) {
+                    t.garrison[tr]--;
+                    gs.player.troopCounts[tr]++;
+                    gs.resultText = TextFormat(
+                        "A %s comes down off the wall (garrison %d).",
+                        c.troops[tr].name.c_str(), t.garrisonSize());
+                    break;
+                }
+        }
+    }
+
     // ---- prisoner lords (O2): sell them back, or set them free ----
     // Ransom pays 200 a head and the lord resents the ledger (-10); release
     // pays nothing and is remembered kindly (+20 lord, +5 crown, +2 honor).
@@ -947,7 +985,8 @@ void TownDraw(const GameState& gs) {
     } else {
         // The local keys, always on show (K7) — every settlement service in
         // one line, so nothing shipped stays undiscovered.
-        ui::Text("[T] tournament   [M] market   [G] work   [H] hire   [V] oath   [E] talk",
+        ui::Text("[T] tournament   [M] market   [G] work   [H] hire   [V] oath   "
+                 "[E] talk   [F] garrison (yours)",
                  10, GetScreenHeight() - 50, 18, Fade(GOLD, 0.85f));
         ui::Text("WASD walk, mouse look. The gold roof is the tavern. Esc leaves.",
                  10, GetScreenHeight() - 26, 16, Fade(RAYWHITE, 0.7f));
