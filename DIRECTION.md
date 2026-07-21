@@ -201,9 +201,13 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   rounds 1–2 but loses the duel — winning it takes real swordsmanship,
   which is the J3 point. Flat numbers TODO(balance). Follow-up: renown →
   relations on championship.
-- [ ] **K4. Per-soldier morale.** Replace G3's side-wide threshold: each
-  soldier weighs nearby deaths, leader down, hero aura; lines crumble from
-  the flanks instead of all at once.
+- [x] **K4. Per-soldier morale.** Shipped: every soldier carries `nerve`
+  (100) — an ally dying within earshot costs 15, a foe falling restores
+  10, the hero going down shakes the whole line for 20, the hero's
+  kill-cry stiffens friends and shakes foes, and courage regenerates
+  2/s. Nerve at 0 breaks that one soldier; the side-wide banner rings
+  when half a side has fled. Arena bouts and wall garrisons never rout.
+  All flat TODO(balance).
 - [ ] **K5. Muster obligations.** A sworn vassal is summoned to the liege's
   sieges (banner alert + relation penalty for ignoring it); a crowned
   ruler can point raised lords at a target settlement.

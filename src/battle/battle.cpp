@@ -507,6 +507,20 @@ struct Arrow {
     bool    alive = true;
 };
 
+// Morale & rout (G3, per-soldier since K4): every soldier carries `nerve`.
+// Watching a friend die nearby drains it, watching a foe fall restores it,
+// the hero falling shakes the whole line, and the hero's rally stiffens it.
+// A soldier whose nerve breaks routs alone — lines crumble from where the
+// dying happens. Wall garrisons hold to the death; arena bouts never rout.
+// TODO(balance): every number below.
+constexpr float NERVE_MAX          = 100.0f;
+constexpr float NERVE_ALLY_DEATH   = 15.0f;  // a friend cut down within earshot
+constexpr float NERVE_ENEMY_DEATH  = 10.0f;  // a foe cut down within earshot
+constexpr float NERVE_WITNESS_R    = 8.0f;   // how far the dying carries
+constexpr float NERVE_HERO_DOWN    = 20.0f;  // the banner falls
+constexpr float NERVE_RALLY        = 15.0f;  // the hero's kill-cry
+constexpr float NERVE_REGEN        = 2.0f;   // per second, courage returns
+
 // Shields matter (direction G4): a shield-bearer meets a swing from his
 // guarded side with wood — and the wood wears out. The guard direction is a
 // deterministic per-soldier habit for now: structure, not a fencing brain.
@@ -530,6 +544,7 @@ struct Soldier {
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
     float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
+    float   nerve = NERVE_MAX; // courage left (K4); at 0 the soldier breaks
     bool    routed  = false;   // broke and running for the field edge (G3)
     float   routTime = 0;      // seconds spent fleeing
     bool    escaped = false;   // off the field alive — not a casualty
@@ -604,12 +619,6 @@ constexpr float RALLY_RADIUS         = 12.0f;
 constexpr float RALLY_COOLDOWN_SCALE = 0.75f;
 constexpr float RALLY_PULSE_TIME     = 4.0f;
 
-// Morale & rout (direction G3): a side whose fighting strength falls below the
-// threshold breaks — its soldiers stop fighting and run for their own field
-// edge, and whoever stays ahead of the blade long enough escapes the battle
-// alive (not a casualty). Wall garrisons hold to the death. Battles now end at
-// the decisive moment instead of the last corpse. TODO(balance): all three.
-constexpr float ROUT_THRESHOLD   = 0.30f;   // fighting fraction that breaks a side
 constexpr float ROUT_ESCAPE_TIME = 10.0f;   // seconds of flight to get away
 constexpr float ROUT_SPEED_SCALE = 1.15f;   // fear lends speed
 
@@ -1365,6 +1374,15 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         B.heroKills++;
                         B.rallyPulse = RALLY_PULSE_TIME;
                         SfxPlay(Sfx::WarCry, 0.25f);
+                        // The kill-cry stiffens friends and shakes foes (K4).
+                        if (!B.setup.arena)
+                            B.grid.ForNeighbors(B.pPos, RALLY_RADIUS * 2.0f, [&](int j) {
+                                Soldier& w = B.soldiers[j];
+                                if (w.hp <= 0) return;
+                                w.nerve += (w.team == Team::Player) ? NERVE_RALLY
+                                                                    : -NERVE_ALLY_DEATH;
+                                w.nerve = fminf(NERVE_MAX, w.nerve);
+                            });
                     }
                 }
             }
@@ -1394,30 +1412,30 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         for (const Soldier& s : B.soldiers)
             if (s.hp > 0 && s.target >= 0 && s.target < n) B.targeted[s.target]++;
 
-        // Morale check (G3): count each side's soldiers still willing to fight;
-        // a side under the threshold breaks all at once. Wall posts stand.
-        {
-            int playerFighting = 0, enemyFighting = 0;
-            for (const Soldier& s : B.soldiers) {
-                if (s.hp <= 0 || s.routed || s.escaped) continue;
-                (s.team == Team::Enemy ? enemyFighting : playerFighting)++;
+        // Morale (K4): a soldier whose nerve broke runs; the banner rings
+        // once per side when half its strength has fled the field.
+        if (!B.setup.arena) {
+            int playerFled = 0, enemyFled = 0;
+            for (Soldier& s : B.soldiers) {
+                if (s.hp <= 0) continue;
+                if (!s.routed && !s.onWall && s.nerve <= 0.0f) s.routed = true;
+                if (s.routed || s.escaped)
+                    (s.team == Team::Enemy ? enemyFled : playerFled)++;
             }
-            auto breakSide = [&](Team team, const char* text) {
-                for (Soldier& s : B.soldiers)
-                    if (s.team == team && s.hp > 0 && !s.onWall) s.routed = true;
+            auto ringBanner = [&](const char* text) {
                 B.routBanner = 2.5f;
                 B.routText   = text;
                 SfxPlay(Sfx::WarCry, 0.4f);
             };
             if (!B.enemySideRouted && B.startEnemySide > 0 &&
-                enemyFighting < B.startEnemySide * ROUT_THRESHOLD) {
+                enemyFled * 2 >= B.startEnemySide) {
                 B.enemySideRouted = true;
-                breakSide(Team::Enemy, "THE ENEMY BREAKS AND RUNS!");
+                ringBanner("THE ENEMY BREAKS AND RUNS!");
             }
             if (!B.playerSideRouted && B.startPlayerSide > 0 &&
-                playerFighting < B.startPlayerSide * ROUT_THRESHOLD) {
+                playerFled * 2 >= B.startPlayerSide) {
                 B.playerSideRouted = true;
-                breakSide(Team::Player, "YOUR LINE BREAKS!");
+                ringBanner("YOUR LINE BREAKS!");
             }
         }
 
@@ -1526,7 +1544,19 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             Soldier& s = B.soldiers[i];
             if (s.hp <= 0) continue;
             s.flash = fmaxf(0.0f, s.flash - dt * 5.0f);
-            if (B.dmg[i] > 0.0f) DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
+            s.nerve = fminf(NERVE_MAX, s.nerve + NERVE_REGEN * dt);   // courage returns
+            if (B.dmg[i] > 0.0f) {
+                DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
+                // A death every witness feels (K4): friends flinch, foes cheer.
+                if (s.hp <= 0 && !B.setup.arena)
+                    B.grid.ForNeighbors(s.pos, NERVE_WITNESS_R, [&](int j) {
+                        Soldier& w = B.soldiers[j];
+                        if (j == i || w.hp <= 0) return;
+                        w.nerve += (w.team == s.team) ? -NERVE_ALLY_DEATH
+                                                      : NERVE_ENEMY_DEATH;
+                        w.nerve = fminf(NERVE_MAX, w.nerve);
+                    });
+            }
         }
         B.pFlash     = fmaxf(0.0f, B.pFlash - dt * 5.0f);
         B.rallyPulse = fmaxf(0.0f, B.rallyPulse - dt);
@@ -1642,6 +1672,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         if (B.pHp <= 0 && !B.heroDown) {
             B.heroDown = true;
             SfxPlay(Sfx::Knell);
+            // The banner falls and the whole line feels it (K4).
+            if (!B.setup.arena)
+                for (Soldier& s : B.soldiers)
+                    if (s.hp > 0 && s.team == Team::Player)
+                        s.nerve -= NERVE_HERO_DOWN;
         }
         if (B.aliveEnemies == 0)                      EndBattle(!B.heroDown || B.aliveAllies > 0);
         else if (B.heroDown && B.aliveAllies == 0)    EndBattle(false);
