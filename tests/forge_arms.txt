@@ -1,0 +1,13 @@
+# Arms from the forge (direction O4): town markets sell two rotating
+# equipment pieces (keys 7/8) straight into the tiled bag - closing the loop
+# from iron to smithy to the inventory companions are fitted from.
+seed 42
+enter 0            # Sargoth, a town with a working forge
+market
+state              # baseline: gold 300, empty bag
+buyarm armor       # today's armour piece, 50 gold
+buyarm weapon      # and the blade beside it
+state              # expect gold 200 and two item: lines in the bag
+market
+leave
+quit

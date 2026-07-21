@@ -499,6 +499,12 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "buyarm") {
+            // Arms from the forge (O4): buy today's armour or weapon piece.
+            std::string kind; ss >> kind;
+            CampaignInput cin;
+            cin.buyGood = h.gs.content.goods.size() + (kind == "weapon" ? 1 : 0);
+            h.Step(cin, BattleInput{});
         } else if (cmd == "settings") {
             CampaignInput cin;
             if (h.gs.screen == Screen::Settings) cin.leaveSettlement = true;

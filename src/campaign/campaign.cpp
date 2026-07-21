@@ -2416,6 +2416,19 @@ void InventoryDraw(const GameState& gs) {
 // selling pays a flat fraction of the buy price so round-trips cost gold.
 // ---------------------------------------------------------------------------
 
+// The forge's counter (O4): two equipment pieces rotate by town and day —
+// what iron becomes once a town has worked it. TODO(balance): the price.
+static constexpr int ARMS_PRICE = 50;
+
+static void ArmsOnSale(const GameState& gs, InvItem& armorIt, InvItem& weaponIt) {
+    const Content& c = gs.content;
+    const int k = gs.currentSettlement * 3 + gs.day;
+    armorIt.isWeapon  = false;
+    armorIt.handle    = c.armor.size() > 0 ? k % c.armor.size() : -1;
+    weaponIt.isWeapon = true;
+    weaponIt.handle   = c.weapons.size() > 0 ? k % c.weapons.size() : -1;
+}
+
 int MarketBuyPrice(const Content& c, const Town& t, int g) {
     const int offset = g < (int)t.priceOffset.size() ? t.priceOffset[g] : 100;
     // Scarcity moves the needle: 4% per unit off a 10-unit par, clamped —
@@ -2450,6 +2463,22 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
             gs.goods[g]++;
         }
     }
+    // Arms from the forge (O4): keys past the wares buy today's pieces
+    // into the tiled bag. Towns only — villages sell produce, not steel.
+    if (t.type == SettlementType::Town &&
+        (in.buyGood == c.goods.size() || in.buyGood == c.goods.size() + 1)) {
+        InvItem armorIt, weaponIt;
+        ArmsOnSale(gs, armorIt, weaponIt);
+        InvItem pick = in.buyGood == c.goods.size() ? armorIt : weaponIt;
+        if (pick.handle >= 0 && gs.gold >= ARMS_PRICE && AutoPlace(gs, pick)) {
+            gs.gold -= ARMS_PRICE;
+            gs.resultText = TextFormat("Bought: %s (%d gold).",
+                pick.isWeapon ? c.weapons[pick.handle].name.c_str()
+                              : c.armor[pick.handle].name.c_str(), ARMS_PRICE);
+            SfxPlay(Sfx::Click);
+        }
+    }
+
     if (in.sellGood >= 0 && in.sellGood < c.goods.size()) {
         const int g = in.sellGood;
         if (gs.goods[g] > 0) {
@@ -2549,6 +2578,25 @@ void MarketDraw(const GameState& gs) {
                             MarketSellPrice(c, t, g), t.stock[g], gs.goods[g]),
                  x + 26, y, 20, RAYWHITE);
         y += layout::MARKET_ROW_H;
+    }
+
+    // The forge's counter (O4): today's two pieces, towns only.
+    if (t.type == SettlementType::Town) {
+        InvItem armorIt, weaponIt;
+        ArmsOnSale(gs, armorIt, weaponIt);
+        y += 14;
+        ui::Text("ARMS  (into your bag; rotates daily)", x, y, 18,
+                 Fade(GOLD, 0.8f));
+        y += 26;
+        if (armorIt.handle >= 0)
+            ui::Text(TextFormat("[7] %-16s %d gold",
+                                c.armor[armorIt.handle].name.c_str(), ARMS_PRICE),
+                     x, y, 20, RAYWHITE);
+        y += 28;
+        if (weaponIt.handle >= 0)
+            ui::Text(TextFormat("[8] %-16s %d gold",
+                                c.weapons[weaponIt.handle].name.c_str(), ARMS_PRICE),
+                     x, y, 20, RAYWHITE);
     }
 
     EndDrawing();

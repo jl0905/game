@@ -396,9 +396,13 @@ adds per line of code. Structure first, numbers flat, as ever.
 - [ ] **O3. Night and dusk.** The day clock already names morning/evening:
   tint the campaign map and battlefield lighting by hour; night battles
   darker and closer. Presentation with tactical texture.
-- [ ] **O4. Arms from the forge.** Towns with a smithy sell weapon/armour
-  *pieces* at the market (stock from prosperity), closing the loop from
-  iron → smithy → the inventory the player already fits companions from.
+- [x] **O4. Arms from the forge.** Shipped: every town market has an ARMS
+  counter — two pieces (one armour, one weapon) rotating by town and day,
+  keys 7/8, flat 50 gold each, placed straight into the tiled bag the
+  player already fits themself and companions from. Towns only; villages
+  sell produce, not steel. Harness `buyarm armor|weapon`;
+  `tests/forge_arms.txt`. Follow-up: stock/price from prosperity and a
+  built smithy enterprise.
 - [x] **O5. Modding guide.** Shipped: `MODDING.md` — the two tiers (config
   files with no rebuild: map.cfg incl. biome/road/lordnames tables,
   settings.cfg, fonts.cfg; content registration in content.cpp with a
