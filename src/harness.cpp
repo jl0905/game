@@ -266,6 +266,10 @@ struct Harness {
                         c.factions.valid(gs.feastFaction)
                             ? c.factions[gs.feastFaction].id.c_str() : "?",
                         gs.feastDays, gs.feastAttended ? 1 : 0);
+        for (const auto& p : gs.lordOpinion)
+            if (p.second != 0)
+                std::printf("lop: %s=%+d (eff %+d)\n", p.first.c_str(), p.second,
+                            p.second + gs.honor);
         if (gs.spouseFaction >= 0)
             std::printf("spouse: %s of %s\n", gs.spouseName.c_str(),
                         c.factions.valid(gs.spouseFaction)

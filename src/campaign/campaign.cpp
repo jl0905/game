@@ -750,6 +750,12 @@ static void ApplyBattleResult(GameState& gs) {
     Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
     if (enemy) enemy->engaged = false;
 
+    // Named lords remember the day (N4). TODO(balance): the deltas.
+    if (gs.battleWon && enemy && !enemy->lord.empty())
+        LordOpinion(gs, enemy->lord) -= 15;   // you broke his host
+    if (gs.battleWon && ally && !ally->lord.empty())
+        LordOpinion(gs, ally->lord) += 10;    // you bled beside him
+
     // The butcher's bill of the player's own battles feeds war weariness.
     {
         int enemyFaction = enemy ? enemy->faction : -1;
@@ -2917,6 +2923,21 @@ void CharacterDraw(const GameState& gs) {
                  20, r > 0 ? LIME : r < 0 ? Fade(RED, 0.9f) : Fade(RAYWHITE, 0.8f));
         y += 26;
     }
+    // Named lords who remember you (N4); honor colours every reading.
+    if (!gs.lordOpinion.empty()) {
+        int ly = 180;
+        const int lx = GetScreenWidth() - 340;
+        ui::Text("LORDS", lx, ly, 22, GOLD);
+        ly += 30;
+        for (const auto& p : gs.lordOpinion) {
+            const int eff = p.second + gs.honor;
+            ui::Text(TextFormat("Lord %-10s %+d", p.first.c_str(), eff), lx, ly,
+                     20, eff > 0 ? LIME : eff < 0 ? Fade(RED, 0.9f)
+                                                  : Fade(RAYWHITE, 0.8f));
+            ly += 26;
+        }
+    }
+
     ui::Text("[1-4 / click a row] spend a point    [Esc / C] back to the map",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();

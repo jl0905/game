@@ -155,6 +155,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     if (gs.spouseFaction >= 0 && gs.spouseFaction < c.factions.size())
         f << "spouse " << c.factions[gs.spouseFaction].id << ' '
           << gs.spouseName << '\n';
+    for (const auto& p : gs.lordOpinion)
+        if (p.second != 0)
+            f << "lop " << p.first << ' ' << p.second << '\n';
 
     // Standing duties (K5).
     if (gs.musterTown >= 0)
@@ -365,6 +368,10 @@ bool LoadGame(GameState& gs, const char* path) {
             gs.feastFaction  = c.factions.find(fid.c_str());
             gs.feastAttended = att != 0;
             if (gs.feastFaction < 0) gs.feastTown = -1;
+        } else if (tag == "lop") {
+            std::string name; int v = 0;
+            ss >> name >> v;
+            if (!name.empty()) LordOpinion(gs, name) = v;
         } else if (tag == "spouse") {
             std::string fid;
             ss >> fid >> gs.spouseName;

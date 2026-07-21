@@ -219,6 +219,12 @@ struct GameState {
     int renown = 0;
     int honor  = 0;
 
+    // Per-lord opinion (N4): named lords remember what you did to and for
+    // them — grants, battles at their side, defeats at your hand. Honor is
+    // added on top when the opinion is *read* (honest men are trusted a
+    // little everywhere). All deltas flat TODO(balance).
+    std::vector<std::pair<std::string, int>> lordOpinion;
+
     // Relations (F1): the player's personal standing with each faction,
     // -100..100, moved by deeds (battles, raids, aid). Report-only for now;
     // vassalage (F2) and quest givers (F4) will read it. TODO(balance).
@@ -323,6 +329,19 @@ inline void NudgeRelation(GameState& gs, int faction, int delta) {
     if (r > 100) r = 100;
     if (r < -100) r = -100;
     if (faction == gs.spouseFaction && r < 0) r = 0;
+}
+
+// A named lord's stored opinion of the player (N4), created at 0 on first
+// touch. Read through EffectiveLordOpinion, which adds the player's honor.
+inline int& LordOpinion(GameState& gs, const std::string& name) {
+    for (auto& p : gs.lordOpinion)
+        if (p.first == name) return p.second;
+    gs.lordOpinion.push_back({ name, 0 });
+    return gs.lordOpinion.back().second;
+}
+
+inline int EffectiveLordOpinion(GameState& gs, const std::string& name) {
+    return LordOpinion(gs, name) + gs.honor;
 }
 
 // Party-size cap (M1): a base band plus one man per point of renown — fame

@@ -346,9 +346,13 @@ adds per line of code. Structure first, numbers flat, as ever.
   autosave + slots with a peeked "day N, gold G" line (`PeekSave`), empty
   rows greyed. `SaveSlotPath` shared with harness `saveslot`/`loadslot`;
   `tests/save_slots.txt` rewinds a march and survives an empty-slot load.
-- [ ] **N4. Per-lord opinion.** Individual lords remember grants, rescues,
-  battles beside them; gates their vote when M-wave politics deepen
-  (crown council, elections). Honor finally gets a reader.
+- [x] **N4. Per-lord opinion.** Shipped: named lords remember — a fief
+  grant +20, a victory at their side +10, their host broken by you −15
+  (stored); honor is added at every *reading* (`EffectiveLordOpinion`),
+  so honest captains are trusted a little everywhere. A first lord at
+  effective −10 speaks against your oath at court. LORDS block on the
+  character sheet, `lop` save tag + harness dump; `tests/lord_opinion.txt`.
+  Follow-up: opinions gating council votes/elections when crowns deepen.
 - [ ] **N5. Art/audio pass.** The M6 descope: stall props, minstrel sting,
   plus battle-kill sting variety and a campaign music bed. Asset work,
   not systems.

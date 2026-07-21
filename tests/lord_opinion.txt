@@ -1,0 +1,18 @@
+# Per-lord opinion (direction N4): named lords remember grants (+20) and
+# battles; honor is added when the opinion is read; it survives saves.
+seed 33
+enter 2            # storm Tulga
+block on
+tick 200
+crown
+enter 2
+raiselord          # Lord Bram takes the field
+court
+topic 4            # grant him the seat: honor +1, Bram +20 stored
+state              # expect lop: Bram=+20 (eff +21)
+leave
+leave
+save lop_test.owb
+load lop_test.owb
+state              # expect the opinion to survive the reload
+quit

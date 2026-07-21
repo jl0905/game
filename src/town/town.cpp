@@ -102,6 +102,11 @@ std::string TrySwear(GameState& gs) {
     if (gs.renown < RENOWN_TO_SWEAR)
         return TextFormat("A crown wants proven captains. Win renown first (%d/%d).",
                           gs.renown, RENOWN_TO_SWEAR);
+    // A wronged first lord speaks against you at court (N4). TODO(balance).
+    if (!c.factions[f].lords.empty() &&
+        EffectiveLordOpinion(gs, c.factions[f].lords[0]) < -10)
+        return TextFormat("Lord %s speaks against you. The crown listens to him.",
+                          c.factions[f].lords[0].c_str());
     gs.liege = f;
     AlignWarsWithLiege(gs);
     int fief = -1;
@@ -531,6 +536,7 @@ std::string TryGrantFief(GameState& gs) {
         if (landed) continue;
         t.fiefLord = p.lord;
         gs.honor += 1;   // generosity becomes a ruler (M3). TODO(balance)
+        LordOpinion(gs, p.lord) += 20;   // land is remembered (N4)
         gs.resultText = TextFormat("%s is granted to Lord %s. He will hold it.",
                                    t.name.c_str(), p.lord.c_str());
         SfxPlay(Sfx::Fanfare);
