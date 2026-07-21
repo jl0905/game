@@ -375,6 +375,26 @@ adds per line of code. Structure first, numbers flat, as ever.
   ceiling. Remaining idea (garrison + relief army in one siege) moves to
   a future siege track alongside N1.
 
+## Track O — Fifth wave: rule what you won
+
+- [ ] **O1. Kingdom ledger screen.** One screen for a ruler: fiefs and
+  their lords (with opinions), armies afield, wars and truces, income by
+  source. The data all exists; this is the view that makes it a kingdom.
+- [ ] **O2. Prisoner lords.** Breaking a lord's host can capture *him*:
+  ransom to his crown (gold, −opinion), or release (honor, +opinion) —
+  the captive-lord layer Warband's diplomacy turns on.
+- [ ] **O3. Night and dusk.** The day clock already names morning/evening:
+  tint the campaign map and battlefield lighting by hour; night battles
+  darker and closer. Presentation with tactical texture.
+- [ ] **O4. Arms from the forge.** Towns with a smithy sell weapon/armour
+  *pieces* at the market (stock from prosperity), closing the loop from
+  iron → smithy → the inventory the player already fits companions from.
+- [ ] **O5. Modding guide.** MODDING.md: map.cfg, settings.cfg, fonts.cfg,
+  content registration, and the harness — one door for modders.
+- [ ] **O6. Rebellion arcs.** A sworn vassal can scheme: gather lord
+  opinions, declare for the crown you serve to be yours, and fight the
+  civil war (the crowning move the sandbox is missing).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
