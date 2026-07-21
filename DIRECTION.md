@@ -579,11 +579,16 @@ this is the feedback the flat numbers were waiting for.
   and the first playtest-tuned number: hero swings deal 2.5×. Verified:
   a lone hero with varied swings now cuts down three shielded recruits;
   one-note spam still fails.
-- [ ] **T2. Map zoom.** Campaign camera zooms with the mouse wheel.
-- [ ] **T3. Settlement silhouettes.** Villages/castles/towns readable at a
-  glance — distinct size, shape and banner, no parenthesis needed.
-- [ ] **T4. Travel-pace indicator.** A visible cue when terrain slows the
-  party (mud-trail, color, speed text) or roads speed it.
+- [x] **T2. Map zoom.** Shipped: mouse wheel zooms 0.35×–2.5×, device-side
+  view state — click hit-testing shares the camera, so zoomed clicks
+  stay true; headless sims never see it.
+- [x] **T3. Settlement silhouettes.** Shipped: a village is a low huddle of
+  thatched huts, a town a walled sprawl of red roofs around a gilt hall,
+  a castle a tall grey keep between crenellated towers — readable at any
+  zoom without the label.
+- [x] **T4. Travel-pace indicator.** Shipped: a pace ring under your banner
+  and the going named at your feet — green "road (full pace)", amber
+  "forest −30%", slate "mountains −45%"; nothing shown on plain ground.
 - [ ] **T5. Mounted combat identity.** Horseback attacks differ from foot:
   reach bonus, momentum damage on the pass, no thrust-from-saddle.
 - [ ] **T6. Horses as entities.** Kill the rider, not the horse: a slain

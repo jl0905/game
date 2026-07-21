@@ -415,11 +415,17 @@ void ResolveSkirmish(GameState& gs, Skirmish& sk) {
 }
 
 // Camera centred on the player; used by input gathering and drawing.
+// Map zoom (T2): pure view state, wheel-driven in Gather (device side, so
+// headless sims never see it). Clamped so neither pixels nor the whole map
+// swallow the screen.
+float g_mapZoom = 1.0f;
+constexpr float MAP_ZOOM_MIN = 0.35f, MAP_ZOOM_MAX = 2.5f;
+
 Camera2D CampaignCamera(const GameState& gs) {
     Camera2D cam = { 0 };
     cam.target = gs.player.pos;
     cam.offset = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    cam.zoom = 1.0f;
+    cam.zoom = g_mapZoom;
     return cam;
 }
 
@@ -1259,6 +1265,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) in.leaveSettlement = true;
         return in;
     }
+
+    // Map zoom (T2): the wheel rides the map in and out.
+    const float wheel = GetMouseWheelMove();
+    if (wheel != 0.0f)
+        g_mapZoom = Clamp(g_mapZoom * (1.0f + wheel * 0.12f),
+                          MAP_ZOOM_MIN, MAP_ZOOM_MAX);
 
     const Camera2D cam = CampaignCamera(gs);
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -2262,21 +2274,52 @@ void CampaignDraw(const GameState& gs) {
     for (const Town& t : gs.towns) {
         DrawEllipse((int)t.pos.x, (int)t.pos.y + 16, 30, 9, Fade(BLACK, 0.25f));
         switch (t.type) {
+            // Silhouettes readable at a glance (T3): a village is a low
+            // huddle of thatched huts, a town a walled sprawl of red roofs
+            // around a gilt hall, a castle a tall grey keep between towers.
             case SettlementType::Village:
-                DrawRectangle((int)t.pos.x - 14, (int)t.pos.y - 10, 28, 20, BROWN);
-                DrawTriangle({ t.pos.x - 16, t.pos.y - 10 }, { t.pos.x + 16, t.pos.y - 10 },
-                             { t.pos.x, t.pos.y - 26 }, DARKBROWN);
+                for (const float hx : { -14.0f, 2.0f, -6.0f }) {
+                    const float hy = hx == -6.0f ? 2.0f : -8.0f;
+                    DrawRectangle((int)(t.pos.x + hx), (int)(t.pos.y + hy), 13, 10,
+                                  Color{ 138, 104, 66, 255 });
+                    DrawTriangle({ t.pos.x + hx - 2, t.pos.y + hy },
+                                 { t.pos.x + hx + 15, t.pos.y + hy },
+                                 { t.pos.x + hx + 6.5f, t.pos.y + hy - 9 },
+                                 Color{ 196, 168, 92, 255 });   // thatch
+                }
                 break;
             case SettlementType::Town:
-                DrawRectangle((int)t.pos.x - 20, (int)t.pos.y - 20, 40, 40, BROWN);
-                DrawTriangle({ t.pos.x - 24, t.pos.y - 20 }, { t.pos.x + 24, t.pos.y - 20 },
-                             { t.pos.x, t.pos.y - 44 }, MAROON);
+                DrawCircleLinesV(t.pos, 26, Fade(Color{ 120, 116, 110, 255 }, 0.9f));
+                DrawCircleLinesV(t.pos, 27.5f, Fade(Color{ 120, 116, 110, 255 }, 0.5f));
+                for (const float hx : { -18.0f, 4.0f, -8.0f }) {
+                    const float hy = hx == -8.0f ? 4.0f : -12.0f;
+                    DrawRectangle((int)(t.pos.x + hx), (int)(t.pos.y + hy), 14, 12,
+                                  Color{ 168, 148, 120, 255 });
+                    DrawTriangle({ t.pos.x + hx - 2, t.pos.y + hy },
+                                 { t.pos.x + hx + 16, t.pos.y + hy },
+                                 { t.pos.x + hx + 7, t.pos.y + hy - 10 },
+                                 MAROON);   // red town roofs
+                }
+                DrawRectangle((int)t.pos.x - 4, (int)t.pos.y - 8, 9, 14,
+                              Color{ 190, 170, 120, 255 });
+                DrawTriangle({ t.pos.x - 6, t.pos.y - 8 }, { t.pos.x + 7, t.pos.y - 8 },
+                             { t.pos.x + 0.5f, t.pos.y - 20 }, GOLD);   // the hall
                 break;
             case SettlementType::Castle:
-                DrawRectangle((int)t.pos.x - 24, (int)t.pos.y - 22, 48, 42, GRAY);
-                // crenellated top
-                for (int b = -24; b < 24; b += 16)
-                    DrawRectangle((int)t.pos.x + b, (int)t.pos.y - 34, 8, 12, DARKGRAY);
+                for (const float txr : { -22.0f, 12.0f }) {   // corner towers
+                    DrawRectangle((int)(t.pos.x + txr), (int)t.pos.y - 24, 10, 34,
+                                  Color{ 128, 126, 132, 255 });
+                    for (int b = 0; b < 10; b += 4)
+                        DrawRectangle((int)(t.pos.x + txr) + b, (int)t.pos.y - 29,
+                                      3, 5, Color{ 108, 106, 112, 255 });
+                }
+                DrawRectangle((int)t.pos.x - 12, (int)t.pos.y - 14, 24, 24,
+                              Color{ 148, 146, 152, 255 });          // curtain
+                DrawRectangle((int)t.pos.x - 7, (int)t.pos.y - 36, 14, 46,
+                              Color{ 162, 160, 168, 255 });          // the keep
+                for (int b = -7; b < 7; b += 5)
+                    DrawRectangle((int)t.pos.x + b, (int)t.pos.y - 41, 3, 5,
+                                  Color{ 128, 126, 132, 255 });
                 break;
         }
         // Owner banner flying above the icon + label + ring.
@@ -2357,6 +2400,24 @@ void CampaignDraw(const GameState& gs) {
                           Fade(BLACK, 0.5f));
         DrawCircleV({ p.x, p.y - 32 }, 3, GOLD);
         ui::Text("You", (int)p.x - 12, (int)p.y - 48, 16, RAYWHITE);
+
+        // Travel pace, impossible to miss (T4): a ring under the banner in
+        // the pace's colour, and the going named right at your feet —
+        // green on roads, amber in the woods, slate in the mountains.
+        const bool  onRoad = OnRoad(gs, p);
+        const float pace   = TravelSpeedFactor(gs, p);
+        const WorldTerrain wt = WorldTerrainAt(gs.content.map, p);
+        Color pcol; const char* ptxt;
+        if (onRoad)      { pcol = Color{ 90, 220, 90, 255 };  ptxt = "road  (full pace)"; }
+        else if (pace >= 1.0f) { pcol = Fade(RAYWHITE, 0.6f); ptxt = nullptr; }
+        else if (wt == WorldTerrain::Forest)
+                         { pcol = Color{ 235, 170, 60, 255 }; ptxt = "forest  -30%"; }
+        else             { pcol = Color{ 150, 165, 200, 255 };ptxt = "mountains  -45%"; }
+        DrawRing(p, 14, 17, 0, 360, 32, Fade(pcol, 0.85f));
+        if (ptxt) {
+            DrawRectangle((int)p.x - 46, (int)p.y + 12, 130, 18, Fade(BLACK, 0.5f));
+            ui::Text(ptxt, (int)p.x - 42, (int)p.y + 14, 14, pcol);
+        }
     }
     // Bandit dens: a dark camp and a smoke smudge until someone burns them out.
     for (const Lair& l : gs.lairs) {
