@@ -627,16 +627,8 @@ static constexpr int XP_PER_SURVIVOR = 25;
 static constexpr int HERO_XP_PER_WIN = 50;
 static int HeroXpToLevel(int level) { return level * 100; }
 
-// Relations (F1): deeds move the player's standing with a faction. Nothing
-// reads the score yet beyond the character sheet — vassalage (F2) and quest
-// givers (F4) will. TODO(balance): every delta below.
-static void NudgeRelation(GameState& gs, int faction, int delta) {
-    if (faction < 0 || faction >= gs.content.factions.size() ||
-        faction == gs.content.playerFaction) return;
-    if ((int)gs.relations.size() < gs.content.factions.size())
-        gs.relations.assign(gs.content.factions.size(), 0);
-    gs.relations[faction] = std::clamp(gs.relations[faction] + delta, -100, 100);
-}
+// NudgeRelation lives in world.h now (M5): court dialogue moves standing too.
+// TODO(balance): every delta at the call sites.
 
 // Pay out the active quest (F4) and clear it.
 static void CompleteQuest(GameState& gs) {
@@ -949,6 +941,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_TWO))   in.menuChoice = 2;
         if (IsKeyPressed(KEY_THREE)) in.menuChoice = 3;
         if (IsKeyPressed(KEY_FOUR))  in.menuChoice = 4;   // grant a fief (M3)
+        if (IsKeyPressed(KEY_FIVE))  in.menuChoice = 5;   // marriage suit (M5)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
         return in;
     }
@@ -1208,6 +1201,16 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     gs.goods[g] -= need;
                     CompleteQuest(gs);
                 }
+            }
+            // Walking into a feast (M5): the hall notices a famous guest.
+            if (in.clickSettlement == gs.feastTown && gs.feastDays > 0 &&
+                !gs.feastAttended) {
+                gs.feastAttended = true;
+                NudgeRelation(gs, gs.feastFaction, +5);   // TODO(balance)
+                gs.renown += 1;
+                gs.resultText = TextFormat(
+                    "You join the feast at %s. The hall drinks to your name.",
+                    gs.towns[in.clickSettlement].name.c_str());
             }
             gs.currentSettlement = in.clickSettlement;
             gs.screen = Screen::Settlement;
@@ -1530,6 +1533,34 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     else if (t.stock[g] > 0) t.stock[g]--;
                 }
             }
+            // Feasts (M5): every few days a kingdom at peace with the player
+            // throws one at its first town. TODO(balance): cadence/length.
+            gs.feastDays -= 1.0f;
+            if (gs.feastDays <= 0) {
+                if (gs.feastTown >= 0) { gs.feastTown = -1; gs.feastFaction = -1; }
+                if (gs.day % 4 == 2) {
+                    for (int k = 0; k < c.factions.size(); ++k) {
+                        const int f = (gs.day / 4 + k) % c.factions.size();
+                        if (!c.factions[f].kingdom || f == c.playerFaction ||
+                            AtWar(gs, f, c.playerFaction)) continue;
+                        for (int t = 0; t < (int)gs.towns.size(); ++t)
+                            if (gs.towns[t].owner == f &&
+                                gs.towns[t].type == SettlementType::Town) {
+                                gs.feastTown     = t;
+                                gs.feastFaction  = f;
+                                gs.feastDays     = 2.0f;
+                                gs.feastAttended = false;
+                                gs.resultText = TextFormat(
+                                    "%s feasts at %s - all at peace are welcome.",
+                                    c.factions[f].name.c_str(),
+                                    gs.towns[t].name.c_str());
+                                break;
+                            }
+                        if (gs.feastTown >= 0) break;
+                    }
+                }
+            }
+
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
             AlignWarsWithLiege(gs); // a vassal's wars follow the crown's (F2)
 

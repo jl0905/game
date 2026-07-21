@@ -258,6 +258,16 @@ struct Harness {
                             c.goods[g].id.c_str(), tw.stock[g], tw.priceOffset[g],
                             MarketBuyPrice(c, tw, g), MarketSellPrice(c, tw, g));
         }
+        if (gs.feastTown >= 0 && gs.feastDays > 0)
+            std::printf("feast: town=%d faction=%s days=%.1f attended=%d\n",
+                        gs.feastTown,
+                        c.factions.valid(gs.feastFaction)
+                            ? c.factions[gs.feastFaction].id.c_str() : "?",
+                        gs.feastDays, gs.feastAttended ? 1 : 0);
+        if (gs.spouseFaction >= 0)
+            std::printf("spouse: %s of %s\n", gs.spouseName.c_str(),
+                        c.factions.valid(gs.spouseFaction)
+                            ? c.factions[gs.spouseFaction].id.c_str() : "?");
         for (const auto& p : gs.companionGear) {
             if (p.first < 0 || p.first >= c.troops.size()) continue;
             std::printf("cgear: %s", c.troops[p.first].id.c_str());

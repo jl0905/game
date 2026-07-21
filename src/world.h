@@ -201,6 +201,17 @@ struct GameState {
     Vector2 lordsRallyPos{};
     float   lordsRallyDays = 0;
 
+    // Feasts & marriage (M5): a kingdom at peace throws a feast at one of
+    // its towns for a few days; attending pays standing and renown, and a
+    // feast's court is where marriages are made. One spouse, ever — the
+    // alliance floors your standing with that house at 0.
+    int   feastTown     = -1;   // town index hosting, -1 none
+    int   feastFaction  = -1;   // the celebrating crown
+    float feastDays     = 0;    // days of feasting left
+    bool  feastAttended = false;
+    int         spouseFaction = -1;
+    std::string spouseName;
+
     // Renown & honor (M1): fame from victories/tournaments/quests, and a
     // conscience moved by deeds. Renown gates vassalage and raises the
     // party cap; honor is report-only until per-lord opinions exist.
@@ -297,6 +308,21 @@ inline float TravelSpeedFactor(const GameState& gs, Vector2 p) {
     if (t == WorldTerrain::Plains) return 1.0f;
     if (OnRoad(gs, p)) return 1.0f;
     return t == WorldTerrain::Forest ? m.biome.forestSpeed : m.biome.mountainSpeed;
+}
+
+// Relations (F1): deeds move the player's standing with a faction, clamped
+// to -100..100. Marriage (M5) floors standing with the spouse's house at 0 —
+// family forgives. Shared by campaign deeds and court dialogue.
+inline void NudgeRelation(GameState& gs, int faction, int delta) {
+    if (faction < 0 || faction >= gs.content.factions.size() ||
+        faction == gs.content.playerFaction) return;
+    if ((int)gs.relations.size() < gs.content.factions.size())
+        gs.relations.assign(gs.content.factions.size(), 0);
+    int& r = gs.relations[faction];
+    r += delta;
+    if (r > 100) r = 100;
+    if (r < -100) r = -100;
+    if (faction == gs.spouseFaction && r < 0) r = 0;
 }
 
 // Party-size cap (M1): a base band plus one man per point of renown — fame

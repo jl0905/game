@@ -312,10 +312,15 @@ adds per line of code. Structure first, numbers flat, as ever.
   purse. Bandits smell it like any laden caravan. `ccost` save tag,
   harness `sendcaravan`; `tests/player_caravan.txt` turns 56 gold of
   cargo into 64. Follow-up: choosing the route; a caravan-lost notice.
-- [ ] **M5. Feasts & marriage (v1).** Kingdoms at peace throw a feast at a
-  town (lords gather); the player attends for standing, and courts a
-  noble for a marriage alliance (standing floor with the whole faction).
-  Structure-only pageantry — the social layer Warband's politics run on.
+- [x] **M5. Feasts & marriage (v1).** Shipped: every 4th day a kingdom at
+  peace with the player feasts at one of its towns for 2 days (news line,
+  harness `feast:` dump); walking in pays +5 standing and +1 renown, once
+  per feast. Court topic [5] at the feast weds you (renown 10 required,
+  one spouse ever): +20 standing, and NudgeRelation (moved to world.h)
+  floors the house's standing at 0 forever — family forgives. `feast`/
+  `spouse` save tags; `tests/feast.txt` attends and weds Lady Mira.
+  Follow-ups: spouse gameplay (intercession, heirs), lords gathering at
+  the hall, feast scenes.
 - [ ] **M6. Town life.** Villagers walk the road network between
   settlements (cosmetic parties that flee bandits), town scenes get
   market-stall props near the plaza, and taverns a minstrel sting.

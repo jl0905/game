@@ -1,0 +1,19 @@
+# Feasts & marriage (direction M5): a kingdom at peace feasts at its town
+# every few days; attending pays standing and renown, and a feast's court
+# is where marriages are made (renown 10 required). The match survives saves.
+seed 7
+fame 10 0          # a famous suitor
+wait 200           # feasts ring on day 2 of each 4-day cycle
+state              # expect feast: town=6 (Halmar) faction=vaeling
+walk 1 -0.14 12    # ride east for Halmar before the fires burn down
+enter 6            # walking in during the feast pays standing and +1 renown
+state              # expect attended=1, renown=11, relation vaeling +5
+court
+topic 5            # seek the marriage alliance
+state              # expect spouse: line and relation vaeling +20 more
+leave
+leave
+save feast_test.owb
+load feast_test.owb
+state              # expect the spouse to survive the reload
+quit

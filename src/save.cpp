@@ -125,6 +125,13 @@ bool SaveGame(const GameState& gs, const char* path) {
     if (gs.crowned) f << "crowned 1\n";
     if (gs.renown != 0 || gs.honor != 0)
         f << "fame " << gs.renown << ' ' << gs.honor << '\n';
+    if (gs.feastTown >= 0 && gs.feastFaction >= 0 &&
+        gs.feastFaction < c.factions.size())
+        f << "feast " << gs.feastTown << ' ' << c.factions[gs.feastFaction].id
+          << ' ' << gs.feastDays << ' ' << (gs.feastAttended ? 1 : 0) << '\n';
+    if (gs.spouseFaction >= 0 && gs.spouseFaction < c.factions.size())
+        f << "spouse " << c.factions[gs.spouseFaction].id << ' '
+          << gs.spouseName << '\n';
 
     // Standing duties (K5).
     if (gs.musterTown >= 0)
@@ -329,6 +336,16 @@ bool LoadGame(GameState& gs, const char* path) {
             if (idx >= 0 && idx < (int)gs.lairs.size()) gs.lairs[idx].alive = false;
         } else if (tag == "fame") {
             ss >> gs.renown >> gs.honor;
+        } else if (tag == "feast") {
+            std::string fid; int att = 0;
+            ss >> gs.feastTown >> fid >> gs.feastDays >> att;
+            gs.feastFaction  = c.factions.find(fid.c_str());
+            gs.feastAttended = att != 0;
+            if (gs.feastFaction < 0) gs.feastTown = -1;
+        } else if (tag == "spouse") {
+            std::string fid;
+            ss >> fid >> gs.spouseName;
+            gs.spouseFaction = c.factions.find(fid.c_str());
         } else if (tag == "crowned") {
             int v = 0;
             ss >> v;

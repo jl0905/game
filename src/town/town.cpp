@@ -553,6 +553,27 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryGrantFief(gs));
+    } else if (in.menuChoice == 5 && gs.dialogueLord) {   // marriage suit (M5)
+        gs.dialogueLines.clear();
+        const int host = gs.feastFaction;
+        if (gs.spouseFaction >= 0)
+            gs.dialogueLines.push_back("You are already wed, captain.");
+        else if (gs.feastTown != gs.currentSettlement || gs.feastDays <= 0)
+            gs.dialogueLines.push_back("Marriages are made at feasts. Find one.");
+        else if (gs.renown < 10)   // TODO(balance): suitor's renown
+            gs.dialogueLines.push_back(
+                "No house weds an unknown. Win renown first (10).");
+        else {
+            static const char* BRIDES[] = { "Elina", "Mira", "Isolde", "Anneth" };
+            gs.spouseFaction = host;
+            gs.spouseName    = BRIDES[host % 4];
+            NudgeRelation(gs, host, +20);   // TODO(balance)
+            gs.resultText = TextFormat(
+                "You are wed to Lady %s. Two houses are now one.",
+                gs.spouseName.c_str());
+            gs.dialogueLines.push_back(gs.resultText);
+            SfxPlay(Sfx::Fanfare);
+        }
     } else if (in.menuChoice == 2) {   // "Any work for a warband?"
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back("Work? The giver posts it - ask around town (G).");
@@ -600,6 +621,12 @@ void DialogueDraw(const GameState& gs) {
         if (gs.crowned) {   // a ruler's court has a ruler's business (M3)
             ui::Text("[4] I grant this seat to a lord of mine.", x, y + 120, 22,
                      Fade(GOLD, 0.85f));
+            leaveY += 30;
+        }
+        if (gs.feastTown == gs.currentSettlement && gs.feastDays > 0 &&
+            gs.spouseFaction < 0) {   // a feast's court makes matches (M5)
+            ui::Text("[5] I seek a marriage alliance.", x, leaveY, 22,
+                     Fade(PINK, 0.85f));
             leaveY += 30;
         }
         ui::Text("[Esc / E] Take your leave", x, leaveY, 20, Fade(RAYWHITE, 0.6f));
