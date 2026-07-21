@@ -919,6 +919,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_ONE))   in.menuChoice = 1;
         if (IsKeyPressed(KEY_TWO))   in.menuChoice = 2;
         if (IsKeyPressed(KEY_THREE)) in.menuChoice = 3;
+        if (IsKeyPressed(KEY_FOUR))  in.menuChoice = 4;   // grant a fief (M3)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
         return in;
     }
@@ -1403,9 +1404,15 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         }
         for (LordRespawn& lr : gs.lordRespawns) {
             lr.timer -= sim;
-            if (lr.timer <= 0)
-                gs.parties.push_back(MakeLordParty(c, lr.faction, lr.name,
-                                                   FactionHome(gs, lr.faction)));
+            if (lr.timer <= 0) {
+                Vector2 home = FactionHome(gs, lr.faction);
+                for (const Town& t : gs.towns)   // a landed lord rises at his fief (M3)
+                    if (t.fiefLord == lr.name && t.owner == lr.faction) {
+                        home = t.pos;
+                        break;
+                    }
+                gs.parties.push_back(MakeLordParty(c, lr.faction, lr.name, home));
+            }
         }
         gs.lordRespawns.erase(
             std::remove_if(gs.lordRespawns.begin(), gs.lordRespawns.end(),
@@ -1430,8 +1437,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.day++;
             int income = 0;
             for (const Town& t : gs.towns)
-                if (t.owner == c.playerFaction)
+                if (t.owner == c.playerFaction && t.fiefLord.empty())
                     income += SettlementIncome(t.type) * t.prosperity / 100;
+                // A granted seat's taxes feed its lord, not the ledger (M3).
 
             // Enterprises pay by prosperity — and hostile hands seize them.
             for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti) {
@@ -2394,7 +2402,7 @@ void PartyDraw(const GameState& gs) {
         wages += gs.player.troopCounts[t] * c.troops[t].wage;
     int income = 0;
     for (const Town& tw : gs.towns)
-        if (tw.owner == c.playerFaction)
+        if (tw.owner == c.playerFaction && tw.fiefLord.empty())
             income += SettlementIncome(tw.type) * tw.prosperity / 100;
     for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
         if (c.enterprises.valid(gs.enterpriseAt[ti]) &&

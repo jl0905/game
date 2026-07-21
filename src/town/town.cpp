@@ -514,6 +514,31 @@ void TownTalkNearest(GameState& gs) {
     gs.dialogueLines.push_back(best ? best->line : "Well met, captain.");
 }
 
+// Grant the seat you stand in to a raised lord without one (M3). Returns the
+// court's answer — shared by the dialogue topic and any future hotkey.
+std::string TryGrantFief(GameState& gs) {
+    const Content& c = gs.content;
+    Town& t = gs.towns[gs.currentSettlement];
+    if (!gs.crowned) return "Only a crowned ruler grants fiefs.";
+    if (t.owner != c.playerFaction) return "This seat is not yours to give.";
+    if (!t.fiefLord.empty())
+        return TextFormat("Lord %s already holds this seat.", t.fiefLord.c_str());
+    for (const Party& p : gs.parties) {
+        if (!p.alive || p.faction != c.playerFaction || p.lord.empty()) continue;
+        bool landed = false;
+        for (const Town& o : gs.towns)
+            if (o.fiefLord == p.lord) { landed = true; break; }
+        if (landed) continue;
+        t.fiefLord = p.lord;
+        gs.honor += 1;   // generosity becomes a ruler (M3). TODO(balance)
+        gs.resultText = TextFormat("%s is granted to Lord %s. He will hold it.",
+                                   t.name.c_str(), p.lord.c_str());
+        SfxPlay(Sfx::Fanfare);
+        return gs.resultText;
+    }
+    return "No landless lord attends your court. Raise one first (L).";
+}
+
 void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     if (in.menuChoice == 1) {   // "What news of the war?"
         const bool castle = gs.currentSettlement >= 0 &&
@@ -525,6 +550,9 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 3 && gs.dialogueLord) {   // "Have you work for me?"
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryQuest(gs));
+    } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
+        gs.dialogueLines.clear();
+        gs.dialogueLines.push_back(TryGrantFief(gs));
     } else if (in.menuChoice == 2) {   // "Any work for a warband?"
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back("Work? The giver posts it - ask around town (G).");
@@ -568,7 +596,13 @@ void DialogueDraw(const GameState& gs) {
                  Fade(RAYWHITE, 0.85f));
         ui::Text("[3] Have you work for my warband?", x, y + 90, 22,
                  Fade(RAYWHITE, 0.85f));
-        ui::Text("[Esc / E] Take your leave", x, y + 120, 20, Fade(RAYWHITE, 0.6f));
+        int leaveY = y + 120;
+        if (gs.crowned) {   // a ruler's court has a ruler's business (M3)
+            ui::Text("[4] I grant this seat to a lord of mine.", x, y + 120, 22,
+                     Fade(GOLD, 0.85f));
+            leaveY += 30;
+        }
+        ui::Text("[Esc / E] Take your leave", x, leaveY, 20, Fade(RAYWHITE, 0.6f));
     } else {
         ui::Text("[2] Any work for a warband?", x, y + 60, 22, Fade(RAYWHITE, 0.85f));
         ui::Text("[Esc / E] Take your leave", x, y + 90, 20, Fade(RAYWHITE, 0.6f));

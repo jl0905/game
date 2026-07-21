@@ -1,0 +1,20 @@
+# Fief grants (direction M3): a crowned ruler grants a captured seat to a
+# raised lord in court; the lord taxes it (income skips the ledger) and the
+# grant survives saves.
+seed 33
+enter 2            # storm Tulga, the deserters' village
+block on
+tick 200
+state              # expect Tulga owner=kingdom
+crown
+enter 2
+raiselord          # Lord Bram takes the field (300 gold)
+court              # your castellan's audience
+topic 4            # grant this seat
+state              # expect town 2 ... fief=Bram, honor +1
+leave
+leave
+save fief_test.owb
+load fief_test.owb
+state              # expect the fief to survive the reload
+quit

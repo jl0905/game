@@ -297,9 +297,13 @@ adds per line of code. Structure first, numbers flat, as ever.
   Order + Shape; `BattleView` gains order/anchordist so scripts can see
   obedience; harness `order` command; `tests/orders.txt` holds a line at
   3.2 u then charges to victory.
-- [ ] **M3. Fief grants.** A crowned player chooses which raised lord holds
-  each captured settlement (court dialogue); a lord defends and taxes his
-  own fief, and grants move per-lord standing when M1's honor exists.
+- [x] **M3. Fief grants.** Shipped: court topic [4] (crowned rulers only)
+  grants the seat you stand in to your first landless raised lord — he
+  taxes it (its income skips both ledgers), respawns at it when he falls,
+  and the grant earns +1 honor. `Town::fiefLord`, `fief` save tag,
+  `fief=` in the harness town dump; `tests/fief.txt` plays sack → crown →
+  raise → grant → reload. Follow-up: per-lord standing moved by grants
+  and refusals.
 - [ ] **M4. Player caravans.** Spend gold at a market to send your own
   convoy on a trade route (it uses the living-market prices); profits on
   arrival, lost to bandits — the passive-income counterpart of enterprises.

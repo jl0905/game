@@ -67,6 +67,10 @@ struct Town {
     // income, fattened by arriving caravans. TODO(balance): growth/cap.
     int prosperity = 100;
 
+    // Fief grant (M3): the raised lord who holds this seat for the crowned
+    // player — he taxes it (its income skips the ledger) and respawns here.
+    std::string fiefLord;
+
     // Marketplace (direction E1), parallel to Content::goods. `priceOffset` is
     // a percentage of GoodDef::basePrice (100 = base) — per-town spreads are
     // the structural hook for prosperity/caravans; values stay flat for now.
