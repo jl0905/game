@@ -20,6 +20,7 @@ add_executable(openwarband
     src/main.cpp
     src/harness.cpp
     src/save.cpp
+    src/settings.cpp
     src/ui.cpp
     src/gfx.cpp
     src/sfx.cpp

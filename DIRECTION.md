@@ -108,10 +108,12 @@ flat.
   4 s rally pulse that doubles the aura (war-cry sting, RALLIED banner), and
   the HUD counts your kills. Flat numbers TODO(balance). Follow-up: morale
   ties into G3 when it lands.
-- [ ] **J4. Settings & graphics options.** A settings screen (and
-  `assets/settings.cfg`): resolution/fullscreen, draw distance/LOD radius,
-  particles on/off, audio volumes, invert-Y, key hints. Graphical upgrades
-  (shadows, nicer sky, water) welcome when cheap on the frame budget.
+- [x] **J4. Settings (v1).** Shipped: `src/settings.h/.cpp` + moddable
+  `assets/settings.cfg` — window size, fullscreen, LOD draw distance,
+  particles on/off, master volume, invert-Y. Presentation/comfort only;
+  simulation never reads it, so headless runs are setting-independent.
+  Follow-ups: an in-game settings screen; graphical upgrades (shadows,
+  nicer sky, water) when cheap on the frame budget.
 
 ## Sequencing guidance
 

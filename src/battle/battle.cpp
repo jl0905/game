@@ -4,6 +4,7 @@
 #include "../sfx.h"
 #include "../ui.h"
 #include "../parallel.h"
+#include "../settings.h"
 #include "raymath.h"
 #include <algorithm>
 #include <cmath>
@@ -747,6 +748,7 @@ unsigned int PuffRand() {
 }
 
 void SpawnBlood(Vector3 at) {
+    if (!GetSettings().particles) return;
     for (int i = 0; i < 5; ++i) {
         const unsigned int h = PuffRand();
         const float a = (h & 0xFF) / 255.0f * 2.0f * PI;
@@ -771,6 +773,7 @@ void SpawnSparks(Vector3 at) {
 
 // Kicked-up earth behind a galloping horse.
 void SpawnDust(Vector3 at) {
+    if (!GetSettings().particles) return;
     const unsigned int h = PuffRand();
     const float a = (h & 0xFF) / 255.0f * 2.0f * PI;
     B.puffs.push_back({ Vector3Add(at, { 0, 0.25f, 0 }),
@@ -1147,6 +1150,7 @@ BattleInput GatherBattleInput() {
     }
     B.lastMouse = mouse;
     B.hasLastMouse = true;
+    if (GetSettings().invertY) md.y = -md.y;
     in.lookDelta = md;
 
     if (IsKeyDown(KEY_W)) in.moveForward += 1;
@@ -1607,8 +1611,8 @@ void BattleDraw(const Content& c) {
 
     // Beyond this distance a soldier draws as a cheap two-box silhouette —
     // full segmented humanoids only where the player can appreciate them.
-    constexpr float LOD_DIST    = 45.0f;
-    constexpr float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
+    const float LOD_DIST    = GetSettings().lodDistance;   // player-tunable (J4)
+    const float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
 
     for (const Soldier& s : B.soldiers) {
         if (s.hp <= 0) {

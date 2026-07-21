@@ -3,6 +3,7 @@
 #include "harness.h"
 #include "bridge.h"
 #include "save.h"
+#include "settings.h"
 #include "sfx.h"
 #include "campaign/campaign.h"
 #include "battle/battle.h"
@@ -91,11 +92,15 @@ int main(int argc, char** argv) {
     }
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
-    InitWindow(1280, 720, "OpenWarband");
+    LoadSettings();   // assets/settings.cfg: window, LOD, audio, input comfort
+    const Settings& st = GetSettings();
+    InitWindow(st.windowWidth, st.windowHeight, "OpenWarband");
+    if (st.fullscreen) ToggleFullscreen();
     SetTargetFPS(120);
     SetExitKey(KEY_NULL);   // ESC shouldn't insta-quit mid battle
     ui::LoadFonts();        // smooth TTF text everywhere (see assets/fonts.cfg)
     SfxInit();              // procedural sound effects
+    SetMasterVolume(st.masterVolume);
 
     GameState gs;
     LoadDefaultContent(gs.content);   // populate the data-driven catalogue
