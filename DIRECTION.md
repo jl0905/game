@@ -330,6 +330,26 @@ adds per line of code. Structure first, numbers flat, as ever.
   stall props, minstrel sting — do these in a dedicated art/audio pass
   with real assets rather than more procedural boxes.
 
+## Track N — Fourth wave: depth where players live
+
+- [ ] **N1. Siege engineering.** Ladders/siege tower as a pre-assault choice
+  (build days vs casualties at the wall); defenders drop stones. Extends
+  `BattleSetup` only.
+- [ ] **N2. Character creation.** A background-choice screen at New Game
+  (noble/merchant/deserter…) seeding gold, gear, renown, honor and a
+  starting relation — replayability at zero balance cost (flat numbers).
+- [ ] **N3. Save slots.** Named saves + a load menu on the title screen
+  (the format already round-trips; this is UI + file listing).
+- [ ] **N4. Per-lord opinion.** Individual lords remember grants, rescues,
+  battles beside them; gates their vote when M-wave politics deepen
+  (crown council, elections). Honor finally gets a reader.
+- [ ] **N5. Art/audio pass.** The M6 descope: stall props, minstrel sting,
+  plus battle-kill sting variety and a campaign music bed. Asset work,
+  not systems.
+- [ ] **N6. Battle scale stress.** Re-bench at 2000+; if the grid holds,
+  raise default lord hosts past 120 and let sieges field garrison and
+  relief armies together.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
