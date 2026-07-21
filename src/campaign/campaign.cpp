@@ -726,6 +726,24 @@ static void ApplyBattleResult(GameState& gs) {
             gs.playerLosses[t] = 0;
         }
 
+    // The wounded cart (S3): half of every line's fallen are wounded, not
+    // dead — they ride behind the warband and heal. TODO(balance): share.
+    {
+        if ((int)gs.wounded.size() < gs.content.troops.size())
+            gs.wounded.assign(gs.content.troops.size(), 0);
+        int hurt = 0;
+        for (int t = 0; t < (int)gs.playerLosses.size() &&
+                        t < (int)gs.wounded.size(); ++t) {
+            const int w = gs.playerLosses[t] / 2;
+            gs.playerLosses[t] -= w;
+            gs.wounded[t]      += w;
+            hurt += w;
+        }
+        if (hurt > 0)
+            gs.battleReport.push_back(TextFormat(
+                "Wounded: %d  (they will heal and return)", hurt));
+    }
+
     // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
         gs.player.troopCounts[t] -= gs.playerLosses[t];
@@ -1779,6 +1797,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.%s",
                                        gs.day, income, wages, supplyNote.c_str());
+
+            // The wounded heal (S3): one man per line rejoins each dawn,
+            // party cap willing. TODO(balance): the rate.
+            {
+                int back = 0;
+                for (int t = 0; t < (int)gs.wounded.size() &&
+                                t < (int)gs.player.troopCounts.size(); ++t)
+                    if (gs.wounded[t] > 0 &&
+                        gs.player.totalTroops() < PartyCap(gs)) {
+                        gs.wounded[t]--;
+                        gs.player.troopCounts[t]++;
+                        back++;
+                    }
+                if (back > 0)
+                    gs.resultText += TextFormat("  %d wounded return.", back);
+            }
 
             // Autosave each dawn (Q5): a crash costs a day, not a career.
             SaveGame(gs, AutoSavePath());

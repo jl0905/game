@@ -265,6 +265,11 @@ struct Harness {
                             c.goods[g].id.c_str(), tw.stock[g], tw.priceOffset[g],
                             MarketBuyPrice(c, tw, g), MarketSellPrice(c, tw, g));
         }
+        {
+            int hurt = 0;
+            for (int w : gs.wounded) hurt += w;
+            if (hurt > 0) std::printf("wounded=%d\n", hurt);
+        }
         if (gs.siegePrompt >= 0)
             std::printf("siegeprompt: town=%d\n", gs.siegePrompt);
         if (gs.siegeCampTown >= 0)

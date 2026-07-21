@@ -1,0 +1,15 @@
+# The wounded cart (direction S3): half a battle's fallen are wounded, not
+# dead - they ride behind the warband and rejoin one per line each dawn.
+seed 33
+enter 2            # a fight guaranteed to cost men
+siege 1
+block on
+tick 200
+state              # expect wounded=N > 0 if any line lost 2+ (half held back)
+save wnd_test.owb
+load wnd_test.owb
+state              # the cart survives the reload
+wait 70            # a dawn of healing
+wait 70            # (battles along the way may steal a day)
+state              # expect wounded shrunk and the roster grown back
+quit

@@ -149,6 +149,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     if (gs.renown != 0 || gs.honor != 0)
         f << "fame " << gs.renown << ' ' << gs.honor << '\n';
     if (gs.hintsSeen != 0) f << "hints " << gs.hintsSeen << '\n';
+    for (int t = 0; t < (int)gs.wounded.size() && t < c.troops.size(); ++t)
+        if (gs.wounded[t] > 0)
+            f << "wounded " << c.troops[t].id << ' ' << gs.wounded[t] << '\n';
     if (gs.feastTown >= 0 && gs.feastFaction >= 0 &&
         gs.feastFaction < c.factions.size())
         f << "feast " << gs.feastTown << ' ' << c.factions[gs.feastFaction].id
@@ -371,6 +374,15 @@ bool LoadGame(GameState& gs, const char* path) {
             ss >> gs.renown >> gs.honor;
         } else if (tag == "hints") {
             ss >> gs.hintsSeen;
+        } else if (tag == "wounded") {
+            std::string id; int n = 0;
+            ss >> id >> n;
+            const int t = c.troops.find(id.c_str());
+            if (t >= 0 && n > 0) {
+                if ((int)gs.wounded.size() < c.troops.size())
+                    gs.wounded.assign(c.troops.size(), 0);
+                gs.wounded[t] = n;
+            }
         } else if (tag == "feast") {
             std::string fid; int att = 0;
             ss >> gs.feastTown >> fid >> gs.feastDays >> att;

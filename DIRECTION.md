@@ -543,9 +543,12 @@ full career, and the last Warband textures.
   mustered, and persisted — this was the missing hand. Town HUD hint,
   harness `garrison`/`ungarrison N`; `tests/garrison.txt` mans a stormed
   Tulga and reloads the wall.
-- [ ] **S3. The wounded cart.** Half a battle's player losses are wounded,
-  not dead: they return to the roster after days of healing. Warband's
-  mercy, extended past companions.
+- [x] **S3. The wounded cart.** Shipped: half of every line's fallen are
+  wounded, not dead — they ride behind the warband (`wounded` pool,
+  saved, in the dump) and one per line rejoins each dawn, cap willing.
+  The battle report counts them; the ledger notes returns. Verified
+  under fire: a defeat's arithmetic (fallen halved into the cart) checks
+  exactly even mid-chaos. Flat TODO(balance).
 - [ ] **S4. Any lord's audience.** Court the lord actually present — talk
   to a lord party adjacent on the map (parley), and courts name whoever
   garrisons there, defectors included.

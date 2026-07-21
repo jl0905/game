@@ -219,6 +219,10 @@ struct GameState {
     int renown = 0;
     int honor  = 0;
 
+    // The wounded cart (S3): half a battle's losses ride behind the warband
+    // and rejoin as they heal (one per troop type per dawn, cap respected).
+    std::vector<int> wounded;   // parallel to Content::troops
+
     // First-hour hints (P4): one-time toasts, a bit each once shown.
     unsigned hintsSeen = 0;   // 1 first victory, 2 first captives, 4 first loot
 
