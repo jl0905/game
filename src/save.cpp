@@ -102,6 +102,10 @@ bool SaveGame(const GameState& gs, const char* path) {
                   ? c.factions[gs.questFaction].id : std::string("none"))
           << ' ' << gs.questTown << ' ' << gs.questProgress << '\n';
 
+    // Burned-out bandit dens (H2) — live ones are recreated from the map.
+    for (int l = 0; l < (int)gs.lairs.size(); ++l)
+        if (!gs.lairs[l].alive) f << "lairdead " << l << '\n';
+
     // The claimed crown (F3).
     if (gs.crowned) f << "crowned 1\n";
 
@@ -282,6 +286,10 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
+        } else if (tag == "lairdead") {
+            int idx = -1;
+            ss >> idx;
+            if (idx >= 0 && idx < (int)gs.lairs.size()) gs.lairs[idx].alive = false;
         } else if (tag == "crowned") {
             int v = 0;
             ss >> v;

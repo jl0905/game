@@ -113,9 +113,13 @@ flat.
   saves with zero extra plumbing. Follow-ups: gate on the tavern room,
   dialogue personalities (with H4), fitting them from the inventory,
   knock-out instead of death.
-- [ ] **H2. More content tiers.** Fill each faction's upgrade trees 3–4 deep
-  (recruit → veteran → elite) with distinct silhouettes; bandits get lairs
-  (fixed map dens that respawn parties until raided).
+- [x] **H2. Content tiers & bandit lairs.** Shipped: Marksman (archer's
+  ladder) and Marauder (brigand's ladder, fielded by raiders) deepen every
+  troop line to 3–4 tiers. Bandit dens live in `assets/map.cfg` (`lair`
+  lines): they breed an outlaw party every other day until the player
+  storms one — the den's defenders muster at double strength, victory
+  burns it out for good, and the ash persists in saves. Flat numbers
+  TODO(balance). `tests/lair.txt` burns the deserters' den.
 - [ ] **H3. Mouse-driven UI pass.** Clickable buttons/rows on the map, party,
   inventory, and settlement screens (keyboard stays). Unblocks casual play.
 - [ ] **H4. Dialogue screens.** Talking to lords/NPCs opens a portrait dialogue

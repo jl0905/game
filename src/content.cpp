@@ -146,6 +146,21 @@ void LoadDefaultContent(Content& c) {
     archer.loadout.addWeapon(w_bow);       // shoots at range,
     archer.loadout.addWeapon(w_sword);     // draws steel when cornered
 
+    // Third-tier specialists (H2): every line gets somewhere to season into.
+    TroopDef marksman = makeTroop("marksman", "Marksman", DARKGREEN);
+    marksman.loadout.set(EquipSlot::Head,   a_kettle);
+    marksman.loadout.set(EquipSlot::Body,   a_mail);
+    marksman.loadout.set(EquipSlot::Feet,   a_boots);
+    marksman.loadout.addWeapon(w_bow);
+    marksman.loadout.addWeapon(w_sword);
+
+    TroopDef marauder = makeTroop("marauder", "Marauder", Color{ 150, 60, 40, 255 });
+    marauder.loadout.set(EquipSlot::Head,   a_helmet);
+    marauder.loadout.set(EquipSlot::Body,   a_mail);
+    marauder.loadout.set(EquipSlot::Feet,   a_boots);
+    marauder.loadout.addWeapon(w_dane);
+    marauder.loadout.addWeapon(w_axe);
+
     // The sea-kings' foot: fur-clad warriors who season into huscarls.
     TroopDef warrior = makeTroop("warrior", "Vaeling Warrior", Color{ 120, 170, 190, 255 });
     warrior.loadout.set(EquipSlot::Head,   a_cap);
@@ -208,6 +223,8 @@ void LoadDefaultContent(Content& c) {
     const int t_archer   = c.troops.add(archer);
     const int t_knight   = c.troops.add(knight);
     const int t_brigand  = c.troops.add(brigand);
+    const int t_marksman = c.troops.add(marksman);
+    const int t_marauder = c.troops.add(marauder);
     const int t_warrior  = c.troops.add(warrior);
     const int t_huscarl  = c.troops.add(huscarl);
 
@@ -221,6 +238,10 @@ void LoadDefaultContent(Content& c) {
     c.troops[t_veteran].upgradeXp   = base::UPGRADE_XP;
     c.troops[t_warrior].upgradesTo  = t_huscarl;   // the Vaeling line
     c.troops[t_warrior].upgradeXp   = base::UPGRADE_XP;
+    c.troops[t_archer].upgradesTo   = t_marksman;  // the shooting line (H2)
+    c.troops[t_archer].upgradeXp    = base::UPGRADE_XP;
+    c.troops[t_brigand].upgradesTo  = t_marauder;  // outlaws harden too
+    c.troops[t_brigand].upgradeXp   = base::UPGRADE_XP;
 
     // ---- Factions ----------------------------------------------------------
     // Distinct behaviours + rosters give the map its variety of party types.
@@ -236,7 +257,7 @@ void LoadDefaultContent(Content& c) {
     FactionDef raiders;
     raiders.id = "raiders"; raiders.name = "Raiders";
     raiders.color = RED; raiders.behavior = PartyBehavior::Aggressive;
-    raiders.roster = { t_brigand, t_infantry, t_archer };   // axes lead the charge
+    raiders.roster = { t_brigand, t_marauder, t_infantry, t_archer };   // axes lead
     raiders.lords = { "Gorak", "Hesh" };
     raiders.lordPartySize = 120;    // TODO(balance)
     c.factions.add(raiders);
@@ -382,6 +403,10 @@ void LoadMapConfig(Content& c, const char* path) {
         if (tag == "size")         ss >> m.size;
         else if (tag == "start")   ss >> m.playerStart.x >> m.playerStart.y;
         else if (tag == "parties") ss >> m.startingParties;
+        else if (tag == "lair") {
+            MapDef::LairSpec l;
+            if (ss >> l.faction >> l.pos.x >> l.pos.y) m.lairs.push_back(l);
+        }
         else if (tag == "town") {
             MapDef::TownSpec t;
             std::string type;
@@ -389,7 +414,7 @@ void LoadMapConfig(Content& c, const char* path) {
             t.type = type == "village" ? SettlementType::Village
                    : type == "castle"  ? SettlementType::Castle
                                        : SettlementType::Town;
-            if (!clearedTowns) { m.towns.clear(); clearedTowns = true; }
+                if (!clearedTowns) { m.towns.clear(); clearedTowns = true; }
             m.towns.push_back(t);
         }
     }

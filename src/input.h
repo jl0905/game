@@ -14,6 +14,7 @@ struct CampaignInput {
     Vector2 move{};                // travel direction (unnormalized ok)
     bool    wait            = false;  // let time pass while standing (SPACE)
     int     clickSettlement = -1;     // settlement index to enter, -1 none
+    int     clickLair       = -1;     // bandit den to storm, -1 none (H2)
     int     joinSide        = 0;      // join nearby skirmish: 1 = side a, 2 = side b
     bool    restart         = false;  // restart after warband destroyed (R)
 

@@ -93,6 +93,15 @@ inline constexpr int INV_H = 6;
 // TODO(balance): scale with party size / a pack-horse upgrade later.
 inline constexpr int GOODS_CAP = 30;
 
+// A bandit den on the map (H2): breeds parties of its faction until the
+// player storms it. `days` accumulates toward the next spawn.
+struct Lair {
+    Vector2 pos{};
+    int     faction = -1;
+    bool    alive = true;
+    float   days = 0;
+};
+
 // An AI army besieging a settlement; resolves on its own after `timer`.
 struct AISiege {
     int   party = -1;   // attacker, index into GameState::parties
@@ -130,6 +139,8 @@ struct GameState {
     std::vector<Town>     towns;
     std::vector<Skirmish> skirmishes;   // ongoing AI-vs-AI clashes on the map
     std::vector<AISiege>  aiSieges;     // AI armies besieging settlements
+    std::vector<Lair>     lairs;        // bandit dens breeding parties (H2)
+    int                   lairBattle = -1;   // lair being stormed, or -1
     std::vector<LordRespawn> lordRespawns;   // fallen lords raising new hosts
     int                gold = 300;
     int                day = 0;          // world days elapsed (economy ticks)

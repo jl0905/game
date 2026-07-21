@@ -479,6 +479,15 @@ void CampaignInit(GameState& gs) {
     gs.goods.assign(c.goods.size(), 0);
     gs.enterpriseAt.assign(gs.towns.size(), -1);
 
+    // Bandit dens from the map definition (H2).
+    gs.lairs.clear();
+    for (const MapDef::LairSpec& ls : c.map.lairs) {
+        Lair l;
+        l.pos = ls.pos;
+        l.faction = c.factions.find(ls.faction.c_str());
+        if (l.faction >= 0) gs.lairs.push_back(l);
+    }
+
     gs.parties.clear();
     gs.skirmishes.clear();
     gs.aiSieges.clear();
@@ -681,6 +690,13 @@ static void ApplyBattleResult(GameState& gs) {
         if (enemy) NudgeRelation(gs, enemy->faction, enemy->caravan ? -10 : -5);
         if (ally)  NudgeRelation(gs, ally->faction, +10);   // you bled beside them
 
+        // A stormed den burns with its defenders (H2).
+        if (gs.lairBattle >= 0 && gs.lairBattle < (int)gs.lairs.size()) {
+            gs.lairs[gs.lairBattle].alive = false;
+            gs.resultText += "   The den is burned out.";
+            gs.battleReport.push_back("The den is burned out for good.");
+        }
+
         // Bandit-hunt quests (F4) count broken outlaw bands.
         if (gs.activeQuest >= 0 && enemy &&
             gs.content.quests[gs.activeQuest].type == QuestType::HuntBandits &&
@@ -756,6 +772,7 @@ static void ApplyBattleResult(GameState& gs) {
 
     gs.battlePartyIndex = -1;
     gs.battleAllyIndex  = -1;
+    gs.lairBattle       = -1;
     gs.allyLosses.clear();
 }
 
@@ -842,6 +859,10 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         for (int i = 0; i < (int)gs.towns.size(); ++i)
             if (Vector2Distance(world, gs.towns[i].pos) < TOWN_CLICK_RADIUS)
                 in.clickSettlement = i;
+        for (int i = 0; i < (int)gs.lairs.size(); ++i)
+            if (gs.lairs[i].alive &&
+                Vector2Distance(world, gs.lairs[i].pos) < TOWN_CLICK_RADIUS)
+                in.clickLair = i;
     }
     if (IsKeyDown(KEY_W)) in.move.y -= 1;
     if (IsKeyDown(KEY_S)) in.move.y += 1;
@@ -970,6 +991,23 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.screen = Screen::Settlement;
             return;
         }
+    }
+
+    // ---- storm a bandit den (H2) ----
+    // The den's defenders muster as a fresh party; burning it out (victory
+    // over that party) destroys the den for good.
+    if (in.clickLair >= 0 && in.clickLair < (int)gs.lairs.size() &&
+        gs.lairs[in.clickLair].alive && gs.player.totalTroops() > 0) {
+        const Lair& l = gs.lairs[in.clickLair];
+        Party den = MakeParty(c, l.faction, l.pos);
+        for (int& n : den.troopCounts) n *= 2;   // dens defend hard; TODO(balance)
+        den.engaged = true;
+        gs.parties.push_back(den);
+        gs.lairBattle       = in.clickLair;
+        gs.battlePartyIndex = (int)gs.parties.size() - 1;
+        gs.battleAllyIndex  = -1;
+        gs.screen = Screen::Battle;
+        return;
     }
 
     // ---- the world clock only ticks while you act ----
@@ -1194,6 +1232,18 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
             DiplomacyDayTick(gs);   // truces run down; news overrides the ledger
             AlignWarsWithLiege(gs); // a vassal's wars follow the crown's (F2)
+
+            // Bandit dens breed a fresh band every other day (H2).
+            for (Lair& l : gs.lairs) {
+                if (!l.alive) continue;
+                l.days += 1.0f;
+                int alive = 0;
+                for (const Party& p : gs.parties) if (p.alive) alive++;
+                if (l.days >= 2.0f && alive < 14) {   // TODO(balance): rate/cap
+                    l.days = 0;
+                    gs.parties.push_back(MakeParty(c, l.faction, l.pos));
+                }
+            }
 
             // Caravans (E3): any faction holding two settlements keeps one
             // convoy on the road between them.
@@ -1420,6 +1470,17 @@ void CampaignDraw(const GameState& gs) {
         DrawCircleV({ p.x, p.y - 32 }, 3, GOLD);
         ui::Text("You", (int)p.x - 12, (int)p.y - 48, 16, RAYWHITE);
     }
+    // Bandit dens: a dark camp and a smoke smudge until someone burns them out.
+    for (const Lair& l : gs.lairs) {
+        if (!l.alive) continue;
+        const Color fc = gs.content.factions.valid(l.faction)
+                             ? gs.content.factions[l.faction].color : DARKGRAY;
+        DrawCircleV(l.pos, 16, Fade(BLACK, 0.55f));
+        DrawCircleV(l.pos, 10, Fade(fc, 0.8f));
+        DrawCircleV({ l.pos.x + 6, l.pos.y - 14 }, 5, Fade(DARKGRAY, 0.5f));
+        ui::Text("Den", (int)l.pos.x - 12, (int)l.pos.y + 20, 15, Fade(RAYWHITE, 0.75f));
+    }
+
     // Lit windows: settlements glow after dark, before the night veil falls.
     const float dayFrac = gs.dayTimer / DAY_LENGTH;
     const bool  isNight = dayFrac >= 0.82f || dayFrac < 0.06f;

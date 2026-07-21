@@ -169,10 +169,16 @@ struct MapDef {
         SettlementType type = SettlementType::Town;
         std::string    owner;                       // faction id, "player" or "none"
     };
+    // A bandit den (H2): keeps spawning parties of its faction until raided.
+    struct LairSpec {
+        Vector2     pos{};
+        std::string faction;
+    };
     float                 size = 2000.0f;
     Vector2               playerStart{ 1000.0f, 1000.0f };
     int                   startingParties = 5;      // roaming parties at world start
     std::vector<TownSpec> towns;
+    std::vector<LairSpec> lairs;
 };
 
 // The whole game catalogue. Everything is added in LoadDefaultContent(); to add

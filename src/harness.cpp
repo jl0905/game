@@ -185,6 +185,12 @@ struct Harness {
                         tw.garrisonSize(), tw.prosperity,
                         Vector2Distance(tw.pos, gs.player.pos));
         }
+        for (int l = 0; l < (int)gs.lairs.size(); ++l)
+            std::printf("lair %d: faction=%s pos=(%.0f,%.0f) alive=%d\n", l,
+                        c.factions.valid(gs.lairs[l].faction)
+                            ? c.factions[gs.lairs[l].faction].id.c_str() : "?",
+                        gs.lairs[l].pos.x, gs.lairs[l].pos.y,
+                        gs.lairs[l].alive ? 1 : 0);
         for (int i = 0; i < (int)gs.parties.size(); ++i) {
             const Party& p = gs.parties[i];
             if (!p.alive) continue;
@@ -418,6 +424,9 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "raid") {
+            CampaignInput cin; ss >> cin.clickLair;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "crown") {
             CampaignInput cin; cin.crown = true;
             h.Step(cin, BattleInput{});

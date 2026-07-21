@@ -1,0 +1,14 @@
+# Bandit lairs (direction H2): dens breed outlaw parties until stormed; a
+# victorious raid burns the den out for good, and the ash persists in saves.
+seed 37
+state              # expect two lairs, both alive=1
+raid 1             # storm the deserters' den (the weaker one)
+tick 2
+state              # expect screen=Battle
+block on
+tick 400           # the raid plays out
+state              # expect lair 1 alive=0 after victory
+save lair_test.owb
+load lair_test.owb
+state              # expect the den still burned out
+quit
