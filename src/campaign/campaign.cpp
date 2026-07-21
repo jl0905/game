@@ -1899,6 +1899,37 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // Lords change banners (R5): every fifth day, one lord of a
+            // beaten crown (a settlement or less to its name) rides to the
+            // ascendant one (three or more) — living politics between the
+            // AI crowns; players win lords only by rebellion (O6).
+            // TODO(balance): the thresholds and cadence.
+            if (gs.day % 5 == 2) {
+                std::vector<int> holdings(c.factions.size(), 0);
+                for (const Town& t : gs.towns)
+                    if (t.owner >= 0 && t.owner < c.factions.size())
+                        holdings[t.owner]++;
+                int best = -1;
+                for (int f = 0; f < c.factions.size(); ++f)
+                    if (f != c.playerFaction && c.factions[f].kingdom &&
+                        (best < 0 || holdings[f] > holdings[best]))
+                        best = f;
+                if (best >= 0 && holdings[best] >= 3)
+                    for (Party& p : gs.parties) {
+                        if (!p.alive || p.engaged || p.lord.empty()) continue;
+                        if (p.faction == best || p.faction == c.playerFaction)
+                            continue;
+                        if (!c.factions[p.faction].kingdom) continue;
+                        if (holdings[p.faction] > 1) continue;
+                        gs.resultText = TextFormat(
+                            "Lord %s abandons %s for the %s banner!",
+                            p.lord.c_str(), c.factions[p.faction].name.c_str(),
+                            c.factions[best].name.c_str());
+                        p.faction = best;
+                        break;   // one turncoat a season
+                    }
+            }
+
             // World events (R4): every third day something happens somewhere
             // — announced as news, felt in the markets, or on the roads.
             // TODO(balance): the cadence.

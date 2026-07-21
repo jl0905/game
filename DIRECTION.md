@@ -515,10 +515,12 @@ full career, and the last Warband textures.
   every third day at a rotating settlement. Modders add events like they
   add goods (MODDING.md updated). `tests/world_events.txt` watches the
   harvest lift Praven to 120. Flat TODO(balance).
-- [ ] **R5. Lords change banners.** An AI lord whose crown keeps losing
-  (war weariness high, opinion of his liege gone) defects to the
-  winning side — living politics between crowns, not just around the
-  player.
+- [x] **R5. Lords change banners.** Shipped: every fifth day, one lord of
+  a beaten crown (≤1 settlement) rides to the ascendant one (≥3) — one
+  turncoat a season, AI crowns only (players win lords by rebellion).
+  Verified with a committed fixture save (`tests/defection.owb`): the
+  live world crowned Vaeling ascendant and Lord Aldric abandoned the
+  beaten Patrol, deterministically. Flat TODO(balance).
 - [ ] **R6. The standing bench.** Re-run --bench at each wave's end and
   log it in BALANCE.md — regressions caught the cheap way.
 

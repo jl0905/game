@@ -1,0 +1,9 @@
+# Lords change banners (direction R5): every fifth day one lord of a beaten
+# crown (a settlement or less) rides to the ascendant one (three or more).
+# The fixture save hands Sarleon's towns to Patrol; by day 2 the live world
+# has crowned its own winner - deterministically, Lord Aldric abandons the
+# beaten Patrol for the Vaeling banner.
+load tests/defection.owb
+wait 200           # the wars turn; day 2 brings the defection check
+state              # expect lord=Aldric flying faction=vaeling
+quit
