@@ -162,6 +162,46 @@ void LoadDefaultContent(Content& c) {
     huscarl.loadout.addWeapon(w_dane);     // the long axe leads,
     huscarl.loadout.addWeapon(w_sword);    // steel finishes
 
+    // ---- Companions (direction H1) ----------------------------------------
+    // Unique heroes-for-hire found in taverns: one of each, ever, and no
+    // faction fields them. Personality lives in the blurb the tavern shows;
+    // numbers stay flat like every other troop. TODO(balance): hire costs.
+    auto makeCompanion = [&](const char* id, const char* name) {
+        TroopDef t = makeTroop(id, name, GOLD);
+        t.companion = true;
+        t.cost = 100;   // TODO(balance): hire price
+        t.wage = base::TROOP_WAGE * 3;   // TODO(balance): heroes eat well
+        return t;
+    };
+    TroopDef rega = makeCompanion("rega", "Rega the Grim");
+    rega.loadout.set(EquipSlot::Head,   a_helmet);
+    rega.loadout.set(EquipSlot::Body,   a_plate);
+    rega.loadout.set(EquipSlot::Hands,  a_gloves);
+    rega.loadout.set(EquipSlot::Feet,   a_boots);
+    rega.loadout.addWeapon(w_great);
+    rega.loadout.addWeapon(w_sword);
+
+    TroopDef malin = makeCompanion("malin", "Malin Longeye");
+    malin.loadout.set(EquipSlot::Head,   a_cap);
+    malin.loadout.set(EquipSlot::Body,   a_mail);
+    malin.loadout.set(EquipSlot::Feet,   a_boots);
+    malin.loadout.addWeapon(w_bow);
+    malin.loadout.addWeapon(w_sword);
+
+    TroopDef torva = makeCompanion("torva", "Torva Ironhand");
+    torva.mounted = true;
+    torva.moveSpeed = base::TROOP_SPEED * 2.0f;
+    torva.loadout.set(EquipSlot::Head,   a_kettle);
+    torva.loadout.set(EquipSlot::Body,   a_mail);
+    torva.loadout.set(EquipSlot::Hands,  a_gloves);
+    torva.loadout.set(EquipSlot::Feet,   a_boots);
+    torva.loadout.addWeapon(w_spear);
+    torva.loadout.addWeapon(w_axe);
+
+    c.troops.add(rega);
+    c.troops.add(malin);
+    c.troops.add(torva);
+
     const int t_recruit  = c.troops.add(recruit);
     const int t_infantry = c.troops.add(infantry);
     const int t_veteran  = c.troops.add(veteran);

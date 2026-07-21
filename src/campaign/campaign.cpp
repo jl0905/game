@@ -777,6 +777,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         in.tournament = IsKeyPressed(KEY_T);
         in.swear      = IsKeyPressed(KEY_V);
         in.quest      = IsKeyPressed(KEY_G);
+        in.hire       = IsKeyPressed(KEY_H);
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }

@@ -91,6 +91,8 @@ struct TroopDef {
     int         upgradesTo = -1;   // troop handle this unit can become (-1 none)
     int         upgradeXp  = 0;    // TODO(balance): experience one upgrade costs
     bool        mounted   = false; // rides a horse: drawn mounted, tramples on the charge
+    bool        companion = false; // a unique named hero-for-hire (H1): at most one
+                                   // in the party, hired in taverns, in no roster
     Loadout     loadout;           // default gear (drives stats + look)
     Color       accent = WHITE;    // small identifying plume/banner colour
 };

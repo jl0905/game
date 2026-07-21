@@ -100,9 +100,13 @@ flat.
 
 ## Track H — Feel & content
 
-- [ ] **H1. Recruit-a-hero companions.** Named companions in taverns (content
-  defs, personalities in dialogue) who fight beside you, level, and can be
-  fitted from inventory — Warband's companion party.
+- [x] **H1. Companions (v1).** Shipped: three unique heroes-for-hire
+  (Rega the Grim, Malin Longeye, Torva Ironhand — `TroopDef::companion`),
+  one hosted per settlement (rotating), hired with H for flat 100 gold at
+  triple wage. As party members they fight, draw wages, and persist in
+  saves with zero extra plumbing. Follow-ups: gate on the tavern room,
+  dialogue personalities (with H4), fitting them from the inventory,
+  knock-out instead of death.
 - [ ] **H2. More content tiers.** Fill each faction's upgrade trees 3–4 deep
   (recruit → veteran → elite) with distinct silhouettes; bandits get lairs
   (fixed map dens that respawn parties until raided).

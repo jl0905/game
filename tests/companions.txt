@@ -1,0 +1,13 @@
+# Companions (direction H1): unique heroes hired in settlements; one each,
+# they ride as party members and persist in saves.
+seed 29
+enter 0            # Sargoth hosts Rega the Grim (index 0)
+hire
+state              # expect gold=200 and rega=1 in the troops line
+hire               # hiring again must do nothing (unique)
+state              # expect gold still 200
+leave
+save comp_test.owb
+load comp_test.owb
+state              # expect rega still in the party
+quit

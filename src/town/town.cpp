@@ -227,6 +227,26 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         return false;
     }
 
+    // ---- hire the tavern's companion (H) — unique heroes for hire (H1) ----
+    // Each settlement's tavern hosts one companion (rotating by index); a
+    // hero already riding with you cannot be hired twice.
+    if (cin.hire) {
+        std::vector<int> comps;
+        for (int t = 0; t < c.troops.size(); ++t)
+            if (c.troops[t].companion) comps.push_back(t);
+        if (!comps.empty()) {
+            const int h = comps[gs.currentSettlement % (int)comps.size()];
+            const TroopDef& td = c.troops[h];
+            if (gs.player.troopCounts[h] == 0 && gs.gold >= td.cost) {
+                gs.gold -= td.cost;
+                gs.player.troopCounts[h] = 1;
+                gs.resultText = TextFormat("%s takes your coin and your banner.",
+                                           td.name.c_str());
+                SfxPlay(Sfx::Click);
+            }
+        }
+    }
+
     // ---- ask the local giver for work (G) — one quest at a time (F4) ----
     // The giver rotates through the quest shapes by settlement and day.
     // Follow-up: gate on a guild-master NPC instead of anywhere in town.

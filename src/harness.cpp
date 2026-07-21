@@ -417,6 +417,9 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "hire") {
+            CampaignInput cin; cin.hire = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "quest") {
             CampaignInput cin; cin.quest = true;
             h.Step(cin, BattleInput{});

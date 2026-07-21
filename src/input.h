@@ -26,6 +26,7 @@ struct CampaignInput {
     bool    tournament      = false;  // enter the arena bout in a town (T)
     bool    swear           = false;  // swear fealty at a kingdom's settlement (V)
     bool    quest           = false;  // ask the local giver for work (G)
+    bool    hire            = false;  // hire the tavern's companion (H)
 
     // market screen (rows are goods-registry order)
     int     buyGood  = -1;            // good row to buy one unit of
