@@ -1,0 +1,9 @@
+# Autosave cadence (direction Q5): the game autosaves at every dawn (and on
+# quit, as before) - a crash costs a day, not a career.
+seed 2
+wait 70            # dawn breaks; the autosave writes itself
+walk 1 0 4         # march on past the saved moment
+state
+load autosave.owb  # the crash-recovery path
+state              # expect day=1 and the dawn position, not the marched one
+quit

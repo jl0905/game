@@ -485,8 +485,10 @@ full career, and the last Warband textures.
   after, at most losing gear. Death stays for the nameless.
 - [ ] **Q4. Sinks and decay.** Renown fades a point a week; wages scale
   with tier. The treadmills that keep a long game moving.
-- [ ] **Q5. Autosave cadence.** Autosave every world day (the slot exists;
-  this is the trigger) plus on quit — a crash costs a day, not a career.
+- [x] **Q5. Autosave cadence.** Shipped: the game autosaves at every dawn
+  (the day tick) alongside the existing on-quit save — a crash costs a
+  day, not a career. `tests/autosave.txt` marches past a dawn and rewinds
+  to it.
 
 ## Sequencing guidance
 

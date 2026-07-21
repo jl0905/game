@@ -1757,6 +1757,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.%s",
                                        gs.day, income, wages, supplyNote.c_str());
 
+            // Autosave each dawn (Q5): a crash costs a day, not a career.
+            SaveGame(gs, AutoSavePath());
+
             // A black name costs company (P3): each dawn, one honorable
             // companion walks out while your honor sits at -3 or worse.
             // TODO(balance): the threshold.
