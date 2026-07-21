@@ -223,9 +223,12 @@ turns v1s into keepers. Ordered roughly by player-visible payoff.
   via a `BattleSetup::gearOverrides` contract extension. Persists in
   saves; harness `target` + `cgear:` dump; `tests/companion_gear.txt`
   dresses Rega in looted armour and reloads him.
-- [ ] **K7. UI polish pass.** Hover highlights on clickable rows, shared
-  Gather/Draw layout constants, a town-HUD line listing the local keys
-  (T bout, M market, G work, H hire, V oath, E talk).
+- [x] **K7. UI polish pass.** Shipped: a `layout` namespace both Gather
+  hit-boxes and draw rows quote (title/market/party/character/settings — no
+  more mirrored literals), a gold hover band behind every clickable row
+  (`DrawHoverRow`, draw-only so the sim never sees it), and the town HUD
+  now lists the local keys (T bout, M market, G work, H hire, V oath,
+  E talk).
 - [ ] **K8. Map biomes & roads into map.cfg.** The painted biome map, roads
   and lord name pools move from code into the map file (finishes I1's
   moddability).

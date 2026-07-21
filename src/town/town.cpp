@@ -754,6 +754,10 @@ void TownDraw(const GameState& gs) {
                      10, y + 26 + slot * 24, 20, RAYWHITE);
         }
     } else {
+        // The local keys, always on show (K7) — every settlement service in
+        // one line, so nothing shipped stays undiscovered.
+        ui::Text("[T] tournament   [M] market   [G] work   [H] hire   [V] oath   [E] talk",
+                 10, GetScreenHeight() - 50, 18, Fade(GOLD, 0.85f));
         ui::Text("WASD walk, mouse look. The gold roof is the tavern. Esc leaves.",
                  10, GetScreenHeight() - 26, 16, Fade(RAYWHITE, 0.7f));
     }

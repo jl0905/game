@@ -93,6 +93,27 @@ Vector2 RandomEdgePos() {
 // Radius (in world units) within which a click counts as selecting a town.
 constexpr float TOWN_CLICK_RADIUS = 36.0f;
 
+// Shared Gather/Draw layout (K7): the mouse hit-boxes in Gather*Input and the
+// row layouts in the draw functions both quote these — never mirrored
+// literals, so they cannot drift apart.
+namespace layout {
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 5;
+constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
+constexpr int MARKET_X0  = 120, MARKET_X1      = 700;
+constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 3;
+constexpr int PARTY_Y    = 200, PARTY_ROW_H    = 34, PARTY_SLOTS = 9;
+constexpr int CHAR_Y     = 180, CHAR_ROW_H     = 40;
+constexpr int PANEL_HALF = 360, PANEL_W        = 560;
+}   // namespace layout
+
+// Hover highlight (K7): a soft band behind the clickable row under the
+// cursor. Draw-only affordance — simulation and the harness never see it.
+void DrawHoverRow(int x, int y, int w, int h) {
+    const Vector2 m = GetMousePosition();
+    if (m.x >= x && m.x < x + w && m.y >= y && m.y < y + h)
+        DrawRectangle(x, y, w, h, Fade(GOLD, 0.13f));
+}
+
 const char* SettlementTypeName(SettlementType t) {
     switch (t) {
         case SettlementType::Village: return "Village";
@@ -873,11 +894,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (gs.screen == Screen::Settings) {
         for (int row = 0; row < 5; ++row)
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
-        // Mouse (H3 pattern): rows of 44 px from y=200.
+        // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 m = GetMousePosition();
-            const int row = ((int)m.y - 200) / 44;
-            if (m.y >= 200 && row >= 0 && row < 5) in.settingsRow = row;
+            const int row = ((int)m.y - layout::SETTINGS_Y) / layout::SETTINGS_ROW_H;
+            if (m.y >= layout::SETTINGS_Y && row >= 0 && row < layout::SETTINGS_ROWS)
+                in.settingsRow = row;
         }
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_O)) in.leaveSettlement = true;
         return in;
@@ -897,12 +919,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (IsKeyPressed(KEY_ONE + slot))
                 (shift ? in.sellGood : in.buyGood) = slot;
         // Mouse (H3): click a ware row to buy one, right-click to sell one
-        // (rows of 32 px from y=230, mirroring MarketDraw).
+        // (rows quote the shared layout, K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
             IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
             const Vector2 m = GetMousePosition();
-            const int row = ((int)m.y - 230) / 32;
-            if (m.x >= 120 && m.x < 700 && m.y >= 230 &&
+            const int row = ((int)m.y - layout::MARKET_Y) / layout::MARKET_ROW_H;
+            if (m.x >= layout::MARKET_X0 && m.x < layout::MARKET_X1 &&
+                m.y >= layout::MARKET_Y &&
                 row >= 0 && row < gs.content.goods.size()) {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || shift)
                     in.sellGood = row;
@@ -920,11 +943,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_C))      in.menuChoice = 2;
         if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 3;
         in.openSettings = IsKeyPressed(KEY_O);
-        // Mouse (H3): the three options are 52-px bands from y=380 (TitleDraw).
+        // Mouse (H3): option bands quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 m = GetMousePosition();
-            const int row = ((int)m.y - 380) / 52;
-            if (m.y >= 380 && row >= 0 && row < 3) in.menuChoice = row + 1;
+            const int row = ((int)m.y - layout::TITLE_Y) / layout::TITLE_ROW_H;
+            if (m.y >= layout::TITLE_Y && row >= 0 && row < layout::TITLE_ROWS)
+                in.menuChoice = row + 1;
         }
         return in;
     }
@@ -940,14 +964,15 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (IsKeyPressed(KEY_ONE + slot))
                 (shift ? in.dismissSlot : in.upgradeSlot) = slot;
         // Mouse (H3): click a roster row to promote, right-click to dismiss.
-        // Hit-boxes mirror PartyDraw's layout (rows of 34 px from y=200).
+        // Hit-boxes quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
             IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
             const Vector2 m = GetMousePosition();
-            const int panelX = GetScreenWidth() / 2 - 360;
-            const int row = ((int)m.y - 200) / 34;
-            if (m.x >= panelX && m.x < panelX + 560 && m.y >= 200 &&
-                row >= 0 && row < 9) {
+            const int panelX = GetScreenWidth() / 2 - layout::PANEL_HALF;
+            const int row = ((int)m.y - layout::PARTY_Y) / layout::PARTY_ROW_H;
+            if (m.x >= panelX && m.x < panelX + layout::PANEL_W &&
+                m.y >= layout::PARTY_Y &&
+                row >= 0 && row < layout::PARTY_SLOTS) {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || shift)
                     in.dismissSlot = row;
                 else
@@ -961,13 +986,14 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (gs.screen == Screen::Character) {
         for (int slot = 0; slot < 9; ++slot)
             if (IsKeyPressed(KEY_ONE + slot)) in.spendAttr = slot;
-        // Mouse (H3): click an attribute row to spend a point (rows of 40 px
-        // from y=180, mirroring CharacterDraw).
+        // Mouse (H3): click an attribute row to spend a point (rows quote
+        // the shared layout, K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 m = GetMousePosition();
-            const int panelX = GetScreenWidth() / 2 - 360;
-            const int row = ((int)m.y - 180) / 40;
-            if (m.x >= panelX && m.x < panelX + 560 && m.y >= 180 &&
+            const int panelX = GetScreenWidth() / 2 - layout::PANEL_HALF;
+            const int row = ((int)m.y - layout::CHAR_Y) / layout::CHAR_ROW_H;
+            if (m.x >= panelX && m.x < panelX + layout::PANEL_W &&
+                m.y >= layout::CHAR_Y &&
                 row >= 0 && row < gs.content.attributes.size())
                 in.spendAttr = row;
         }
@@ -2179,18 +2205,20 @@ void MarketDraw(const GameState& gs) {
         }
     }
 
-    int y = 200;
+    int y = layout::MARKET_Y - 30;
     ui::Text("     ware          buy   sell   stock   yours", x, y, 18,
              Fade(RAYWHITE, 0.5f));
-    y += 30;
+    y = layout::MARKET_Y;
     for (int g = 0; g < c.goods.size(); ++g) {
         const GoodDef& gd = c.goods[g];
+        DrawHoverRow(layout::MARKET_X0, y, layout::MARKET_X1 - layout::MARKET_X0,
+                     layout::MARKET_ROW_H);
         DrawRectangle(x, y + 3, 16, 16, gd.tint);
         ui::Text(TextFormat("[%d] %-12s %4d  %4d   %4d    %4d", g + 1,
                             gd.name.c_str(), MarketBuyPrice(c, t, g),
                             MarketSellPrice(c, t, g), t.stock[g], gs.goods[g]),
                  x + 26, y, 20, RAYWHITE);
-        y += 32;
+        y += layout::MARKET_ROW_H;
     }
 
     EndDrawing();
@@ -2241,10 +2269,11 @@ void SettingsDraw(const GameState& gs) {
     ui::Text("[1-5 / click] change    [Esc / O] save and back", x, 120, 20,
              Fade(RAYWHITE, 0.7f));
 
-    int y = 200;
+    int y = layout::SETTINGS_Y;
     auto row = [&](int i, const char* label, const char* value) {
+        DrawHoverRow(0, y, GetScreenWidth(), layout::SETTINGS_ROW_H);
         ui::Text(TextFormat("[%d]  %-18s %s", i + 1, label, value), x, y, 24, RAYWHITE);
-        y += 44;
+        y += layout::SETTINGS_ROW_H;
     };
     row(0, "Fullscreen",    s.fullscreen ? "on" : "off");
     row(1, "Draw distance", TextFormat("%.0f", s.lodDistance));
@@ -2351,11 +2380,12 @@ void PartyDraw(const GameState& gs) {
     ui::Text("Survivors of won battles earn experience; spend it to promote them.",
              panelX, 150, 18, Fade(RAYWHITE, 0.7f));
 
-    int y = 200;
+    int y = layout::PARTY_Y;
     for (int slot = 0; slot < (int)rows.size(); ++slot) {
         const int t = rows[slot];
         const TroopDef& td = c.troops[t];
         const int xp = (t < (int)gs.troopXp.size()) ? gs.troopXp[t] : 0;
+        DrawHoverRow(panelX, y, layout::PANEL_W, layout::PARTY_ROW_H);
         ui::Text(TextFormat("[%d]  %-10s x%-3d   XP %d", slot + 1, td.name.c_str(),
                             gs.player.troopCounts[t], xp),
                  panelX, y, 24, RAYWHITE);
@@ -2367,7 +2397,7 @@ void PartyDraw(const GameState& gs) {
         } else {
             ui::Text("(elite)", panelX + 360, y + 3, 18, Fade(GOLD, 0.6f));
         }
-        y += 34;
+        y += layout::PARTY_ROW_H;
     }
     if (rows.empty())
         ui::Text("Your warband is empty. Recruit in a friendly settlement.",
@@ -2470,10 +2500,11 @@ void TitleDraw(const GameState& gs) {
     ui::Text(sub, (w - ui::Measure(sub, 22)) / 2, 260, 22, Fade(RAYWHITE, 0.7f));
 
     const bool haveSave = FileExists(AutoSavePath());
-    int y = 380;
+    int y = layout::TITLE_Y;
     auto option = [&](const char* txt, Color col) {
+        DrawHoverRow(w / 2 - 210, y, 420, layout::TITLE_ROW_H);
         ui::Text(txt, (w - ui::Measure(txt, 30)) / 2, y, 30, col);
-        y += 52;
+        y += layout::TITLE_ROW_H;
     };
     option("[N]  New Game", RAYWHITE);
     option("[C]  Continue", haveSave ? RAYWHITE : Fade(RAYWHITE, 0.35f));
@@ -2515,14 +2546,15 @@ void CharacterDraw(const GameState& gs) {
                         hero.attrPoints),
              panelX, 122, 22, RAYWHITE);
 
-    int y = 180;
+    int y = layout::CHAR_Y;
     for (int a = 0; a < c.attributes.size(); ++a) {
         const AttributeDef& ad = c.attributes[a];
         const int v = a < (int)hero.attributes.size() ? hero.attributes[a] : 0;
+        DrawHoverRow(panelX, y, layout::PANEL_W, layout::CHAR_ROW_H);
         ui::Text(TextFormat("[%d]  %-14s %d", a + 1, ad.name.c_str(), v),
                  panelX, y, 26, hero.attrPoints > 0 ? LIME : RAYWHITE);
         ui::Text(ad.hook.c_str(), panelX + 320, y + 4, 16, Fade(RAYWHITE, 0.55f));
-        y += 40;
+        y += layout::CHAR_ROW_H;
     }
 
     ui::Text("Attribute effects arrive with the balancing pass - spend freely.",
