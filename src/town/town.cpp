@@ -359,6 +359,17 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     if (cin.interact && (T.inside || TownAtTavern())) {
         T.inside = !T.inside;
         if (T.inside) { T.iPos = { 0, 0, 3.5f }; T.yaw = PI; }
+    } else if (cin.interact) {
+        // ---- or stop a passer-by for a word (H4) ----
+        for (const Npc& n : T.npcs) {
+            const float dx = T.pPos.x - n.pos.x, dz = T.pPos.z - n.pos.z;
+            if (dx * dx + dz * dz < 3.5f * 3.5f) {
+                TownTalkNearest(gs);
+                gs.screen = Screen::Dialogue;
+                if (IsWindowReady()) EnableCursor();
+                break;
+            }
+        }
     }
 
     // ---- hero movement (battle-style third person) ----
@@ -435,6 +446,70 @@ TownView GetTownView() {
     v.atTavern = TownAtTavern();
     v.inside = T.inside;
     return v;
+}
+
+void TownTalkNearest(GameState& gs) {
+    const Npc* best = nullptr;
+    float bestD = 1e9f;
+    for (const Npc& n : T.npcs) {
+        const float dx = T.pPos.x - n.pos.x, dz = T.pPos.z - n.pos.z;
+        const float d = dx * dx + dz * dz;
+        if (d < bestD) { bestD = d; best = &n; }
+    }
+    const bool castle = gs.currentSettlement >= 0 &&
+                        gs.currentSettlement < (int)gs.towns.size() &&
+                        gs.towns[gs.currentSettlement].type == SettlementType::Castle;
+    gs.dialogueName = castle ? "Guardsman" : "Villager";
+    gs.dialogueLines.clear();
+    gs.dialogueLines.push_back(best ? best->line : "Well met, captain.");
+}
+
+void DialogueUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.menuChoice == 1) {   // "What news of the war?"
+        const bool castle = gs.currentSettlement >= 0 &&
+                            gs.towns[gs.currentSettlement].type == SettlementType::Castle;
+        gs.dialogueLines = GatherLines(gs, castle);
+    } else if (in.menuChoice == 2) {   // "Any work for a warband?"
+        gs.dialogueLines.clear();
+        gs.dialogueLines.push_back("Work? The giver posts it - ask around town (G).");
+        for (const Lair& l : gs.lairs)
+            if (l.alive) {
+                gs.dialogueLines.push_back(TextFormat(
+                    "And there's a den of cutthroats out at (%.0f, %.0f)...",
+                    l.pos.x, l.pos.y));
+                break;
+            }
+    }
+    if (in.leaveSettlement) {
+        gs.screen = Screen::Settlement;
+        gs.dialogueLines.clear();
+        if (IsWindowReady()) DisableCursor();
+    }
+}
+
+void DialogueDraw(const GameState& gs) {
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int w = GetScreenWidth();
+    const int x = w / 2 - 320;
+
+    // A painted bust stands in for a portrait until faces exist.
+    DrawRectangle(x, 90, 120, 150, Fade(Color{ 60, 50, 44, 255 }, 0.9f));
+    DrawRectangleLines(x, 90, 120, 150, Fade(GOLD, 0.5f));
+    DrawCircle(x + 60, 140, 26, Color{ 214, 176, 142, 255 });          // head
+    DrawRectangle(x + 24, 170, 72, 60, Color{ 96, 84, 60, 255 });      // shoulders
+    ui::Title(gs.dialogueName.c_str(), x + 140, 110, 40, GOLD);
+
+    int y = 270;
+    for (const std::string& line : gs.dialogueLines) {
+        ui::Text(TextFormat("\"%s\"", line.c_str()), x, y, 22, RAYWHITE);
+        y += 32;
+    }
+
+    ui::Text("[1] What news of the war?", x, y + 30, 22, Fade(RAYWHITE, 0.85f));
+    ui::Text("[2] Any work for a warband?", x, y + 60, 22, Fade(RAYWHITE, 0.85f));
+    ui::Text("[Esc / E] Take your leave", x, y + 90, 20, Fade(RAYWHITE, 0.6f));
+    EndDrawing();
 }
 
 bool TownAtTavern() {

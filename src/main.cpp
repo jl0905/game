@@ -145,6 +145,13 @@ int main(int argc, char** argv) {
                 } else                            CampaignDraw(gs);
                 break;
             }
+            case Screen::Dialogue: {                      // a word with a local; paused
+                const CampaignInput in = GatherCampaignInput(gs);
+                DialogueUpdate(gs, in);
+                if (gs.screen == Screen::Dialogue) DialogueDraw(gs);
+                else                               TownDraw(gs);
+                break;
+            }
             case Screen::Market: {                        // buy/sell goods; paused
                 const CampaignInput in = GatherCampaignInput(gs);
                 MarketUpdate(gs, in);

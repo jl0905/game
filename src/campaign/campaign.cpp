@@ -800,6 +800,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Dialogue) {
+        if (IsKeyPressed(KEY_ONE)) in.menuChoice = 1;
+        if (IsKeyPressed(KEY_TWO)) in.menuChoice = 2;
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::Market) {
         const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         for (int slot = 0; slot < 9; ++slot)

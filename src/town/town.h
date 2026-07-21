@@ -22,6 +22,13 @@ void TownDraw(const GameState& gs);
 // True while the hero stands close enough to the tavern to recruit.
 bool TownAtTavern();
 
+// Dialogue (direction H4): pressing E beside a villager opens a conversation
+// screen. TownTalkNearest fills GameState's dialogue fields from the closest
+// NPC (harnesses may call it directly); Dialogue{Update,Draw} run the screen.
+void TownTalkNearest(GameState& gs);
+void DialogueUpdate(GameState& gs, const CampaignInput& in);
+void DialogueDraw(const GameState& gs);
+
 // Read-only scene info for harnesses / debugging.
 struct TownView {
     Vector3 heroPos{};

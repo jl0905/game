@@ -1,0 +1,14 @@
+# Dialogue (direction H4): stop a local for a word — greeting, war news, and
+# a work rumor — then take your leave back to the streets.
+seed 41
+enter 0
+talk               # corner the nearest villager
+state              # expect screen=Dialogue with a greeting line
+topic 1            # "What news of the war?"
+state              # expect gossip lines (Tulga/deserters etc.)
+topic 2            # "Any work for a warband?"
+state              # expect the giver hint and a den rumor
+leave              # take your leave
+state              # expect screen=Settlement again
+leave
+quit

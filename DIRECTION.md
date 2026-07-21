@@ -133,8 +133,13 @@ flat.
   simulation and the harness are untouched. Hint footers mention clicks.
   Follow-ups: hover highlights, shared layout constants between
   Gather/Draw instead of mirrored numbers.
-- [ ] **H4. Dialogue screens.** Talking to lords/NPCs opens a portrait dialogue
-  screen (persuade/threaten/quest hooks) instead of floating text.
+- [x] **H4. Dialogue screens (v1).** Shipped: press E beside a villager or
+  guardsman to open a conversation screen (painted bust, name, spoken
+  lines): a greeting, [1] live war news composed from world state, [2] a
+  work rumor pointing at the quest giver and a bandit den. Esc/E returns
+  to the streets with the scene intact. Harness `talk`/`topic` commands +
+  `tests/dialogue.txt`. Follow-ups: talk to lords in castle halls
+  (persuade/threaten), companion personalities, real portraits.
 
 ## Track I — World scale & moddability (user directive 2026-07-20)
 

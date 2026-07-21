@@ -77,6 +77,9 @@ struct Harness {
                 MarketUpdate(gs, cin);
                 if (gs.screen != Screen::Market) townLive = false;   // re-init streets
                 break;
+            case Screen::Dialogue:
+                DialogueUpdate(gs, cin);   // the town scene stays live behind it
+                break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
@@ -144,6 +147,7 @@ struct Harness {
             case Screen::Campaign:     return "Campaign";
             case Screen::Settlement:   return "Settlement";
             case Screen::Market:       return "Market";
+            case Screen::Dialogue:     return "Dialogue";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -205,6 +209,11 @@ struct Harness {
         for (int g = 0; g < c.goods.size() && g < (int)gs.goods.size(); ++g)
             if (gs.goods[g] > 0)
                 std::printf("good: %s=%d\n", c.goods[g].id.c_str(), gs.goods[g]);
+        if (gs.screen == Screen::Dialogue) {
+            std::printf("dialogue: %s\n", gs.dialogueName.c_str());
+            for (const std::string& l : gs.dialogueLines)
+                std::printf("  \"%s\"\n", l.c_str());
+        }
         if (gs.crowned) std::printf("crowned=1\n");
         if (gs.liege >= 0 && gs.liege < c.factions.size())
             std::printf("liege=%s\n", c.factions[gs.liege].id.c_str());
@@ -424,6 +433,15 @@ int RunScript(const char* path) {
                 (cmd == "buy" ? cin.buyGood : cin.sellGood) = g;
                 h.Step(cin, BattleInput{});
             }
+        } else if (cmd == "talk") {
+            // Open a conversation with the nearest NPC (skips the walk-up).
+            if (h.gs.screen == Screen::Settlement) {
+                TownTalkNearest(h.gs);
+                h.gs.screen = Screen::Dialogue;
+            }
+        } else if (cmd == "topic") {
+            CampaignInput cin; ss >> cin.menuChoice;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "raid") {
             CampaignInput cin; ss >> cin.clickLair;
             h.Step(cin, BattleInput{});

@@ -156,6 +156,11 @@ struct GameState {
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 
+    // Dialogue screen (H4): who the player is talking to and what they said.
+    // Filled by the town scene when a conversation opens; transient.
+    std::string              dialogueName;
+    std::vector<std::string> dialogueLines;
+
     // Active quest (F4): one at a time. `questTown` is the delivery target
     // for DeliverGrain; `questFaction` earns the relation reward.
     int activeQuest   = -1;   // quest handle, -1 none
