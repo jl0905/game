@@ -56,10 +56,10 @@ flat.
 
 ## Track G — Combat & battlefield depth
 
-- [ ] **G1. Battle AI efficiency.** Replace O(n²) `FindNearest` with a uniform
-  spatial grid rebuilt per tick (a prior session started this — check
-  git/stash before redoing). Target: 1000v1000 playable. Bench before/after
-  with `--bench`.
+- [x] **G1. Battle AI efficiency.** Shipped: `SoldierGrid` (uniform XZ grid,
+  rebuilt per tick) now backs target search, separation, line-break and
+  trample checks. `--bench 1000` (2000 soldiers): 46.8→38.0 ms avg frame
+  (21→26 FPS); the remainder is GPU render cost.
 - [ ] **G2. Tournaments.** Arena in towns: bracketed melee rounds with borrowed
   gear, bet gold, renown reward. Reuses the battle module with a
   `BattleSetup` arena flag (no terrain gen, ring walls).
@@ -96,10 +96,10 @@ flat.
 
 ## Track J — Tactical battles & player impact (user directive 2026-07-20)
 
-- [ ] **J1. Targeting AI.** Soldiers pick targets sensibly instead of nearest-
-  only: prefer threats attacking them or allies, spread across enemies rather
-  than dogpiling one, archers prefer unshielded/high-value targets. Builds on
-  G1's spatial grid.
+- [x] **J1. Targeting AI.** Shipped: scored target search (`FindTarget`) —
+  distance plus a crowding penalty per foe already aiming at the candidate
+  (spreads the line), a bonus for whoever is attacking you, and an archer
+  bonus for unshielded marks. Weights flat TODO(balance).
 - [ ] **J2. Slower, more tactical pacing.** Structural knobs for pace (swing
   cooldowns, movement speeds, engagement distances) routed through content
   defs so pacing is tunable data (numbers flat, TODO(balance)) — battles

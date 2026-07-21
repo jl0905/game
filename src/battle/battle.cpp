@@ -526,6 +526,56 @@ struct Soldier {
     bool    dehorsed = false;  // horse killed under them; fighting on foot
 };
 
+// Uniform spatial grid over the XZ plane (direction G1), rebuilt once per tick
+// before the parallel AI phase. Every proximity question in the hot path —
+// target search, separation, line-break, trample — asks the grid instead of
+// scanning all soldiers, turning the per-tick cost from O(n^2) into ~O(n).
+struct SoldierGrid {
+    static constexpr float CELL = 6.0f;   // a bit over two soldier diameters
+    float minX = 0, minZ = 0;
+    int   w = 1, h = 1;
+    std::vector<int> heads;   // cell -> first live soldier index, or -1
+    std::vector<int> next;    // soldier -> next in the same cell, or -1
+
+    int CellX(float x) const { return (int)((x - minX) / CELL); }
+    int CellZ(float z) const { return (int)((z - minZ) / CELL); }
+
+    void Build(const std::vector<Soldier>& sol) {
+        const int n = (int)sol.size();
+        next.assign(n, -1);
+        if (n == 0) { heads.assign(1, -1); w = h = 1; minX = minZ = 0; return; }
+        float maxX = -1e9f, maxZ = -1e9f;
+        minX = 1e9f; minZ = 1e9f;
+        for (const Soldier& s : sol) {
+            if (s.hp <= 0) continue;
+            minX = fminf(minX, s.pos.x); maxX = fmaxf(maxX, s.pos.x);
+            minZ = fminf(minZ, s.pos.z); maxZ = fmaxf(maxZ, s.pos.z);
+        }
+        if (minX > maxX) { minX = minZ = 0; maxX = maxZ = 0; }   // everyone dead
+        w = (int)((maxX - minX) / CELL) + 1;
+        h = (int)((maxZ - minZ) / CELL) + 1;
+        heads.assign((size_t)w * h, -1);
+        for (int i = 0; i < n; ++i) {
+            if (sol[i].hp <= 0) continue;
+            const int cell = CellZ(sol[i].pos.z) * w + CellX(sol[i].pos.x);
+            next[i] = heads[cell];
+            heads[cell] = i;
+        }
+    }
+
+    // Visit every live soldier index whose cell overlaps the radius around p.
+    template <typename F>
+    void ForNeighbors(Vector3 p, float radius, F&& f) const {
+        const int x0 = std::max(0, CellX(p.x - radius));
+        const int x1 = std::min(w - 1, CellX(p.x + radius));
+        const int z0 = std::max(0, CellZ(p.z - radius));
+        const int z1 = std::min(h - 1, CellZ(p.z + radius));
+        for (int cz = z0; cz <= z1; ++cz)
+            for (int cx = x0; cx <= x1; ++cx)
+                for (int i = heads[(size_t)cz * w + cx]; i >= 0; i = next[i]) f(i);
+    }
+};
+
 // Cavalry trample. TODO(balance): damage/cooldown; structure only.
 constexpr float TRAMPLE_DAMAGE   = 15.0f;
 constexpr float TRAMPLE_COOLDOWN = 1.5f;
@@ -598,6 +648,8 @@ struct BattleState {
     // Parallel-AI scratch, reused each frame to avoid per-frame allocation.
     std::vector<AICmd> cmds;
     std::vector<float> dmg;
+    SoldierGrid        grid;       // proximity index, rebuilt each tick (G1)
+    std::vector<int>   targeted;   // how many foes aim at each soldier (J1)
 };
 
 BattleState B;
@@ -763,14 +815,46 @@ void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
     }
 }
 
-int FindNearest(const Soldier& me, Team wantTeam) {
-    int best = -1;
-    float bestD = 1e9f;
-    for (int i = 0; i < (int)B.soldiers.size(); ++i) {
-        const Soldier& o = B.soldiers[i];
-        if (o.hp <= 0 || o.team != wantTeam) continue;
-        const float d = Vector3DistanceSqr(me.pos, o.pos);
-        if (d < bestD) { bestD = d; best = i; }
+// Targeting (direction J1): pick a foe by score, not blind distance. Soldiers
+// spread across the enemy instead of dogpiling, turn on whoever is attacking
+// them, and archers favour unshielded marks. Weights are flat TODO(balance).
+constexpr float TARGET_CROWD_PENALTY   = 2.0f;  // per foe already aiming at him
+constexpr float TARGET_ATTACKER_BONUS  = 4.0f;  // he is attacking me
+constexpr float TARGET_UNSHIELDED_BONUS = 3.0f; // archers: no shield to raise
+
+// A one-handed sidearm implies a shield on the arm (same inference the
+// renderer uses); anything else leaves the target open to arrows.
+bool HasShield(const Content& c, const Soldier& o) {
+    return c.weapons.valid(o.activeWeapon) &&
+           c.weapons[o.activeWeapon].wclass == WeaponClass::OneHanded;
+}
+
+// Grid-accelerated scored target search: scan outward in growing radii and
+// keep the best-scoring candidate. One extra sweep after the first hit lets a
+// slightly-farther but better-scoring foe win without walking the whole map.
+int FindTarget(const Content& c, int self, Team wantTeam, bool imRanged) {
+    const Soldier& me = B.soldiers[self];
+    int   best = -1;
+    float bestScore = 1e9f;
+    const float maxSpan = fmaxf(B.grid.w, B.grid.h) * SoldierGrid::CELL + 1.0f;
+    for (float radius = SoldierGrid::CELL * 2; radius <= maxSpan * 2; radius *= 2) {
+        B.grid.ForNeighbors(me.pos, radius, [&](int j) {
+            const Soldier& o = B.soldiers[j];
+            if (o.team != wantTeam) return;
+            float score = Vector3Distance(me.pos, o.pos);
+            if (j < (int)B.targeted.size())
+                score += TARGET_CROWD_PENALTY * (float)B.targeted[j];
+            if (o.target == self) score -= TARGET_ATTACKER_BONUS;
+            if (imRanged && !HasShield(c, o)) score -= TARGET_UNSHIELDED_BONUS;
+            if (score < bestScore) { bestScore = score; best = j; }
+        });
+        if (best >= 0) {
+            // Grown past the best hit's shell — a wider sweep can't beat it
+            // by more than the flat bonuses, so stop.
+            if (radius >= bestScore + TARGET_ATTACKER_BONUS +
+                              TARGET_UNSHIELDED_BONUS + TARGET_CROWD_PENALTY)
+                break;
+        }
     }
     return best;
 }
@@ -794,10 +878,13 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     cmd.newTarget   = s.target;
 
     const Team foe = (s.team == Team::Player) ? Team::Enemy : Team::Player;
+    const Loadout& lo = TroopLoadout(c, s.troop);
+    const bool amRanged = c.weapons.valid(s.activeWeapon) &&
+                          c.weapons[s.activeWeapon].isRanged();
     int target = s.target;
     if (target < 0 || target >= (int)B.soldiers.size() ||
         B.soldiers[target].hp <= 0 || B.soldiers[target].team == s.team) {
-        target = FindNearest(s, foe);
+        target = FindTarget(c, i, foe, amRanged);
     }
     cmd.newTarget = target;
 
@@ -817,7 +904,6 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     if (haveFoe) { Vector3 t = Vector3Subtract(tpos, s.pos); t.y = 0; foeDist = Vector3Length(t); }
 
     // Pick the best carried weapon for this distance (multi-weapon support).
-    const Loadout& lo = TroopLoadout(c, s.troop);
     cmd.activeWeapon = PickWeaponForRange(c, lo, haveFoe ? foeDist : FIST_REACH);
     const WeaponDef* wd = c.weapons.valid(cmd.activeWeapon) ? &c.weapons[cmd.activeWeapon] : nullptr;
     const bool ranged = wd && wd->isRanged();
@@ -871,20 +957,17 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         cmd.walkAdd = dt * 10.0f;
     }
 
-    // Separation: sum pushes from crowding neighbours (read-only).
+    // Separation: sum pushes from crowding neighbours (read-only, via grid).
     Vector3 sep{ 0, 0, 0 };
-    const int nn = (int)B.soldiers.size();
-    for (int j = 0; j < nn; ++j) {
-        if (j == i) continue;
-        const Soldier& o = B.soldiers[j];
-        if (o.hp <= 0) continue;
-        Vector3 d = Vector3Subtract(s.pos, o.pos);
+    B.grid.ForNeighbors(s.pos, SOLDIER_RADIUS * 2, [&](int j) {
+        if (j == i) return;
+        Vector3 d = Vector3Subtract(s.pos, B.soldiers[j].pos);
         d.y = 0;
         const float len = Vector3Length(d);
         if (len < SOLDIER_RADIUS * 2 && len > 0.001f)
             sep = Vector3Add(sep, Vector3Scale(Vector3Normalize(d),
                                                (SOLDIER_RADIUS * 2 - len) * 0.5f));
-    }
+    });
     cmd.separation = sep;
 
     // Wall posts are held to the death: no advancing, no crowd-shuffling.
@@ -1196,19 +1279,30 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     const int     n = (int)B.soldiers.size();
     if (!B.over && n > 0) {
         B.cmds.resize(n);
+        // Rebuild the proximity grid and the per-soldier "how many foes aim at
+        // me" tallies — the read-only inputs of this tick's target scoring.
+        B.grid.Build(B.soldiers);
+        B.targeted.assign(n, 0);
+        for (const Soldier& s : B.soldiers)
+            if (s.hp > 0 && s.target >= 0 && s.target < n) B.targeted[s.target]++;
+
         // A holding line breaks all at once: the first foe to close within
         // reach of any of them sends the whole army forward with a roar.
         if (B.enemyHoldsLine && !B.enemyCharged) {
-            constexpr float BREAK_DIST2 = 28.0f * 28.0f;
+            constexpr float BREAK_DIST = 28.0f;
             for (int i = 0; i < n && !B.enemyCharged; ++i) {
                 const Soldier& e = B.soldiers[i];
                 if (e.hp <= 0 || e.team != Team::Enemy) continue;
-                if (Vector3DistanceSqr(e.pos, B.pPos) < BREAK_DIST2) { B.enemyCharged = true; break; }
-                for (int j = 0; j < n; ++j) {
-                    const Soldier& p = B.soldiers[j];
-                    if (p.hp <= 0 || p.team != Team::Player) continue;
-                    if (Vector3DistanceSqr(e.pos, p.pos) < BREAK_DIST2) { B.enemyCharged = true; break; }
+                if (Vector3DistanceSqr(e.pos, B.pPos) < BREAK_DIST * BREAK_DIST) {
+                    B.enemyCharged = true;
+                    break;
                 }
+                B.grid.ForNeighbors(e.pos, BREAK_DIST, [&](int j) {
+                    const Soldier& p = B.soldiers[j];
+                    if (p.team != Team::Player) return;
+                    if (Vector3DistanceSqr(e.pos, p.pos) < BREAK_DIST * BREAK_DIST)
+                        B.enemyCharged = true;
+                });
             }
             if (B.enemyCharged) {
                 B.cryTimer = 2.2f;
@@ -1245,18 +1339,20 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 SpawnDust(s.pos);
             if (IsMounted(c, s) && s.trampleCd <= 0 &&
                 Vector3Length(cmd.step) > 0.5f * c.troops[s.troop].moveSpeed * dt) {
-                for (int j = 0; j < n; ++j) {
+                // Grid lookup; positions moved a little since the build, but a
+                // trample radius is far coarser than one frame of drift.
+                B.grid.ForNeighbors(s.pos, TRAMPLE_RADIUS + 1.0f, [&](int j) {
                     Soldier& o = B.soldiers[j];
-                    if (o.hp <= 0 || o.team == s.team || o.onWall) continue;
+                    if (s.trampleCd > 0 || o.hp <= 0 || o.team == s.team || o.onWall)
+                        return;
                     Vector3 d3 = Vector3Subtract(o.pos, s.pos);
                     d3.y = 0;
                     if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
                         B.dmg[j] += ApplyArmor(TrampleDamage(c, s.activeWeapon),
                                                LoadoutArmor(c, TroopLoadout(c, o.troop)));
                         s.trampleCd = TRAMPLE_COOLDOWN;
-                        break;
                     }
-                }
+                });
             }
             // Armour soaks per hit, so reduction happens per blow, not per frame.
             if (cmd.hitSoldier >= 0)
