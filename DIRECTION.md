@@ -98,13 +98,16 @@ flat.
   distance plus a crowding penalty per foe already aiming at the candidate
   (spreads the line), a bonus for whoever is attacking you, and an archer
   bonus for unshielded marks. Weights flat TODO(balance).
-- [ ] **J2. Slower, more tactical pacing.** Structural knobs for pace (swing
-  cooldowns, movement speeds, engagement distances) routed through content
-  defs so pacing is tunable data (numbers flat, TODO(balance)) — battles
-  should read as lines meeting, not instant blenders.
-- [ ] **J3. Player impact.** The hero should visibly matter: nearby-troop
-  rally/morale aura hooks, killing-blow feedback, order responsiveness —
-  fighting well should swing a close battle.
+- [x] **J2. Slower, more tactical pacing.** Shipped: `PACE_COOLDOWN_SCALE`
+  (1.5× soldier swing recovery) and `PACE_MOVE_SCALE` (0.85× soldier closing
+  speed) — the hero keeps full speed, so player skill is the edge. Both flat
+  TODO(balance). Follow-up: move the scales into a cfg once J4's settings
+  file exists.
+- [x] **J3. Player impact.** Shipped: hero rally aura — allies within 12 u of
+  the hero recover swings 25% faster; a kill by the hero's own hand rings a
+  4 s rally pulse that doubles the aura (war-cry sting, RALLIED banner), and
+  the HUD counts your kills. Flat numbers TODO(balance). Follow-up: morale
+  ties into G3 when it lands.
 - [ ] **J4. Settings & graphics options.** A settings screen (and
   `assets/settings.cfg`): resolution/fullscreen, draw distance/LOD radius,
   particles on/off, audio volumes, invert-Y, key hints. Graphical upgrades

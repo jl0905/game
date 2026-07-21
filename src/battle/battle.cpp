@@ -576,6 +576,20 @@ struct SoldierGrid {
     }
 };
 
+// Battle pacing (direction J2): soldiers recover their swings slower and close
+// a shade less fast than the hero, so fights read as lines grinding rather
+// than instant blenders — and the player's full-speed hands are a real edge.
+// TODO(balance): both scales.
+constexpr float PACE_COOLDOWN_SCALE = 1.5f;
+constexpr float PACE_MOVE_SCALE     = 0.85f;
+
+// Hero presence (direction J3): allies fighting inside the champion's aura
+// recover their swings faster, and a kill by the hero's own hand rings a
+// rally pulse that briefly doubles the aura. TODO(balance): all three.
+constexpr float RALLY_RADIUS         = 12.0f;
+constexpr float RALLY_COOLDOWN_SCALE = 0.75f;
+constexpr float RALLY_PULSE_TIME     = 4.0f;
+
 // Cavalry trample. TODO(balance): damage/cooldown; structure only.
 constexpr float TRAMPLE_DAMAGE   = 15.0f;
 constexpr float TRAMPLE_COOLDOWN = 1.5f;
@@ -613,6 +627,10 @@ struct BattleState {
     float   pTrampleCd = 0;
     float   pHorseHp = 0;       // the hero's mount can be killed under him
     float   shake = 0;          // camera kick when the hero is struck
+
+    // Hero battlefield impact (J3).
+    float rallyPulse = 0;   // seconds of widened aura left after a hero kill
+    int   heroKills  = 0;   // shown in the HUD; the player's mark on the field
 
     bool  over = false;
     bool  won = false;
@@ -944,7 +962,13 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 
     const bool foeInReach = haveFoe && !holding && foeDist <= engage;
     if (foeInReach && cmd.newCooldown <= 0.0f) {
-        cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon);
+        // Deliberate pacing, quickened for allies fighting beside the hero.
+        float cdScale = PACE_COOLDOWN_SCALE;
+        const float aura = RALLY_RADIUS * (B.rallyPulse > 0 ? 2.0f : 1.0f);
+        if (s.team == Team::Player && B.pHp > 0 &&
+            Vector3DistanceSqr(s.pos, B.pPos) < aura * aura)
+            cdScale *= RALLY_COOLDOWN_SCALE;
+        cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon) * cdScale;
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
         if (ranged)           { cmd.shoot = true; cmd.shootAt = tpos; }
@@ -952,7 +976,8 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         else                   cmd.hitSoldier = target;
     } else if (dist > (holding ? 0.4f : engage)) {
         // A dehorsed rider trudges at half pace (his boots, not his horse).
-        const float ms = c.troops[s.troop].moveSpeed * (s.dehorsed ? 0.5f : 1.0f);
+        const float ms = c.troops[s.troop].moveSpeed * PACE_MOVE_SCALE *
+                         (s.dehorsed ? 0.5f : 1.0f);
         cmd.step    = Vector3Scale(Vector3Normalize(to), ms * dt);
         cmd.walkAdd = dt * 10.0f;
     }
@@ -1258,6 +1283,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     // ~120° frontal arc; the target's armour soaks per hit.
                     DamageSoldier(c, s, ApplyArmor(WeaponDamage(c, wh),
                                                    LoadoutArmor(c, TroopLoadout(c, s.troop))));
+                    if (s.hp <= 0) {   // a kill by the hero's own hand rallies
+                        B.heroKills++;
+                        B.rallyPulse = RALLY_PULSE_TIME;
+                        SfxPlay(Sfx::WarCry, 0.25f);
+                    }
                 }
             }
         }
@@ -1388,7 +1418,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.flash = fmaxf(0.0f, s.flash - dt * 5.0f);
             if (B.dmg[i] > 0.0f) DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
         }
-        B.pFlash = fmaxf(0.0f, B.pFlash - dt * 5.0f);
+        B.pFlash     = fmaxf(0.0f, B.pFlash - dt * 5.0f);
+        B.rallyPulse = fmaxf(0.0f, B.rallyPulse - dt);
         if (playerDamage > 0.0f && B.pHp > 0) {
             float d = B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
             if (B.mounted) {   // the horse soaks its share — and can fall
@@ -1667,7 +1698,10 @@ void BattleDraw(const Content& c) {
     if (B.mounted)
         ui::Text(TextFormat("Horse %d", (int)fmaxf(B.pHorseHp, 0)),
                  250, GetScreenHeight() - 41, 16, Fade(RAYWHITE, 0.85f));
-    ui::Text(TextFormat("Allies: %d   Enemies: %d", B.aliveAllies, B.aliveEnemies), 18, 12, 22, RAYWHITE);
+    ui::Text(TextFormat("Allies: %d   Enemies: %d   Your kills: %d",
+                        B.aliveAllies, B.aliveEnemies, B.heroKills), 18, 12, 22, RAYWHITE);
+    if (B.rallyPulse > 0)
+        ui::Text("RALLIED", 18, 38, 20, Fade(GOLD, fminf(1.0f, B.rallyPulse)));
     ui::Text("Hold LMB to ready a swing, release to strike | RMB block | Q swap weapon | ~ strategy",
              18, 38, 16, Fade(RAYWHITE, 0.7f));
 
