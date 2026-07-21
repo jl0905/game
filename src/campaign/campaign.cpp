@@ -171,7 +171,16 @@ Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
         if (!o.alive || o.engaged) continue;
         if (!AtWar(gs, e.faction, o.faction)) continue;
         if (beneathNotice(o.totalTroops())) continue;
-        const float d = Vector2Distance(e.pos, o.pos);
+        float d = Vector2Distance(e.pos, o.pos);
+        // Outlaws smell freight (L6): a laden caravan reads as half its true
+        // distance, so bandits prey on the trade flow the way the player
+        // can — and merchants have reason to fear the wild roads.
+        if (o.caravan && e.lord.empty() &&
+            c.factions[e.faction].behavior == PartyBehavior::Aggressive) {
+            int freight = 0;
+            for (int q : o.cargo) freight += q;
+            if (freight > 0) d *= 0.5f;   // TODO(balance)
+        }
         if (d < best.dist) best = { j, o.pos, o.totalTroops(), d };
     }
     return best;
