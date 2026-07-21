@@ -328,10 +328,17 @@ bool UpdateRest(const GameState& gs, Party& e, float sim, Vector2& target) {
 }
 
 // Remove up to `count` troops from a party, spread across its troop types.
-void RemoveTroops(Party& p, int count) {
-    for (int guard = 0; guard < 10000 && count > 0 && p.totalTroops() > 0; ++guard) {
+// Named companions never drift, starve, or desert this way (Q3) — heroes
+// leave by choice (P3) or not at all.
+void RemoveTroops(const Content& c, Party& p, int count) {
+    int strippable = 0;
+    for (int t = 0; t < (int)p.troopCounts.size(); ++t)
+        if (!(t < c.troops.size() && c.troops[t].companion))
+            strippable += p.troopCounts[t];
+    for (int guard = 0; guard < 10000 && count > 0 && strippable > 0; ++guard) {
         const int t = GetRandomValue(0, (int)p.troopCounts.size() - 1);
-        if (p.troopCounts[t] > 0) { p.troopCounts[t]--; count--; }
+        if (t < c.troops.size() && c.troops[t].companion) continue;
+        if (p.troopCounts[t] > 0) { p.troopCounts[t]--; count--; strippable--; }
     }
 }
 
@@ -401,7 +408,7 @@ void ResolveSkirmish(GameState& gs, Skirmish& sk) {
     Party& loser  = aWins ? b : a;
     const int loserStrength = aWins ? sb : sa;
 
-    RemoveTroops(winner, GetRandomValue(loserStrength / 2, loserStrength));
+    RemoveTroops(gs.content, winner, GetRandomValue(loserStrength / 2, loserStrength));
     loser.alive = false;
     if (winner.totalTroops() <= 0) winner.alive = false;  // mutual annihilation
     AddWarScore(gs, a.faction, b.faction, loserStrength);
@@ -482,12 +489,12 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
 
     const bool taken = Frand(0, (float)(sa + sd)) < (float)sa;
     if (taken) {
-        RemoveTroops(a, GetRandomValue(sd / 2, sd));   // storming has a price
+        RemoveTroops(gs.content, a, GetRandomValue(sd / 2, sd));   // storming has a price
         t.owner = a.faction;
         InstallGarrison(gs.content, t, a);
         if (a.totalTroops() <= 0) a.alive = false;
     } else {
-        RemoveTroops(a, GetRandomValue(sa / 3, sa / 2));   // repelled, mauled
+        RemoveTroops(gs.content, a, GetRandomValue(sa / 3, sa / 2));   // repelled, mauled
         if (a.totalTroops() <= 0) a.alive = false;
         // the garrison is bloodied too
         int loss = GetRandomValue(0, sd / 2);
@@ -707,6 +714,17 @@ static void ApplyBattleResult(GameState& gs) {
         gs.allyLosses.clear();
         return;
     }
+
+    // Knocked out, not dead (Q3): named companions are carried senseless
+    // from the field — they miss the rest of the fight but never the next.
+    for (int t = 0; t < (int)gs.playerLosses.size() &&
+                    t < gs.content.troops.size(); ++t)
+        if (gs.playerLosses[t] > 0 && gs.content.troops[t].companion) {
+            gs.battleReport.push_back(TextFormat(
+                "%s is knocked senseless - but lives.",
+                gs.content.troops[t].name.c_str()));
+            gs.playerLosses[t] = 0;
+        }
 
     // Player's own casualties.
     for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t) {
@@ -1750,7 +1768,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 supplyNote = TextFormat("  Foraged (-%d gold).", forage);
             } else {
                 const int lost = 1 + gs.player.totalTroops() / 10;
-                RemoveTroops(gs.player, lost);
+                RemoveTroops(c, gs.player, lost);
                 supplyNote = TextFormat("  YOUR MEN STARVE - %d desert!", lost);
             }
 
@@ -1968,7 +1986,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 // The coffers ran dry: a share of the men drift away overnight.
                 gs.gold = 0;
                 const int leave = (gs.player.totalTroops() + 9) / 10;   // TODO(balance)
-                RemoveTroops(gs.player, leave);
+                RemoveTroops(c, gs.player, leave);
                 gs.resultText += TextFormat("  Unpaid, %d men desert!", leave);
             }
         }

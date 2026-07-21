@@ -1,0 +1,12 @@
+# Knocked out, not dead (direction Q3): named companions never die - they
+# are carried senseless from a lost field and ride again, and neither
+# starvation nor unpaid wages can strip a hero from the roster.
+seed 3
+enter 0
+hire               # Rega the Grim joins
+leave
+state              # expect rega=1
+hunt 120           # a fight the idle hero may well lose troops in
+tick 600           # let it run to a verdict, win or lose
+state              # whatever fell, expect rega=1 still in the troops line
+quit

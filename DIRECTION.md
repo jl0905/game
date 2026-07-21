@@ -480,9 +480,12 @@ full career, and the last Warband textures.
 - [ ] **Q2. AI armies eat.** Lords' hosts shrink on long campaigns far
   from home (the P5 follow-up) — wars end because armies starve, not
   only because they bleed.
-- [ ] **Q3. Knocked out, not dead.** Companions fall unconscious instead
-  of dying (Warband's rule): they miss the rest of the fight and return
-  after, at most losing gear. Death stays for the nameless.
+- [x] **Q3. Knocked out, not dead.** Shipped: a companion counted among the
+  fallen is instead carried senseless from the field (battle-report line,
+  loss zeroed before the books close), and `RemoveTroops` now skips
+  companions everywhere — starvation, unpaid wages, and auto-resolve
+  can't strip a hero either. Heroes leave by choice (P3) or not at all;
+  death stays for the nameless. `tests/knockout.txt`.
 - [ ] **Q4. Sinks and decay.** Renown fades a point a week; wages scale
   with tier. The treadmills that keep a long game moving.
 - [x] **Q5. Autosave cadence.** Shipped: the game autosaves at every dawn
