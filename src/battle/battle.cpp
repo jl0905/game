@@ -709,6 +709,12 @@ struct BattleState {
     // Formations / strategy menu.
     FormationType formation = FormationType::Charge;
 
+    // Deployment (R2): a device-side pause before the lines close. Armed at
+    // init; the first *windowed* gather trips it (headless runs never gather,
+    // so scripted sims are bit-identical). SPACE sounds the horn.
+    bool deployArmed = false;
+    bool deploying   = false;
+
     // Battlefield orders (M2): what the player's own troops are doing with
     // the formation shape — charging freely, following the hero's banner, or
     // holding ground where the order was barked (F1/F2/F3 mid-fight).
@@ -1197,6 +1203,7 @@ std::vector<int> ComputeEnemyLosses() {
 void BattleInit(const Content& c, const BattleSetup& setup) {
     B = BattleState{};
     B.setup = setup;
+    B.deployArmed = !setup.arena;   // the ring waits for no plans (R2)
     TerrainConfig tcfg = TerrainConfigFromWorld(setup.campaignPos);
     // A modded world biome (K8) overrides the built-in noise when provided.
     if (setup.hilliness >= 0) {
@@ -1282,6 +1289,13 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
 BattleInput GatherBattleInput() {
     BattleInput in;
 
+    // Deployment (R2): the first windowed gather of a new battle opens the
+    // planning pause; SPACE (or LMB) sounds the horn.
+    if (B.deployArmed) { B.deployArmed = false; B.deploying = true; }
+    if (B.deploying)
+        in.beginBattle = IsKeyPressed(KEY_SPACE) ||
+                         IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+
     Vector2 md = { 0, 0 };
     const Vector2 mouse = GetMousePosition();
     if (B.hasLastMouse) {
@@ -1317,6 +1331,38 @@ BattleInput GatherBattleInput() {
 
 bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutcome& out) {
     if (dt > 0.05f) dt = 0.05f;
+
+    // Deployment pause (R2): the field holds its breath while you set the
+    // lines — shape (1-4), ranks ([/]), the opening order (F1-F3). You may
+    // look around; nothing moves until the horn. Windowed only by
+    // construction: headless runs never gather, so B.deploying stays false.
+    if (B.deploying) {
+        B.yaw   -= in.lookDelta.x * 0.003f;
+        B.pitch = Clamp(B.pitch - in.lookDelta.y * 0.003f, -0.4f, 0.6f);
+        switch (in.formationSelect) {
+            case 1: B.formation = FormationType::Charge;
+                    B.order = OrderType::Charge; break;
+            case 2: B.formation = FormationType::Line;   break;
+            case 3: B.formation = FormationType::Square; break;
+            case 4: B.formation = FormationType::Spread; break;
+            default: break;
+        }
+        if (in.formationSelect >= 2 && B.order == OrderType::Charge)
+            B.order = OrderType::Follow;
+        B.ranks += in.ranksDelta;
+        if (B.ranks < 1) B.ranks = 1;
+        if (B.ranks > 8) B.ranks = 8;
+        if (in.order == 1) { B.order = OrderType::Hold; B.holdPos = B.pPos; }
+        if (in.order == 2)   B.order = OrderType::Follow;
+        if (in.order == 3)   B.order = OrderType::Charge;
+        if (in.beginBattle) {
+            B.deploying = false;
+            B.cryTimer  = 1.6f;
+            B.cryText   = "SOUND THE HORN!";
+            SfxPlay(Sfx::WarCry);
+        }
+        return true;   // a held breath: no movement, no arrows, no clocks
+    }
 
     // ---------- player intent ----------
     Vector3 fwd = { sinf(B.yaw), 0, cosf(B.yaw) };
@@ -1988,6 +2034,17 @@ void BattleDraw(const Content& c) {
     ui::Text(TextFormat("Weapon: %s    Order: %s [F1-F3]    Shape: %s (ranks %d)",
                         wname, OrderName(B.order), FormationName(B.formation),
                         B.ranks), 18, 60, 16, GOLD);
+    if (B.deploying) {   // the planning pause (R2)
+        const char* d1 = "DEPLOYMENT";
+        const int w1 = ui::MeasureTitle(d1, 48);
+        DrawRectangle(0, GetScreenHeight() / 3 - 14,
+                      GetScreenWidth(), 110, Fade(BLACK, 0.55f));
+        ui::Title(d1, (GetScreenWidth() - w1) / 2, GetScreenHeight() / 3, 48, GOLD);
+        const char* d2 = "[1-4] shape   [ / ] ranks   [F1-F3] first order   "
+                         "SPACE sounds the horn";
+        ui::Text(d2, (GetScreenWidth() - ui::Measure(d2, 20)) / 2,
+                 GetScreenHeight() / 3 + 62, 20, RAYWHITE);
+    }
     if (B.readying)
         ui::Text(TextFormat("Readying swing: %s  (release!)", dirName[(int)B.attackDir]),
                  18, 82, 16, ORANGE);

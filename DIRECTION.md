@@ -504,9 +504,13 @@ full career, and the last Warband textures.
   engage at 60% range and nock 1.4× slower — wet strings throw short.
   `rain=` in the battle dump; `tests/rain.txt` raids Tulga under cloud.
   Flat TODO(balance). Check the sky before you rely on archers.
-- [ ] **R2. Deployment.** A pre-battle beat: see the field, set formation
-  shape/ranks and your first order before the lines close. One decision
-  turns the opening from reflex into plan.
+- [x] **R2. Deployment.** Shipped: windowed battles open in a planning
+  pause — look over the field, set shape (1-4), ranks ([/]) and the
+  opening order (F1-F3), then SPACE/LMB sounds the horn (banner + cry).
+  Architecture-clean: the pause is armed at init and tripped by the first
+  *windowed gather*, so headless sims never see it and every script is
+  bit-identical (63/63 unchanged proves it). Arena bouts skip it — the
+  ring waits for no plans.
 - [ ] **R3. Roster polish.** Veterancy pips on the party screen (XP toward
   the next rank as a bar), wage column, and a party-cap readout.
 - [x] **R4. World events.** Shipped: `EventDef` registry (news line with
@@ -521,8 +525,10 @@ full career, and the last Warband textures.
   Verified with a committed fixture save (`tests/defection.owb`): the
   live world crowned Vaeling ascendant and Lord Aldric abandoned the
   beaten Patrol, deterministically. Flat TODO(balance).
-- [ ] **R6. The standing bench.** Re-run --bench at each wave's end and
-  log it in BALANCE.md — regressions caught the cheap way.
+- [x] **R6. The standing bench.** Shipped: a "Standing bench" table in
+  BALANCE.md, logged at each wave's end (post-grid 38.0 → N6 33.3 →
+  Track R 33.8 ms avg at 2000 soldiers — this wave's features landed
+  free). Investigate any avg regression past ~15%.
 
 ## Sequencing guidance
 

@@ -95,6 +95,18 @@ enterprises all `cost 300` / `dailyIncome 15`; quests hunt `1 band, 100g,
 - `Town::priceOffset` beyond source/market identity — per-town spreads possible.
 - Vassalage oath requirements — only "at peace + standing ≥ 0" today.
 
+## Standing bench (R6)
+
+`--bench 1000` (2000 soldiers, 600 frames), logged at each wave's end.
+Rendering dominates; the simulation holds. Investigate any avg regression
+past ~15%.
+
+| Wave | avg ms | p99 ms | Notes |
+|---|---|---|---|
+| post-G1 spatial grid | 38.0 | — | the original baseline |
+| Track N end (N6) | 33.3 | 39.5 | lord hosts raised to 150 |
+| Track R end | 33.8 | 40.3 | rain combat, deployment, events all landed free |
+
 ## How to run a tuning session
 
 1. Pick a row; change the value at its site (grep the constant name).

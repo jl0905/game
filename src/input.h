@@ -86,4 +86,5 @@ struct BattleInput {
     int     ranksDelta      = 0;   // -1 / +1 ([ / ])
     int     order           = 0;   // battlefield order (M2): 1 hold, 2 follow,
                                    // 3 charge (F1/F2/F3, no menu needed)
+    bool    beginBattle     = false;   // sound the horn: end deployment (R2)
 };
