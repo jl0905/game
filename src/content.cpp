@@ -259,7 +259,7 @@ void LoadDefaultContent(Content& c) {
     raiders.color = RED; raiders.behavior = PartyBehavior::Aggressive;
     raiders.roster = { t_brigand, t_marauder, t_infantry, t_archer };   // axes lead
     raiders.lords = { "Gorak", "Hesh" };
-    raiders.lordPartySize = 120;    // TODO(balance)
+    raiders.lordPartySize = 150;    // TODO(balance)
     c.factions.add(raiders);
 
     FactionDef deserters;
@@ -267,7 +267,7 @@ void LoadDefaultContent(Content& c) {
     deserters.color = ORANGE; deserters.behavior = PartyBehavior::Passive;
     deserters.roster = { t_recruit };
     deserters.lords = { "Vex" };
-    deserters.lordPartySize = 120;  // TODO(balance)
+    deserters.lordPartySize = 150;  // TODO(balance)
     c.factions.add(deserters);
 
     FactionDef patrol;
@@ -275,7 +275,7 @@ void LoadDefaultContent(Content& c) {
     patrol.color = PURPLE; patrol.behavior = PartyBehavior::Patrol;
     patrol.roster = { t_infantry, t_veteran, t_knight };
     patrol.lords = { "Aldric", "Corin" };
-    patrol.lordPartySize = 120;     // TODO(balance)
+    patrol.lordPartySize = 150;     // TODO(balance)
     patrol.kingdom = true;
     const int f_patrol = c.factions.add(patrol);
 
@@ -288,7 +288,7 @@ void LoadDefaultContent(Content& c) {
     sarleon.behavior = PartyBehavior::Patrol;
     sarleon.roster = { t_infantry, t_veteran, t_archer, t_knight };
     sarleon.lords = { "Aldemar", "Rowan" };
-    sarleon.lordPartySize = 120;    // TODO(balance)
+    sarleon.lordPartySize = 150;    // TODO(balance)
     sarleon.kingdom = true;
     const int f_sarleon = c.factions.add(sarleon);
 
@@ -299,7 +299,7 @@ void LoadDefaultContent(Content& c) {
     vaeling.behavior = PartyBehavior::Patrol;
     vaeling.roster = { t_warrior, t_huscarl, t_archer };
     vaeling.lords = { "Sigvald", "Toke" };
-    vaeling.lordPartySize = 120;    // TODO(balance)
+    vaeling.lordPartySize = 150;    // TODO(balance)
     vaeling.kingdom = true;
     const int f_vaeling = c.factions.add(vaeling);
 

@@ -346,9 +346,12 @@ adds per line of code. Structure first, numbers flat, as ever.
 - [ ] **N5. Art/audio pass.** The M6 descope: stall props, minstrel sting,
   plus battle-kill sting variety and a campaign music bed. Asset work,
   not systems.
-- [ ] **N6. Battle scale stress.** Re-bench at 2000+; if the grid holds,
-  raise default lord hosts past 120 and let sieges field garrison and
-  relief armies together.
+- [x] **N6. Battle scale stress.** Shipped: `--bench 1000` (2000 soldiers)
+  re-measured at 33.3 ms avg / 39.5 p99 (was 38.0 post-grid) — the sim
+  holds, render is the remaining cost. AI lord hosts raised 120→150
+  (still flat TODO(balance)); typical battles stay far under the 2000
+  ceiling. Remaining idea (garrison + relief army in one siege) moves to
+  a future siege track alongside N1.
 
 ## Sequencing guidance
 
