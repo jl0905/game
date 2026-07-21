@@ -1,0 +1,17 @@
+# A ruler's purse (direction S5): landless raised lords draw a 10-gold
+# retainer, manned walls eat pay (garrison/2), and the day tick, party
+# screen, kingdom ledger and harness purse: line all quote the same books.
+seed 33
+enter 2            # take Tulga
+siege 1
+block on
+tick 200
+state              # expect purse: retainers=0 garrisons=0
+crown
+enter 2
+raiselord          # Lord Bram: landless, so 10/day in retainer
+tavern
+garrison 2         # two men on the wall: 1/day in pay
+leave
+state              # expect purse: retainers=10 garrisons=1
+quit

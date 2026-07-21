@@ -270,6 +270,12 @@ struct Harness {
             for (int w : gs.wounded) hurt += w;
             if (hurt > 0) std::printf("wounded=%d\n", hurt);
         }
+        {
+            const DayLedger L = ComputeLedger(gs);
+            std::printf("purse: income=%d enterprise=%d wages=%d retainers=%d "
+                        "garrisons=%d net=%+d\n", L.income, L.enterprise,
+                        L.wages, L.lordPay, L.garrisonPay, L.net());
+        }
         if (gs.siegePrompt >= 0)
             std::printf("siegeprompt: town=%d\n", gs.siegePrompt);
         if (gs.siegeCampTown >= 0)

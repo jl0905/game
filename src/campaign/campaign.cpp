@@ -645,6 +645,37 @@ static int HeroXpToLevel(int level) { return level * 100; }
 // NudgeRelation lives in world.h now (M5): court dialogue moves standing too.
 // TODO(balance): every delta at the call sites.
 
+// A ruler's purse (S5): the whole day's flows in one place, quoted
+// identically by the daily tick, the party screen, and the kingdom ledger.
+// Landless raised lords draw a retainer (landed ones tax their own fiefs,
+// M3); manned walls eat pay. Declared in campaign.h. TODO(balance): rates.
+DayLedger ComputeLedger(const GameState& gs) {
+    const Content& c = gs.content;
+    DayLedger L;
+    for (const Town& t : gs.towns) {
+        if (t.owner != c.playerFaction) continue;
+        if (t.fiefLord.empty()) {
+            L.income      += SettlementIncome(t.type) * t.prosperity / 100;
+            L.garrisonPay += (t.garrisonSize() + 1) / 2;
+        }
+    }
+    for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
+        if (c.enterprises.valid(gs.enterpriseAt[ti]) &&
+            !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
+            L.enterprise += c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
+                            gs.towns[ti].prosperity / 100;
+    for (int t = 0; t < (int)gs.player.troopCounts.size() && t < c.troops.size(); ++t)
+        L.wages += gs.player.troopCounts[t] * c.troops[t].wage;
+    for (const Party& p : gs.parties) {
+        if (!p.alive || p.faction != c.playerFaction || p.lord.empty()) continue;
+        bool landed = false;
+        for (const Town& t : gs.towns)
+            if (t.fiefLord == p.lord) { landed = true; break; }
+        if (!landed) L.lordPay += 10;   // a landless lord's retainer
+    }
+    return L;
+}
+
 // Pay out the active quest (F4) and clear it.
 static void CompleteQuest(GameState& gs) {
     const QuestDef& qd = gs.content.quests[gs.activeQuest];
@@ -1748,13 +1779,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         if (gs.dayTimer >= DAY_LENGTH) {
             gs.dayTimer -= DAY_LENGTH;
             gs.day++;
-            int income = 0;
-            for (const Town& t : gs.towns)
-                if (t.owner == c.playerFaction && t.fiefLord.empty())
-                    income += SettlementIncome(t.type) * t.prosperity / 100;
-                // A granted seat's taxes feed its lord, not the ledger (M3).
-
-            // Enterprises pay by prosperity — and hostile hands seize them.
+            // Hostile hands seize enterprises before the books are drawn.
             for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti) {
                 const int e = gs.enterpriseAt[ti];
                 if (!c.enterprises.valid(e)) continue;
@@ -1763,14 +1788,15 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     gs.resultText = TextFormat("Your %s in %s is SEIZED by the enemy!",
                                                c.enterprises[e].name.c_str(),
                                                gs.towns[ti].name.c_str());
-                    continue;
                 }
-                income += c.enterprises[e].dailyIncome * gs.towns[ti].prosperity / 100;
             }
-            int wages = 0;
-            for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
-                wages += gs.player.troopCounts[t] * c.troops[t].wage;
-            gs.gold += income - wages;
+
+            // One purse, all flows (S5): income and enterprises in; troop
+            // wages, landless lords' retainers and garrison pay out.
+            const DayLedger L = ComputeLedger(gs);
+            const int income = L.income + L.enterprise;
+            const int wages  = L.wages + L.lordPay + L.garrisonPay;
+            gs.gold += L.net();
 
             // Supply (P5): an army marches on its stomach. The warband eats
             // grain from the saddlebags — one unit per ten mouths — then
@@ -3038,19 +3064,11 @@ void PartyDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int panelX = GetScreenWidth() / 2 - 360;
 
-    // Daily ledger preview so roster decisions are financial decisions.
-    int wages = 0;
-    for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
-        wages += gs.player.troopCounts[t] * c.troops[t].wage;
-    int income = 0;
-    for (const Town& tw : gs.towns)
-        if (tw.owner == c.playerFaction && tw.fiefLord.empty())
-            income += SettlementIncome(tw.type) * tw.prosperity / 100;
-    for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
-        if (c.enterprises.valid(gs.enterpriseAt[ti]) &&
-            !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
-            income += c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
-                      gs.towns[ti].prosperity / 100;
+    // Daily ledger preview so roster decisions are financial decisions —
+    // the same books the day tick settles (S5).
+    const DayLedger L = ComputeLedger(gs);
+    const int wages  = L.wages + L.lordPay + L.garrisonPay;
+    const int income = L.income + L.enterprise;
 
     ui::Title("YOUR WARBAND", panelX, 60, 44, GOLD);
     ui::Text(TextFormat("Gold: %d    Troops: %d / %d    Daily: +%d income  -%d wages  (%+d)",
@@ -3240,21 +3258,14 @@ void KingdomDraw(const GameState& gs) {
         y += 26;
         if (y > GetScreenHeight() - 160) break;
     }
-    int wages = 0;
-    for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
-        wages += gs.player.troopCounts[t] * c.troops[t].wage;
-    int enterprise = 0;
-    for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
-        if (c.enterprises.valid(gs.enterpriseAt[ti]) &&
-            !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
-            enterprise += c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
-                          gs.towns[ti].prosperity / 100;
+    // One purse, all flows (S5) — the same books the day tick settles.
+    const DayLedger L = ComputeLedger(gs);
     y += 8;
-    ui::Text(TextFormat("Income %d  +  enterprises %d  -  wages %d   =   %+d a day"
-                        "      (lords keep %d)",
-                        income, enterprise, wages, income + enterprise - wages,
-                        granted),
-             lx, y, 20, income + enterprise >= wages ? LIME : Fade(RED, 0.9f));
+    ui::Text(TextFormat("Income %d + enterprises %d - wages %d - retainers %d"
+                        " - garrisons %d  =  %+d a day    (lords keep %d)",
+                        L.income, L.enterprise, L.wages, L.lordPay,
+                        L.garrisonPay, L.net(), granted),
+             lx, y, 20, L.net() >= 0 ? LIME : Fade(RED, 0.9f));
 
     // ---- lords of the realm ----
     int ry = 170;

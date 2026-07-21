@@ -57,6 +57,14 @@ void MarketDraw(const GameState& gs);
 int MarketBuyPrice(const Content& c, const Town& t, int g);
 int MarketSellPrice(const Content& c, const Town& t, int g);
 
+// A ruler's purse (S5): the whole day's flows, quoted identically by the
+// day tick, the party screen, the kingdom ledger, and the harness dump.
+struct DayLedger {
+    int income = 0, enterprise = 0, wages = 0, lordPay = 0, garrisonPay = 0;
+    int net() const { return income + enterprise - wages - lordPay - garrisonPay; }
+};
+DayLedger ComputeLedger(const GameState& gs);
+
 // Party management screen (roster + veterancy upgrades), opened with P.
 void PartyUpdate(GameState& gs, const CampaignInput& in);
 void PartyDraw(const GameState& gs);

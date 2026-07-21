@@ -556,9 +556,13 @@ full career, and the last Warband textures.
 - [ ] **S4. Any lord's audience.** Court the lord actually present — talk
   to a lord party adjacent on the map (parley), and courts name whoever
   garrisons there, defectors included.
-- [ ] **S5. A ruler's purse audit.** Raised lords draw wages, garrisons eat
-  pay, tribute drains — the late-game sinks that keep gold meaningful
-  after the tenth town. (Structure; rates flat.)
+- [x] **S5. A ruler's purse audit.** Shipped: one `ComputeLedger` quoted by
+  the day tick, party screen, kingdom ledger and a new harness `purse:`
+  line — income + enterprises in; troop wages, landless lords' 10/day
+  retainers (landed lords tax their fiefs instead, closing M3's loop)
+  and garrison pay (men/2) out. Manned walls finally cost what they're
+  worth. `tests/purse.txt` balances the books to the gold. Rates flat
+  TODO(balance).
 
 ## Sequencing guidance
 
