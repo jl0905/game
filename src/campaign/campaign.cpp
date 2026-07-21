@@ -495,6 +495,8 @@ void CampaignInit(GameState& gs) {
         for (const std::string& name : c.factions[f].lords)
             gs.parties.push_back(MakeLordParty(c, f, name, FactionHome(gs, f)));
 
+    gs.relations.assign(c.factions.size(), 0);
+
     // Live diplomacy starts from the static relations table.
     gs.hostile = c.hostile;
     gs.warScore.assign(gs.hostile.size(), 0);
@@ -522,6 +524,17 @@ static constexpr int XP_PER_SURVIVOR = 25;
 // Hero experience per won battle, and XP needed per level. TODO(balance).
 static constexpr int HERO_XP_PER_WIN = 50;
 static int HeroXpToLevel(int level) { return level * 100; }
+
+// Relations (F1): deeds move the player's standing with a faction. Nothing
+// reads the score yet beyond the character sheet — vassalage (F2) and quest
+// givers (F4) will. TODO(balance): every delta below.
+static void NudgeRelation(GameState& gs, int faction, int delta) {
+    if (faction < 0 || faction >= gs.content.factions.size() ||
+        faction == gs.content.playerFaction) return;
+    if ((int)gs.relations.size() < gs.content.factions.size())
+        gs.relations.assign(gs.content.factions.size(), 0);
+    gs.relations[faction] = std::clamp(gs.relations[faction] + delta, -100, 100);
+}
 
 static void ApplyBattleResult(GameState& gs) {
     // The aftermath card starts fresh each battle; branches below fill it.
@@ -584,6 +597,7 @@ static void ApplyBattleResult(GameState& gs) {
             if (t.garrison[i] < 0) t.garrison[i] = 0;
         }
         if (gs.battleWon) {
+            NudgeRelation(gs, t.owner, -20);   // you took their land
             t.owner = gs.content.playerFaction;
             const int loot = 50 + GetRandomValue(0, 100);   // TODO(balance)
             gs.gold += loot;
@@ -621,6 +635,8 @@ static void ApplyBattleResult(GameState& gs) {
                              : TextFormat("VICTORY!  Loot: %d gold", loot);
         gs.battleReport.push_back("VICTORY");
         gs.battleReport.push_back(TextFormat("Loot: %d gold      Hero: +%d XP", loot, HERO_XP_PER_WIN));
+        if (enemy) NudgeRelation(gs, enemy->faction, enemy->caravan ? -10 : -5);
+        if (ally)  NudgeRelation(gs, ally->faction, +10);   // you bled beside them
         if (enemy) enemy->alive = false;
 
         // A share of the beaten foe yields rather than dies — captives to
@@ -1968,6 +1984,18 @@ void CharacterDraw(const GameState& gs) {
 
     ui::Text("Attribute effects arrive with the balancing pass - spend freely.",
              panelX, y + 10, 18, Fade(GOLD, 0.7f));
+
+    // Standing with the powers of the land (F1).
+    y += 48;
+    ui::Text("STANDING", panelX, y, 22, GOLD);
+    y += 30;
+    for (int f = 0; f < c.factions.size(); ++f) {
+        if (f == c.playerFaction) continue;
+        const int r = f < (int)gs.relations.size() ? gs.relations[f] : 0;
+        ui::Text(TextFormat("%-14s %+d", c.factions[f].name.c_str(), r), panelX, y,
+                 20, r > 0 ? LIME : r < 0 ? Fade(RED, 0.9f) : Fade(RAYWHITE, 0.8f));
+        y += 26;
+    }
     ui::Text("[1-4] spend a point    [Esc / C] back to the map",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();

@@ -52,9 +52,12 @@ flat.
 
 ## Track F — Politics & kingdom play
 
-- [ ] **F1. Relations.** Per-lord and per-faction relation scores (int,
-  −100..100), moved by battles, ransoms, raids. Shown on a lord/faction
-  report screen. Saved.
+- [x] **F1. Relations (v1).** Shipped: per-faction standing with the player
+  (−100..100) moved by deeds — beating a party −5, raiding a caravan −10,
+  taking a settlement −20, winning beside an ally +10. Shown as a STANDING
+  block on the character sheet, saved, in the harness dump. Deltas flat
+  TODO(balance). Follow-ups: per-lord scores; effects (recruit prices,
+  vassalage gates) arrive with F2.
 - [ ] **F2. Vassalage.** Swear to a king: get a settlement fief, owe wartime
   muster (join your liege's siege target); lords react by relation.
 - [ ] **F3. Player kingdom.** Rebel or conquer unowned: your own faction

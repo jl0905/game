@@ -95,6 +95,11 @@ bool SaveGame(const GameState& gs, const char* path) {
           << it.x << ' ' << it.y << '\n';
     }
 
+    // Standing with each faction (F1).
+    for (int fa = 0; fa < c.factions.size() && fa < (int)gs.relations.size(); ++fa)
+        if (gs.relations[fa] != 0)
+            f << "relation " << c.factions[fa].id << ' ' << gs.relations[fa] << '\n';
+
     // Trade goods in the saddlebags (E1).
     for (int g = 0; g < c.goods.size() && g < (int)gs.goods.size(); ++g)
         if (gs.goods[g] > 0)
@@ -263,6 +268,11 @@ bool LoadGame(GameState& gs, const char* path) {
                 gs.warScore[ij] = gs.warScore[ji] = score;
                 gs.truceDays[ij] = gs.truceDays[ji] = truce;
             }
+        } else if (tag == "relation") {
+            std::string fid; int v = 0;
+            ss >> fid >> v;
+            const int fh = c.factions.find(fid.c_str());
+            if (fh >= 0 && fh < (int)gs.relations.size()) gs.relations[fh] = v;
         } else if (tag == "enterprise") {
             int idx = -1; std::string eid;
             ss >> idx >> eid;

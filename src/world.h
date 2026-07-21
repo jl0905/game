@@ -145,6 +145,11 @@ struct GameState {
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 
+    // Relations (F1): the player's personal standing with each faction,
+    // -100..100, moved by deeds (battles, raids, aid). Report-only for now;
+    // vassalage (F2) and quest givers (F4) will read it. TODO(balance).
+    std::vector<int> relations;
+
     // Live diplomacy (C4): a runtime copy of Content::hostile. Wars between
     // kingdoms (factions that field lords, plus the player) accumulate
     // weariness from casualties, end in a truce, and rekindle when it lapses.

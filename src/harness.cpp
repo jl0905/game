@@ -195,6 +195,9 @@ struct Harness {
         for (int g = 0; g < c.goods.size() && g < (int)gs.goods.size(); ++g)
             if (gs.goods[g] > 0)
                 std::printf("good: %s=%d\n", c.goods[g].id.c_str(), gs.goods[g]);
+        for (int f = 0; f < c.factions.size() && f < (int)gs.relations.size(); ++f)
+            if (gs.relations[f] != 0)
+                std::printf("relation: %s=%+d\n", c.factions[f].id.c_str(), gs.relations[f]);
         for (int t = 0; t < (int)gs.enterpriseAt.size() && t < (int)gs.towns.size(); ++t)
             if (c.enterprises.valid(gs.enterpriseAt[t]))
                 std::printf("enterprise: %s in %s\n",

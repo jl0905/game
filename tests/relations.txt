@@ -1,0 +1,11 @@
+# Relations (direction F1): beating a faction's party sours your standing
+# with them, and the score survives saves.
+seed 5
+hunt 120           # ride down the nearest hostile party
+block on
+tick 150           # the AI fights it out; hero guards
+state              # expect a "relation: <faction>=-5" line after victory
+save relations_test.owb
+load relations_test.owb
+state              # expect the relation line to survive the reload
+quit
