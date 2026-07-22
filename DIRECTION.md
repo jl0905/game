@@ -912,6 +912,12 @@ this is the feedback the flat numbers were waiting for.
   line (the existing `battleAllyIndex` path), and the papers expire at
   dawn. Saved/loaded, `merc:` in the harness dump, `tests/mercenary.txt`
   proves 7 men become 157.
+- [x] **V30. Iteration thirty — the political map, live.** Every
+  settlement radiates a soft gradient of its owner's colour (towns
+  widest, castles middle, villages a hamlet's halo) so empires read at
+  a glance and the glow moves with every conquest; hostile owners get a
+  hot inner ring. Plus an UNDER CONTRACT chip on the campaign HUD
+  quoting the hired company, its men, and the days left.
 
 ## Sequencing guidance
 

@@ -2491,6 +2491,22 @@ void CampaignDraw(const GameState& gs) {
 
     DrawRectangleLinesEx(Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, 6, DARKBROWN);
 
+    // The political map, live (V30): every settlement radiates its owner's
+    // colour — empires read at a glance and the glow moves with conquest.
+    // Towns throw the widest ring, castles a martial middle, villages a
+    // hamlet's halo; a war-torn owner's ring burns hotter at the rim.
+    for (const Town& t : gs.towns) {
+        if (!c.factions.valid(t.owner)) continue;
+        const float r = t.type == SettlementType::Town   ? 110.0f
+                      : t.type == SettlementType::Castle ?  85.0f : 60.0f;
+        Color glow = c.factions[t.owner].color;
+        DrawCircleGradient((int)t.pos.x, (int)t.pos.y, r,
+                           Fade(glow, 0.16f), Fade(glow, 0.0f));
+        if (AtWar(gs, t.owner, c.playerFaction))   // enemy land, marked
+            DrawCircleLines((int)t.pos.x, (int)t.pos.y, r * 0.55f,
+                            Fade(glow, 0.28f));
+    }
+
     for (const Town& t : gs.towns) {
         DrawEllipse((int)t.pos.x, (int)t.pos.y + 16, 30, 9, Fade(BLACK, 0.25f));
         switch (t.type) {
@@ -2893,6 +2909,16 @@ void CampaignDraw(const GameState& gs) {
 
     if (gs.player.totalTroops() == 0)
         ui::Text("Your warband is destroyed... press R to restart.", 10, 70, 20, RED);
+
+    // A running contract on the books (V29/V30): who marches with you and
+    // for how much longer.
+    if (gs.mercParty >= 0 && gs.mercDays > 0 &&
+        gs.mercParty < (int)gs.parties.size() &&
+        c.factions.valid(gs.parties[gs.mercParty].faction))
+        ui::Text(TextFormat("UNDER CONTRACT: %s — %.0f day(s), %d men",
+                            c.factions[gs.parties[gs.mercParty].faction].name.c_str(),
+                            gs.mercDays, gs.parties[gs.mercParty].totalTroops()),
+                 10, 94, 19, GOLD);
 
     EndDrawing();
 }
