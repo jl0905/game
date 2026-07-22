@@ -96,6 +96,7 @@ struct BattleView {
     bool    heroMounted = false;
     float   heroHorseHp = 0;
     const char* order = "Charge";   // current battlefield order (M2)
+    const char* formation = "Charge";   // current formation shape (V48)
     int     climbPoints = 0;        // siege climbing lanes incl. tower (N1)
     bool    raining = false;        // wet strings throw short (R1)
     bool    night   = false;        // darkness shortens bowshot (V44)

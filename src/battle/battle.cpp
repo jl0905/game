@@ -410,7 +410,7 @@ void Terrain::Draw() const {
 // Add a new shape by extending FormationType + FormationTarget; nothing else
 // needs to change. (An allied party fights on its own — it always charges.)
 // ===========================================================================
-enum class FormationType { Charge, Line, Square, Spread };
+enum class FormationType { Charge, Line, Square, Spread, ShieldWall };
 
 // Battlefield orders (M2): free engagement, screen the hero, or hold ground.
 enum class OrderType { Charge, Follow, Hold };
@@ -429,6 +429,7 @@ const char* FormationName(FormationType f) {
         case FormationType::Line:   return "Line";
         case FormationType::Square: return "Square";
         case FormationType::Spread: return "Spread";
+        case FormationType::ShieldWall: return "Shield Wall";
     }
     return "?";
 }
@@ -466,7 +467,9 @@ Vector3 FormationTarget(FormationType type, int ranks, Vector3 anchor, float yaw
     const int   cols = (count + r - 1) / r;                         // ceil
     const int   row  = (cols > 0) ? slot / cols : 0;
     const int   col  = (cols > 0) ? slot % cols : 0;
-    const float sp   = (type == FormationType::Spread) ? FORM_SPACING * 2.2f : FORM_SPACING;
+    const float sp   = type == FormationType::Spread     ? FORM_SPACING * 2.2f
+                     : type == FormationType::ShieldWall ? FORM_SPACING * 0.7f   // V48
+                                                         : FORM_SPACING;
     const float rx   = (col - (cols - 1) * 0.5f) * sp;
     const float fz   = FORM_FRONT - row * FORM_SPACING;
     return place(rx, fz);
@@ -938,6 +941,11 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
         dmg -= toHorse;
         if (s.horseHp <= 0) s.dehorsed = true;   // horse falls; rider fights on
     }
+    // A braced wall turns blades (V48): the player's own foot in Shield Wall
+    // soak a third of everything — arrows and steel alike. TODO(balance).
+    if (B.formation == FormationType::ShieldWall &&
+        s.team == Team::Player && !s.ally && !IsMounted(c, s))
+        dmg *= 0.65f;
     s.hp -= dmg;
     s.flash = 1.0f;
     if (s.hp <= 0) StainGround(s.pos);   // the field remembers (V12)
@@ -1165,6 +1173,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
             cdScale *= RALLY_COOLDOWN_SCALE;
         if (ranged && B.raining) cdScale *= 1.4f;   // slow, sodden nocking (R1)
         if (ranged && B.night)   cdScale *= 1.25f;  // aiming by moonlight (V44)
+        if (B.formation == FormationType::ShieldWall &&
+            s.team == Team::Player && !s.ally)
+            cdScale *= 1.3f;   // swinging from behind a braced shield (V48)
         cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon) * cdScale;
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
@@ -1177,8 +1188,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         }
     } else if (dist > (holding ? 0.4f : engage)) {
         // A dehorsed rider trudges at half pace (his boots, not his horse).
+        // A shield wall advances at a brace's pace (V48). TODO(balance).
+        const bool inWall = B.formation == FormationType::ShieldWall &&
+                            s.team == Team::Player && !s.ally && !IsMounted(c, s);
         const float ms = c.troops[s.troop].moveSpeed * PACE_MOVE_SCALE *
-                         (s.dehorsed ? 0.5f : 1.0f);
+                         (s.dehorsed ? 0.5f : 1.0f) * (inWall ? 0.6f : 1.0f);
         cmd.step    = Vector3Scale(Vector3Normalize(to), ms * dt);
         cmd.walkAdd = dt * 10.0f;
     }
@@ -1484,6 +1498,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_TWO))   in.formationSelect = 2;
     if (IsKeyPressed(KEY_THREE)) in.formationSelect = 3;
     if (IsKeyPressed(KEY_FOUR))  in.formationSelect = 4;
+    if (IsKeyPressed(KEY_FIVE))  in.formationSelect = 5;   // shield wall (V48)
     if (IsKeyPressed(KEY_F1))    in.order = 1;   // hold position (M2)
     if (IsKeyPressed(KEY_F2))    in.order = 2;   // follow me
     if (IsKeyPressed(KEY_F3))    in.order = 3;   // charge
@@ -1513,6 +1528,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             case 2: B.formation = FormationType::Line;   break;
             case 3: B.formation = FormationType::Square; break;
             case 4: B.formation = FormationType::Spread; break;
+            case 5: B.formation = FormationType::ShieldWall; break;   // V48
             default: break;
         }
         if (in.formationSelect >= 2 && B.order == OrderType::Charge)
@@ -1652,6 +1668,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 case 2: B.formation = FormationType::Line;   break;
                 case 3: B.formation = FormationType::Square; break;
                 case 4: B.formation = FormationType::Spread; break;
+                case 5: B.formation = FormationType::ShieldWall; break;   // V48
                 default: break;
             }
             if (in.formationSelect >= 2 && B.order == OrderType::Charge)
@@ -2620,7 +2637,7 @@ void BattleDraw(const Content& c) {
         DrawRectangle(0, GetScreenHeight() / 3 - 14,
                       GetScreenWidth(), 110, Fade(BLACK, 0.55f));
         ui::Title(d1, (GetScreenWidth() - w1) / 2, GetScreenHeight() / 3, 48, GOLD);
-        const char* d2 = "[1-4] shape   [ / ] ranks   [F1-F3] first order   "
+        const char* d2 = "[1-5] shape   [ / ] ranks   [F1-F3] first order   "
                          "SPACE sounds the horn   [N] send them in without you";
         ui::Text(d2, (GetScreenWidth() - ui::Measure(d2, 20)) / 2,
                  GetScreenHeight() / 3 + 62, 20, RAYWHITE);
@@ -2687,8 +2704,9 @@ void BattleDraw(const Content& c) {
         ui::Title("STRATEGY", px + 22, y, 30, RAYWHITE);                      y += 48;
         ui::Text("Formations", px + 22, y, 20, Fade(RAYWHITE, 0.75f));        y += 30;
         const FormationType opts[] = { FormationType::Charge, FormationType::Line,
-                                       FormationType::Square, FormationType::Spread };
-        for (int i = 0; i < 4; ++i) {
+                                       FormationType::Square, FormationType::Spread,
+                                       FormationType::ShieldWall };
+        for (int i = 0; i < 5; ++i) {
             const bool sel = (B.formation == opts[i]);
             ui::Text(TextFormat("[%d] %s%s", i + 1, FormationName(opts[i]), sel ? "   <" : ""),
                      px + 22, y, 22, sel ? GOLD : RAYWHITE);
@@ -2698,7 +2716,8 @@ void BattleDraw(const Content& c) {
         ui::Text(TextFormat("Ranks: %d", B.ranks), px + 22, y, 22, RAYWHITE);      y += 28;
         ui::Text("[ and ] : fewer / more ranks", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 34;
         ui::Text("Charge attacks; Line / Square /", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 20;
-        ui::Text("Spread hold that shape and fight.", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 30;
+        ui::Text("Spread hold that shape and fight.", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 20;
+        ui::Text("Shield Wall: braced, slow, hard.", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 30;
         ui::Text("~ closes this menu.", px + 22, y, 16, Fade(RAYWHITE, 0.7f));
     }
 
@@ -2808,6 +2827,7 @@ BattleView GetBattleView() {
     v.heroMounted = B.mounted;
     v.heroHorseHp = B.pHorseHp;
     v.order       = OrderName(B.order);
+    v.formation   = FormationName(B.formation);
     v.climbPoints = (int)g_climbs.size();
     v.raining     = B.raining;
     v.night       = B.night;

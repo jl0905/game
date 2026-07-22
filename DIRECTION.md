@@ -1030,6 +1030,12 @@ this is the feedback the flat numbers were waiting for.
   infantry by town+day. Cap respected, refusals in character, greyed
   outside towns ("they drink in towns"). With V46 wages the trade-off
   is honest: cheap to raise, costly to keep. `tests/sellswords.txt`.
+- [x] **V48. Iteration forty-eight — the shield wall.** Formation [5]
+  extends the documented FormationType hook: the player's own foot pack
+  shoulder-tight (×0.7 spacing), soak a third of ALL damage (arrows and
+  steel), march at ×0.6 and swing ×1.3 slower — braced, slow, hard.
+  Mounted men and allies are exempt; strategy menu lists it; `form=`
+  joins the battle dump. `tests/shieldwall.txt`.
 
 ## Sequencing guidance
 

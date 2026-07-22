@@ -1,0 +1,15 @@
+# Shield Wall (V48): formation 5 via the strategy menu. The player's own
+# foot pack shoulder-tight (0.7x spacing), soak a third of all damage,
+# march at 0.6x and swing 1.3x slower - braced, slow, hard. Expect
+# form=Shield Wall and order flipped to Follow me in the dump.
+seed 42
+hunt 90
+tick 4
+menu
+formation 5
+tick 1
+state
+block on
+tick 60
+state
+quit
