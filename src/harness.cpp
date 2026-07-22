@@ -372,7 +372,7 @@ struct Harness {
                                     ? c.weapons[v.heroWeapon].id.c_str() : "none";
             std::printf("battle: heroPos=(%.2f,%.2f,%.2f) yaw=%.3f pitch=%.3f "
                         "hp=%.0f/%.0f weapon=%s mounted=%d horse=%.0f allies=%d enemies=%d "
-                        "arrows=%d wall=%d climbs=%d rain=%d night=%d kills=%d horses=%d order=%s form=%s anchordist=%.1f over=%d won=%d foe=%s banners=%d/%d reserves=%d/%d duel=%d\n",
+                        "arrows=%d wall=%d climbs=%d rain=%d night=%d kills=%d horses=%d order=%s form=%s anchordist=%.1f over=%d won=%d foe=%s banners=%d/%d reserves=%d/%d duel=%d shots=%d\n",
                         v.heroPos.x, v.heroPos.y, v.heroPos.z, v.heroYaw, v.heroPitch,
                         v.heroHp, v.heroMaxHp, wname, v.heroMounted ? 1 : 0, v.heroHorseHp,
                         v.aliveAllies, v.aliveEnemies, v.arrowsInFlight, v.wallDefenders,
@@ -381,7 +381,8 @@ struct Harness {
                         v.over ? 1 : 0, v.won ? 1 : 0,
                         v.enemyName.empty() ? "?" : v.enemyName.c_str(),
                         v.bannerOwn ? 1 : 0, v.bannerEnemy ? 1 : 0,
-                        v.reservesOwn, v.reservesEnemy, v.dueling ? 1 : 0);
+                        v.reservesOwn, v.reservesEnemy, v.dueling ? 1 : 0,
+                        v.heroShots);
         }
         if (gs.screen == Screen::Settlement) {
             const TownView v = GetTownView();

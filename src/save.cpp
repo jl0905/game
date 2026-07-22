@@ -330,6 +330,7 @@ bool LoadGame(GameState& gs, const char* path) {
     std::getline(f, line);   // finish the header line
     Party* cur = nullptr;    // party whose "troop" lines we're reading
     int lastCcarryTroop = -1;   // first ccarry per companion clears the arsenal
+    bool sawCarry = false;      // first carry clears the hero arsenal (V117)
     while (std::getline(f, line)) {
         std::istringstream ss(line);
         std::string tag;
@@ -357,7 +358,14 @@ bool LoadGame(GameState& gs, const char* path) {
             std::string id;
             ss >> id;
             const int h = c.weapons.find(id.c_str());
-            if (h >= 0) gs.playerHero.loadout.addWeapon(h);
+            // First carry line replaces the default arsenal wholesale (V117) —
+            // append-on-load doubled the hero's weapons every save/load cycle.
+            if (h >= 0) {
+                if (!sawCarry) { gs.playerHero.loadout.weapons.clear(); sawCarry = true; }
+                gs.playerHero.loadout.addWeapon(h);
+                gs.playerHero.loadout.set(EquipSlot::Weapon,
+                                          gs.playerHero.loadout.weapons[0]);
+            }
         } else if (tag == "town") {
             int idx = -1; std::string fid;
             ss >> idx >> fid;

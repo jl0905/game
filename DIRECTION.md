@@ -1435,6 +1435,15 @@ this is the feedback the flat numbers were waiting for.
   honest note (arrows=0 in the scrum → arrows=4 in the same fixture).
   Foot archers still stand; the counter is corner them or spear the
   horse. `tests/parthian.txt`.
+- [x] **V117. Iteration one-seventeen — the hero draws a bow.** A ranged
+  weapon in the hero's hands turns hold-and-release into draw-and-loose:
+  the shaft flies where the camera looks (full pitch aim), a short draw
+  robs it of speed and damage, and it rides the same Arrow sim as every
+  AI archer. Crosshair ring tightens with the draw; `shots=` in the
+  battle dump. Also fixed a latent save bug: `carry` lines appended to
+  the default arsenal on load, doubling the hero's weapons every
+  save/load cycle — first carry now replaces wholesale (mirrors ccarry).
+  `tests/herobow.txt`.
 
 ## Sequencing guidance
 

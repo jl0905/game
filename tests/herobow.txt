@@ -1,0 +1,17 @@
+# Hero archery (V117): a ranged weapon in the hero's hands turns
+# hold-and-release into draw-and-loose - the shaft flies where the camera
+# looks, through the same Arrow sim as every AI archer. Fixture: the
+# outfight save with a Short Bow added to the hero's arsenal (carry bow).
+# Swap to the bow, loose one shaft, expect shots>=1 in the battle dump.
+load tests/fixtures/herobow.owb
+hunt 60
+state
+swap
+swap
+swap
+state
+attack up
+state
+tick 1
+state
+quit

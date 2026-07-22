@@ -725,6 +725,7 @@ struct BattleState {
     bool  dueling      = false;        // single combat (V102): armies hold
     float kickCd = 0;                  // the boot's recovery (V33)
     int   heroKicksLanded = 0;
+    int   heroArrowsLoosed = 0;   // hero archery (V117)
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
@@ -1947,10 +1948,32 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             B.windup = fminf(1.0f, B.windup + dt * 4.0f);
         if (in.attackRelease && B.readying) {
             B.readying = false;
+            const float draw = B.windup;   // how far the string was drawn
             B.windup = 0.0f;
             B.swing = 1.0f;
-            SfxPlay(Sfx::Swing);
             const int wh = B.setup.heroLoadout.get(EquipSlot::Weapon);
+            // ---- hero archery (V117): a ranged weapon in hand turns the
+            //      hold-and-release into draw-and-loose. The shaft flies
+            //      where the camera looks; a short draw robs it of power.
+            //      Same Arrow sim as every archer on the field.
+            if (c.weapons.valid(wh) && c.weapons[wh].isRanged()) {
+                const WeaponDef& bw = c.weapons[wh];
+                B.cooldown = WeaponCooldown(c, wh);
+                const Vector3 look = { sinf(B.yaw) * cosf(B.pitch),
+                                       sinf(B.pitch),
+                                       cosf(B.yaw) * cosf(B.pitch) };
+                Arrow a;
+                a.pos    = Vector3Add(B.pPos, (Vector3){ 0, 1.5f, 0 });
+                a.vel    = Vector3Scale(look, bw.missileSpeed
+                                                  * (0.55f + 0.45f * draw));
+                a.team   = Team::Player;
+                // The hero shoots like a hero too — same factor as melee.
+                a.damage = WeaponDamage(c, wh) * 2.5f * draw;  // TODO(balance)
+                B.arrows.push_back(a);
+                B.heroArrowsLoosed++;
+                SfxPlay(Sfx::Loose);
+            } else {
+            SfxPlay(Sfx::Swing);
             const float reach = WeaponReach(c, wh);
             B.cooldown = WeaponCooldown(c, wh);
             // The hero hits like a hero: the first user-playtest balance
@@ -2007,6 +2030,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                 }
             }
+            }   // end melee branch (V117)
         }
     } else if (B.over) {
         B.overTimer -= dt;
@@ -3138,9 +3162,20 @@ void BattleDraw(const Content& c) {
                  B.kickCd <= 0 ? GOLD : Fade(RAYWHITE, 0.5f));
     }
 
-    if (B.readying)
-        ui::Text(TextFormat("Readying swing: %s  (release!)", dirName[(int)B.attackDir]),
-                 18, 82, 16, ORANGE);
+    {
+        const int hw = B.setup.heroLoadout.get(EquipSlot::Weapon);
+        const bool bowInHand = c.weapons.valid(hw) && c.weapons[hw].isRanged();
+        if (B.readying && bowInHand) {
+            // Hero archery (V117): the ring tightens as the string comes back.
+            ui::Text("Drawing...  (release to loose!)", 18, 82, 16, ORANGE);
+            const float r = 26.0f - 14.0f * B.windup;
+            DrawCircleLines(GetScreenWidth() / 2, GetScreenHeight() / 2, r,
+                            B.windup >= 1.0f ? GOLD : Fade(RAYWHITE, 0.7f));
+        } else if (B.readying) {
+            ui::Text(TextFormat("Readying swing: %s  (release!)", dirName[(int)B.attackDir]),
+                     18, 82, 16, ORANGE);
+        }
+    }
 
     DrawLine(GetScreenWidth() / 2 - 8, GetScreenHeight() / 2, GetScreenWidth() / 2 + 8, GetScreenHeight() / 2, RAYWHITE);
     DrawLine(GetScreenWidth() / 2, GetScreenHeight() / 2 - 8, GetScreenWidth() / 2, GetScreenHeight() / 2 + 8, RAYWHITE);
@@ -3352,6 +3387,7 @@ BattleView GetBattleView() {
     v.heroKills   = B.heroKills;
     v.enemyName   = B.setup.enemyName;
     v.heroKicks   = B.heroKicksLanded;
+    v.heroShots   = B.heroArrowsLoosed;
     v.dueling     = B.dueling;
     v.heroShieldHp = B.pShieldHp;
     for (int r : B.reserveOwn)   v.reservesOwn += r;
