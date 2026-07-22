@@ -1324,6 +1324,12 @@ this is the feedback the flat numbers were waiting for.
   full overlay with the reign's numbers and the chronicle as far as
   it goes, over "[R] Raise a new banner". Same restart flow
   underneath, draw-only.
+- [x] **V98. Iteration ninety-eight — steel from a cfg.** Weapons join
+  the modding surface (`weapons.cfg`: class, damage, reach, ranged
+  params), loading before troops.cfg so the chain closes: the shipped
+  Warhammer is swung by the shipped Hammerman in Vaeling's levy — a
+  modded troop wielding a modded weapon, zero code.
+  `tests/modded_weapon.txt`.
 
 ## Sequencing guidance
 

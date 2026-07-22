@@ -658,6 +658,56 @@ void LoadDefaultContent(Content& c) {
     war(f_vaeling, f_patrol);          // ...and the old order's coasts alike;
                                        // they have no quarrel with you (yet).
 
+    // Moddable weapons (V98): assets/weapons.cfg appends arms after every
+    // built-in (no handle moves) and before troops.cfg, so modded troops
+    // can wield modded steel —
+    //   weapon <id> <Name_with_underscores> <class> <damage> <reach>
+    //          [<missileRange> <missileSpeed>]      (class ranged only)
+    // Classes: onehanded twohanded polearm axe ranged.
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/weapons.cfg"
+                : "assets/weapons.cfg",
+            "assets/weapons.cfg", "../assets/weapons.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name, cls;
+                float dmg = 10, reach = 0;
+                if (!(ss >> tag) || tag != "weapon") continue;
+                if (!(ss >> id >> name >> cls >> dmg >> reach)) continue;
+                if (c.weapons.find(id.c_str()) >= 0) continue;
+                for (char& ch : name) if (ch == '_') ch = ' ';
+                const WeaponClass wc =
+                    cls == "twohanded" ? WeaponClass::TwoHanded
+                    : cls == "polearm" ? WeaponClass::Polearm
+                    : cls == "axe"     ? WeaponClass::Axe
+                    : cls == "ranged"  ? WeaponClass::Ranged
+                                       : WeaponClass::OneHanded;
+                WeaponDef wd = Weapon(id.c_str(), name.c_str(), wc,
+                                      Color{ 190, 185, 175, 255 });
+                wd.damage = dmg;
+                if (reach > 0) wd.reach = reach;
+                if (wc == WeaponClass::Ranged) {
+                    float mr = 40, msp = 30;
+                    ss >> mr >> msp;
+                    wd.missileRange = mr;
+                    wd.missileSpeed = msp;
+                    wd.swingTime    = 2.0f;
+                }
+                c.weapons.add(wd);
+            }
+        }
+    }
+
     // Moddable troops (V85): assets/troops.cfg mints soldier types and
     // enlists them into rosters, no code:
     //   troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]

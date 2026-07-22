@@ -34,6 +34,10 @@ Wares: `good <id> <Name_with_underscores> <basePrice> <raw 0|1>` — raw goods a
 
 World events, one per line, joining the day rotation beside the built-in three: `event <id> <Name_with_underscores> <News_with_underscores_%s> <prosperityDelta> <stockDelta> <spawnParties> <poolDelta>`. `%s` in the news becomes the struck settlement's name.
 
+### assets/weapons.cfg (V98)
+
+Arms, one per line, loading before troops.cfg so modded troops can wield modded steel: `weapon <id> <Name_with_underscores> <class> <damage> <reach> [missileRange missileSpeed]`. Classes: `onehanded twohanded polearm axe ranged` (ranged takes the two extra numbers); reach 0 keeps the class default.
+
 ### assets/troops.cfg (V85)
 
 Mint soldier types and enlist them, no code. Two line kinds: `troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]` builds a type (standard cap/boots plus your body armour and weapon, sword sidearm); `recruit <faction-id> <troop-id>` appends it to a faction's levy so its towns recruit it and its lords field it. New types always append — existing handles and saves stay valid.

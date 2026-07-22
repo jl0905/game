@@ -1,0 +1,8 @@
+# Moddable weapons (V98): assets/weapons.cfg mints arms (class, damage,
+# reach, ranged params) before troops.cfg loads - so the shipped chain is a
+# modded troop swinging a modded weapon: the Hammerman wields the Warhammer
+# (axe class, damage 12) in Vaeling's levy. Fixture carries 2 by save id:
+# expect hammerman=2 in the roster.
+load tests/fixtures/hammer.owb
+state
+quit
