@@ -1,0 +1,14 @@
+# Any lord's audience (S4): hail a lord party on the open map (T) and get
+# the full court conversation - news, an oath to HIS crown, work. The
+# fixture stands the player beside Lord Aldric's patrol at (2400,750).
+load tests/fixtures/parley.owb
+fame 6 0
+parley
+state
+topic 3
+state
+topic 2
+state
+leave
+state
+quit

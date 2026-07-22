@@ -95,7 +95,7 @@ std::vector<std::string> GatherLines(const GameState& gs, bool guards) {
 std::string TrySwear(GameState& gs) {
     const Content& c = gs.content;
     if (gs.liege >= 0) return "You are already sworn.";
-    const int f = gs.towns[gs.currentSettlement].owner;
+    const int f = AudienceFaction(gs);   // hall owner, or the hailed lord's crown (S4)
     const bool kingdom = f >= 0 && f != c.playerFaction &&
                          c.factions[f].kingdom && !c.factions[f].lords.empty();
     const int standing = (f >= 0 && f < (int)gs.relations.size()) ? gs.relations[f] : 0;
@@ -138,19 +138,30 @@ std::string TryQuest(GameState& gs) {
     const Content& c = gs.content;
     if (gs.activeQuest >= 0) return "Finish the task you carry first.";
     if (c.quests.size() == 0) return "No work today.";
-    const int q = (gs.currentSettlement + gs.day) % c.quests.size();
+    // A road parley (S4) has no hall: the lord speaks for the nearest one.
+    int src = gs.currentSettlement;
+    if (src < 0) {
+        float bd = 1e9f;
+        for (int t = 0; t < (int)gs.towns.size(); ++t) {
+            const float d = Vector2Distance(gs.player.pos, gs.towns[t].pos);
+            if (d < bd) { bd = d; src = t; }
+        }
+        if (src < 0) return "No work today.";
+    }
+    const int q = (src + gs.day) % c.quests.size();
     const QuestDef& qd = c.quests[q];
     gs.activeQuest  = q;
-    gs.questFaction = gs.towns[gs.currentSettlement].owner;
+    gs.questFaction = AudienceFaction(gs) >= 0 ? AudienceFaction(gs)
+                                               : gs.towns[src].owner;
     gs.questTown    = -1;
     gs.questProgress = 0;
     if (qd.type == QuestType::DeliverGrain) {
         // Deliver to the nearest settlement you can actually walk into.
         float bestD = 1e9f;
         for (int t = 0; t < (int)gs.towns.size(); ++t) {
-            if (t == gs.currentSettlement) continue;
+            if (t == src) continue;
             if (AtWar(gs, gs.towns[t].owner, c.playerFaction)) continue;
-            const float d = Vector2Distance(gs.towns[gs.currentSettlement].pos,
+            const float d = Vector2Distance(gs.towns[src].pos,
                                             gs.towns[t].pos);
             if (d < bestD) { bestD = d; gs.questTown = t; }
         }
@@ -615,6 +626,9 @@ void TownTalkLord(GameState& gs) {
     const int owner = gs.towns[gs.currentSettlement].owner;
     if (owner == c.playerFaction)
         gs.dialogueName = "Your Castellan";
+    else if (!gs.towns[gs.currentSettlement].fiefLord.empty())   // the seat's own
+        gs.dialogueName = TextFormat(                            // lord holds court (S4)
+            "Lord %s", gs.towns[gs.currentSettlement].fiefLord.c_str());
     else if (c.factions.valid(owner) && !c.factions[owner].lords.empty())
         gs.dialogueName = TextFormat("Lord %s", c.factions[owner].lords[0].c_str());
     else
@@ -655,6 +669,8 @@ void TownTalkNearest(GameState& gs) {
 // court's answer — shared by the dialogue topic and any future hotkey.
 std::string TryGrantFief(GameState& gs) {
     const Content& c = gs.content;
+    if (gs.currentSettlement < 0)   // a road parley (S4) grants nothing
+        return "Seats are granted from their own halls.";
     Town& t = gs.towns[gs.currentSettlement];
     if (!gs.crowned) return "Only a crowned ruler grants fiefs.";
     if (t.owner != c.playerFaction) return "This seat is not yours to give.";
@@ -772,9 +788,15 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
             }
     }
     if (in.leaveSettlement) {
-        gs.screen = Screen::Settlement;
-        gs.dialogueLines.clear();
-        if (IsWindowReady()) DisableCursor();
+        if (gs.parleyParty >= 0) {   // a road parley returns to the road (S4)
+            gs.parleyParty = -1;
+            gs.screen = Screen::Campaign;
+            gs.dialogueLines.clear();
+        } else {
+            gs.screen = Screen::Settlement;
+            gs.dialogueLines.clear();
+            if (IsWindowReady()) DisableCursor();
+        }
     }
 }
 
@@ -809,13 +831,14 @@ void DialogueDraw(const GameState& gs) {
                      Fade(GOLD, 0.85f));
             leaveY += 30;
         }
-        if (gs.feastTown == gs.currentSettlement && gs.feastDays > 0 &&
+        if (gs.currentSettlement >= 0 &&
+            gs.feastTown == gs.currentSettlement && gs.feastDays > 0 &&
             gs.spouseFaction < 0) {   // a feast's court makes matches (M5)
             ui::Text("[5] I seek a marriage alliance.", x, leaveY, 22,
                      Fade(PINK, 0.85f));
             leaveY += 30;
         }
-        if (gs.liege >= 0 &&
+        if (gs.liege >= 0 && gs.currentSettlement >= 0 &&
             gs.towns[gs.currentSettlement].owner == gs.liege) {   // O6
             ui::Text("[6] The crown should be mine.", x, leaveY, 22,
                      Fade(RED, 0.85f));

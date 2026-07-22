@@ -601,6 +601,13 @@ int RunScript(const char* path) {
                 TownTalkLord(h.gs);
                 h.gs.screen = Screen::Dialogue;
             }
+        } else if (cmd == "parley") {
+            // Hail the nearest lord party on the map (S4).
+            CampaignInput cin; cin.parley = true;
+            h.Step(cin, BattleInput{});
+            std::printf("parley: %s\n",
+                        h.gs.screen == Screen::Dialogue ? h.gs.dialogueName.c_str()
+                                                        : h.gs.resultText.c_str());
         } else if (cmd == "talk") {
             // Open a conversation with the nearest NPC (skips the walk-up).
             if (h.gs.screen == Screen::Settlement) {

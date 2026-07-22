@@ -553,9 +553,12 @@ full career, and the last Warband textures.
   The battle report counts them; the ledger notes returns. Verified
   under fire: a defeat's arithmetic (fallen halved into the cart) checks
   exactly even mid-chaos. Flat TODO(balance).
-- [ ] **S4. Any lord's audience.** Court the lord actually present — talk
-  to a lord party adjacent on the map (parley), and courts name whoever
-  garrisons there, defectors included.
+- [x] **S4. Any lord's audience.** Shipped: press T on the map to hail the
+  nearest non-hostile lord party within 30u — the full court dialogue on
+  the road (news, oath to HIS crown via `AudienceFaction`, work from the
+  nearest hall; seat-grants politely refused, hostile lords "talk with
+  steel"). Castle courts now name the seat's own fief-holder, defectors
+  included. Harness `parley`; `tests/parley.txt`.
 - [x] **S5. A ruler's purse audit.** Shipped: one `ComputeLedger` quoted by
   the day tick, party screen, kingdom ledger and a new harness `purse:`
   line — income + enterprises in; troop wages, landless lords' 10/day
@@ -875,6 +878,13 @@ this is the feedback the flat numbers were waiting for.
   and the hero's landed hits play a thud whose volume scales with the
   damage that actually got through armour — a glance taps, an overhead
   through plate lands like a hammer. `foe=` in the harness battle dump.
+- [x] **V25. Iteration twenty-five — the road audience (S4 closed).** The
+  last pre-V backlog item ships: T hails the nearest friendly lord party
+  on the map into the full court dialogue — swear to the crown whose lord
+  actually stands before you, take work from the nearest hall, and castle
+  courts now name the seat's own fief-holder. The dialogue state machine
+  grew a `parleyParty` route so every settlement-bound topic degrades
+  gracefully on the road.
 
 ## Sequencing guidance
 

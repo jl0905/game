@@ -1365,6 +1365,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     in.restart   = IsKeyPressed(KEY_R);
     in.crown     = IsKeyPressed(KEY_K);
     in.rallyLords = IsKeyPressed(KEY_J);
+    in.parley     = IsKeyPressed(KEY_T);   // hail a lord on the road (S4)
     in.openParty = IsKeyPressed(KEY_P);
     in.openInventory = IsKeyPressed(KEY_I);
     in.openCharacter = IsKeyPressed(KEY_C);
@@ -1410,6 +1411,32 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         gs.lordsRallyPos  = gs.player.pos;
         gs.lordsRallyDays = 3.0f;   // TODO(balance)
         gs.resultText = "Your lords ride to your banner.";
+    }
+
+    // ---- hail a lord on the road (S4): parley with the nearest lord party ----
+    if (in.parley && gs.screen == Screen::Campaign) {
+        constexpr float PARLEY_RANGE = 30.0f;   // TODO(balance): hailing distance
+        int best = -1; float bestD = PARLEY_RANGE;
+        bool sawHostile = false;
+        for (int i = 0; i < (int)gs.parties.size(); ++i) {
+            const Party& p = gs.parties[i];
+            if (!p.alive || p.lord.empty()) continue;
+            const float d = Vector2Distance(gs.player.pos, p.pos);
+            if (d >= bestD) continue;
+            if (AtWar(gs, p.faction, c.playerFaction)) { sawHostile = true; continue; }
+            best = i; bestD = d;
+        }
+        if (best >= 0) {
+            gs.parleyParty  = best;
+            gs.dialogueName = TextFormat("Lord %s", gs.parties[best].lord.c_str());
+            gs.dialogueLord = true;
+            gs.dialogueLines.clear();
+            gs.dialogueLines.push_back("Well met on the road, captain. Speak.");
+            gs.screen = Screen::Dialogue;
+        } else {
+            gs.resultText = sawHostile ? "The only lord in hail is an enemy. He talks with steel."
+                                       : "No lord's banner within hail.";
+        }
     }
 
     // ---- claim your own crown (F3) ----
@@ -2789,8 +2816,8 @@ void CampaignDraw(const GameState& gs) {
     // Every door on one line (T7): the keys players kept not finding.
     {
         const char* keys = "[Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
-                           "[B] ledger   [O]ptions   [F5-F7] quicksave   "
-                           "[Esc,Esc] save+quit   (load: title, L)";
+                           "[B] ledger   [T] hail a lord   [O]ptions   "
+                           "[F5-F7] quicksave   [Esc,Esc] save+quit";
         DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
                       Fade(BLACK, 0.88f));
         DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,

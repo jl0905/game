@@ -48,6 +48,7 @@ struct CampaignInput {
 
     bool    crown    = false;         // claim your own crown on the map (K)
     bool    rallyLords = false;       // crowned: call your lords to the banner (J)
+    bool    parley = false;           // hail the nearest lord party on the map (S4, T)
     bool    raiseLord = false;        // raise a lord at your settlement (L)
 
     // party screen

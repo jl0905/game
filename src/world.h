@@ -182,6 +182,8 @@ struct GameState {
     std::string              dialogueName;
     std::vector<std::string> dialogueLines;
     bool                     dialogueLord = false;   // court audience (K2): oath/work topics
+    int                      parleyParty  = -1;      // lord party in a map parley (S4);
+                                                     // -1 = a settlement audience
 
     // Active quest (F4): one at a time. `questTown` is the delivery target
     // for DeliverGrain; `questFaction` earns the relation reward.
@@ -394,6 +396,16 @@ inline int& LordOpinion(GameState& gs, const std::string& name) {
 
 inline int EffectiveLordOpinion(GameState& gs, const std::string& name) {
     return LordOpinion(gs, name) + gs.honor;
+}
+
+// Whose court is the player standing in (S4)? A map parley speaks for the
+// lord's own faction; a settlement audience for the town's owner. -1 = none.
+inline int AudienceFaction(const GameState& gs) {
+    if (gs.parleyParty >= 0 && gs.parleyParty < (int)gs.parties.size())
+        return gs.parties[gs.parleyParty].faction;
+    if (gs.currentSettlement >= 0 && gs.currentSettlement < (int)gs.towns.size())
+        return gs.towns[gs.currentSettlement].owner;
+    return -1;
 }
 
 // A hero attribute by index (V14): 0 str, 1 agi, 2 int, 3 cha — the
