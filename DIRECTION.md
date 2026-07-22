@@ -1418,6 +1418,11 @@ this is the feedback the flat numbers were waiting for.
   through his horse ("A set spear stops your charge"). Pikes and the
   Free Company finally mean what they look like; cavalry must flank
   or soften with arrows first.
+- [x] **V114. Iteration one-fourteen — the war drums.** A procedural
+  deep-skin pattern (boom … boom-boom …) loops under battles, silent
+  through intro and deployment, swelling with how much of the field
+  still fights, gone when it's decided. Synthesized like every other
+  sound — no assets, headless no-op.
 
 ## Sequencing guidance
 

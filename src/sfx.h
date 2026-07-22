@@ -23,3 +23,7 @@ void SfxAmbience(float volume);
 // Rain bed: a steady patter loop for battles fought in the rain. Call every
 // frame it should sound (volume 0 lets it die out). Headless no-op.
 void SfxRain(float volume);
+
+// War drums (V114): a deep skin pattern looped under battles, volume
+// swelling with the fight. Headless no-op.
+void SfxDrums(float volume);

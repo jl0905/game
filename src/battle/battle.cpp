@@ -2590,6 +2590,11 @@ void BattleDraw(const Content& c) {
     // Field ambience swells with the size of the fight still standing.
     SfxAmbience(0.12f + 0.4f * fminf((B.aliveAllies + B.aliveEnemies) / 250.0f, 1.0f));
     SfxRain(B.raining ? 0.35f : 0.0f);   // the patter sits under the field din
+    // The drums (V114): silent through the intro, swelling with how much of
+    // the field still fights, gone when it is decided.
+    SfxDrums(!B.over && B.introTimer <= 0 && !B.deploying && !B.setup.arena
+                 ? 0.10f + 0.22f * fminf((B.aliveAllies + B.aliveEnemies) / 200.0f, 1.0f)
+                 : 0.0f);
 
     // ---------- camera ----------
     B.shake = fmaxf(0.0f, B.shake - GetFrameTime() * 3.0f);

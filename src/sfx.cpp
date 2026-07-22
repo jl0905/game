@@ -12,6 +12,7 @@ constexpr int   NSFX   = 9;
 Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
 Sound  g_wind = {};
+Sound  g_drums = {};
 Sound  g_rain = {};
 Sound  g_lute = {};       // tavern minstrel loop (N5)
 Sound  g_music = {};      // campaign drone bed (N5)
@@ -162,6 +163,19 @@ void SfxInit() {
                 sinf(2 * PI * 196.0f * t) * 0.12f) * breath * 0.5f;
     });
 
+    // War drums (V114): a 2.4-second pattern of deep skins — boom, rest,
+    // boom-boom, rest — looped under battles and swelling with the fight.
+    g_drums = Synth(2.4f, [](float t) {
+        float v = 0;
+        for (const float st : { 0.0f, 0.9f, 1.2f, 1.8f }) {
+            const float lt = t - st;
+            if (lt > 0 && lt < 0.5f)
+                v += (sinf(2 * PI * (58.0f - 40.0f * lt) * lt) +
+                      Noise() * 0.15f * expf(-lt * 30.0f)) * expf(-lt * 9.0f);
+        }
+        return v * 0.7f;
+    });
+
     g_ready = true;
 }
 
@@ -169,6 +183,7 @@ void SfxShutdown() {
     if (!g_ready) return;
     for (Sound& s : g_sounds) UnloadSound(s);
     UnloadSound(g_wind);
+    UnloadSound(g_drums);
     UnloadSound(g_rain);
     UnloadSound(g_lute);
     UnloadSound(g_music);
@@ -187,6 +202,12 @@ void SfxRain(float volume) {
     if (!g_ready) return;
     SetSoundVolume(g_rain, volume);
     if (volume > 0.01f && !IsSoundPlaying(g_rain)) PlaySound(g_rain);
+}
+
+void SfxDrums(float volume) {   // the war drums (V114)
+    if (!g_ready) return;
+    SetSoundVolume(g_drums, volume);
+    if (volume > 0.01f && !IsSoundPlaying(g_drums)) PlaySound(g_drums);
 }
 
 void SfxMinstrel(float volume) {
