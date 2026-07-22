@@ -579,6 +579,7 @@ struct Soldier {
     float   stun = 0;          // hit-stun (T): reeling, can't move or swing
     float   stunImmune = 0;    // post-stun grace — an opening, not a lock
     bool    looted = false;    // his weapon already taken up (V39)
+    bool    champion = false;  // the enemy lord in person (V101)
     int     guardDir = -1;     // reactive shield guard (T): covers where last
                                // struck; -1 = the old positional habit
     float   nerve = NERVE_MAX; // courage left (K4); at 0 the soldier breaks
@@ -719,6 +720,8 @@ struct BattleState {
     // the line from across the field; his death shakes his side's nerve and
     // the banner passes to the nearest living hand.
     int   bannerIdx[2] = { -1, -1 };   // [0]=player side, [1]=enemy side
+    int   championIdx  = -1;           // the enemy lord in person (V101)
+    bool  lordFell     = false;
     float kickCd = 0;                  // the boot's recovery (V33)
     int   heroKicksLanded = 0;
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
@@ -1506,6 +1509,26 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
         for (Soldier& s : B.soldiers)
             if (s.team == Team::Player && !s.ally) s.nerve *= 0.65f;
 
+    // The lord takes the field in person (V101): the toughest enemy on the
+    // grass becomes him — two and a half men's health under one plume.
+    B.championIdx = -1;
+    if (!setup.enemyLordName.empty() && !setup.arena) {
+        int best = -1;
+        float bestHp = 0;
+        for (int i = 0; i < (int)B.soldiers.size(); ++i)
+            if (B.soldiers[i].team == Team::Enemy &&
+                B.soldiers[i].maxHp > bestHp) {
+                bestHp = B.soldiers[i].maxHp;
+                best = i;
+            }
+        if (best >= 0) {
+            B.soldiers[best].champion = true;
+            B.soldiers[best].maxHp *= 2.5f;   // TODO(balance)
+            B.soldiers[best].hp = B.soldiers[best].maxHp;
+            B.championIdx = best;
+        }
+    }
+
     // Raise the standards (V32): the first man of each side carries the
     // banner. Bouts in the ring fight without colours.
     B.bannerIdx[0] = B.bannerIdx[1] = -1;
@@ -1924,6 +1947,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             out.enemyLosses  = ComputeEnemyLosses();
             // A won field's strays are yours to round up (V22).
             out.horsesTaken = B.won ? (int)B.looseHorses.size() : 0;
+            // (V101) The mid-fight check misses a lord who dies on the
+            // battle's final tick — ask the corpse directly as well.
+            out.slewLord = B.won &&
+                           (B.lordFell ||
+                            (B.championIdx >= 0 &&
+                             B.championIdx < (int)B.soldiers.size() &&
+                             B.soldiers[B.championIdx].hp <= 0));
             // ...and the men who yielded march in your train (V42).
             out.enemySurrendered.assign(c.troops.size(), 0);
             if (B.won)
@@ -2005,7 +2035,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     if (B.surrendered.empty())
                         B.surrendered.assign(256, 0);   // per-troop, roomy
                     for (Soldier& s : B.soldiers)
-                        if (s.hp > 0 && !s.escaped && s.team == Team::Enemy) {
+                        if (s.hp > 0 && !s.escaped && s.team == Team::Enemy &&
+                            !s.champion) {   // a lord never yields with the mob (V101)
                             s.escaped = true;   // off the field, but not free
                             if (s.troop >= 0 && s.troop < (int)B.surrendered.size())
                                 B.surrendered[s.troop]++;
@@ -2054,6 +2085,20 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 wave(B.reserveOwn,   Team::Player, false, -55.0f);
                 wave(B.reserveAlly,  Team::Player, true,  -60.0f);
                 wave(B.reserveEnemy, Team::Enemy,  false,  55.0f);
+            }
+
+            // The lord falls (V101): the whole host feels the heart go out
+            // of the fight — a nerve shock twice a banner's.
+            if (!B.lordFell && B.championIdx >= 0 &&
+                B.soldiers[B.championIdx].hp <= 0) {
+                B.lordFell = true;
+                for (Soldier& w : B.soldiers)
+                    if (w.hp > 0 && w.team == Team::Enemy)
+                        w.nerve -= NERVE_ALLY_DEATH * 2.0f;
+                B.routBanner = 2.5f;
+                B.routText   = "THE LORD HIMSELF HAS FALLEN!";
+                Feed("The enemy lord falls");
+                SfxPlay(Sfx::Knell, 0.8f);
             }
 
             // The standard falls (V32): the whole side feels it, and the
@@ -2626,6 +2671,13 @@ void BattleDraw(const Content& c) {
             riderPos.y += 1.25f;
             pose.walkPhase = 0;   // the rider sits; the horse does the running
         }
+        // The lord in person wears his circlet (V101), like the crowned hero.
+        if (s.champion && s.hp > 0)
+            DrawCylinder({ s.pos.x, s.pos.y + 2.1f + (IsMounted(c, s) ? 1.25f : 0.0f),
+                           s.pos.z },
+                         0.25f, 0.27f, 0.07f, 8,
+                         Fade(Color{ 255, 210, 80, 255 }, 0.9f));
+
         // Implicit health (U2): no floating bars — a hurt man reads from his
         // body, darkening and bloodying as the fight wears him down.
         const float hf = Clamp(s.hp / s.maxHp, 0.0f, 1.0f);

@@ -1058,6 +1058,16 @@ static void ApplyBattleResult(GameState& gs) {
             gs.prisoners[t] += took;
             captives += took;
         }
+        // A lord slain in the press pays in fame (V101). TODO(balance).
+        if (gs.battleSlewLord) {
+            gs.renown += 3;
+            gs.resultText += "   The lord himself fell: +3 renown";
+            if (enemy && !enemy->lord.empty())
+                Chronicle(gs, TextFormat("Lord %s fell in battle against you.",
+                                         enemy->lord.c_str()));
+            gs.battleSlewLord = false;
+        }
+
         // Men who threw down their arms pass whole into the train (V42).
         int yielded = 0;
         for (int t = 0; t < (int)gs.battleYielded.size() && t < gs.content.troops.size(); ++t) {

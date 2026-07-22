@@ -1,0 +1,12 @@
+# The lord in person (V101): fighting a lord party puts HIM on the field -
+# the toughest enemy becomes a 2.5x-health champion under a gold circlet.
+# His fall shocks his host's nerve at twice a banner's, never yields with
+# the mob, and a won field pays +3 renown with a chronicle line. Fixture:
+# a 5-man Lord Gorak band beside the warband. Expect "The lord himself
+# fell: +3 renown" in the victory line.
+load tests/fixtures/lordfall.owb
+walk 1 0.5 1
+block on
+tick 90
+state
+quit

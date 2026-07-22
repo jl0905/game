@@ -339,6 +339,7 @@ struct GameState {
     std::vector<int> enemyLosses;                // enemy dead, for the battle report
     int              battleHorses = 0;           // strays rounded up on a won field (V22)
     std::vector<int> battleYielded;              // men who threw down arms (V42)
+    bool             battleSlewLord = false;     // the lord fell in the fight (V101)
     std::string      resultText;
 
     // Aftermath card: filled when a battle result is applied, drawn as a

@@ -35,6 +35,9 @@ struct BattleSetup {
     // Who stands against you (V24): named at the horn — a lord, a crown's
     // war-band, or a garrison. Presentation only.
     std::string enemyName;
+    // The lord himself (V101): when set, he takes the field in person — a
+    // champion among his men, and a prize.
+    std::string enemyLordName;
 
     // The destrier (V82): the hero's horse carries double hit points.
     bool warhorse = false;
@@ -91,6 +94,8 @@ struct BattleOutcome {
     std::vector<int> allyLosses;     // losses among allyTroops (empty if none)
     std::vector<int> enemyLosses;    // enemy dead, parallel to Content::troops
     int              horsesTaken = 0;   // masterless mounts on a won field (V22)
+    bool             slewLord = false;  // the enemy lord fell to ANYONE's hand
+                                        // on a won field (V101)
     std::vector<int> enemySurrendered;  // men who yielded, per troop (V42) —
                                         // the campaign takes them prisoner
 };

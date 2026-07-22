@@ -64,6 +64,7 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         const Party& foe = gs.parties[gs.battlePartyIndex];
         s.enemyTroops = foe.troopCounts;
         s.campaignPos = gs.player.pos;
+        s.enemyLordName = foe.lord;   // he rides in person (V101)
         s.enemyName   = !foe.lord.empty()
             ? "LORD " + foe.lord
             : (foe.faction >= 0 && foe.faction < (int)gs.content.factions.size()

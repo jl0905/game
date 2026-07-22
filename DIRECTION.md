@@ -1342,6 +1342,13 @@ this is the feedback the flat numbers were waiting for.
   Written once per ending, on victory and on the warband's
   destruction alike. `tests/saga.txt` grinds the doomed fixture to a
   wipe and finds the artifact.
+- [x] **V101. Iteration one-oh-one — the lord in person.** Fighting a
+  lord party puts HIM on the grass: the toughest enemy becomes a
+  ×2.5-health champion under a gold circlet who never yields with the
+  mob. His fall shocks the host at twice a banner's weight, feeds the
+  kill feed, and a won field pays +3 renown plus a chronicle line.
+  Found and fixed a last-tick blind spot (a lord dying as the battle
+  ends now still counts). `tests/lord_champion.txt`.
 
 ## Sequencing guidance
 
