@@ -38,6 +38,12 @@ namespace townmenu {
 inline constexpr int Y = 168, ROW_H = 34, ROWS = 10, X_HALF = 260;
 }
 void DialogueUpdate(GameState& gs, const CampaignInput& in);
+
+// Windowed mouse support for the dialogue screen (V27): DialogueDraw records
+// where it drew each topic row; this hit-tests them. Returns the menuChoice
+// (1..9), DLG_LEAVE for the take-your-leave row, or 0 for no hit.
+inline constexpr int DLG_LEAVE = -9;
+int DialogueOptionAt(Vector2 mouse);
 void DialogueDraw(const GameState& gs);
 
 // Read-only scene info for harnesses / debugging.

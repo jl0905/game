@@ -891,6 +891,12 @@ this is the feedback the flat numbers were waiting for.
   rebellion already read, so gold now buys a following. Audiences show
   the lord's live opinion under his name, and a parley greeting warms or
   chills with it. `tests/court_gift.txt`.
+- [x] **V27. Iteration twenty-seven — dialogue topics are buttons.** The
+  audience screen's topics now click: DialogueDraw records each row it
+  draws, a gather-side hit-test (`DialogueOptionAt`) turns clicks into
+  the same menuChoice intents the keys send, and the row under the mouse
+  glows gold. Keyboard still works; headless play untouched (the hit
+  cache only fills when drawing).
 
 ## Sequencing guidance
 

@@ -1169,6 +1169,11 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_FIVE))  in.menuChoice = 5;   // marriage suit (M5)
         if (IsKeyPressed(KEY_SIX))   in.menuChoice = 6;   // rebellion (O6)
         if (IsKeyPressed(KEY_SEVEN)) in.menuChoice = 7;   // a lord's gift (V26)
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {    // topics are buttons (V27)
+            const int ch = DialogueOptionAt(GetMousePosition());
+            if (ch > 0)               in.menuChoice = ch;
+            else if (ch == DLG_LEAVE) in.leaveSettlement = true;
+        }
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
         return in;
     }

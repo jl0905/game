@@ -741,6 +741,21 @@ std::string TryRebel(GameState& gs) {
     return gs.resultText;
 }
 
+namespace {
+// Where DialogueDraw put its topic rows this frame (V27) — windowed-only
+// shared state between draw and the gather-side hit-test.
+std::vector<std::pair<int, int>> g_dlgHits;   // {rowY, menuChoice}
+int g_dlgHitX = 0;
+}   // namespace
+
+int DialogueOptionAt(Vector2 mouse) {
+    for (const auto& h : g_dlgHits)
+        if (mouse.x >= g_dlgHitX - 8 && mouse.x < g_dlgHitX + 660 &&
+            mouse.y >= h.first - 3 && mouse.y < h.first + 27)
+            return h.second;
+    return 0;
+}
+
 void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     if (in.menuChoice == 1) {   // "What news of the war?"
         const bool castle = gs.currentSettlement >= 0 &&
@@ -843,41 +858,40 @@ void DialogueDraw(const GameState& gs) {
         y += 32;
     }
 
-    ui::Text("[1] What news of the war?", x, y + 30, 22, Fade(RAYWHITE, 0.85f));
+    // Topic rows are buttons (V27): each row drawn is recorded for the
+    // gather-side hit-test, and the row under the mouse glows.
+    g_dlgHits.clear();
+    const Vector2 mp = GetMousePosition();
+    int optY = y + 30;
+    auto option = [&](int choice, const char* text, Color col) {
+        const bool hover = mp.x >= x - 8 && mp.x < x + 660 &&
+                           mp.y >= optY - 3 && mp.y < optY + 27;
+        if (hover)
+            DrawRectangle(x - 8, optY - 3, 660, 30, Fade(GOLD, 0.14f));
+        ui::Text(text, x, optY, 22, hover ? RAYWHITE : col);
+        g_dlgHits.push_back({ optY, choice });
+        optY += 30;
+    };
+    option(1, "[1] What news of the war?", Fade(RAYWHITE, 0.85f));
     if (gs.dialogueLord) {
-        ui::Text("[2] I would swear my sword to this crown.", x, y + 60, 22,
-                 Fade(RAYWHITE, 0.85f));
-        ui::Text("[3] Have you work for my warband?", x, y + 90, 22,
-                 Fade(RAYWHITE, 0.85f));
-        int leaveY = y + 120;
-        if (!gs.audienceLord.empty()) {   // court him with a gift (V26)
-            ui::Text("[7] A gift for your household. (100 gold)", x, leaveY, 22,
-                     Fade(GOLD, 0.85f));
-            leaveY += 30;
-        }
-        if (gs.crowned) {   // a ruler's court has a ruler's business (M3)
-            ui::Text("[4] I grant this seat to a lord of mine.", x, leaveY, 22,
-                     Fade(GOLD, 0.85f));
-            leaveY += 30;
-        }
+        option(2, "[2] I would swear my sword to this crown.", Fade(RAYWHITE, 0.85f));
+        option(3, "[3] Have you work for my warband?", Fade(RAYWHITE, 0.85f));
+        if (!gs.audienceLord.empty())   // court him with a gift (V26)
+            option(7, "[7] A gift for your household. (100 gold)", Fade(GOLD, 0.85f));
+        if (gs.crowned)   // a ruler's court has a ruler's business (M3)
+            option(4, "[4] I grant this seat to a lord of mine.", Fade(GOLD, 0.85f));
         if (gs.currentSettlement >= 0 &&
             gs.feastTown == gs.currentSettlement && gs.feastDays > 0 &&
-            gs.spouseFaction < 0) {   // a feast's court makes matches (M5)
-            ui::Text("[5] I seek a marriage alliance.", x, leaveY, 22,
-                     Fade(PINK, 0.85f));
-            leaveY += 30;
-        }
+            gs.spouseFaction < 0)   // a feast's court makes matches (M5)
+            option(5, "[5] I seek a marriage alliance.", Fade(PINK, 0.85f));
         if (gs.liege >= 0 && gs.currentSettlement >= 0 &&
-            gs.towns[gs.currentSettlement].owner == gs.liege) {   // O6
-            ui::Text("[6] The crown should be mine.", x, leaveY, 22,
-                     Fade(RED, 0.85f));
-            leaveY += 30;
-        }
-        ui::Text("[Esc / E] Take your leave", x, leaveY, 20, Fade(RAYWHITE, 0.6f));
+            gs.towns[gs.currentSettlement].owner == gs.liege)   // O6
+            option(6, "[6] The crown should be mine.", Fade(RED, 0.85f));
     } else {
-        ui::Text("[2] Any work for a warband?", x, y + 60, 22, Fade(RAYWHITE, 0.85f));
-        ui::Text("[Esc / E] Take your leave", x, y + 90, 20, Fade(RAYWHITE, 0.6f));
+        option(2, "[2] Any work for a warband?", Fade(RAYWHITE, 0.85f));
     }
+    option(DLG_LEAVE, "[Esc / E] Take your leave", Fade(RAYWHITE, 0.6f));
+    g_dlgHitX = x;
     EndDrawing();
 }
 
