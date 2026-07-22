@@ -3143,6 +3143,25 @@ void CampaignDraw(const GameState& gs) {
                      : "THE MEN ARE STARVING - they walk home at every dawn",
                  10, 122, 20, RED);
 
+    // Riding inside the storm (V64): the rain reaches the map screen —
+    // the same streaks the battle draws, plus a leaden dim.
+    if (InStorm(gs, gs.player.pos)) {
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                      Fade(Color{ 40, 48, 64, 255 }, 0.18f));
+        const float rt = (float)GetTime();
+        const int w = GetScreenWidth(), h = GetScreenHeight();
+        for (int i = 0; i < 120; ++i) {
+            unsigned int hh = (unsigned)i * 2654435761u;
+            hh ^= hh >> 15;
+            const float x = (float)(hh % (unsigned)w);
+            const float speed = 560.0f + (hh & 0xFF);
+            const float ry = fmodf((float)((hh >> 8) % (unsigned)h) + rt * speed,
+                                   (float)(h + 40)) - 20.0f;
+            DrawLineEx({ x, ry }, { x - 3, ry + 14 }, 1.1f,
+                       Fade(Color{ 190, 205, 225, 255 }, 0.30f));
+        }
+    }
+
     // The task at hand (V60): the active quest and its clock, always on
     // screen — a deadline you can see is a deadline you can keep.
     if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size()) {

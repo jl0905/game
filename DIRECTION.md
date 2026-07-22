@@ -1129,6 +1129,11 @@ this is the feedback the flat numbers were waiting for.
   loss into its shelves by morning, and thinner prosperity means a
   thinner recruit pool tomorrow. Announced in the news.
   `tests/storm_crops.txt` parks the storm on Sargoth.
+- [x] **V64. Iteration sixty-four — hours and weather you can stand in.**
+  The walkable town scene's sky now follows the campaign clock (noon,
+  amber dusk, rose dawn, deep night — with a warm lit window on every
+  building after dark), and riding inside the storm rains on the map
+  screen itself: streaks and a leaden dim. Draw-only.
 
 ## Sequencing guidance
 

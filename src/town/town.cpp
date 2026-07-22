@@ -1125,9 +1125,17 @@ void TownDraw(const GameState& gs) {
     SfxAmbience(0.10f);   // street murmur stand-in
 
     BeginDrawing();
-    ClearBackground(Color{ 132, 172, 220, 255 });   // clears depth too
+    // The street sky follows the campaign clock (V64): the same hours the
+    // battle sky keeps — walk a town at midnight and it is midnight.
+    const float townTod = gs.dayTimer / 60.0f;
+    const bool  townNight = townTod >= 0.82f || townTod < 0.06f;
+    Color skyTop = { 132, 172, 220, 255 }, skyBot = { 222, 232, 240, 255 };
+    if (townNight)            { skyTop = { 22, 28, 52, 255 };  skyBot = { 46, 54, 84, 255 }; }
+    else if (townTod >= 0.70f){ skyTop = { 168, 106, 88, 255 }; skyBot = { 238, 176, 128, 255 }; }
+    else if (townTod < 0.10f) { skyTop = { 140, 118, 116, 255 }; skyBot = { 234, 200, 166, 255 }; }
+    ClearBackground(skyTop);   // clears depth too
     DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
-                           Color{ 132, 172, 220, 255 }, Color{ 222, 232, 240, 255 });
+                           skyTop, skyBot);
 
     // Faint lute from the gold-roofed door when you stand near it (N5).
     SfxMinstrel(TownAtTavern() ? 0.12f : 0.0f);
@@ -1142,6 +1150,9 @@ void TownDraw(const GameState& gs) {
         DrawCube({ b.pos.x, b.size.y * 0.5f, b.pos.z }, b.size.x, b.size.y, b.size.z, b.wall);
         DrawCubeWires({ b.pos.x, b.size.y * 0.5f, b.pos.z }, b.size.x, b.size.y, b.size.z,
                       Fade(BLACK, 0.35f));
+        if (townNight)   // a lit window after dark (V64)
+            DrawCube({ b.pos.x, b.size.y * 0.55f, b.pos.z + b.size.z * 0.5f + 0.02f },
+                     0.9f, 0.9f, 0.03f, Color{ 255, 214, 130, 255 });
         if (b.flatTop) {   // crenellated top instead of a roof
             for (float cx = -b.size.x / 2; cx < b.size.x / 2; cx += 2.4f)
                 DrawCube({ b.pos.x + cx + 0.6f, b.size.y + 0.4f, b.pos.z },
