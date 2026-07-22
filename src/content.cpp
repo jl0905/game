@@ -564,6 +564,62 @@ void LoadDefaultContent(Content& c) {
     war(f_vaeling, f_patrol);          // ...and the old order's coasts alike;
                                        // they have no quarrel with you (yet).
 
+    // Moddable troops (V85): assets/troops.cfg mints soldier types and
+    // enlists them into rosters, no code:
+    //   troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]
+    //   recruit <faction-id> <troop-id>
+    // New types append after every built-in, so no handle moves.
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/troops.cfg"
+                : "assets/troops.cfg",
+            "assets/troops.cfg", "../assets/troops.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag;
+                if (!(ss >> tag)) continue;
+                if (tag == "troop") {
+                    std::string id, name, wid, aid, mountTok;
+                    int wage = 1, cost = 10;
+                    if (!(ss >> id >> name >> wid >> aid >> wage >> cost)) continue;
+                    if (c.troops.find(id.c_str()) >= 0) continue;
+                    for (char& ch : name)
+                        if (ch == '_') ch = ' ';
+                    TroopDef t = makeTroop(id.c_str(), name.c_str(), GOLD);
+                    t.wage = wage;
+                    t.cost = cost;
+                    if (ss >> mountTok && mountTok == "mounted") {
+                        t.mounted = true;
+                        t.moveSpeed = base::TROOP_SPEED * 2.0f;
+                    }
+                    const int w = c.weapons.find(wid.c_str());
+                    const int a = c.armor.find(aid.c_str());
+                    t.loadout.set(EquipSlot::Head, a_cap);
+                    if (a >= 0) t.loadout.set(EquipSlot::Body, a);
+                    t.loadout.set(EquipSlot::Feet, a_boots);
+                    if (w >= 0) t.loadout.addWeapon(w);
+                    t.loadout.addWeapon(w_sword);
+                    c.troops.add(t);
+                } else if (tag == "recruit") {
+                    std::string fid, tid;
+                    if (!(ss >> fid >> tid)) continue;
+                    const int fh = c.factions.find(fid.c_str());
+                    const int th = c.troops.find(tid.c_str());
+                    if (fh >= 0 && th >= 0) c.factions[fh].roster.push_back(th);
+                }
+            }
+        }
+    }
+
     // ---- Overworld map (direction I1) ------------------------------------
     // Built-in default world, then the moddable overlay. assets/map.cfg ships
     // with a larger map; this fallback keeps the game running without assets.

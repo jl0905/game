@@ -1253,6 +1253,12 @@ this is the feedback the flat numbers were waiting for.
   sellsword pack TODAY at the price of tomorrow — the interest
   example, borrower's side. `tests/moneylender_loan.txt`,
   `tests/debt_compounds.txt`.
+- [x] **V85. Iteration eighty-five — troops from a cfg.** The soldier
+  catalogue joins the modding surface: `assets/troops.cfg` mints
+  types (`troop id Name weapon armor wage cost [mounted]`) and
+  enlists them (`recruit faction troop`). Ships live with the
+  Halberdier in Patrol's levy; wage tiers, save ids and rosters all
+  pick modded types up automatically. `tests/modded_troop.txt`.
 
 ## Sequencing guidance
 

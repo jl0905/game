@@ -26,6 +26,10 @@ Documented in the file itself. One line per fact:
 | `road linkDist width` | | towns closer than `linkDist` are joined; within `width` of a link parties march at full pace |
 | `storm radius driftX driftY [startX startY]` | | the drifting weather cell (V62/V68): reach, per-dawn drift, and optional spawn point — inside it travel runs ×0.75 and battles fight in the rain |
 
+### assets/troops.cfg (V85)
+
+Mint soldier types and enlist them, no code. Two line kinds: `troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]` builds a type (standard cap/boots plus your body armour and weapon, sword sidearm); `recruit <faction-id> <troop-id>` appends it to a faction's levy so its towns recruit it and its lords field it. New types always append — existing handles and saves stay valid.
+
 ### assets/companions.cfg (V83)
 
 One hero-for-hire per line: `companion <id> <Name_with_underscores> <perk> <temper> <cost>`. Perks reuse the built-in hook strings (`surgeon`, `scout`, `quartermaster`, `drillmaster`, `jailer`, or `none`); tempers are `honorable`/`grim`. Modded companions join the tavern rotation beside the built-in five with a standard kit (cap, tunic, boots, sword and spear).

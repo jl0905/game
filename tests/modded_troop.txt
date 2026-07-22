@@ -1,0 +1,8 @@
+# Moddable troops (V85): assets/troops.cfg mints soldier types and enlists
+# them in rosters with no code. The shipped sample adds the Halberdier
+# (greatsword, mail, wage 3) to Patrol's levy. Fixture carries 2 by save id:
+# expect halberdier=2 in the roster and their 6 gold on the wage bill
+# (purse wages = 3+5+4+6 = 18 for this band).
+load tests/fixtures/halb.owb
+state
+quit
