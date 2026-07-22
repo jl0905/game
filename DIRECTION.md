@@ -818,6 +818,13 @@ this is the feedback the flat numbers were waiting for.
   paper-doll and forge arms matter defensively, and looted plate is a
   prize. Tiers are identity; exact numbers TODO(balance).
 
+- [x] **V16. Iteration sixteen — a blade's weight is its character.** The
+  mirror of V15: weapon damage tiers by identity now that armour soaks —
+  greatsword 14 and dane axe 13 crack plate, war axe 11, sword 10, spear
+  9 (reach is its virtue), crossbow 12 punches where the bow's 8
+  harasses. Weapon choice vs armour class is now a real matchup, for
+  the player's swaps and the AI's per-range picks alike. TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

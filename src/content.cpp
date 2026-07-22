@@ -78,12 +78,20 @@ void LoadDefaultContent(Content& c) {
     // ---- Weapons (one per class shown; add freely) ------------------------
     // Reach differs by weapon *identity* (a spear is simply longer than a
     // sword); damage/swing stay flat. TODO(balance): tune all three per def.
+    // Weapon identity damage (V16, the mirror of V15's armour): a blade's
+    // weight is its character now that steel soaks — the greatsword and
+    // dane axe crack plate, the spear trades power for its four units of
+    // reach, bows harass where crossbows punch. Tiers are identity; exact
+    // numbers TODO(balance).
     WeaponDef sword = Weapon("sword", "Arming Sword", WeaponClass::OneHanded, LIGHTGRAY);
     WeaponDef great = Weapon("great", "Greatsword",   WeaponClass::TwoHanded, RAYWHITE);
     great.reach = 3.2f;
+    great.damage = 14.0f;
     WeaponDef spear = Weapon("spear", "Spear",        WeaponClass::Polearm,   BROWN);
     spear.reach = 4.0f;
+    spear.damage = 9.0f;
     WeaponDef bow   = Weapon("bow",   "Short Bow",    WeaponClass::Ranged,    DARKBROWN);
+    bow.damage = 8.0f;
     bow.missileRange = 40.0f;   // TODO(balance)
     bow.missileSpeed = 30.0f;   // TODO(balance)
     bow.swingTime    = 2.0f;    // TODO(balance): nock-draw-loose is slower than a cut
@@ -99,13 +107,16 @@ void LoadDefaultContent(Content& c) {
     xbow.missileRange = 55.0f;   // TODO(balance): outranges the bow
     xbow.missileSpeed = 45.0f;   // flat, fast bolts
     xbow.swingTime    = 3.2f;    // spanning a crossbow takes time
+    xbow.damage       = 12.0f;   // and the bolt punches mail (V16)
     xbow.tileW = 2; xbow.tileH = 3;
 
     WeaponDef axe = Weapon("axe", "War Axe", WeaponClass::Axe, LIGHTGRAY);
     axe.tileW = 2; axe.tileH = 3;
+    axe.damage = 11.0f;                 // heavier than a sword's cut (V16)
 
     WeaponDef daneaxe = Weapon("daneaxe", "Dane Axe", WeaponClass::Axe, RAYWHITE);
     daneaxe.reach = 3.2f;               // a long-hafted axe (identity, not balance)
+    daneaxe.damage = 13.0f;             // and it cracks plate (V16)
     daneaxe.tileW = 2; daneaxe.tileH = 4;
 
     const int w_sword = c.weapons.add(sword);
