@@ -508,9 +508,37 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
     if (sa <= 0) { a.alive = false; return; }
     const int defender = t.owner;
 
-    const float wallStrength = (float)sd * (t.fortified ? 2.2f : 1.7f);
+    // Your lords earn their fiefs (V91): when it's the PLAYER's town under
+    // assault, a raised lord of yours within riding distance throws half
+    // his host onto the walls — and bleeds for it below. TODO(balance).
+    int reliefIdx = -1;
+    float reliefStrength = 0;
+    if (defender == gs.content.playerFaction &&
+        t.type != SettlementType::Village) {
+        for (int i = 0; i < (int)gs.parties.size(); ++i) {
+            const Party& p = gs.parties[i];
+            if (!p.alive || p.engaged || p.lord.empty() ||
+                p.faction != defender) continue;
+            if (Vector2Distance(p.pos, t.pos) > 400.0f) continue;
+            reliefIdx = i;
+            reliefStrength = p.totalTroops() * 0.5f;
+            break;
+        }
+    }
+
+    const float wallStrength = (float)sd * (t.fortified ? 2.2f : 1.7f) +
+                               reliefStrength;
     // U3: walls fight too; V51: fortified walls fight harder.
     const bool taken = Frand(0, (float)sa + wallStrength) < (float)sa;
+    if (reliefIdx >= 0) {
+        RemoveTroops(gs.content, gs.parties[reliefIdx],
+                     GetRandomValue(3, (int)(reliefStrength * 0.3f) + 3));
+        gs.resultText = TextFormat(
+            "Lord %s rides to the relief of %s!",
+            gs.parties[reliefIdx].lord.c_str(), t.name.c_str());
+        LordOpinion(gs, gs.parties[reliefIdx].lord) += 3;   // he remembers
+                                                            // serving well
+    }
     if (taken) {
         RemoveTroops(gs.content, a, GetRandomValue(sd / 2, sd + sd / 2));
         t.owner = a.faction;

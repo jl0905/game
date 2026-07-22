@@ -1,0 +1,12 @@
+# Your lords earn their fiefs (V91): when an AI siege resolves against a
+# PLAYER town/castle, a raised lord of yours within 400u throws half his
+# host onto the walls - relief strength added to the defense roll, his men
+# bled, his opinion +3 for serving well. Fixture: Bram and Gorak both near
+# player-owned Sargoth; the sieges that follow trigger the relief.
+# Deterministic assert: lop: Bram=+3 appears once a siege has resolved.
+load tests/fixtures/ownrelief.owb
+wait 60
+state
+wait 60
+state
+quit

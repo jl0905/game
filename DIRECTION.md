@@ -1287,6 +1287,12 @@ this is the feedback the flat numbers were waiting for.
   rotation beside the built-in three (name, news template, prosperity/
   stock/party/pool deltas). Ships live with Fair Day; verified firing
   on its rotation slot. `tests/modded_event.txt`.
+- [x] **V91. Iteration ninety-one — your lords earn their fiefs.** When
+  an AI siege resolves against a player town/castle, a raised lord of
+  yours within 400u throws half his host onto the walls: relief
+  strength joins the defense roll, his men bleed for it, his opinion
+  rises +3 for serving well. Raising lords and granting fiefs now buys
+  a standing defense, not just a banner count. `tests/own_relief.txt`.
 
 ## Sequencing guidance
 
