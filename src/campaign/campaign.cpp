@@ -3375,7 +3375,37 @@ void CampaignDraw(const GameState& gs) {
              10, GetScreenHeight() - 22, 16, Fade(RAYWHITE, 0.7f));
 
     if (gs.player.totalTroops() == 0)
-        ui::Text("Your warband is destroyed... press R to restart.", 10, 70, 20, RED);
+    {   // The fall of the house (V97): the mirror of the V96 legacy screen —
+        // same reign numbers, same chronicle, under a darker headline.
+        const int w = GetScreenWidth();
+        DrawRectangle(0, 0, w, GetScreenHeight(), Fade(BLACK, 0.78f));
+        const char* h1 = "THE WARBAND IS DESTROYED";
+        ui::Title(h1, (w - ui::MeasureTitle(h1, 56)) / 2, 130, 56, RED);
+        int lords = 0;
+        for (const Party& p : gs.parties)
+            if (p.alive && p.faction == c.playerFaction && !p.lord.empty())
+                lords++;
+        const char* h2 = TextFormat(
+            "Day %d    Renown %d    Honor %+d    Gold %d    Lords still loyal %d",
+            gs.day, gs.renown, gs.honor, gs.gold, lords);
+        ui::Text(h2, (w - ui::Measure(h2, 22)) / 2, 220, 22, Fade(GOLD, 0.9f));
+        if (!gs.chronicle.empty()) {
+            const char* th = "— The Chronicle, as far as it goes —";
+            ui::Text(th, (w - ui::Measure(th, 20)) / 2, 270, 20,
+                     Fade(RAYWHITE, 0.7f));
+            const int n = (int)gs.chronicle.size();
+            int cy = 298;
+            for (int i = std::max(0, n - 8); i < n; ++i) {
+                ui::Text(gs.chronicle[i].c_str(),
+                         (w - ui::Measure(gs.chronicle[i].c_str(), 18)) / 2, cy,
+                         18, Fade(RAYWHITE, 0.85f));
+                cy += 24;
+            }
+        }
+        const char* h3 = "[R]  Raise a new banner (restart)";
+        ui::Text(h3, (w - ui::Measure(h3, 24)) / 2, GetScreenHeight() - 70, 24,
+                 RAYWHITE);
+    }
 
     // Empty sacks on the HUD (V37): hunger is a state you should never
     // discover from a deserter.
