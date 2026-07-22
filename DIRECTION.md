@@ -1411,6 +1411,13 @@ this is the feedback the flat numbers were waiting for.
   matrix both ways, −30 relation, chronicled, and V31/V53 price the
   new war into your own shelves by morning. Free captains finally
   choose their enemies. `tests/declare_war.txt`.
+- [x] **V113. Iteration one-thirteen — set spears stop horses.** A
+  braced polearm (standing, unrouted, unstunned) reverses the trample:
+  the RIDER takes 1.5× the weapon's point — AI cavalry reels at double
+  cooldown, and the hero's own charge into a set spear bleeds him
+  through his horse ("A set spear stops your charge"). Pikes and the
+  Free Company finally mean what they look like; cavalry must flank
+  or soften with arrows first.
 
 ## Sequencing guidance
 

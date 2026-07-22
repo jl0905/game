@@ -1731,6 +1731,26 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 Vector3 d3 = Vector3Subtract(s.pos, B.pPos);
                 d3.y = 0;
                 if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
+                    // A set spear stops the hero's horse too (V113): charge a
+                    // braced polearm and YOU take the point through the horse.
+                    if (c.weapons.valid(s.activeWeapon) &&
+                        c.weapons[s.activeWeapon].wclass == WeaponClass::Polearm &&
+                        !IsMounted(c, s) && !s.routed && s.stun <= 0) {
+                        float pd = ApplyArmor(WeaponDamage(c, s.activeWeapon) * 1.5f,
+                                              LoadoutArmor(c, B.setup.heroLoadout));
+                        const float toHorse = pd * 0.6f;   // the horse takes the brunt
+                        B.pHorseHp -= toHorse;
+                        if (B.pHorseHp <= 0) B.mounted = false;
+                        B.pHp -= pd - toHorse;
+                        B.pFlash = 1.0f;
+                        B.lastHitFrom  = s.pos;
+                        B.hitFromTimer = 0.9f;
+                        B.pTrampleCd = TRAMPLE_COOLDOWN * 2.0f;
+                        B.shake = fminf(1.0f, B.shake + 0.7f);
+                        Feed("A set spear stops your charge");
+                        SfxPlay(Sfx::Thud, 0.9f);
+                        break;
+                    }
                     const int wh = B.setup.heroLoadout.get(EquipSlot::Weapon);
                     DamageSoldier(c, s, ApplyArmor(TrampleDamage(c, wh),
                                                    LoadoutArmor(c, TroopLoadout(c, s.troop))));
@@ -2271,9 +2291,22 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     Vector3 d3 = Vector3Subtract(o.pos, s.pos);
                     d3.y = 0;
                     if (Vector3LengthSqr(d3) < TRAMPLE_RADIUS * TRAMPLE_RADIUS) {
-                        B.dmg[j] += ApplyArmor(TrampleDamage(c, s.activeWeapon),
-                                               LoadoutArmor(c, TroopLoadout(c, o.troop)));
-                        s.trampleCd = TRAMPLE_COOLDOWN;
+                        // Set spears stop horses (V113): riding into a
+                        // braced polearm, the RIDER takes the point.
+                        const bool braced =
+                            c.weapons.valid(o.activeWeapon) &&
+                            c.weapons[o.activeWeapon].wclass == WeaponClass::Polearm &&
+                            !IsMounted(c, o) && !o.routed && o.stun <= 0;
+                        if (braced) {
+                            B.dmg[(int)(&s - &B.soldiers[0])] += ApplyArmor(
+                                WeaponDamage(c, o.activeWeapon) * 1.5f,
+                                LoadoutArmor(c, TroopLoadout(c, s.troop)));
+                            s.trampleCd = TRAMPLE_COOLDOWN * 2.0f;   // reeling
+                        } else {
+                            B.dmg[j] += ApplyArmor(TrampleDamage(c, s.activeWeapon),
+                                                   LoadoutArmor(c, TroopLoadout(c, o.troop)));
+                            s.trampleCd = TRAMPLE_COOLDOWN;
+                        }
                     }
                 });
             }
