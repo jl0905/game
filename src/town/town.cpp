@@ -342,6 +342,37 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
                 T.menu = false;
                 if (IsWindowReady()) DisableCursor();
                 break;
+            case 11: {   // host a feast in your own hall (V34)
+                constexpr int   FEAST_COST = 200;    // TODO(balance)
+                constexpr float FEAST_LEN  = 2.0f;   // days. TODO(balance)
+                Town& t = gs.towns[gs.currentSettlement];
+                if (t.owner != c.playerFaction)
+                    gs.resultText = "Feasts are held in your own hall.";
+                else if (gs.feastDays > 0)
+                    gs.resultText = "A feast is already laid somewhere in the land.";
+                else if (gs.gold < FEAST_COST)
+                    gs.resultText = TextFormat("A feast worth the name costs %d gold.",
+                                               FEAST_COST);
+                else {
+                    gs.gold -= FEAST_COST;
+                    gs.feastTown    = gs.currentSettlement;
+                    gs.feastFaction = c.playerFaction;
+                    gs.feastDays    = FEAST_LEN;
+                    int lords = 0;
+                    for (const Party& p : gs.parties) {
+                        if (!p.alive || p.faction != c.playerFaction ||
+                            p.lord.empty()) continue;
+                        LordOpinion(gs, p.lord) += 8;   // TODO(balance)
+                        lords++;
+                    }
+                    t.prosperity += 2;   // the town eats well too. TODO(balance)
+                    gs.resultText = TextFormat(
+                        "The hall is laid! %d lord(s) raise a cup to you. "
+                        "Matches may be made while the feast holds.", lords);
+                    SfxPlay(Sfx::Fanfare);
+                }
+                break;
+            }
             default: break;
         }
     }
@@ -1190,6 +1221,7 @@ void TownDraw(const GameState& gs) {
             "[8]  Garrison a soldier    (yours only)",
             "[9]  Recall a soldier",
             "[W]  Visit the settlement  (walk the streets)",
+            "[0]  Host a feast          (200 gold; lords and matches)",
         };
         // Rows that can't act right now grey out with the reason implicit
         // (V4): buttons that look alive ARE alive.
@@ -1200,11 +1232,13 @@ void TownDraw(const GameState& gs) {
         live[5] = !sworn && !mine;          // swear: free captains only
         live[7] = mine;                     // garrison a soldier
         live[8] = mine && town.garrisonSize() > 0;   // recall
+        live[10] = mine && gs.feastDays <= 0;        // host a feast (V34)
         // Dead rows say why (V10): a greyed button that explains itself.
         const char* why[townmenu::ROWS] = { nullptr };
         if (!live[5]) why[5] = sworn ? "(already sworn)" : "(your own seat)";
         if (!live[7]) why[7] = "(not your walls)";
         if (!live[8]) why[8] = mine ? "(the wall is bare)" : "(not your walls)";
+        if (!live[10]) why[10] = mine ? "(a feast already holds)" : "(not your hall)";
         int y = townmenu::Y;
         const Vector2 m = GetMousePosition();
         for (int r = 0; r < townmenu::ROWS; ++r) {

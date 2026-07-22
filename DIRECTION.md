@@ -938,6 +938,12 @@ this is the feedback the flat numbers were waiting for.
   stun-immunity both, opening him for the real blow. 1.2s recovery so
   it's a tool, not a spam. Harness `kick` command prints boots landed;
   mechanics verified against charging knights.
+- [x] **V34. Iteration thirty-four — host your own feast.** Gate-menu row
+  [0] in a hall you own lays a 200-gold feast: 2 days on the M5 clock
+  (so marriage suits open at YOUR table), +8 opinion for every raised
+  lord (the V26 courting currency), +2 prosperity for the host town.
+  Greyed with reasons elsewhere ("not your hall") or while any feast
+  already holds. `tests/host_feast.txt`.
 
 ## Sequencing guidance
 

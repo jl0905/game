@@ -1110,8 +1110,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (TownInMenu()) {
             for (int r = 0; r < 9; ++r)
                 if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
-            if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_ZERO))
-                in.menuChoice = 10;   // visit the settlement
+            if (IsKeyPressed(KEY_W)) in.menuChoice = 10;      // visit the settlement
+            if (IsKeyPressed(KEY_ZERO)) in.menuChoice = 11;   // host a feast (V34)
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 const Vector2 m = GetMousePosition();
                 const int x0 = GetScreenWidth() / 2 - townmenu::X_HALF;

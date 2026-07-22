@@ -1,0 +1,11 @@
+# Host a feast (V34): gate-menu row [0] in your own hall lays a 200-gold
+# feast for 2 days - every raised lord of yours gains +8 opinion, the town
+# +2 prosperity, and the M5 marriage window opens while it holds. A second
+# feast is refused while one is laid; other halls refuse outright.
+seed 42
+enter 0
+topic 11
+state
+topic 11
+state
+quit
