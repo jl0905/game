@@ -1,0 +1,10 @@
+# The storm flattens the fields (V63): a settlement under the cell at dawn
+# loses 2 prosperity and 2 grain stock - and the scarcity rule prices the
+# loss into its market by morning, thinning tomorrow's recruit pool too.
+# Fixture: storm parked on Sargoth (600,600), clock 59, quiet map corner.
+# Expect Sargoth's prosper to drop across the dawn.
+load tests/fixtures/cropstorm.owb
+state
+wait 5
+state
+quit

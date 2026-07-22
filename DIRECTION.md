@@ -1123,6 +1123,12 @@ this is the feedback the flat numbers were waiting for.
   fights in forced rain via a `rainOverride` over the battle bridge —
   ride around it, or drag a crossbow-heavy enemy into it. Breathing
   grey cell on the map; `storm:` in the dump. `tests/storm.txt`.
+- [x] **V63. Iteration sixty-three — the storm flattens the fields.**
+  Weather reaches the economy: a settlement under the cell at dawn
+  loses 2 prosperity and 2 grain stock, the scarcity rule prices the
+  loss into its shelves by morning, and thinner prosperity means a
+  thinner recruit pool tomorrow. Announced in the news.
+  `tests/storm_crops.txt` parks the storm on Sargoth.
 
 ## Sequencing guidance
 

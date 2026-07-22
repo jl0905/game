@@ -2192,6 +2192,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.stormPos.x = Clamp(gs.stormPos.x, 0, MAP_SIZE);
             gs.stormPos.y = Clamp(gs.stormPos.y, 0, MAP_SIZE);
 
+            // ...and flattens the fields where it sits (V63): a settlement
+            // caught under the cell loses crops and heart — grain stock −2,
+            // prosperity −2 — and the scarcity rule prices the loss into
+            // its market by the same morning. TODO(balance).
+            {
+                const int gGrain = c.goods.find("grain");
+                for (Town& t : gs.towns) {
+                    if (!InStorm(gs, t.pos)) continue;
+                    t.prosperity = std::max(60, t.prosperity - 2);
+                    if (gGrain >= 0 && gGrain < (int)t.stock.size())
+                        t.stock[gGrain] = std::max(0, t.stock[gGrain] - 2);
+                    gs.resultText = TextFormat(
+                        "The storm flattens the fields at %s.", t.name.c_str());
+                }
+            }
+
             // The commissary (V37): the warband eats at dawn — one grain per
             // 20 men, rounded up, from the saddlebags. TODO(balance).
             {
