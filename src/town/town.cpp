@@ -358,6 +358,7 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
                     gs.feastTown    = gs.currentSettlement;
                     gs.feastFaction = c.playerFaction;
                     gs.feastDays    = FEAST_LEN;
+                    gs.feastGuests.clear();   // fresh tables (V38)
                     int lords = 0;
                     for (const Party& p : gs.parties) {
                         if (!p.alive || p.faction != c.playerFaction ||

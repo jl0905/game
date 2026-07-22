@@ -156,6 +156,8 @@ bool SaveGame(const GameState& gs, const char* path) {
         gs.feastFaction < c.factions.size())
         f << "feast " << gs.feastTown << ' ' << c.factions[gs.feastFaction].id
           << ' ' << gs.feastDays << ' ' << (gs.feastAttended ? 1 : 0) << '\n';
+    for (const std::string& g : gs.feastGuests)   // seated lords (V38)
+        f << "guest " << g << '\n';
     if (gs.spouseFaction >= 0 && gs.spouseFaction < c.factions.size())
         f << "spouse " << c.factions[gs.spouseFaction].id << ' '
           << gs.spouseName << '\n';
@@ -467,6 +469,10 @@ bool LoadGame(GameState& gs, const char* path) {
         } else if (tag == "rally") {
             gs.lordsRally = true;
             ss >> gs.lordsRallyPos.x >> gs.lordsRallyPos.y >> gs.lordsRallyDays;
+        } else if (tag == "guest") {
+            std::string g;
+            ss >> g;
+            if (!g.empty()) gs.feastGuests.push_back(g);
         } else if (tag == "hungry") {
             ss >> gs.hungryDays;
         } else if (tag == "merc") {

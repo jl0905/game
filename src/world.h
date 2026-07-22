@@ -237,6 +237,7 @@ struct GameState {
     int   feastFaction  = -1;   // the celebrating crown
     float feastDays     = 0;    // days of feasting left
     bool  feastAttended = false;
+    std::vector<std::string> feastGuests;   // lords who have ridden in (V38)
     int         spouseFaction = -1;
     std::string spouseName;
 

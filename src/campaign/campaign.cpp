@@ -1804,6 +1804,12 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     target     = gs.player.pos;
                     haveTarget = true;
                     e.state    = PartyState::Travelling;
+                } else if (gs.feastDays > 0 && gs.feastTown >= 0 &&
+                           e.faction == gs.feastFaction && !e.lord.empty()) {
+                    // Lords ride to their crown's feast (V38).
+                    target     = gs.towns[gs.feastTown].pos;
+                    haveTarget = true;
+                    e.state    = PartyState::Travelling;
                 } else {
                     const PartyBehavior behavior = c.factions[e.faction].behavior;
                     const Foe foe = NearestHostile(gs, c, i);
@@ -1818,6 +1824,24 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // the edge forever (unreachable, yet still counted as alive).
             e.pos.x = Clamp(e.pos.x, 0, MAP_SIZE);
             e.pos.y = Clamp(e.pos.y, 0, MAP_SIZE);
+
+            // A lord reaches the feast (V38): announced once, and remembered —
+            // a guest at YOUR table warms to you (the V26 courting currency).
+            if (gs.feastDays > 0 && gs.feastTown >= 0 && !e.lord.empty() &&
+                e.faction == gs.feastFaction &&
+                Vector2Distance(e.pos, gs.towns[gs.feastTown].pos) < 30.0f) {
+                bool seated = false;
+                for (const std::string& g : gs.feastGuests)
+                    if (g == e.lord) { seated = true; break; }
+                if (!seated) {
+                    gs.feastGuests.push_back(e.lord);
+                    if (gs.feastFaction == c.playerFaction)
+                        LordOpinion(gs, e.lord) += 4;   // TODO(balance)
+                    gs.resultText = TextFormat("Lord %s arrives at the feast at %s.",
+                                               e.lord.c_str(),
+                                               gs.towns[gs.feastTown].name.c_str());
+                }
+            }
         }
 
         // Two hostile AI parties touching -> they lock into a skirmish.
@@ -2057,7 +2081,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // throws one at its first town. TODO(balance): cadence/length.
             gs.feastDays -= 1.0f;
             if (gs.feastDays <= 0) {
-                if (gs.feastTown >= 0) { gs.feastTown = -1; gs.feastFaction = -1; }
+                if (gs.feastTown >= 0) {
+                    gs.feastTown = -1; gs.feastFaction = -1;
+                    gs.feastGuests.clear();   // the tables are cleared (V38)
+                }
                 if (gs.day % 4 == 2) {
                     for (int k = 0; k < c.factions.size(); ++k) {
                         const int f = (gs.day / 4 + k) % c.factions.size();
@@ -2070,6 +2097,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                                 gs.feastFaction  = f;
                                 gs.feastDays     = 2.0f;
                                 gs.feastAttended = false;
+                                gs.feastGuests.clear();
                                 gs.resultText = TextFormat(
                                     "%s feasts at %s - all at peace are welcome.",
                                     c.factions[f].name.c_str(),

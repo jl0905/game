@@ -963,6 +963,13 @@ this is the feedback the flat numbers were waiting for.
   at 65% nerve (K4). Ties markets/caravans/harvest events directly to
   army staying-power. Saved/loaded; `hungry=` in the dump;
   `tests/commissary.txt`.
+- [x] **V38. Iteration thirty-eight — lords ride to the feast.** Feasts
+  become gatherings: while one holds, every lord of the celebrating
+  crown steers for the table; arrivals are announced by name, seated
+  once per feast (`feastGuests`, saved as `guest` tags), and a lord at
+  YOUR feast warms +4 opinion — so a well-attended feast is bulk
+  courting and the marriage window has real witnesses. `guests=` in
+  the feast dump; `tests/feast_guests.txt`.
 
 ## Sequencing guidance
 

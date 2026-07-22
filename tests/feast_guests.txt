@@ -1,0 +1,13 @@
+# Feast guests (V38): while a feast holds, lords of the celebrating crown
+# drop their errands and ride to the table; each arrival is announced and
+# counted (guests= in the feast dump). At YOUR feast each seated lord warms
+# +4 opinion (the V26 courting currency). Seed 42: the day-2 rotation feast
+# fires and at least one lord rides in by day 3-4.
+seed 42
+wait 60
+wait 60
+wait 60
+state
+wait 60
+state
+quit

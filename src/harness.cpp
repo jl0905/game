@@ -290,11 +290,12 @@ struct Harness {
             std::printf("siegecamp: town=%d prep=%d days=%.1f\n",
                         gs.siegeCampTown, gs.siegeCampPrep, gs.siegeCampDays);
         if (gs.feastTown >= 0 && gs.feastDays > 0)
-            std::printf("feast: town=%d faction=%s days=%.1f attended=%d\n",
+            std::printf("feast: town=%d faction=%s days=%.1f attended=%d guests=%d\n",
                         gs.feastTown,
                         c.factions.valid(gs.feastFaction)
                             ? c.factions[gs.feastFaction].id.c_str() : "?",
-                        gs.feastDays, gs.feastAttended ? 1 : 0);
+                        gs.feastDays, gs.feastAttended ? 1 : 0,
+                        (int)gs.feastGuests.size());
         for (const auto& pl : gs.capturedLords)
             std::printf("plord: %s of %s\n", pl.first.c_str(),
                         c.factions.valid(pl.second)
