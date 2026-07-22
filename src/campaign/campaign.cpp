@@ -4327,9 +4327,38 @@ void VictoryDraw(const GameState& gs) {
     ui::Title(t1, (w - ui::MeasureTitle(t1, 72)) / 2, 180, 72, GOLD);
     const char* t2 = TextFormat("Every settlement flies your banner.  Won on day %d, at level %d.",
                                 gs.day, gs.playerHero.level);
-    ui::Text(t2, (w - ui::Measure(t2, 24)) / 2, 300, 24, RAYWHITE);
+    ui::Text(t2, (w - ui::Measure(t2, 24)) / 2, 280, 24, RAYWHITE);
+
+    // The legacy (V96): what kind of reign it was, in its own numbers —
+    // and the chronicle's closing page beneath.
+    {
+        int lords = 0;
+        for (const Party& p : gs.parties)
+            if (p.alive && p.faction == gs.content.playerFaction &&
+                !p.lord.empty()) lords++;
+        const char* t4 = TextFormat(
+            "Renown %d    Honor %+d    Gold %d    Lords under your banner %d",
+            gs.renown, gs.honor, gs.gold, lords);
+        ui::Text(t4, (w - ui::Measure(t4, 22)) / 2, 320, 22, Fade(GOLD, 0.9f));
+
+        if (!gs.chronicle.empty()) {
+            const char* th = "— The Chronicle of the Reign —";
+            ui::Text(th, (w - ui::Measure(th, 20)) / 2, 372, 20,
+                     Fade(RAYWHITE, 0.7f));
+            const int n = (int)gs.chronicle.size();
+            int cy = 400;
+            for (int i = std::max(0, n - 8); i < n; ++i) {
+                ui::Text(gs.chronicle[i].c_str(),
+                         (w - ui::Measure(gs.chronicle[i].c_str(), 18)) / 2, cy,
+                         18, Fade(RAYWHITE, 0.85f));
+                cy += 24;
+            }
+        }
+    }
+
     const char* t3 = "[Esc]  Return to the title";
-    ui::Text(t3, (w - ui::Measure(t3, 24)) / 2, 420, 24, Fade(RAYWHITE, 0.8f));
+    ui::Text(t3, (w - ui::Measure(t3, 24)) / 2, GetScreenHeight() - 60, 24,
+             Fade(RAYWHITE, 0.8f));
     EndDrawing();
 }
 
