@@ -944,6 +944,12 @@ this is the feedback the flat numbers were waiting for.
   lord (the V26 courting currency), +2 prosperity for the host town.
   Greyed with reasons elsewhere ("not your hall") or while any feast
   already holds. `tests/host_feast.txt`.
+- [x] **V35. Iteration thirty-five — ink that holds on any ground.** Every
+  glyph in the game now carries a drop shadow (dark offset copy, alpha
+  tied to the text's own, heavier under titles) — one change in
+  `ui::Text`/`ui::Title` covers map labels over snowfields, battle HUD
+  over sky, and every menu. Global scale nudged 1.35 → 1.4 per the
+  standing "even bigger" ask.
 
 ## Sequencing guidance
 

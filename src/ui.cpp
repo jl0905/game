@@ -135,9 +135,21 @@ static float Sz(int fontSize) {
     return (fontSize >= 14 && s < 19.0f) ? 19.0f : s;
 }
 
+// Drop shadow under every glyph (V35, playtest: "more contrast against the
+// background"): a dark offset copy keeps lettering legible over any ground —
+// map greens, snowfields, the battle sky. Offset scales with the size; the
+// shadow inherits the text's own alpha so faded text fades whole.
+static void Shadowed(const Font& f, const char* text, float x, float y,
+                     float size, float spacing, Color color) {
+    const float off = size >= 30.0f ? 2.0f : 1.0f;
+    DrawTextEx(f, text, { x + off, y + off }, size, spacing,
+               Fade(BLACK, 0.55f * (color.a / 255.0f)));
+    DrawTextEx(f, text, { x, y }, size, spacing, color);
+}
+
 void Text(const char* text, int x, int y, int fontSize, Color color) {
-    DrawTextEx(BodyFont(), text, { (float)x, (float)y }, Sz(fontSize),
-               Spacing(fontSize) * gScale, color);
+    Shadowed(BodyFont(), text, (float)x, (float)y, Sz(fontSize),
+             Spacing(fontSize) * gScale, color);
 }
 
 int Measure(const char* text, int fontSize) {
@@ -146,8 +158,8 @@ int Measure(const char* text, int fontSize) {
 }
 
 void Title(const char* text, int x, int y, int fontSize, Color color) {
-    DrawTextEx(TitleFont(), text, { (float)x, (float)y }, Sz(fontSize),
-               Spacing(fontSize) * gScale, color);
+    Shadowed(TitleFont(), text, (float)x, (float)y, Sz(fontSize),
+             Spacing(fontSize) * gScale, color);
 }
 
 int MeasureTitle(const char* text, int fontSize) {
