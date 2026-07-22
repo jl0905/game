@@ -1,0 +1,10 @@
+# Hodd the Jailer (V78): the fifth companion, perk=jailer - no captive
+# slips the rope regardless of guard ratio (the V77 counter), and the
+# ransom broker pays 15 a head instead of 10. Same fixture as
+# prisoner_escape but with Hodd instead of Sereth: expect captives to HOLD
+# at 6 across the dawn.
+load tests/fixtures/jailer.owb
+state
+wait 5
+state
+quit

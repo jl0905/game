@@ -2323,7 +2323,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             {
                 int train = 0;
                 for (int n : gs.prisoners) train += n;
-                if (train > 0 && train * 2 > gs.player.totalTroops()) {
+                // A jailer in the train keeps every rope tight (V78).
+                if (train > 0 && train * 2 > gs.player.totalTroops() &&
+                    !HasPerk(gs, "jailer")) {
                     for (int t = 0; t < (int)gs.prisoners.size(); ++t)
                         if (gs.prisoners[t] > 0) {
                             gs.prisoners[t]--;

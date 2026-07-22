@@ -1215,6 +1215,11 @@ this is the feedback the flat numbers were waiting for.
   text holds against noon snow. And captives slip the rope: a train
   larger than half the warband loses one prisoner per dawn — ransom
   fast, press, or grow. `tests/prisoner_escape.txt`.
+- [x] **V78. Iteration seventy-eight — Hodd the Jailer.** Fifth companion,
+  the V77 counter, pure V54 pattern: perk=jailer means no captive ever
+  slips the rope and the broker pays 15 a head instead of 10. One data
+  block, two one-line hooks. `tests/jailer.txt` holds 6 captives
+  through the dawn that leaked one without him.
 
 ## Sequencing guidance
 

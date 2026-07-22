@@ -692,9 +692,13 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         int heads = 0;
         for (int& n : gs.prisoners) { heads += n; n = 0; }
         if (heads > 0) {
-            const int gold = heads * 10;
+            // A jailer haggles like he guards: hard (V78). TODO(balance).
+            const int perHead = HasPerk(gs, "jailer") ? 15 : 10;
+            const int gold = heads * perHead;
             gs.gold += gold;
-            gs.resultText = TextFormat("Ransomed %d captives for %d gold.", heads, gold);
+            gs.resultText = TextFormat("Ransomed %d captives for %d gold.%s",
+                                       heads, gold,
+                                       perHead > 10 ? "  (Hodd drove the price)" : "");
         }
     }
 

@@ -269,10 +269,22 @@ void LoadDefaultContent(Content& c) {
     sereth.loadout.addWeapon(w_spear);
     sereth.loadout.addWeapon(w_sword);
 
+    // V78: the jailer — no captive slips his rope, and the broker pays his
+    // price. One block, two one-line hooks; the V54 pattern again.
+    TroopDef hodd = makeCompanion("hodd", "Hodd the Jailer");
+    hodd.temper = "grim";          // he has heard every sad story
+    hodd.perk   = "jailer";
+    hodd.loadout.set(EquipSlot::Head,  a_cap);
+    hodd.loadout.set(EquipSlot::Body,  a_fur);
+    hodd.loadout.set(EquipSlot::Feet,  a_boots);
+    hodd.loadout.addWeapon(w_axe);
+    hodd.loadout.addWeapon(w_sword);
+
     c.troops.add(rega);
     c.troops.add(malin);
     c.troops.add(torva);
     c.troops.add(sereth);
+    c.troops.add(hodd);
 
     // Wage identity (V46): quality eats gold daily — a knight's horse and
     // plate cost six recruits' bread. Tiers are identity; exact numbers
