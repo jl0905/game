@@ -1169,6 +1169,14 @@ this is the feedback the flat numbers were waiting for.
   ware — rotated by day. The small folk become an information system
   fed by the same state machine everything else runs on.
   `tests/rumors.txt`.
+- [x] **V71. Iteration seventy-one — wood on your arm.** The hero carries
+  a shield by the same rule as his men (one-handed blade = shield),
+  with hit points of its own: blocking with wood halves what a bare
+  guard lets through and eats arrows at ×0.25 — but every hit wears it
+  and "YOUR SHIELD SPLINTERS!" mid-fight drops you to steel-only
+  blocking. Q-swapping is now a real trade (greatsword damage vs the
+  wall on your arm). Shield bar over the HP bar; HUD lifted clear of
+  the V67 footer it overlapped.
 
 ## Sequencing guidance
 

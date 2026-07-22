@@ -728,6 +728,7 @@ struct BattleState {
     std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
     std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
     float hornCd = 0;                  // the war horn's wind (V66)
+    float pShieldHp = SHIELD_HP;       // the hero's own wood (V71)
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1008,6 +1009,14 @@ void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
 constexpr float TARGET_CROWD_PENALTY   = 2.0f;  // per foe already aiming at him
 constexpr float TARGET_ATTACKER_BONUS  = 4.0f;  // he is attacking me
 constexpr float TARGET_UNSHIELDED_BONUS = 3.0f; // archers: no shield to raise
+
+// The hero carries wood by the same rule as his men (V71): a one-handed
+// blade implies a shield on the arm, with hit points of its own.
+bool HeroHasShield(const Content& c) {
+    const int w = B.setup.heroLoadout.get(EquipSlot::Weapon);
+    return c.weapons.valid(w) &&
+           c.weapons[w].wclass == WeaponClass::OneHanded && B.pShieldHp > 0;
+}
 
 // A one-handed sidearm implies a shield on the arm (same inference the
 // renderer uses); anything else leaves the target open to arrows.
@@ -2146,7 +2155,22 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.pFlash     = fmaxf(0.0f, B.pFlash - dt * 5.0f);
         B.rallyPulse = fmaxf(0.0f, B.rallyPulse - dt);
         if (playerDamage > 0.0f && B.pHp > 0) {
-            float d = B.blocking ? playerDamage * BLOCK_MELEE_FACTOR : playerDamage;
+            // A shield on the arm blocks better than steel alone (V71), but
+            // the wood wears — and can splinter mid-fight.
+            float d = playerDamage;
+            if (B.blocking) {
+                if (HeroHasShield(c)) {
+                    d *= BLOCK_MELEE_FACTOR * 0.5f;
+                    B.pShieldHp -= SHIELD_WEAR_PER_HIT;
+                    if (B.pShieldHp <= 0) {
+                        B.cryTimer = 2.0f;
+                        B.cryText  = "YOUR SHIELD SPLINTERS!";
+                        SfxPlay(Sfx::Knell, 0.6f);
+                    }
+                } else {
+                    d *= BLOCK_MELEE_FACTOR;
+                }
+            }
             if (B.mounted) {   // the horse soaks its share — and can fall
                 const float toHorse = d * HORSE_HIT_SHARE;
                 B.pHorseHp -= toHorse;
@@ -2215,7 +2239,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 const Vector3 chest = Vector3Add(B.pPos, { 0, 1.2f, 0 });
                 if (Vector3DistanceSqr(a.pos, chest) < ARROW_HIT_RADIUS * ARROW_HIT_RADIUS) {
                     float d = ApplyArmor(a.damage, LoadoutArmor(c, B.setup.heroLoadout));
-                    if (B.blocking) d *= BLOCK_MISSILE_FACTOR;
+                    if (B.blocking) {   // wood eats arrows whole-ish (V71)
+                        if (HeroHasShield(c)) {
+                            d *= 0.25f;
+                            B.pShieldHp -= SHIELD_WEAR_PER_HIT;
+                        } else {
+                            d *= BLOCK_MISSILE_FACTOR;
+                        }
+                    }
                     if (B.mounted) {
                         const float toHorse = d * HORSE_HIT_SHARE;
                         B.pHorseHp -= toHorse;
@@ -2704,16 +2735,28 @@ void BattleDraw(const Content& c) {
         }
     }
 
-    // ---------- HUD ----------
-    DrawRectangle(16, GetScreenHeight() - 46, 306, 28, Fade(BLACK, 0.55f));
-    DrawRectangleLines(16, GetScreenHeight() - 46, 306, 28, Fade(GOLD, 0.5f));
-    DrawRectangleGradientH(20, GetScreenHeight() - 42,
+    // ---------- HUD ---------- (lifted clear of the V67 key footer)
+    const int hpY = GetScreenHeight() - 84;
+    DrawRectangle(16, hpY, 306, 28, Fade(BLACK, 0.55f));
+    DrawRectangleLines(16, hpY, 306, 28, Fade(GOLD, 0.5f));
+    DrawRectangleGradientH(20, hpY + 4,
                            (int)(298 * fmaxf(B.pHp, 0) / B.pMaxHp), 20,
                            Color{ 150, 24, 24, 255 }, Color{ 220, 60, 40, 255 });
-    ui::Text("HP", 26, GetScreenHeight() - 41, 18, RAYWHITE);
+    ui::Text("HP", 26, hpY + 5, 18, RAYWHITE);
     if (B.mounted)
         ui::Text(TextFormat("Horse %d", (int)fmaxf(B.pHorseHp, 0)),
-                 250, GetScreenHeight() - 41, 16, Fade(RAYWHITE, 0.85f));
+                 250, hpY + 5, 16, Fade(RAYWHITE, 0.85f));
+    {   // the wood on your arm (V71): shown while a shield weapon is up
+        const int w = B.setup.heroLoadout.get(EquipSlot::Weapon);
+        if (c.weapons.valid(w) && c.weapons[w].wclass == WeaponClass::OneHanded) {
+            const float f = fmaxf(B.pShieldHp, 0) / SHIELD_HP;
+            DrawRectangle(16, hpY - 12, 306, 8, Fade(BLACK, 0.5f));
+            DrawRectangle(18, hpY - 10, (int)(302 * f), 4,
+                          f > 0 ? Color{ 150, 110, 60, 255 } : RED);
+            ui::Text(f > 0 ? "shield" : "shield SPLINTERED", 330, hpY - 16, 14,
+                     f > 0 ? Fade(RAYWHITE, 0.7f) : Fade(RED, 0.9f));
+        }
+    }
     ui::Text(TextFormat("Allies: %d   Enemies: %d   Your kills: %d",
                         B.aliveAllies, B.aliveEnemies, B.heroKills), 18, 12, 22, RAYWHITE);
     if (B.rallyPulse > 0)
@@ -2975,6 +3018,7 @@ BattleView GetBattleView() {
     v.heroKills   = B.heroKills;
     v.enemyName   = B.setup.enemyName;
     v.heroKicks   = B.heroKicksLanded;
+    v.heroShieldHp = B.pShieldHp;
     v.bannerOwn   = B.bannerIdx[0] >= 0 && B.soldiers[B.bannerIdx[0]].hp > 0;
     v.bannerEnemy = B.bannerIdx[1] >= 0 && B.soldiers[B.bannerIdx[1]].hp > 0;
     v.looseHorses = (int)B.looseHorses.size();
