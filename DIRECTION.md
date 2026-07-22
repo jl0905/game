@@ -925,6 +925,13 @@ this is the feedback the flat numbers were waiting for.
   for peace and the shelves settle by morning; conquest re-prices a
   town overnight. Red WAR PRICES banner in the market, `warmarkup=` in
   the harness dump, `tests/war_prices.txt`.
+- [x] **V32. Iteration thirty-two — battle standards.** One bannerman a
+  side carries a tall pole-and-pennant in team colour, drawn at any
+  distance so the line reads from across the field. When he falls the
+  whole side takes a K4 nerve shock, "THE BANNER FALLS!" rings, and the
+  colours pass to the nearest living hand — kill the standard again and
+  again to break an army's spirit. Arena bouts fight without colours.
+  `banners=x/y` in the harness battle dump.
 
 ## Sequencing guidance
 

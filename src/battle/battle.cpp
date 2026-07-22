@@ -710,6 +710,12 @@ struct BattleState {
     int   startPlayerSide = 0, startEnemySide = 0;   // spawned strength per side
     bool  playerSideRouted = false, enemySideRouted = false;
     float routBanner = 0;                            // "THEY BREAK" fade
+    // Battle standards (V32): one bannerman a side. His tall standard marks
+    // the line from across the field; his death shakes his side's nerve and
+    // the banner passes to the nearest living hand.
+    int   bannerIdx[2] = { -1, -1 };   // [0]=player side, [1]=enemy side
+    float bannerFlash  = 0;            // "THE BANNER FALLS" fade
+    bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
 
     bool  over = false;
@@ -1368,6 +1374,16 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.mounted = !setup.siege && !setup.arena;   // walls and rings are fought on foot
     B.pHorseHp = HORSE_HP;
 
+    // Raise the standards (V32): the first man of each side carries the
+    // banner. Bouts in the ring fight without colours.
+    B.bannerIdx[0] = B.bannerIdx[1] = -1;
+    if (!setup.arena)
+        for (int i = 0; i < (int)B.soldiers.size(); ++i) {
+            const int side = B.soldiers[i].team == Team::Enemy ? 1 : 0;
+            if (B.bannerIdx[side] < 0 && B.soldiers[i].hp > 0) B.bannerIdx[side] = i;
+        }
+    B.bannerFlash = 0;
+
     B.introTimer = 3.0f;
     if (IsWindowReady()) DisableCursor();   // headless harness has no window
     B.hasLastMouse = false;
@@ -1729,6 +1745,27 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 playerFled * 2 >= B.startPlayerSide) {
                 B.playerSideRouted = true;
                 ringBanner("YOUR LINE BREAKS!");
+            }
+
+            // The standard falls (V32): the whole side feels it, and the
+            // nearest living hand takes up the colours.
+            for (int side = 0; side < 2; ++side) {
+                const int bi = B.bannerIdx[side];
+                if (bi < 0 || B.soldiers[bi].hp > 0) continue;
+                const Team team = side == 1 ? Team::Enemy : Team::Player;
+                for (Soldier& w : B.soldiers)
+                    if (w.hp > 0 && w.team == team) w.nerve -= NERVE_ALLY_DEATH;
+                B.bannerFlash    = 2.2f;
+                B.bannerFellOurs = side == 0;
+                SfxPlay(Sfx::Knell, 0.5f);
+                int   next = -1; float bestD = 1e9f;
+                for (int j = 0; j < n; ++j) {
+                    const Soldier& w = B.soldiers[j];
+                    if (w.hp <= 0 || w.team != team || w.routed) continue;
+                    const float d = Vector3DistanceSqr(w.pos, B.soldiers[bi].pos);
+                    if (d < bestD) { bestD = d; next = j; }
+                }
+                B.bannerIdx[side] = next;   // -1: the colours lie in the mud
             }
         }
 
@@ -2214,6 +2251,23 @@ void BattleDraw(const Content& c) {
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
 
+    // The standards (V32): a tall pole and pennant over each bannerman,
+    // drawn at any distance — the line reads from across the field.
+    for (int side = 0; side < 2; ++side) {
+        const int bi = B.bannerIdx[side];
+        if (bi < 0 || bi >= (int)B.soldiers.size()) continue;
+        const Soldier& s = B.soldiers[bi];
+        if (s.hp <= 0 || s.escaped) continue;
+        const Color col = TeamTint(s.team);
+        const float bob = sinf(s.walkPhase) * 0.1f;
+        DrawCube({ s.pos.x, s.pos.y + 3.2f + bob, s.pos.z }, 0.10f, 4.4f, 0.10f,
+                 Color{ 90, 70, 50, 255 });
+        DrawCube({ s.pos.x + 0.75f, s.pos.y + 4.9f + bob, s.pos.z }, 1.4f, 0.9f, 0.06f,
+                 col);
+        DrawCube({ s.pos.x + 0.75f, s.pos.y + 4.42f + bob, s.pos.z }, 1.4f, 0.06f, 0.08f,
+                 Fade(BLACK, 0.4f));
+    }
+
     // Where men fell (V12): dark stains, flat on the ground, all battle long.
     for (const Vector3& st : B.stains)
         DrawCylinder({ st.x, B.terrain.HeightAt(st.x, st.z) + 0.02f, st.z },
@@ -2487,6 +2541,15 @@ void BattleDraw(const Content& c) {
         const int   rw = ui::Measure(B.routText, 40);
         ui::Title(B.routText, (GetScreenWidth() - rw) / 2, 150, 40, Fade(GOLD, ra));
     }
+    B.bannerFlash = fmaxf(0.0f, B.bannerFlash - GetFrameTime());
+    if (B.bannerFlash > 0 && B.introTimer <= 0 && !B.over) {   // V32
+        const float ba = fminf(B.bannerFlash / 0.5f, 1.0f);
+        const char* bt = B.bannerFellOurs ? "YOUR BANNER FALLS!"
+                                          : "THEIR BANNER FALLS!";
+        const int bw = ui::MeasureTitle(bt, 40);
+        ui::Title(bt, (GetScreenWidth() - bw) / 2, 205, 40,
+                  Fade(B.bannerFellOurs ? RED : GOLD, ba));
+    }
     B.cryTimer = fmaxf(0.0f, B.cryTimer - GetFrameTime());
     if (B.cryTimer > 0 && B.introTimer <= 0 && !B.over) {
         const float a = fminf(B.cryTimer / 0.5f, 1.0f);
@@ -2539,6 +2602,8 @@ BattleView GetBattleView() {
     v.raining     = B.raining;
     v.heroKills   = B.heroKills;
     v.enemyName   = B.setup.enemyName;
+    v.bannerOwn   = B.bannerIdx[0] >= 0 && B.soldiers[B.bannerIdx[0]].hp > 0;
+    v.bannerEnemy = B.bannerIdx[1] >= 0 && B.soldiers[B.bannerIdx[1]].hp > 0;
     v.looseHorses = (int)B.looseHorses.size();
     {
         const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;
