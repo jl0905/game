@@ -1117,6 +1117,12 @@ this is the feedback the flat numbers were waiting for.
   After an archery duel the ground reads like a pincushion — the
   battle's history written on the terrain, like the blood stains
   before it. Bench holds 20.4 ms.
+- [x] **V62. Iteration sixty-two — the storm.** A living weather cell
+  drifts across the map at each dawn (bouncing off the edges, saved):
+  inside its 250u reach travel runs at ×0.75 mud pace and every battle
+  fights in forced rain via a `rainOverride` over the battle bridge —
+  ride around it, or drag a crossbow-heavy enemy into it. Breathing
+  grey cell on the map; `storm:` in the dump. `tests/storm.txt`.
 
 ## Sequencing guidance
 

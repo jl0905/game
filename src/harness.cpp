@@ -198,6 +198,8 @@ struct Harness {
         for (int n : gs.prisoners) captives += n;
         if (captives > 0) std::printf("captives=%d\n", captives);
         if (gs.hungryDays > 0) std::printf("hungry=%d\n", gs.hungryDays);
+        std::printf("storm: pos=(%.0f,%.0f) inside=%d\n", gs.stormPos.x,
+                    gs.stormPos.y, InStorm(gs, gs.player.pos) ? 1 : 0);
         {
             std::string perks;
             for (int t = 0; t < c.troops.size() &&

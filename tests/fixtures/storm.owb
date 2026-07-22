@@ -1,0 +1,183 @@
+OWSAVE 1
+gold 300
+storm 1500 1500 90 -60
+day 0
+playerpos 1500 1500
+ptroop recruit 5
+ptroop infantry 2
+hero 1 0 0
+wear head helmet
+wear body plate
+wear hands gloves
+wear feet boots
+carry sword
+carry spear
+carry great
+town 0 kingdom
+garrisonreset 0
+garrison 0 recruit 2
+garrison 0 infantry 2
+garrison 0 veteran 2
+garrison 0 archer 1
+garrison 0 knight 1
+stock 0 grain 10 130
+stock 0 wool 10 130
+stock 0 iron 10 130
+stock 0 tools 10 70
+stock 0 salt 10 130
+stock 0 spice 10 70
+town 1 patrol
+garrisonreset 1
+garrison 1 infantry 4
+garrison 1 veteran 4
+garrison 1 knight 4
+stock 1 grain 5 100
+stock 1 wool 5 100
+stock 1 iron 5 100
+stock 1 tools 5 100
+stock 1 salt 5 100
+stock 1 spice 5 100
+town 2 deserters
+garrisonreset 2
+garrison 2 recruit 4
+stock 2 grain 10 70
+stock 2 wool 10 70
+stock 2 iron 10 70
+stock 2 tools 10 130
+stock 2 salt 10 70
+stock 2 spice 10 130
+town 3 patrol
+garrisonreset 3
+garrison 3 infantry 3
+garrison 3 veteran 3
+garrison 3 knight 2
+stock 3 grain 10 130
+stock 3 wool 10 130
+stock 3 iron 10 130
+stock 3 tools 10 70
+stock 3 salt 10 130
+stock 3 spice 10 70
+town 4 sarleon
+garrisonreset 4
+garrison 4 infantry 2
+garrison 4 veteran 2
+garrison 4 archer 2
+garrison 4 knight 2
+stock 4 grain 10 130
+stock 4 wool 10 130
+stock 4 iron 10 130
+stock 4 tools 10 70
+stock 4 salt 10 130
+stock 4 spice 10 70
+town 5 vaeling
+garrisonreset 5
+garrison 5 archer 4
+garrison 5 warrior 4
+garrison 5 huscarl 4
+stock 5 grain 5 100
+stock 5 wool 5 100
+stock 5 iron 5 100
+stock 5 tools 5 100
+stock 5 salt 5 100
+stock 5 spice 5 100
+town 6 sarleon
+garrisonreset 6
+garrison 6 infantry 2
+garrison 6 veteran 2
+garrison 6 archer 2
+garrison 6 knight 2
+stock 6 grain 10 130
+stock 6 wool 10 130
+stock 6 iron 10 130
+stock 6 tools 10 70
+stock 6 salt 10 130
+stock 6 spice 10 70
+town 7 vaeling
+garrisonreset 7
+garrison 7 archer 1
+garrison 7 warrior 2
+garrison 7 huscarl 1
+stock 7 grain 10 70
+stock 7 wool 10 70
+stock 7 iron 10 70
+stock 7 tools 10 130
+stock 7 salt 10 70
+stock 7 spice 10 130
+town 8 patrol
+garrisonreset 8
+garrison 8 infantry 2
+garrison 8 veteran 1
+garrison 8 knight 1
+stock 8 grain 10 70
+stock 8 wool 10 70
+stock 8 iron 10 70
+stock 8 tools 10 130
+stock 8 salt 10 70
+stock 8 spice 10 130
+party raiders 1925.25 2757.66
+troop infantry 2
+troop archer 1
+troop brigand 4
+troop marauder 3
+party deserters 808.26 1223.25
+troop recruit 3
+party patrol 2430.42 179.16
+troop infantry 2
+troop veteran 1
+troop knight 1
+party sarleon 838.5 1869.9
+troop infantry 1
+troop veteran 1
+troop archer 2
+troop knight 1
+party vaeling 2747.4 2743.35
+troop archer 2
+troop warrior 3
+troop huscarl 2
+party travellers 2136.93 164.58
+troop recruit 2
+party raiders 1899.06 376.53
+troop infantry 2
+troop archer 2
+troop brigand 3
+troop marauder 3
+party raiders 1503.78 1410.09 Gorak
+troop infantry 37
+troop archer 37
+troop brigand 38
+troop marauder 38
+party raiders 904.38 1957.65 Hesh
+troop infantry 37
+troop archer 37
+troop brigand 38
+troop marauder 38
+party deserters 750 2325 Vex
+troop recruit 150
+party patrol 2400 750 Aldric
+troop infantry 50
+troop veteran 50
+troop knight 50
+party patrol 2400 750 Corin
+troop infantry 50
+troop veteran 50
+troop knight 50
+party sarleon 1500 390 Aldemar
+troop infantry 38
+troop veteran 38
+troop archer 37
+troop knight 37
+party sarleon 1500 390 Rowan
+troop infantry 38
+troop veteran 38
+troop archer 37
+troop knight 37
+party vaeling 390 1500 Sigvald
+troop archer 50
+troop warrior 50
+troop huscarl 50
+party vaeling 390 1500 Toke
+troop archer 50
+troop warrior 50
+troop huscarl 50
+party sarleon 1560 1500
+troop knight 3

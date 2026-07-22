@@ -202,6 +202,11 @@ struct GameState {
     // into battle with shaken nerve.
     int hungryDays = 0;
 
+    // The storm (V62): one drifting weather cell. Position wanders at each
+    // dawn (bouncing off the map edges); see InStorm/STORM_RADIUS.
+    Vector2 stormPos{ -1000, -1000 };   // parked off-map until init
+    Vector2 stormVel{ 90, 60 };
+
     // Tax policy (V55): 0 = light, 1 = customary, 2 = heavy. Heavy taxes
     // fatten the ledger (+35%) but grind your towns' prosperity; light
     // taxes (−25%) let the land bloom. Set on the kingdom ledger (T).
@@ -380,12 +385,21 @@ inline bool OnRoad(const GameState& gs, Vector2 p) {
 
 // Travel pace at a point: forests and mountains slow every party (player and
 // AI alike); a road negates the penalty. Factors live in the map (K8).
+// The storm (V62): a weather cell that drifts across the map. Inside its
+// reach travel slows and battles fight in the rain.
+constexpr float STORM_RADIUS = 250.0f;   // TODO(balance)
+inline bool InStorm(const GameState& gs, Vector2 p) {
+    return Vector2Distance(gs.stormPos, p) < STORM_RADIUS;
+}
+
 inline float TravelSpeedFactor(const GameState& gs, Vector2 p) {
     const MapDef& m = gs.content.map;
+    const float storm = InStorm(gs, p) ? 0.75f : 1.0f;   // mud (V62)
     const WorldTerrain t = WorldTerrainAt(m, p);
-    if (t == WorldTerrain::Plains) return 1.0f;
-    if (OnRoad(gs, p)) return 1.0f;
-    return t == WorldTerrain::Forest ? m.biome.forestSpeed : m.biome.mountainSpeed;
+    if (t == WorldTerrain::Plains) return storm;
+    if (OnRoad(gs, p)) return storm;
+    return storm * (t == WorldTerrain::Forest ? m.biome.forestSpeed
+                                              : m.biome.mountainSpeed);
 }
 
 // Relations (F1): deeds move the player's standing with a faction, clamped

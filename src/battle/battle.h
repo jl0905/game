@@ -55,6 +55,10 @@ struct BattleSetup {
     // as well). Costs days on the campaign side; the garrison musters on.
     int siegePrep = 0;
 
+    // The storm (V62): -1 = let the terrain seed decide the weather (as
+    // ever), 0 = force dry, 1 = force rain (fighting inside the cell).
+    int rainOverride = -1;
+
     // World biome at the battlefield (K8): computed by the orchestrator from
     // the moddable map so battle terrain follows a modded biome without this
     // module knowing the world. Negative = derive from campaignPos as before.

@@ -76,6 +76,7 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     s.heroMaxHp   = gs.playerHero.maxHp;
     s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)
     s.hungry = gs.hungryDays > 0;   // empty sacks ride into battle (V37)
+    if (InStorm(gs, s.campaignPos)) s.rainOverride = 1;   // wet steel (V62)
     // The hero's body rides too (V14).
     s.heroStr = HeroAttr(gs, 0);
     s.heroAgi = HeroAttr(gs, 1);

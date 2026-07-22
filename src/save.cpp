@@ -184,6 +184,10 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (const std::string& ch : gs.chronicle)
         f << "chron " << ch << '\n';
 
+    // The storm (V62).
+    f << "storm " << gs.stormPos.x << ' ' << gs.stormPos.y << ' '
+      << gs.stormVel.x << ' ' << gs.stormVel.y << '\n';
+
     // The tax lever (V55).
     if (gs.taxRate != 1) f << "tax " << gs.taxRate << '\n';
 
@@ -487,6 +491,8 @@ bool LoadGame(GameState& gs, const char* path) {
             std::string g;
             ss >> g;
             if (!g.empty()) gs.feastGuests.push_back(g);
+        } else if (tag == "storm") {
+            ss >> gs.stormPos.x >> gs.stormPos.y >> gs.stormVel.x >> gs.stormVel.y;
         } else if (tag == "tax") {
             ss >> gs.taxRate;
         } else if (tag == "chron") {

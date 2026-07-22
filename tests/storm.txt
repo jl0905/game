@@ -1,0 +1,11 @@
+# The storm (V62): one weather cell drifts across the map each dawn
+# (bouncing off the edges, saved via the storm tag). Inside its 250u reach
+# travel runs at 0.75x (mud) and any battle fights in forced rain - wet
+# strings, sodden nocking, the R1 rules. Fixture parks the storm on the
+# knights fight: expect inside=1, speed 0.41 (0.55 mountain x 0.75), and
+# rain=1 in the battle dump.
+load tests/fixtures/storm.owb
+walk 1 0 0.6
+tick 3
+state
+quit

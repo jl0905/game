@@ -1360,6 +1360,8 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     }
     if (setup.forestDensity >= 0)
         tcfg.forestDensity = Clamp(setup.forestDensity, 0.0f, 1.0f);
+    if (setup.rainOverride >= 0)   // the storm decides (V62)
+        tcfg.raining = setup.rainOverride != 0;
     if (setup.arena) {   // a flat sanded ring under an open sky (G2)
         tcfg.hilliness = 0;
         tcfg.forestDensity = 0;

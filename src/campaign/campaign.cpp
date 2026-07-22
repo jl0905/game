@@ -648,6 +648,10 @@ void CampaignInit(GameState& gs) {
     gs.warScore.assign(gs.hostile.size(), 0);
     gs.truceDays.assign(gs.hostile.size(), 0.0f);
     RefreshWarMarkups(gs);   // war prices from day one (V31)
+
+    // The storm rolls in from a corner (V62).
+    gs.stormPos = { MAP_SIZE * 0.25f, MAP_SIZE * 0.7f };
+    gs.stormVel = { 90.0f, -60.0f };   // TODO(balance): drift per day
 }
 
 // A party index is usable as a live entry in gs.parties.
@@ -2181,6 +2185,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // Markets learn the war news by morning (V31).
             RefreshWarMarkups(gs);
 
+            // The storm drifts at dawn (V62), bouncing off the map edges.
+            gs.stormPos = Vector2Add(gs.stormPos, gs.stormVel);
+            if (gs.stormPos.x < 0 || gs.stormPos.x > MAP_SIZE) gs.stormVel.x *= -1;
+            if (gs.stormPos.y < 0 || gs.stormPos.y > MAP_SIZE) gs.stormVel.y *= -1;
+            gs.stormPos.x = Clamp(gs.stormPos.x, 0, MAP_SIZE);
+            gs.stormPos.y = Clamp(gs.stormPos.y, 0, MAP_SIZE);
+
             // The commissary (V37): the warband eats at dawn — one grain per
             // 20 men, rounded up, from the saddlebags. TODO(balance).
             {
@@ -2681,6 +2692,18 @@ void CampaignDraw(const GameState& gs) {
         if (AtWar(gs, t.owner, c.playerFaction))   // enemy land, marked
             DrawCircleLines((int)t.pos.x, (int)t.pos.y, r * 0.55f,
                             Fade(glow, 0.28f));
+    }
+
+    // The storm on the map (V62): a slow-breathing grey cell you can ride
+    // around — or into, if you want your battles wet and your foes slow.
+    {
+        const float breathe = 1.0f + 0.04f * sinf((float)GetTime() * 1.2f);
+        DrawCircleGradient((int)gs.stormPos.x, (int)gs.stormPos.y,
+                           STORM_RADIUS * breathe,
+                           Fade(Color{ 70, 80, 100, 255 }, 0.4f),
+                           Fade(Color{ 70, 80, 100, 255 }, 0.0f));
+        DrawCircleLines((int)gs.stormPos.x, (int)gs.stormPos.y,
+                        STORM_RADIUS, Fade(Color{ 120, 132, 156, 255 }, 0.35f));
     }
 
     // The task's destination pulses gold on the map (V60).
