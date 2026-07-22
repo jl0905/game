@@ -2683,6 +2683,16 @@ void CampaignDraw(const GameState& gs) {
                             Fade(glow, 0.28f));
     }
 
+    // The task's destination pulses gold on the map (V60).
+    if (gs.activeQuest >= 0 && gs.questTown >= 0 &&
+        gs.questTown < (int)gs.towns.size()) {
+        const Vector2 qp = gs.towns[gs.questTown].pos;
+        const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 3.0f);
+        DrawCircleLines((int)qp.x, (int)qp.y, 44.0f + 8.0f * pulse,
+                        Fade(GOLD, 0.45f + 0.35f * pulse));
+        DrawCircleLines((int)qp.x, (int)qp.y, 40.0f, Fade(GOLD, 0.35f));
+    }
+
     for (const Town& t : gs.towns) {
         DrawEllipse((int)t.pos.x, (int)t.pos.y + 16, 30, 9, Fade(BLACK, 0.25f));
         switch (t.type) {
@@ -3093,6 +3103,24 @@ void CampaignDraw(const GameState& gs) {
                      ? "THE MEN MARCH HUNGRY - buy grain at a market"
                      : "THE MEN ARE STARVING - they walk home at every dawn",
                  10, 122, 20, RED);
+
+    // The task at hand (V60): the active quest and its clock, always on
+    // screen — a deadline you can see is a deadline you can keep.
+    if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size()) {
+        const QuestDef& qd = c.quests[gs.activeQuest];
+        std::string line = "TASK: " + qd.name;
+        if (qd.type == QuestType::DeliverGrain && gs.questTown >= 0 &&
+            gs.questTown < (int)gs.towns.size())
+            line += TextFormat(" - %d %s to %s", qd.amount,
+                               qd.goodId.c_str(), gs.towns[gs.questTown].name.c_str());
+        else if (qd.type == QuestType::HuntBandits)
+            line += TextFormat(" - %d/%d bands broken", gs.questProgress, qd.amount);
+        if (gs.questDays > 0)
+            line += TextFormat("   (%.0f day%s left)", gs.questDays,
+                               gs.questDays >= 2 ? "s" : "");
+        ui::Text(line.c_str(), 10, 146, 19,
+                 gs.questDays > 0 && gs.questDays <= 2 ? Fade(RED, 0.95f) : GOLD);
+    }
 
     // A running contract on the books (V29/V30): who marches with you and
     // for how much longer.

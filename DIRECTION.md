@@ -1106,6 +1106,11 @@ this is the feedback the flat numbers were waiting for.
   and an expired task costs the reward plus −2 relation with the
   giver. Contracts are commitments now, not souvenirs.
   `tests/quest_deadline.txt` expires a 1-day hunt on a clock-59 fixture.
+- [x] **V60. Iteration sixty — the task in sight.** A standing TASK chip
+  on the campaign HUD quotes the active quest, its progress or cargo,
+  and the days left (red under 48 hours) — and the destination town
+  pulses a gold ring on the map. A deadline you can see is a deadline
+  you can keep. Draw-only.
 
 ## Sequencing guidance
 
