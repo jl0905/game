@@ -1140,6 +1140,12 @@ this is the feedback the flat numbers were waiting for.
   mouse buttons with hover glow; opening the menu shows the cursor,
   closing it returns to mouse-look, and a menu click never spends a
   swing. V27 pattern, battle-side.
+- [x] **V66. Iteration sixty-six — the war horn.** V in battle (30s wind,
+  not in the ring): +40 nerve to every friendly heart on the field, and
+  routed men whose nerve recovers turn back — "RALLY TO ME! THE LINE
+  RE-FORMS!" The player's answer to the K4 morale spiral: banners fall,
+  lines crack, and now a leader's voice can stitch them back once in a
+  while. Harness `warcry`.
 
 ## Sequencing guidance
 

@@ -727,6 +727,7 @@ struct BattleState {
     struct StuckArrow { Vector3 pos, dir; };
     std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
     std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
+    float hornCd = 0;                  // the war horn's wind (V66)
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1513,6 +1514,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_E))     in.kick = true;          // the boot (V33)
     if (IsKeyPressed(KEY_G))     in.pickup = true;        // scavenge (V39)
     if (IsKeyPressed(KEY_N))     in.autoResolve = true;   // fight on paper (V41)
+    if (IsKeyPressed(KEY_V))     in.warCry = true;        // the horn (V66)
     // Strategy-menu rows click (V65): while the ~ menu is open, LMB picks
     // rows instead of readying a swing.
     if (B.showMenu && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -1714,6 +1716,24 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             B.cryTimer = 1.6f;   // the banner rings the order
             B.cryText  = OrderName(B.order);
+            SfxPlay(Sfx::WarCry);
+        }
+
+        // ---- the war horn (V66): once its wind is back, the hero's cry
+        //      steadies every friendly heart on the field — and men already
+        //      running find their feet and turn back. TODO(balance).
+        B.hornCd = fmaxf(0.0f, B.hornCd - dt);
+        if (in.warCry && B.hornCd <= 0 && B.pHp > 0 && !B.setup.arena) {
+            B.hornCd = 30.0f;
+            int turned = 0;
+            for (Soldier& s : B.soldiers) {
+                if (s.hp <= 0 || s.escaped || s.team != Team::Player) continue;
+                s.nerve = fminf(NERVE_MAX, s.nerve + 40.0f);
+                if (s.routed && s.nerve > 20.0f) { s.routed = false; turned++; }
+            }
+            B.cryTimer = 2.0f;
+            B.cryText  = turned > 0 ? "RALLY TO ME! THE LINE RE-FORMS!"
+                                    : "RALLY TO ME!";
             SfxPlay(Sfx::WarCry);
         }
 
