@@ -1220,6 +1220,11 @@ this is the feedback the flat numbers were waiting for.
   slips the rope and the broker pays 15 a head instead of 10. One data
   block, two one-line hooks. `tests/jailer.txt` holds 6 captives
   through the dawn that leaked one without him.
+- [x] **V79. Iteration seventy-nine — the tavern names its guest.** Gate
+  row [5] now quotes who is actually drinking here, their perk and
+  price ("Hire Malin Longeye (scout, 100 gold)"), and greys with
+  "(already yours)" once hired — companion shopping becomes a map
+  decision instead of a slot machine. Draw-only.
 
 ## Sequencing guidance
 

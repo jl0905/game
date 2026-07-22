@@ -1384,12 +1384,37 @@ void TownDraw(const GameState& gs) {
         snprintf(tavernRow, sizeof(tavernRow),
                  "[2]  The tavern            (%d recruits in the pool)",
                  town.recruitPool);
+        // The tavern names its guest (V79): who is drinking here, what
+        // they're good for, and whether they've already taken your coin.
+        char hireRow[112];
+        bool hireLive = true;
+        {
+            int comp = -1, nComps = 0;
+            for (int t = 0; t < c.troops.size(); ++t)
+                if (c.troops[t].companion) nComps++;
+            if (nComps > 0) {
+                int idx = gs.currentSettlement % nComps, seen = 0;
+                for (int t = 0; t < c.troops.size(); ++t)
+                    if (c.troops[t].companion && seen++ == idx) { comp = t; break; }
+            }
+            if (comp >= 0)
+                snprintf(hireRow, sizeof(hireRow),
+                         "[5]  Hire %-14s (%s, %d gold)%s",
+                         c.troops[comp].name.c_str(),
+                         c.troops[comp].perk.empty() ? "blade"
+                                                     : c.troops[comp].perk.c_str(),
+                         c.troops[comp].cost,
+                         gs.player.troopCounts[comp] > 0 ? "  - already yours" : "");
+            if (comp >= 0) hireLive = gs.player.troopCounts[comp] == 0;
+            if (comp < 0)
+                snprintf(hireRow, sizeof(hireRow), "[5]  Hire the companion");
+        }
         const char* rows[townmenu::ROWS] = {
             "[1]  The market            (buy, sell, arms, the moneylender)",
             tavernRow,
             "[3]  The tournament        (Shift-click to stake 50)",
             "[4]  Seek work             (the local quest)",
-            "[5]  Hire the companion",
+            hireRow,
             "[6]  Swear to this crown",
             "[7]  The hall              (court, news, politics)",
             "[8]  Garrison a soldier    (yours only)",
@@ -1405,6 +1430,7 @@ void TownDraw(const GameState& gs) {
         const bool sworn  = gs.liege >= 0;
         bool live[townmenu::ROWS];
         for (int r = 0; r < townmenu::ROWS; ++r) live[r] = true;
+        live[4] = hireLive;                 // hire: once each, ever (V79)
         live[5] = !sworn && !mine;          // swear: free captains only
         live[7] = mine;                     // garrison a soldier
         live[8] = mine && town.garrisonSize() > 0;   // recall
@@ -1413,6 +1439,7 @@ void TownDraw(const GameState& gs) {
         live[12] = mine && !town.fortified;             // fortify (V51)
         // Dead rows say why (V10): a greyed button that explains itself.
         const char* why[townmenu::ROWS] = { nullptr };
+        if (!live[4]) why[4] = "(already yours)";
         if (!live[5]) why[5] = sworn ? "(already sworn)" : "(your own seat)";
         if (!live[7]) why[7] = "(not your walls)";
         if (!live[8]) why[8] = mine ? "(the wall is bare)" : "(not your walls)";
