@@ -864,6 +864,12 @@ this is the feedback the flat numbers were waiting for.
   fearsome, not immortal (verified ~90 s blind fight, then victory with
   the roundup paying 90 on three mounts). TODO(balance): the curve.
 
+- [x] **V23. Iteration twenty-three — money abroad on the books.** The
+  kingdom ledger gains a DEPOSITS section: every vault holding your
+  coin, the total at interest, and a red AT RISK flag on any account
+  sitting in a town your enemies now hold — the V9 seizure rule made
+  visible before it bites.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

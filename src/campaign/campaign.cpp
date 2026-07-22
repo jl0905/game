@@ -3700,6 +3700,31 @@ void KingdomDraw(const GameState& gs) {
         y += 26;
         if (y > GetScreenHeight() - 160) break;
     }
+    // Money abroad (V23): every vault holding your coin, and the total —
+    // 5% a week where the banner holds, forfeit where it falls.
+    {
+        int total = 0;
+        for (int bi = 0; bi < (int)gs.bankAt.size(); ++bi) total += gs.bankAt[bi];
+        if (total > 0) {
+            y += 8;
+            ui::Text(TextFormat("DEPOSITS: %d gold at interest", total), lx, y,
+                     20, GOLD);
+            y += 26;
+            for (int bi = 0; bi < (int)gs.bankAt.size() &&
+                             bi < (int)gs.towns.size(); ++bi) {
+                if (gs.bankAt[bi] <= 0) continue;
+                const bool risky =
+                    AtWar(gs, gs.towns[bi].owner, c.playerFaction);
+                ui::Text(TextFormat("%-11s %d%s", gs.towns[bi].name.c_str(),
+                                    gs.bankAt[bi],
+                                    risky ? "   AT RISK — enemy hands" : ""),
+                         lx, y, 17, risky ? Fade(RED, 0.9f)
+                                          : Fade(RAYWHITE, 0.8f));
+                y += 24;
+            }
+        }
+    }
+
     // One purse, all flows (S5) — the same books the day tick settles.
     const DayLedger L = ComputeLedger(gs);
     y += 8;
