@@ -1,0 +1,14 @@
+# Escort quest (V69): a fourth QuestType - taking the task spawns a REAL
+# travellers convoy (3 guards, caravan brain) rolling for the destination;
+# it arriving completes the quest, its death fails it on the spot (-2
+# giver relation). Fixture: parley next to Lord Aldric on day 2, so the
+# (town+day)%4 rotation serves the escort. Expect the convoy party in the
+# dump, then QUEST COMPLETE +120 gold when it reaches Jelkala.
+load tests/fixtures/escort.owb
+parley
+topic 3
+leave
+state
+wait 60
+state
+quit

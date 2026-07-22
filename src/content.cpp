@@ -460,6 +460,10 @@ void LoadDefaultContent(Content& c) {
     c.quests.add({ "timber", "Timber for the Walls",
                    "The palisade rots. Bring timber for the wrights.",
                    QuestType::DeliverGrain, 4, 90, 5, "timber", 8 });
+    // Escort (V69): a real caravan rolls, and the roads decide.
+    c.quests.add({ "escort", "See the Wagons Through",
+                   "A trade convoy dares the roads. Ride with it.",
+                   QuestType::Escort, 1, 120, 5, "", 6 });
 
     // ---- World events (R4) ------------------------------------------------
     // Fired on the day rotation at a rotating settlement, announced as news.

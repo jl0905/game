@@ -51,7 +51,7 @@ inline const char* PartyStateName(PartyState s) {
 
 // What a quest asks of the player (direction F4). Extend here and handle the
 // new shape where quests are assigned/completed in campaign/town code.
-enum class QuestType { HuntBandits, DeliverGrain };
+enum class QuestType { HuntBandits, DeliverGrain, Escort };
 
 // Which side a combatant fights for in a battle.
 enum class Team { Player, Enemy };

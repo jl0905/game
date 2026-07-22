@@ -1156,6 +1156,13 @@ this is the feedback the flat numbers were waiting for.
   cell's reach, per-dawn drift and spawn point are mod data now
   (MODDING.md documents it; `InStorm` and the map draw read the
   config). Two storms of house rules away from a monsoon world.
+- [x] **V69. Iteration sixty-nine — see the wagons through.** A fourth
+  QuestType, Escort: taking the task spawns a REAL travellers convoy
+  (guards, caravan brain, actual freight rules) rolling for the
+  destination — arrival completes the quest, its death fails it
+  instantly at −2 relation. The quest rotation widens to %4; the V59
+  clock and V60 HUD chip apply unchanged. Meaning-checked quests.txt
+  through the shift. `tests/escort_quest.txt`.
 
 ## Sequencing guidance
 

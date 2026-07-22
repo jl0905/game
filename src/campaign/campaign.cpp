@@ -1959,6 +1959,26 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
         }
 
+        // The convoy under escort (V69): arrival completes the task, a dead
+        // convoy fails it on the spot — no waiting for the giver's clock.
+        if (gs.activeQuest >= 0 &&
+            c.quests[gs.activeQuest].type == QuestType::Escort) {
+            if (gs.questEscort < 0 || gs.questEscort >= (int)gs.parties.size() ||
+                !gs.parties[gs.questEscort].alive) {
+                gs.resultText = "The convoy is lost on the road. The giver remembers.";
+                NudgeRelation(gs, gs.questFaction, -2);   // TODO(balance)
+                gs.activeQuest = -1;
+                gs.questTown   = -1;
+                gs.questEscort = -1;
+                gs.questDays   = 0;
+            } else if (gs.questTown >= 0 && gs.questTown < (int)gs.towns.size() &&
+                       Vector2Distance(gs.parties[gs.questEscort].pos,
+                                       gs.towns[gs.questTown].pos) < 32.0f) {
+                CompleteQuest(gs);
+                gs.questEscort = -1;
+            }
+        }
+
         // Auto-resolve clashes the player left alone; drop the finished ones.
         for (Skirmish& sk : gs.skirmishes) {
             sk.timer -= sim;

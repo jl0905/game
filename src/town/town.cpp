@@ -157,8 +157,8 @@ std::string TryQuest(GameState& gs) {
     gs.questTown    = -1;
     gs.questProgress = 0;
     gs.questDays     = (float)qd.days;   // the giver's clock starts (V59)
-    if (qd.type == QuestType::DeliverGrain) {
-        // Deliver to the nearest settlement you can actually walk into.
+    if (qd.type == QuestType::DeliverGrain || qd.type == QuestType::Escort) {
+        // Deliver/escort to the nearest settlement you can actually walk into.
         float bestD = 1e9f;
         for (int t = 0; t < (int)gs.towns.size(); ++t) {
             if (t == src) continue;
@@ -172,11 +172,31 @@ std::string TryQuest(GameState& gs) {
             return "No work today.";
         }
     }
-    const std::string msg = gs.questTown >= 0
-        ? TextFormat("%s: %s  Bring %d grain to %s.", qd.name.c_str(),
-                     qd.blurb.c_str(), qd.amount, gs.towns[gs.questTown].name.c_str())
-        : TextFormat("%s: %s  (%d gold)", qd.name.c_str(), qd.blurb.c_str(),
-                     qd.goldReward);
+    if (qd.type == QuestType::Escort) {
+        // A REAL convoy rolls out of the gate (V69): the travellers' wagons,
+        // three guards, cargo it actually buys — bandit prey unless you ride.
+        const int trav = c.factions.find("travellers");
+        Party wag;
+        wag.faction = trav >= 0 ? trav : gs.towns[src].owner;
+        wag.pos = wag.wanderTarget = gs.towns[src].pos;
+        wag.caravan   = true;
+        wag.caravanTo = gs.questTown;
+        wag.troopCounts.assign(c.troops.size(), 0);
+        if (wag.faction >= 0 && !c.factions[wag.faction].roster.empty())
+            wag.troopCounts[c.factions[wag.faction].roster[0]] = 3;   // TODO(balance)
+        gs.parties.push_back(wag);
+        gs.questEscort = (int)gs.parties.size() - 1;
+    }
+    const std::string msg =
+        qd.type == QuestType::Escort
+            ? TextFormat("%s: %s  See the convoy safe to %s.", qd.name.c_str(),
+                         qd.blurb.c_str(), gs.towns[gs.questTown].name.c_str())
+        : gs.questTown >= 0
+            ? TextFormat("%s: %s  Bring %d grain to %s.", qd.name.c_str(),
+                         qd.blurb.c_str(), qd.amount,
+                         gs.towns[gs.questTown].name.c_str())
+            : TextFormat("%s: %s  (%d gold)", qd.name.c_str(), qd.blurb.c_str(),
+                         qd.goldReward);
     gs.resultText = msg;
     return msg;
 }
