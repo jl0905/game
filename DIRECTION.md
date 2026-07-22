@@ -799,6 +799,12 @@ this is the feedback the flat numbers were waiting for.
   story stays readable in the dirt — where the line held, where it
   broke.
 
+- [x] **V13. Iteration thirteen — armies mend under a roof.** The wounded
+  cart heals two per line at dawn (instead of one) when the warband is
+  inside or within 60 u of a settlement at peace with you — recovery
+  now has geography, and holding towns is how campaigns are sustained.
+  Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

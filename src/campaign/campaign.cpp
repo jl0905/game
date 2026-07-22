@@ -1910,20 +1910,33 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.resultText = TextFormat("Day %d:  +%d from your lands, -%d in wages.%s",
                                        gs.day, income, wages, supplyNote.c_str());
 
-            // The wounded heal (S3): one man per line rejoins each dawn,
-            // party cap willing. TODO(balance): the rate.
+            // The wounded heal (S3): one man per line rejoins each dawn —
+            // two under a friendly roof (V13): shelter near a settlement at
+            // peace with you and the surgeons work double. Towns you hold
+            // are where armies mend. TODO(balance): rates and reach.
             {
+                bool sheltered = gs.currentSettlement >= 0;
+                if (!sheltered)
+                    for (const Town& t : gs.towns)
+                        if (!AtWar(gs, t.owner, c.playerFaction) &&
+                            Vector2Distance(gs.player.pos, t.pos) < 60.0f) {
+                            sheltered = true;
+                            break;
+                        }
+                const int rate = sheltered ? 2 : 1;
                 int back = 0;
                 for (int t = 0; t < (int)gs.wounded.size() &&
                                 t < (int)gs.player.troopCounts.size(); ++t)
-                    if (gs.wounded[t] > 0 &&
-                        gs.player.totalTroops() < PartyCap(gs)) {
+                    for (int k = 0; k < rate && gs.wounded[t] > 0 &&
+                                    gs.player.totalTroops() < PartyCap(gs); ++k) {
                         gs.wounded[t]--;
                         gs.player.troopCounts[t]++;
                         back++;
                     }
                 if (back > 0)
-                    gs.resultText += TextFormat("  %d wounded return.", back);
+                    gs.resultText += TextFormat(
+                        sheltered ? "  %d wounded mend under a roof."
+                                  : "  %d wounded return.", back);
             }
 
             // Autosave each dawn (Q5): a crash costs a day, not a career.
