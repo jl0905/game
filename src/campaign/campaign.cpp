@@ -524,6 +524,12 @@ constexpr int INV_CELL = 52;
 int InvOriginX() { return GetScreenWidth() / 2 - (INV_W * INV_CELL) / 2; }
 int InvOriginY() { return 220; }
 
+// The paper-doll (U8): five equipment boxes beside the bag. Shared by the
+// gatherer's hit-test and the draw (K7 rule: one layout, never mirrored).
+int EqBoxX()      { return InvOriginX() + INV_W * INV_CELL + 40; }
+int EqBoxY(int s) { return InvOriginY() + s * 56; }
+constexpr int EQBOX_W = 210, EQBOX_H = 48;
+
 }  // namespace
 
 // Defined with the inventory screen below; needed earlier for loot drops.
@@ -1284,6 +1290,10 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             in.invCellX = cx;
             in.invCellY = cy;
         }
+        for (int s = 0; s < EQUIP_SLOT_COUNT; ++s)   // paper-doll boxes (U8)
+            if (m.x >= EqBoxX() && m.x < EqBoxX() + EQBOX_W &&
+                m.y >= EqBoxY(s) && m.y < EqBoxY(s) + EQBOX_H)
+                in.equipSlotHit = s;
         in.invPick  = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         in.invEquip = IsKeyPressed(KEY_E) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
         in.invCycleTarget = IsKeyPressed(KEY_TAB);
@@ -2730,6 +2740,46 @@ void InventoryUpdate(GameState& gs, const CampaignInput& in) {
     if (in.invCycleTarget) gs.invTarget = (gs.invTarget + 1) % (1 + (int)comps.size());
     if (gs.invTarget > (int)comps.size()) gs.invTarget = 0;
 
+    // The paper-doll (U8): drop a carried piece onto its slot to wear it,
+    // or lift a worn piece off with an empty hand — same interface, both
+    // directions, and it obeys the Tab target like everything else.
+    if (in.invPick && in.equipSlotHit >= 0) {
+        Loadout& lo = gs.invTarget == 0
+                          ? gs.playerHero.loadout
+                          : CompanionGear(gs, comps[gs.invTarget - 1]);
+        const EquipSlot slot = (EquipSlot)in.equipSlotHit;
+        if (gs.invCarry >= 0 && gs.invCarry < (int)gs.inventory.size()) {
+            const InvItem it = gs.inventory[gs.invCarry];
+            const bool fits = it.isWeapon ? slot == EquipSlot::Weapon
+                                          : c.armor[it.handle].slot == slot;
+            if (fits) {
+                gs.inventory.erase(gs.inventory.begin() + gs.invCarry);
+                gs.invCarry = -1;
+                if (it.isWeapon) {
+                    const int active = lo.get(EquipSlot::Weapon);
+                    for (int w = 0; w < (int)lo.weapons.size(); ++w)
+                        if (lo.weapons[w] == active) { lo.weapons[w] = it.handle; break; }
+                    if (lo.weapons.empty()) lo.weapons.push_back(it.handle);
+                    lo.set(EquipSlot::Weapon, it.handle);
+                    if (c.weapons.valid(active)) {
+                        InvItem old; old.isWeapon = true; old.handle = active;
+                        AutoPlace(gs, old);
+                    }
+                } else {
+                    const int old = lo.get(slot);
+                    lo.set(slot, it.handle);
+                    if (c.armor.valid(old)) {
+                        InvItem oldIt; oldIt.isWeapon = false; oldIt.handle = old;
+                        AutoPlace(gs, oldIt);
+                    }
+                }
+            }
+        } else if (slot != EquipSlot::Weapon && c.armor.valid(lo.get(slot))) {
+            InvItem off; off.isWeapon = false; off.handle = lo.get(slot);
+            if (AutoPlace(gs, off)) lo.set(slot, -1);   // bag full = stays worn
+        }
+    }
+
     if (in.invPick && in.invCellX >= 0) {
         if (gs.invCarry < 0) {
             gs.invCarry = ItemAtCell(gs, in.invCellX, in.invCellY);   // pick up
@@ -2801,17 +2851,38 @@ void InventoryDraw(const GameState& gs) {
     const Loadout& lo =
         onHero ? gs.playerHero.loadout
                : CompanionGear(const_cast<GameState&>(gs), comps[target - 1]);
-    int ey = 150;
-    std::string worn = "Worn: ";
+    // The paper-doll (U8): five slots beside the bag — drop a carried piece
+    // on its slot to wear it, click a worn piece to lift it off.
+    static const char* SLOT_NAMES[EQUIP_SLOT_COUNT] = {
+        "Head", "Body", "Hands", "Feet", "Weapon"
+    };
+    const Vector2 mp = GetMousePosition();
     for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
-        if (s == (int)EquipSlot::Weapon) continue;
-        const int h = lo.slots[s];
-        if (c.armor.valid(h)) { worn += c.armor[h].name; worn += "  "; }
+        const int bx = EqBoxX(), by = EqBoxY(s);
+        const bool hover = mp.x >= bx && mp.x < bx + EQBOX_W &&
+                           mp.y >= by && mp.y < by + EQBOX_H;
+        // Does the carried piece belong here? Glow the door it fits.
+        bool fits = false;
+        if (gs.invCarry >= 0 && gs.invCarry < (int)gs.inventory.size()) {
+            const InvItem& carried = gs.inventory[gs.invCarry];
+            fits = carried.isWeapon ? s == (int)EquipSlot::Weapon
+                                    : (int)c.armor[carried.handle].slot == s;
+        }
+        DrawRectangle(bx, by, EQBOX_W, EQBOX_H,
+                      Fade(fits ? GOLD : BLACK, fits ? 0.25f : 0.45f));
+        DrawRectangleLines(bx, by, EQBOX_W, EQBOX_H,
+                           hover ? GOLD : Fade(RAYWHITE, 0.35f));
+        ui::Text(SLOT_NAMES[s], bx + 8, by + 4, 15, Fade(RAYWHITE, 0.55f));
+        const int h = s == (int)EquipSlot::Weapon ? lo.get(EquipSlot::Weapon)
+                                                  : lo.slots[s];
+        const bool valid = s == (int)EquipSlot::Weapon ? c.weapons.valid(h)
+                                                       : c.armor.valid(h);
+        ui::Text(valid ? (s == (int)EquipSlot::Weapon
+                              ? c.weapons[h].name.c_str()
+                              : c.armor[h].name.c_str())
+                       : "-",
+                 bx + 8, by + 22, 19, valid ? RAYWHITE : Fade(RAYWHITE, 0.3f));
     }
-    const int wh = lo.get(EquipSlot::Weapon);
-    worn += "|  Wielding: ";
-    worn += c.weapons.valid(wh) ? c.weapons[wh].name : "nothing";
-    ui::Text(worn.c_str(), ox, ey, 18, RAYWHITE);
 
     // Grid.
     for (int y = 0; y <= INV_H; ++y)

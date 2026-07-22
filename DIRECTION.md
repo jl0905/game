@@ -659,10 +659,12 @@ this is the feedback the flat numbers were waiting for.
   soldiers behind the camera. Queued as V-track work when battles above
   ~300-per-side become the norm.
 
-- [ ] **U8. Paper-doll equipment (added mid-sprint).** The inventory gains
-  visible equipment slots — helmet, body, hands, feet, weapon — and
-  drag-and-drop from the bag grid into them (and back), one interface.
-  (E-to-equip exists; this makes it visual and mouse-native.)
+- [x] **U8. Paper-doll equipment.** Shipped: five slot boxes beside the
+  bag (Head/Body/Hands/Feet/Weapon) naming what's worn. Pick a piece up
+  and its slot glows gold — drop it there to wear it (displaced gear
+  returns to the bag); click a worn armour piece with an empty hand to
+  lift it off. Obeys the Tab companion target; E-to-equip still works.
+  One shared layout for hit-test and draw (K7 rule).
 - [ ] **U9. Market meets the bag (added mid-sprint).** The market screen
   adopts the inventory-interface look; mind the state seams — town stock,
   saddlebag goods (counts), and the tiled bag (items) are three different
