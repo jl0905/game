@@ -63,6 +63,9 @@ struct BattleSetup {
 
     // Siege assaults (roadmap B3b): towns and castles defend from behind a
     // wall with a single gate; villages are open raids.
+    // Fortified (V51/V52): wall-work paid for on the campaign side — the
+    // wall archers shoot faster from a better platform.
+    bool           fortified = false;
     bool           siege = false;
     SettlementType siegeType = SettlementType::Village;
 

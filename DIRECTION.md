@@ -1056,6 +1056,12 @@ this is the feedback the flat numbers were waiting for.
   takes it, so fortifying a border town is arming your enemy's future
   prize. FORT in the town dump, chronicled, saved (`fort` tag).
   `tests/fortify.txt`.
+- [x] **V52. Iteration fifty-two — the stone bites you too.** V51's
+  wall-work now reaches the player's own assaults through the battle
+  bridge: the opening banner names THE GARRISON OF X (FORTIFIED), and
+  wall archers loose 20% faster from the better platform (murder holes
+  and good stone), on top of the bigger fortified garrison you must
+  cut through. `tests/fort_siege.txt` on a fortified Praven fixture.
 
 ## Sequencing guidance
 

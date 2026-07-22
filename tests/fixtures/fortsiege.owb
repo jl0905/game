@@ -1,0 +1,30 @@
+OWSAVE 1
+gold 500
+day 2
+fort 1
+playerpos 1560 560
+ptroop infantry 90
+ptroop archer 30
+wear body plate
+wear head helmet
+carry sword
+carry spear
+town 0 kingdom
+garrisonreset 0
+garrison 0 recruit 4
+town 1 raiders
+garrisonreset 1
+garrison 1 brigand 5
+garrison 1 archer 4
+garrison 1 infantry 3
+town 2 deserters
+garrisonreset 2
+garrison 2 recruit 4
+town 3 patrol
+garrisonreset 3
+garrison 3 infantry 8
+town 4 sarleon
+garrisonreset 4
+garrison 4 infantry 8
+party raiders 1900 1900
+troop recruit 2

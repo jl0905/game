@@ -44,6 +44,8 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         const Town& t = gs.towns[gs.siegeTownIndex];
         s.enemyTroops = t.garrison;
         s.enemyName   = "THE GARRISON OF " + t.name;   // V24
+        s.fortified   = t.fortified;                   // stone bites back (V52)
+        if (t.fortified) s.enemyName += " (FORTIFIED)";
         // A friendly lord in reach rides to the defence (P2): his host
         // fights beside the garrison in the same battle.
         const int relief = ReliefLordFor(gs, gs.siegeTownIndex);

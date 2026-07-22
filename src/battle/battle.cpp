@@ -1176,6 +1176,8 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         if (B.formation == FormationType::ShieldWall &&
             s.team == Team::Player && !s.ally)
             cdScale *= 1.3f;   // swinging from behind a braced shield (V48)
+        if (s.onWall && B.setup.fortified)
+            cdScale *= 0.8f;   // murder holes and good stone (V52)
         cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon) * cdScale;
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);

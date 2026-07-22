@@ -1,0 +1,11 @@
+# Fortified sieges (V52): the wall-work V51 buys reaches the player's own
+# assaults - the banner names the garrison (FORTIFIED), wall archers loose
+# 20% faster from the better platform, and the garrison itself musters
+# toward the +10 fortified cap. Fixture: siege_praven with fort 1 set.
+load tests/fixtures/fortsiege.owb
+enter 1
+tick 2
+siege 1
+tick 2
+state
+quit
