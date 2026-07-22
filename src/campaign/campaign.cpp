@@ -585,6 +585,7 @@ void CampaignInit(GameState& gs) {
         const std::vector<int>& roster = c.factions[t.owner].roster;
         for (int i = 0; i < size && !roster.empty(); ++i)
             t.garrison[roster[i % (int)roster.size()]]++;
+        t.recruitPool = t.prosperity / 25;      // the sons of the land (V2)
     }
 
     // Stock every settlement's market. Price spreads are settlement identity
@@ -2129,6 +2130,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     t.garrison[roster[t.garrisonSize() % (int)roster.size()]]++;
                 }
             }
+
+            // The land raises sons (V2): each settlement's recruit pool
+            // refills one a day toward prosperity/25 — so a burned village
+            // genuinely has no spears to give until it recovers. The same
+            // economy that pays you now feeds the levies.
+            for (Town& t : gs.towns)
+                if (t.recruitPool < t.prosperity / 25) t.recruitPool++;
 
             // Lords recruit the way the player does: a lord camped by any
             // friendly settlement takes on volunteers toward his full host,

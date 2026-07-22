@@ -720,6 +720,16 @@ this is the feedback the flat numbers were waiting for.
   doll all picked them up with zero code changes, which is the
   interaction claim made concrete.
 
+- [x] **V2. Iteration two — the land raises sons.** The cross-system
+  interaction asked for, made real: every settlement carries a recruit
+  pool of prosperity/25, refilling one a dawn — recruiting drains it,
+  the tavern names it, and a raided village genuinely has no spears to
+  give until it prospers again (war → economy → manpower, one loop).
+  Plus click feedback: the gate menu shows the last action's result
+  right in the panel. `rpool` save tag, `pool=` in the town dump,
+  `tests/recruit_pool.txt` drains Sargoth dry and watches a son come of
+  age. Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

@@ -1,0 +1,16 @@
+# Recruit pool (direction V2): prosperity feeds the levies - a settlement
+# holds prosperity/25 recruits, refilling one a day. Drain it dry and the
+# tavern turns you away until the land recovers.
+seed 2
+enter 0
+tavern
+recruit 0 4        # drain Sargoth's pool of four
+state              # expect pool=0 on town 0 and party grown by 4
+recruit 0 1        # the fifth is refused
+state              # expect result= "no more sons to give", party unchanged
+leave
+wait 70            # a dawn: one son comes of age
+wait 70            # (battles steal marching time - make sure a day passes)
+wait 70
+state              # expect pool >= 1
+quit

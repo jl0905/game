@@ -484,12 +484,18 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         const std::vector<int>& roster = c.factions[c.playerFaction].roster;
         if (cin.recruitSlot < (int)roster.size()) {
             const TroopDef& td = c.troops[roster[cin.recruitSlot]];
+            Town& tt = gs.towns[gs.currentSettlement];
             if (gs.player.totalTroops() >= PartyCap(gs)) {
                 gs.resultText = TextFormat(
                     "Your name only carries %d men. Win renown for more.",
                     PartyCap(gs));
+            } else if (tt.recruitPool <= 0) {   // the land is drained (V2)
+                gs.resultText = TextFormat(
+                    "%s has no more sons to give. Let it prosper a while.",
+                    tt.name.c_str());
             } else if (gs.gold >= td.cost) {
                 gs.gold -= td.cost;
+                tt.recruitPool--;
                 gs.player.troopCounts[roster[cin.recruitSlot]]++;
                 SfxPlay(Sfx::Click);
             }
@@ -1020,7 +1026,9 @@ void TownDraw(const GameState& gs) {
         for (int n : gs.prisoners) captives += n;
         const int y = GetScreenHeight() - 60 - (int)roster.size() * 24 - (captives > 0 ? 24 : 0);
         DrawRectangle(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
-        ui::Text("The tavern. Recruits wait for coin:", 10, y, 20, GOLD);
+        ui::Text(TextFormat("The tavern. Recruits wait for coin (%d in the pool):",
+                            gs.towns[gs.currentSettlement].recruitPool),
+                 10, y, 20, GOLD);
         if (captives > 0)
             ui::Text(TextFormat("[R] Ransom %d captives (%d gold)", captives, captives * 10),
                      10, GetScreenHeight() - 54, 20, LIME);
@@ -1089,6 +1097,9 @@ void TownDraw(const GameState& gs) {
             y += townmenu::ROW_H;
         }
         ui::Text("[Esc] ride on", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));
+        // Click feedback (V2): the last thing that happened, right here.
+        if (!gs.resultText.empty())
+            ui::Text(gs.resultText.c_str(), x0, y + 30, 17, GOLD);
     }
     EndDrawing();
 }

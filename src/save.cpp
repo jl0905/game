@@ -197,6 +197,7 @@ bool SaveGame(const GameState& gs, const char* path) {
             f << "town " << t << ' ' << c.factions[gs.towns[t].owner].id << '\n';
         if (!gs.towns[t].fiefLord.empty())
             f << "fief " << t << ' ' << gs.towns[t].fiefLord << '\n';
+        f << "rpool " << t << ' ' << gs.towns[t].recruitPool << '\n';
         // Explicit reset so an emptied garrison doesn't resurrect on load.
         f << "garrisonreset " << t << '\n';
         for (int tr = 0; tr < (int)gs.towns[t].garrison.size() && tr < c.troops.size(); ++tr)
@@ -309,6 +310,11 @@ bool LoadGame(GameState& gs, const char* path) {
             const int fh = c.factions.find(fid.c_str());
             if (idx >= 0 && idx < (int)gs.towns.size() && fh >= 0)
                 gs.towns[idx].owner = fh;
+        } else if (tag == "rpool") {
+            int idx = -1, v = 0;
+            ss >> idx >> v;
+            if (idx >= 0 && idx < (int)gs.towns.size())
+                gs.towns[idx].recruitPool = v;
         } else if (tag == "fief") {
             int idx = -1; std::string name;
             ss >> idx >> name;

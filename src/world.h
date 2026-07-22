@@ -69,6 +69,11 @@ struct Town {
     // income, fattened by arriving caravans. TODO(balance): growth/cap.
     int prosperity = 100;
 
+    // Recruit pool (V2): the settlement's sons, fed by prosperity — a rich
+    // town raises more spears; a raided one has none to give. Pool cap is
+    // prosperity/25, refilling one a day. TODO(balance).
+    int recruitPool = 4;
+
     // Fief grant (M3): the raised lord who holds this seat for the crowned
     // player — he taxes it (its income skips the ledger) and respawns here.
     std::string fiefLord;
