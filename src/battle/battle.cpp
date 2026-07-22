@@ -1190,6 +1190,17 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     } else if (commanded && !(haveFoe && foeDist <= engage * 1.3f)) {
         goal = FormationTarget(formation, ranks, anchor, anchorYaw, s.slot, ownCount);
         holding = true;
+    } else if (haveFoe && ranged && IsMounted(c, s) &&
+               foeDist < engage * 0.5f) {
+        // Parthian habits (V116): a horse archer pressed to half his range
+        // opens it again, loosing over his shoulder as he rides.
+        Vector3 away = Vector3Subtract(s.pos, tpos);
+        away.y = 0;
+        if (Vector3LengthSqr(away) > 0.01f)
+            goal = Vector3Add(s.pos, Vector3Scale(Vector3Normalize(away),
+                                                  engage));
+        else
+            goal = s.pos;
     } else if (haveFoe) {
         goal = tpos;
     } else {

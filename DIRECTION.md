@@ -1429,6 +1429,12 @@ this is the feedback the flat numbers were waiting for.
   with the Nords; and the campaign map now plays the rain patter when
   you ride inside the storm, matching V64's streaks.
   `tests/horse_archer.txt`.
+- [x] **V116. Iteration one-sixteen — Parthian habits.** Mounted archers
+  pressed to half their range open it again, loosing as they ride —
+  the kiting that makes horse archers horse archers, fixing V115's
+  honest note (arrows=0 in the scrum → arrows=4 in the same fixture).
+  Foot archers still stand; the counter is corner them or spear the
+  horse. `tests/parthian.txt`.
 
 ## Sequencing guidance
 

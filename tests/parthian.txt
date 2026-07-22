@@ -1,0 +1,12 @@
+# Parthian habits (V116): a mounted archer pressed to half his engagement
+# range opens it again, loosing as he rides - the kiting that makes horse
+# archers horse archers. Fixture: 4 outriders vs 3 charging knights in
+# daylight. Before V116 this exact scenario showed arrows=0 (they galloped
+# into melee); now volleys fly - expect arrows>0 in at least one state.
+load tests/fixtures/outfight.owb
+walk 1 0 0.6
+tick 6
+state
+tick 6
+state
+quit
