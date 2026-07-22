@@ -689,6 +689,12 @@ this is the feedback the flat numbers were waiting for.
   caravans, events) simulate in ~0.1 s wall — campaign cost is
   microseconds a frame and could scale 10× before mattering. 69/69
   scenarios green on the big map; the arc still crowns.
+- [x] **U13. Bigger text, no collisions (post-sprint playtest).** Shipped:
+  a global text scale through every ui draw *and measure* (default 1.2,
+  `fonts.cfg scale=`, clamped 0.8–1.6) so layouts stay coherent; and the
+  real top-left overlap (what-now y38 / news y42 / siege-camp y38 all on
+  the same pixels) fixed — news rides its own banded line at y66.
+  Standing rule adopted: when adding HUD lines, check the y-stack.
 - [x] **U7. The played exe stays current (process).** Running: pull +
   rebuild after every push (fails harmlessly while the game is open;
   retried each cycle). After every push:
