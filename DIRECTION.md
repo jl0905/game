@@ -1225,6 +1225,11 @@ this is the feedback the flat numbers were waiting for.
   price ("Hire Malin Longeye (scout, 100 gold)"), and greys with
   "(already yours)" once hired — companion shopping becomes a map
   decision instead of a slot machine. Draw-only.
+- [x] **V80. Iteration eighty — the world builds too.** AI kingdom towns
+  at prosperity 130+ fortify themselves at dawn (one work-site a day,
+  −20 prosperity, news-lined) — the same V51 walls the player buys, so
+  crowns you leave in peace grow harder to storm and V53's peace
+  growth now arms your future enemies. `tests/ai_fortify.txt`.
 
 ## Sequencing guidance
 

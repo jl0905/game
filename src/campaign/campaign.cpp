@@ -2568,6 +2568,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // The world builds too (V80): an AI crown's town that has grown
+            // fat in peacetime raises new walls — the same V51 fortification
+            // the player buys, paid from prosperity instead of a purse. One
+            // work-site a dawn keeps the pace readable. TODO(balance).
+            for (Town& t : gs.towns) {
+                if (t.fortified || t.prosperity < 130) continue;
+                if (t.owner < 0 || t.owner == c.playerFaction ||
+                    !c.factions[t.owner].kingdom) continue;
+                t.fortified = true;
+                t.prosperity -= 20;   // the masons are paid in grain and coin
+                gs.resultText = TextFormat(
+                    "%s has raised new walls. (%s grows strong)",
+                    t.name.c_str(), c.factions[t.owner].name.c_str());
+                break;
+            }
+
             // The land raises sons (V2): each settlement's recruit pool
             // refills one a day toward prosperity/25 — so a burned village
             // genuinely has no spears to give until it recovers. The same

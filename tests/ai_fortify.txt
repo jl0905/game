@@ -1,0 +1,10 @@
+# The world builds too (V80): an AI kingdom's town at prosperity 130+
+# fortifies itself at dawn - the same V51 walls the player buys, paid with
+# 20 prosperity, one work-site per dawn, announced in the news. Fixture:
+# Jelkala at 140, clock 59. Expect the news line, the FORT marker, and
+# prosperity down to 120 after the dawn.
+load tests/fixtures/aiwall.owb
+state
+wait 5
+state
+quit
