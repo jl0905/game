@@ -79,6 +79,8 @@ struct BattleOutcome {
     std::vector<int> allyLosses;     // losses among allyTroops (empty if none)
     std::vector<int> enemyLosses;    // enemy dead, parallel to Content::troops
     int              horsesTaken = 0;   // masterless mounts on a won field (V22)
+    std::vector<int> enemySurrendered;  // men who yielded, per troop (V42) —
+                                        // the campaign takes them prisoner
 };
 
 // Read-only view of the running battle, for script harnesses and debugging.

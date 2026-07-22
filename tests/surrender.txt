@@ -1,0 +1,13 @@
+# Quarter (V42): a beaten side can yield instead of dying to the last man.
+# Three triggers: routed side at 1/5 strength, colours-down side at 1/3, or
+# a bloodied remnant (half down) facing 6:1 odds. Yielded men pass WHOLE
+# into the prisoner train ("Yielded: N" beside the slain-share captives).
+# Hire the Free Company, crush a war-band: expect Yielded in the report.
+load tests/fixtures/merc.owb
+parley
+topic 8
+leave
+hunt 90
+tick 90
+state
+quit

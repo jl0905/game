@@ -992,6 +992,13 @@ this is the feedback the flat numbers were waiting for.
   soldiers, so loot/captives/horses/banners all flow the normal path;
   a lost paper battle carries you off at 1 hp. Harness `autoresolve`;
   `tests/autoresolve.txt`.
+- [x] **V42. Iteration forty-two — quarter.** A beaten side can yield:
+  routed at a fifth of its strength, colours-in-the-mud at a third, or
+  a bloodied remnant facing six-to-one on the spot — "THEY THROW DOWN
+  THEIR ARMS!" rings and every man passes whole into your prisoner
+  train ("Yielded: N", stacking with the slain-share captives and
+  feeding ransom and V36 pressing). Small warbands (< 5) are exempt
+  and fight to the end. `tests/surrender.txt`.
 
 ## Sequencing guidance
 

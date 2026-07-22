@@ -106,8 +106,9 @@ struct Harness {
                     gs.battleWon    = out.won;
                     gs.playerLosses = out.playerLosses;
                     gs.allyLosses   = out.allyLosses;
-                    gs.enemyLosses  = out.enemyLosses;
-                    gs.battleHorses = out.horsesTaken;
+                    gs.enemyLosses   = out.enemyLosses;
+                    gs.battleHorses  = out.horsesTaken;
+                    gs.battleYielded = out.enemySurrendered;
                     gs.screen = Screen::BattleResult;
                     battleLive = false;
                     blockHeld = false;

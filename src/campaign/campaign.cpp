@@ -1010,6 +1010,15 @@ static void ApplyBattleResult(GameState& gs) {
             gs.prisoners[t] += took;
             captives += took;
         }
+        // Men who threw down their arms pass whole into the train (V42).
+        int yielded = 0;
+        for (int t = 0; t < (int)gs.battleYielded.size() && t < gs.content.troops.size(); ++t) {
+            gs.prisoners[t] += gs.battleYielded[t];
+            yielded += gs.battleYielded[t];
+        }
+        gs.battleYielded.clear();
+        if (yielded > 0)
+            gs.resultText += TextFormat("   Yielded: %d", yielded);
         if (captives > 0) {
             gs.resultText += TextFormat("   Captives: %d", captives);
             gs.battleReport.push_back(TextFormat("Captives taken: %d  (ransom at a tavern)", captives));

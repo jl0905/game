@@ -301,6 +301,7 @@ struct GameState {
     std::vector<int> allyLosses;                 // parallel to troops (if an ally fought)
     std::vector<int> enemyLosses;                // enemy dead, for the battle report
     int              battleHorses = 0;           // strays rounded up on a won field (V22)
+    std::vector<int> battleYielded;              // men who threw down arms (V42)
     std::string      resultText;
 
     // Aftermath card: filled when a battle result is applied, drawn as a

@@ -719,6 +719,7 @@ struct BattleState {
     int   heroKicksLanded = 0;
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
+    std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1799,6 +1800,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             out.enemyLosses  = ComputeEnemyLosses();
             // A won field's strays are yours to round up (V22).
             out.horsesTaken = B.won ? (int)B.looseHorses.size() : 0;
+            // ...and the men who yielded march in your train (V42).
+            out.enemySurrendered.assign(c.troops.size(), 0);
+            if (B.won)
+                for (int t = 0; t < c.troops.size() && t < (int)B.surrendered.size(); ++t)
+                    out.enemySurrendered[t] = B.surrendered[t];
             return false;   // battle over — caller returns to the world map
         }
     }
@@ -1851,6 +1857,39 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 playerFled * 2 >= B.startPlayerSide) {
                 B.playerSideRouted = true;
                 ringBanner("YOUR LINE BREAKS!");
+            }
+
+            // Quarter (V42): a side cut below a fifth of its strength with
+            // its colours in the mud stops fighting — the rest throw down
+            // their arms and pass to the victor's train. TODO(balance).
+            if (!B.over && B.startEnemySide >= 5) {
+                int aliveE = 0, aliveP = 0;
+                for (const Soldier& s : B.soldiers) {
+                    if (s.hp <= 0 || s.escaped) continue;
+                    (s.team == Team::Enemy ? aliveE : aliveP)++;
+                }
+                // Quarter comes three ways (TODO(balance) all thresholds):
+                // a routed side holds to a fifth, a side with its colours in
+                // the mud to a third — and a bloodied remnant (half down)
+                // facing six-to-one odds yields on the spot.
+                const bool broken  = (B.enemySideRouted || B.bannerIdx[1] < 0) &&
+                                     aliveE * (B.bannerIdx[1] < 0 ? 3 : 5) <=
+                                         B.startEnemySide;
+                const bool hopeless = aliveE * 2 <= B.startEnemySide &&
+                                      aliveE * 6 <= aliveP;
+                if (aliveE > 0 && (broken || hopeless)) {
+                    if (B.surrendered.empty())
+                        B.surrendered.assign(256, 0);   // per-troop, roomy
+                    for (Soldier& s : B.soldiers)
+                        if (s.hp > 0 && !s.escaped && s.team == Team::Enemy) {
+                            s.escaped = true;   // off the field, but not free
+                            if (s.troop >= 0 && s.troop < (int)B.surrendered.size())
+                                B.surrendered[s.troop]++;
+                        }
+                    B.routBanner = 2.5f;
+                    B.routText   = "THEY THROW DOWN THEIR ARMS!";
+                    SfxPlay(Sfx::Fanfare, 0.7f);
+                }
             }
 
             // The standard falls (V32): the whole side feels it, and the
