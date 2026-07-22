@@ -448,16 +448,18 @@ void LoadDefaultContent(Content& c) {
 
     // ---- Quests (direction F4) -------------------------------------------
     // Shapes only; givers rotate through them. TODO(balance): all rewards.
+    // Deadlines (V59): every task now carries a clock — miss it and the
+    // giver remembers. Days are flat TODO(balance).
     c.quests.add({ "hunt",  "Bandit Hunt",
                    "Outlaws plague the roads. Break a band of them.",
-                   QuestType::HuntBandits, 1, 100, 5, "" });
+                   QuestType::HuntBandits, 1, 100, 5, "", 6 });
     c.quests.add({ "grain", "Grain Delivery",
                    "The granary runs thin. Bring grain from afar.",
-                   QuestType::DeliverGrain, 5, 80, 5, "grain" });
+                   QuestType::DeliverGrain, 5, 80, 5, "grain", 8 });
     // V18 proof: a delivery quest for any ware — one registry line.
     c.quests.add({ "timber", "Timber for the Walls",
                    "The palisade rots. Bring timber for the wrights.",
-                   QuestType::DeliverGrain, 4, 90, 5, "timber" });
+                   QuestType::DeliverGrain, 4, 90, 5, "timber", 8 });
 
     // ---- World events (R4) ------------------------------------------------
     // Fired on the day rotation at a rotating settlement, announced as news.

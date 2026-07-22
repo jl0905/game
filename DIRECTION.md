@@ -1100,6 +1100,12 @@ this is the feedback the flat numbers were waiting for.
   computed by the same anchor rules the AI obeys, so what you see is
   exactly where they'll stand. Shape, ranks and orders become visual
   dials instead of imagined ones. Draw-only; bench holds ~20.8 ms.
+- [x] **V59. Iteration fifty-nine — the giver's clock.** Quests carry
+  deadlines (`QuestDef.days`: hunt 6, deliveries 8; 0 = untimed): the
+  clock ticks at dawn, rides in saves, shows as `days=` in the dump —
+  and an expired task costs the reward plus −2 relation with the
+  giver. Contracts are commitments now, not souvenirs.
+  `tests/quest_deadline.txt` expires a 1-day hunt on a clock-59 fixture.
 
 ## Sequencing guidance
 

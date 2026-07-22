@@ -139,7 +139,8 @@ bool SaveGame(const GameState& gs, const char* path) {
         f << "quest " << c.quests[gs.activeQuest].id << ' '
           << (gs.questFaction >= 0 && gs.questFaction < c.factions.size()
                   ? c.factions[gs.questFaction].id : std::string("none"))
-          << ' ' << gs.questTown << ' ' << gs.questProgress << '\n';
+          << ' ' << gs.questTown << ' ' << gs.questProgress
+          << ' ' << gs.questDays << '\n';   // the clock rides too (V59)
 
     // Burned-out bandit dens (H2) — live ones are recreated from the map.
     for (int l = 0; l < (int)gs.lairs.size(); ++l)
@@ -449,6 +450,7 @@ bool LoadGame(GameState& gs, const char* path) {
         } else if (tag == "quest") {
             std::string qid, fid;
             ss >> qid >> fid >> gs.questTown >> gs.questProgress;
+            if (!(ss >> gs.questDays)) gs.questDays = 0;   // old saves: no clock
             gs.activeQuest  = c.quests.find(qid.c_str());
             gs.questFaction = c.factions.find(fid.c_str());
         } else if (tag == "cwear") {

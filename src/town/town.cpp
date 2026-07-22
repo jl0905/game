@@ -156,6 +156,7 @@ std::string TryQuest(GameState& gs) {
                                                : gs.towns[src].owner;
     gs.questTown    = -1;
     gs.questProgress = 0;
+    gs.questDays     = (float)qd.days;   // the giver's clock starts (V59)
     if (qd.type == QuestType::DeliverGrain) {
         // Deliver to the nearest settlement you can actually walk into.
         float bestD = 1e9f;

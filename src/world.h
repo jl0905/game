@@ -227,6 +227,7 @@ struct GameState {
     int questFaction  = -1;   // the giver's faction
     int questTown     = -1;   // delivery destination (DeliverGrain)
     int questProgress = 0;    // parties broken so far (HuntBandits)
+    float questDays   = 0;    // days left on the giver's clock (V59); 0 = none
 
     // Player kingdom (F3): true once the player has claimed a crown. Crowning
     // needs two settlements, turns every other crown hostile, and unlocks

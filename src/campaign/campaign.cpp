@@ -2226,6 +2226,19 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                         gs.troopXp[t] += 5;
             }
 
+            // The giver's clock (V59): an unfinished task expires at dawn —
+            // the reward is gone and the giver remembers the slight.
+            if (gs.activeQuest >= 0 && gs.questDays > 0 &&
+                (gs.questDays -= 1.0f) <= 0) {
+                const char* qn = c.quests[gs.activeQuest].name.c_str();
+                gs.resultText = TextFormat(
+                    "The time for '%s' has run out. The giver remembers.", qn);
+                NudgeRelation(gs, gs.questFaction, -2);   // TODO(balance)
+                gs.activeQuest = -1;
+                gs.questTown   = -1;
+                gs.questDays   = 0;
+            }
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;

@@ -1,0 +1,10 @@
+# Quest deadlines (V59): every task carries the giver's clock (hunt 6 days,
+# deliveries 8; QuestDef.days, saved with the quest tag). Miss it and the
+# quest expires at dawn with the giver's relation -2. Fixture: a hunt quest
+# for Patrol with 1 day left, clock 59 - dawn lands in seconds. Expect
+# quest gone in the second state and relation: patrol=-2.
+load tests/fixtures/qclock.owb
+state
+wait 5
+state
+quit

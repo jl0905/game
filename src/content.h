@@ -139,6 +139,8 @@ struct QuestDef {
     int         relationReward = 0;  // TODO(balance)
     std::string goodId;        // Deliver quests carry ANY registered ware
                                // (V18) — quests join the goods registry
+    int         days = 0;      // deadline in days (V59); 0 = no clock.
+                               // TODO(balance)
 };
 
 // A world event (R4): fires at a settlement on the day rotation and is

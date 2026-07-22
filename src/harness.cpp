@@ -260,9 +260,9 @@ struct Harness {
         if (gs.mercParty >= 0 && gs.mercDays > 0)
             std::printf("merc: party=%d days=%.1f\n", gs.mercParty, gs.mercDays);
         if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size())
-            std::printf("quest: %s progress=%d target=%d\n",
+            std::printf("quest: %s progress=%d target=%d days=%.0f\n",
                         c.quests[gs.activeQuest].id.c_str(), gs.questProgress,
-                        gs.questTown);
+                        gs.questTown, gs.questDays);
         for (int f = 0; f < c.factions.size() && f < (int)gs.relations.size(); ++f)
             if (gs.relations[f] != 0)
                 std::printf("relation: %s=%+d\n", c.factions[f].id.c_str(), gs.relations[f]);
