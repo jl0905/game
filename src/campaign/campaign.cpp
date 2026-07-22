@@ -1289,6 +1289,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                     in.upgradeSlot = row;
             }
         }
+        in.pressPrisoner = IsKeyPressed(KEY_R);   // press a captive (V36)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) in.leaveSettlement = true;
         return in;
     }
@@ -3568,6 +3569,27 @@ void PartyUpdate(GameState& gs, const CampaignInput& in) {
         const int t = rows[in.dismissSlot];
         if (gs.player.troopCounts[t] > 0) gs.player.troopCounts[t]--;   // off the books
     }
+
+    // Press a captive into the line (V36): he takes the coin at spear-point.
+    // Fills a thinned warband without a town — but honest men remember how
+    // he was recruited: -1 honor, and the honor floor feeds N4 opinions.
+    if (in.pressPrisoner) {
+        int t = -1;
+        for (int i = 0; i < (int)gs.prisoners.size(); ++i)
+            if (gs.prisoners[i] > 0) { t = i; break; }
+        if (t < 0)
+            gs.resultText = "You hold no captives to press.";
+        else if (gs.player.totalTroops() >= PartyCap(gs))
+            gs.resultText = "The warband is full. No room at the fire.";
+        else {
+            gs.prisoners[t]--;
+            gs.player.troopCounts[t]++;
+            gs.honor -= 1;   // TODO(balance)
+            gs.resultText = TextFormat(
+                "A captive %s takes the coin at spear-point. (-1 honor)",
+                c.troops[t].name.c_str());
+        }
+    }
     if (in.leaveSettlement) gs.screen = Screen::Campaign;
 }
 
@@ -3660,6 +3682,16 @@ void PartyDraw(const GameState& gs) {
     DrawRectangleLines(paneX, 180, 420, 420, Fade(GOLD, 0.5f));
     ui::Text("Your ranks on parade", paneX + 8, 186, 18, Fade(RAYWHITE, 0.7f));
 
+    // Captives in the train (V36): manpower at the price of your name.
+    {
+        int captives = 0;
+        for (int n : gs.prisoners) captives += n;
+        if (captives > 0)
+            ui::Text(TextFormat(
+                         "Captives in the train: %d    [R] press one into the line (-1 honor)",
+                         captives),
+                     panelX, GetScreenHeight() - 82, 20, GOLD);
+    }
     ui::Text("[1-9 / click] promote one    [Shift / right-click] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();

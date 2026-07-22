@@ -950,6 +950,12 @@ this is the feedback the flat numbers were waiting for.
   `ui::Text`/`ui::Title` covers map labels over snowfields, battle HUD
   over sky, and every menu. Global scale nudged 1.35 → 1.4 per the
   standing "even bigger" ask.
+- [x] **V36. Iteration thirty-six — press the captives.** Captives can
+  join instead of only ransoming: R on the party screen presses one
+  into the line at spear-point — party +1 (cap respected), honor −1
+  (the currency N4 opinions and TryRebel already read), refusals in
+  character when the train is empty or the band is full. Party screen
+  shows the captive count and the price. `tests/press_captives.txt`.
 
 ## Sequencing guidance
 

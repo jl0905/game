@@ -1,0 +1,13 @@
+# Press captives (V36): win the knights fight (1 captive taken), then on
+# the party screen R presses him into the line - party 6 -> 7, honor -1
+# (the N4 opinion currency). A second press is refused: no captives left.
+load tests/horses.owb
+walk 1 0 0.6
+block on
+tick 120
+state
+party
+press
+press
+state
+quit

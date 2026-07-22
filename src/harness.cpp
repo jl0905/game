@@ -671,6 +671,10 @@ int RunScript(const char* path) {
             // Dismount / remount (U11) — Z in the saddle or beside a horse.
             BattleInput bin; bin.mountToggle = true;
             h.Step(CampaignInput{}, bin);
+        } else if (cmd == "press") {
+            // Press a captive into the warband (V36) — party screen R.
+            CampaignInput cin; cin.pressPrisoner = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "kick") {
             // The boot (V33): stagger the man in front through his shield.
             BattleInput bin; bin.kick = true;

@@ -41,6 +41,7 @@ struct CampaignInput {
     bool    garrisonOne   = false; // leave a soldier on your walls (S2, F)
     bool    ungarrisonOne = false; // ...or call one down (Shift+F)
     bool    ransomLords  = false;  // prisoner lords (O2): sell them back (U)
+    bool    pressPrisoner = false; // party screen R: a captive takes the coin (V36)
     bool    releaseLords = false;  // ...or set them free (Y)
     int     buyGood  = -1;            // good row to buy one unit of
     int     sellGood = -1;            // good row to sell one unit of (Shift+key)
