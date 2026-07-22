@@ -513,5 +513,6 @@ bool LoadGame(GameState& gs, const char* path) {
         }
     }
     gs.screen = Screen::Campaign;
+    RefreshWarMarkups(gs);   // saved diplomacy prices the shelves (V31)
     return true;
 }

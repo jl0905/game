@@ -1,0 +1,10 @@
+# War economy (V31): a town whose owner fights kingdom wars marks up the
+# whole shelf 12% per front (outlaw raiding is weather, not a war economy).
+# Seed 42 opens with your crown at war with Sarleon only: expect
+# warmarkup=112 in your own town's market and grain buy=14 (13 at peace).
+# Sue for peace and the shelves settle back to 100 by next dawn.
+seed 42
+enter 0
+market
+state
+quit

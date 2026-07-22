@@ -918,6 +918,13 @@ this is the feedback the flat numbers were waiting for.
   a glance and the glow moves with every conquest; hostile owners get a
   hot inner ring. Plus an UNDER CONTRACT chip on the campaign HUD
   quoting the hired company, its men, and the days left.
+- [x] **V31. Iteration thirty-one — war reaches the shelves.** The user's
+  own example, made real: every town carries a `warMarkup` refreshed at
+  dawn — +12% on every price per kingdom war its owner fights (capped
+  at three fronts; outlaw raiding is weather, not a war economy). Sue
+  for peace and the shelves settle by morning; conquest re-prices a
+  town overnight. Red WAR PRICES banner in the market, `warmarkup=` in
+  the harness dump, `tests/war_prices.txt`.
 
 ## Sequencing guidance
 

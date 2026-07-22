@@ -84,6 +84,10 @@ struct Town {
     std::vector<int> stock;        // units for sale
     std::vector<int> priceOffset;  // TODO(balance): percent of base price
 
+    // War economy (V31): percent markup on every price while the owner is
+    // at war — markets learn the news by morning (refreshed at dawn).
+    int warMarkup = 100;
+
     int garrisonSize() const {
         int n = 0;
         for (int c : garrison) n += c;
@@ -459,9 +463,28 @@ inline void AlignWarsWithLiege(GameState& gs) {
 // Whether two factions currently fight — the runtime diplomacy matrix when it
 // exists, falling back to the static Content relations. Use this (not
 // AreFactionsHostile) for anything happening in a live world.
+// War economy (V31): a town whose owner fights wars pays war prices — each
+// front adds 12% to everything on the shelf, capped at three fronts. Called
+// at world init, at every dawn, and after loading a save, so diplomacy
+// (declarations, truces, conquest) reaches the shelves by next morning.
+inline void RefreshWarMarkups(GameState& gs);
+
 inline bool AtWar(const GameState& gs, int a, int b) {
     const int n = gs.content.factions.size();
     if (a < 0 || b < 0 || a == b) return AreFactionsHostile(gs.content, a, b);
     if ((int)gs.hostile.size() == n * n) return gs.hostile[(size_t)a * n + b] != 0;
     return AreFactionsHostile(gs.content, a, b);
+}
+
+inline void RefreshWarMarkups(GameState& gs) {
+    const int n = gs.content.factions.size();
+    for (Town& t : gs.towns) {
+        int fronts = 0;
+        for (int f = 0; f < n && fronts < 3; ++f)   // kingdom wars only —
+            if (f != t.owner && gs.content.factions[f].kingdom &&   // outlaw
+                AtWar(gs, t.owner, f)) fronts++;    // raiding is the weather,
+                                                    // not a war economy
+
+        t.warMarkup = 100 + 12 * fronts;   // TODO(balance)
+    }
 }

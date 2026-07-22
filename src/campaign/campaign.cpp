@@ -640,6 +640,7 @@ void CampaignInit(GameState& gs) {
     gs.hostile = c.hostile;
     gs.warScore.assign(gs.hostile.size(), 0);
     gs.truceDays.assign(gs.hostile.size(), 0.0f);
+    RefreshWarMarkups(gs);   // war prices from day one (V31)
 }
 
 // A party index is usable as a live entry in gs.parties.
@@ -2091,6 +2092,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             if (gs.lordsRally && (gs.lordsRallyDays -= 1.0f) <= 0)
                 gs.lordsRally = false;
 
+            // Markets learn the war news by morning (V31).
+            RefreshWarMarkups(gs);
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;
@@ -3250,7 +3254,9 @@ int MarketBuyPrice(const Content& c, const Town& t, int g) {
     // saddlebag) visibly shift the price. TODO(balance).
     const int stock    = g < (int)t.stock.size() ? t.stock[g] : 0;
     const int scarcity = Clamp(100 + (10 - stock) * 4, 70, 160);
-    return std::max(1, c.goods[g].basePrice * offset * scarcity / 10000);
+    // ...and so does war (V31): the owner's fronts mark up the whole shelf.
+    return std::max(1, c.goods[g].basePrice * offset * scarcity / 10000
+                           * t.warMarkup / 100);
 }
 
 int MarketSellPrice(const Content& c, const Town& t, int g) {
@@ -3388,6 +3394,12 @@ void MarketDraw(const GameState& gs) {
     for (int q : gs.goods) carried += q;
     ui::Text(TextFormat("Gold: %d      Saddlebags: %d / %d", gs.gold, carried,
                         GOODS_CAP), x, 150, 24, RAYWHITE);
+    if (t.warMarkup > 100)   // war reaches the shelves (V31)
+        ui::Text(TextFormat("WAR PRICES: everything +%d%% while %s fights its wars",
+                            t.warMarkup - 100,
+                            c.factions.valid(t.owner) ? c.factions[t.owner].name.c_str()
+                                                      : "the crown"),
+                 x + 420, 150, 20, Fade(RED, 0.9f));
 
     // Enterprise line (E4): what you own here, or the offer to buy.
     if (t.type == SettlementType::Town && gs.currentSettlement < (int)gs.enterpriseAt.size()) {
