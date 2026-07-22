@@ -767,6 +767,14 @@ this is the feedback the flat numbers were waiting for.
   lodDistance setting of the hero, skipped in the arena. Bench: 33.8 ms
   at 2000 soldiers — free.
 
+- [x] **V8. Iteration eight — industry reshapes the town.** Every
+  enterprise now names the good it makes (mill→grain, smithy→tools,
+  dyeworks→wool, sawmill→timber): owning one turns that ware into local
+  produce — priced at source (70%), produced daily by the living
+  market's makes-check, hauled by caravans, taxed by prosperity. Applied
+  idempotently each dawn, so it survives loads for free. Verified:
+  Sargoth's mill flipped grain 130%→70% and the shelf began to fill.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

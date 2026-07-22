@@ -352,10 +352,10 @@ void LoadDefaultContent(Content& c) {
 
     // ---- Enterprises (direction E4) --------------------------------------
     // One per town at most; bought at the market. TODO(balance): all numbers.
-    c.enterprises.add({ "mill",     "Grain Mill", 300, 15 });
-    c.enterprises.add({ "smithy",   "Smithy",     300, 15 });
-    c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15 });
-    c.enterprises.add({ "sawmill",  "Sawmill",    300, 15 });   // V3 proof
+    c.enterprises.add({ "mill",     "Grain Mill", 300, 15, "grain" });
+    c.enterprises.add({ "smithy",   "Smithy",     300, 15, "tools" });
+    c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15, "wool" });
+    c.enterprises.add({ "sawmill",  "Sawmill",    300, 15, "timber" });
 
     // ---- Quests (direction F4) -------------------------------------------
     // Shapes only; givers rotate through them. TODO(balance): all rewards.

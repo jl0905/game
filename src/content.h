@@ -118,6 +118,9 @@ struct EnterpriseDef {
     std::string name;
     int cost        = 0;   // TODO(balance): purchase price
     int dailyIncome = 0;   // TODO(balance): base gold per day
+    // What the works turns out (V8): owning it makes this good local
+    // produce — priced at source, produced daily by the living market.
+    std::string makesGood;
 };
 
 // A quest shape (direction F4), offered by settlement givers. `amount` is the

@@ -2137,6 +2137,19 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // Industry reshapes the town (V8): a working enterprise makes
+            // its good local produce — priced at source, produced daily by
+            // the living market's makes-check. Idempotent, so it also
+            // survives loads without a new save tag.
+            for (int ti = 0; ti < (int)gs.towns.size() &&
+                             ti < (int)gs.enterpriseAt.size(); ++ti) {
+                const int e = gs.enterpriseAt[ti];
+                if (!c.enterprises.valid(e)) continue;
+                const int g = c.goods.find(c.enterprises[e].makesGood.c_str());
+                if (g >= 0 && g < (int)gs.towns[ti].priceOffset.size())
+                    gs.towns[ti].priceOffset[g] = 70;   // PRICE_AT_SOURCE
+            }
+
             // The moneylender's books (V5): 5% a week on deposits, and
             // banked capital works — 200+ on deposit lifts that town's
             // prosperity a point a day. Interest → prosperity → prices.
