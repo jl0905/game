@@ -2399,6 +2399,26 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                         std::min(150, gs.towns[bi].prosperity + 1);
             }
 
+            // Peace pays, war grinds (V53): a settlement whose owner fights
+            // no kingdom war grows +1 prosperity a day (cap 150); one whose
+            // owner is at war bleeds -1 every other day (floor 60). The same
+            // number then prices the shelves, fills the levies and pays the
+            // vaults — sue for peace and the land itself recovers.
+            {
+                const int nf = c.factions.size();
+                for (Town& t : gs.towns) {
+                    if (t.owner < 0) continue;
+                    int fronts = 0;
+                    for (int f = 0; f < nf; ++f)
+                        if (f != t.owner && c.factions[f].kingdom &&
+                            AtWar(gs, t.owner, f)) fronts++;
+                    if (fronts == 0)
+                        t.prosperity = std::min(150, t.prosperity + 1);
+                    else if (gs.day % 2 == 0)
+                        t.prosperity = std::max(60, t.prosperity - 1);
+                }
+            }
+
             // The land raises sons (V2): each settlement's recruit pool
             // refills one a day toward prosperity/25 — so a burned village
             // genuinely has no spears to give until it recovers. The same

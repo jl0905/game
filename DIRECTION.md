@@ -1062,6 +1062,13 @@ this is the feedback the flat numbers were waiting for.
   wall archers loose 20% faster from the better platform (murder holes
   and good stone), on top of the bigger fortified garrison you must
   cut through. `tests/fort_siege.txt` on a fortified Praven fixture.
+- [x] **V53. Iteration fifty-three — peace pays, war grinds.** Dawn
+  drift on prosperity: no kingdom wars → +1/day (cap 150); at war →
+  −1 every other day (floor 60). Since prosperity already prices
+  shelves, fills recruit pools and pays incomes, peace is now a
+  compounding investment and long wars hollow out both sides. Plus
+  fortified stone gets its look: darker wall, timber hoarding band.
+  `tests/peace_prosperity.txt`.
 
 ## Sequencing guidance
 

@@ -1,0 +1,13 @@
+# Peace pays, war grinds (V53): at every dawn a settlement whose owner
+# fights no kingdom war gains +1 prosperity (cap 150); one whose owner is
+# at war loses 1 every other day (floor 60). Prosperity then prices the
+# shelves, fills recruit pools and pays incomes - so suing for peace makes
+# the land itself recover. This script lets several days pass and dumps
+# the towns; the drift mixes with caravan/event flows by design.
+seed 42
+state
+wait 60
+wait 60
+wait 60
+state
+quit

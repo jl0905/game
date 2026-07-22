@@ -2358,8 +2358,10 @@ void BattleDraw(const Content& c) {
     B.terrain.Draw();
 
     // Siege wall: stone segments with crenellations, broken by the gate.
+    // Fortified stone (V52/V53) reads darker and carries a hoarding band.
     if (B.hasWall) {
-        const Color stone = { 150, 148, 152, 255 };
+        const Color stone = B.setup.fortified ? Color{ 118, 116, 124, 255 }
+                                              : Color{ 150, 148, 152, 255 };
         for (float x = -ARENA; x < ARENA; x += 4.0f) {
             const float cx = x + 2.0f;
             if (fabsf(cx) <= GATE_HALF + 1.0f) continue;   // the gateway
@@ -2399,6 +2401,16 @@ void BattleDraw(const Content& c) {
             DrawCube({ gx, gy + (WALL_HEIGHT + 1.5f) * 0.5f, WALL_Z }, 1.6f,
                      WALL_HEIGHT + 1.5f, WALL_BAND * 2 + 0.4f, Color{ 110, 108, 112, 255 });
         }
+        // The hoarding (V53): a timber gallery crowning fortified stone —
+        // the wall-work you paid for, visible from the field below.
+        if (B.setup.fortified)
+            for (float x = -ARENA; x < ARENA; x += 4.0f) {
+                const float cx = x + 2.0f;
+                if (fabsf(cx) <= GATE_HALF + 1.0f) continue;
+                const float gy = B.terrain.HeightAt(cx, WALL_Z);
+                DrawCube({ cx, gy + WALL_HEIGHT + 0.9f, WALL_Z }, 4.0f, 0.5f,
+                         WALL_BAND * 2 + 1.2f, Color{ 104, 78, 48, 255 });
+            }
     }
 
     // Beyond this distance a soldier draws as a cheap two-box silhouette —
