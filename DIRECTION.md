@@ -665,10 +665,12 @@ this is the feedback the flat numbers were waiting for.
   returns to the bag); click a worn armour piece with an empty hand to
   lift it off. Obeys the Tab companion target; E-to-equip still works.
   One shared layout for hit-test and draw (K7 rule).
-- [ ] **U9. Market meets the bag (added mid-sprint).** The market screen
-  adopts the inventory-interface look; mind the state seams — town stock,
-  saddlebag goods (counts), and the tiled bag (items) are three different
-  stores and must stay so.
+- [x] **U9. Market meets the bag.** Shipped: the market gains an
+  inventory-style saddlebags panel — a tinted, counted cell per good
+  beside the ware list — one visual language across screens. The state
+  seams held: town stock, saddlebag counts, and the tiled bag remain
+  three separate stores; this is presentation only (suite untouched).
+  Track U — playtest two — is fully swept.
 - [x] **U10. Living map lettering.** Shipped: settlement names hold
   constant screen size against the zoom (readable fully zoomed out), in
   the owner's colour with a banner chip; hovering a settlement opens a

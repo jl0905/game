@@ -3124,6 +3124,24 @@ void MarketDraw(const GameState& gs) {
         y += layout::MARKET_ROW_H;
     }
 
+    // Your saddlebags, inventory-style (U9): a cell per good, tinted and
+    // counted, beside the ware list — one visual language across screens.
+    // (Three stores stay three stores: town stock, these counts, and the
+    // tiled bag never mix.)
+    {
+        const int sx = x + 640, sy = layout::MARKET_Y;
+        ui::Text("SADDLEBAGS", sx, sy - 26, 18, Fade(GOLD, 0.8f));
+        for (int g = 0; g < c.goods.size(); ++g) {
+            const int cx2 = sx + (g % 3) * 56, cy2 = sy + (g / 3) * 56;
+            DrawRectangle(cx2, cy2, 50, 50, Fade(BLACK, 0.45f));
+            DrawRectangle(cx2 + 4, cy2 + 4, 42, 30, Fade(c.goods[g].tint, 0.85f));
+            DrawRectangleLines(cx2, cy2, 50, 50, Fade(RAYWHITE, 0.3f));
+            const int have = g < (int)gs.goods.size() ? gs.goods[g] : 0;
+            ui::Text(TextFormat("%d", have), cx2 + 6, cy2 + 33, 15,
+                     have > 0 ? RAYWHITE : Fade(RAYWHITE, 0.35f));
+        }
+    }
+
     // The forge's counter (O4): today's two pieces, towns only.
     if (t.type == SettlementType::Town) {
         InvItem armorIt, weaponIt;
