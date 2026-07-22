@@ -730,6 +730,7 @@ static void ApplyBattleResult(GameState& gs) {
             return;
         }
         gs.arenaFight = false;
+        const int arenaHost = gs.currentSettlement;   // before it clears (V17)
         gs.currentSettlement = -1;   // the bracket spills back onto the map
         if (gs.battleWon) {
             const int purse  = 150;                 // TODO(balance)
@@ -750,6 +751,10 @@ static void ApplyBattleResult(GameState& gs) {
             gs.battleReport.push_back(TextFormat("Winnings: %d gold      Hero: +%d XP",
                                                  payout, HERO_XP_PER_WIN));
             gs.renown += 5;   // the crowd remembers a champion (M1). TODO(balance)
+            // And the host crown warms to the name on every tongue (V17,
+            // closing K3's follow-up). TODO(balance).
+            if (arenaHost >= 0 && arenaHost < (int)gs.towns.size())
+                NudgeRelation(gs, gs.towns[arenaHost].owner, +5);
         } else {
             gs.resultText = gs.arenaBet > 0
                 ? TextFormat("Cast out in round %d... your %d-gold stake is gone.",

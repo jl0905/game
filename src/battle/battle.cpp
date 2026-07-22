@@ -2264,6 +2264,14 @@ void BattleDraw(const Content& c) {
         Vector3 heroDraw = B.pPos;
         if (B.mounted) {
             DrawHorse(B.pPos, B.yaw, B.walkPhase);
+            // Your horse wears your colour (V17): a caparison so the
+            // saddle is unmistakable at a glance.
+            const Vector3 hfwd = { sinf(B.yaw), 0, cosf(B.yaw) };
+            DrawCube({ B.pPos.x - hfwd.x * 0.1f, B.pPos.y + 0.95f,
+                       B.pPos.z - hfwd.z * 0.1f },
+                     0.9f + fabsf(hfwd.x) * 0.8f, 0.5f,
+                     0.9f + fabsf(hfwd.z) * 0.8f,
+                     Color{ 40, 120, 255, 255 });
             heroDraw.y += 1.25f;
             ppose.walkPhase = 0;
         }

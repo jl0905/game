@@ -825,6 +825,12 @@ this is the feedback the flat numbers were waiting for.
   harasses. Weapon choice vs armour class is now a real matchup, for
   the player's swaps and the AI's per-range picks alike. TODO(balance).
 
+- [x] **V17. Iteration seventeen — colours and the crowd.** The hero's
+  horse wears a blue caparison (being mounted is unmistakable — U11's
+  visual note closed), and a tournament championship warms the host
+  crown +5 standing (K3's follow-up closed; the host captured before
+  the bracket clears the settlement, caught in review).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
