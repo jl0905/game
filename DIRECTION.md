@@ -1195,6 +1195,14 @@ this is the feedback the flat numbers were waiting for.
   oaths and forgotten gifts now have a price named in armies. The
   probe caught him defecting and immediately fighting his old
   comrades. `tests/scorned_lord.txt`.
+- [x] **V75. Iteration seventy-five — battle size and the next wave.**
+  Warband's battlefield cap: field battles spawn at most `battleSize`
+  per contingent (settings row [7]: 100–500, default 200); the
+  overflow waits as reserves and marches on in waves of ≤20 when a
+  side thins below 60% ("YOUR NEXT WAVE ARRIVES!"). Unspawned
+  reserves are credited back as survivors in the loss books; sieges
+  and the arena spawn whole; the bench exempts itself.
+  `reserves=` in the dump; `tests/battle_size.txt` fields 307 men.
 
 ## Sequencing guidance
 

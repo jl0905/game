@@ -135,7 +135,7 @@ constexpr float TOWN_CLICK_RADIUS = 36.0f;
 // row layouts in the draw functions both quote these — never mirrored
 // literals, so they cannot drift apart.
 namespace layout {
-constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 6;
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 7;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 constexpr int MARKET_X0  = 120, MARKET_X1      = 700;
 constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 4;
@@ -1205,7 +1205,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Settings) {
-        for (int row = 0; row < 6; ++row)
+        for (int row = 0; row < 7; ++row)
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
         // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -3851,6 +3851,12 @@ void SettingsUpdate(GameState& gs, const CampaignInput& in) {
             if (s.textScale > 1.61f) s.textScale = 1.0f;
             ui::SetTextScale(s.textScale);
             break;
+        case 6:   // battle size steps 100/150/200/300/500 (V75)
+            s.battleSize = s.battleSize >= 500.0f ? 100.0f
+                         : s.battleSize >= 300.0f ? 500.0f
+                         : s.battleSize >= 200.0f ? 300.0f
+                         : s.battleSize >= 150.0f ? 200.0f : 150.0f;
+            break;
         default: break;
     }
     if (in.leaveSettlement) {
@@ -3881,6 +3887,7 @@ void SettingsDraw(const GameState& gs) {
     row(3, "Volume",        TextFormat("%.0f%%", s.masterVolume * 100));
     row(4, "Invert look Y", s.invertY ? "on" : "off");
     row(5, "Lettering",     TextFormat("%.0f%%", s.textScale * 100));   // V72
+    row(6, "Battle size",   TextFormat("%.0f a side", s.battleSize));   // V75
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));

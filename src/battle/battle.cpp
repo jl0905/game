@@ -729,6 +729,8 @@ struct BattleState {
     std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
     float hornCd = 0;                  // the war horn's wind (V66)
     float pShieldHp = SHIELD_HP;       // the hero's own wood (V71)
+    std::vector<int> reserveOwn, reserveAlly, reserveEnemy;   // waves (V75)
+    float reinforceCd = 0;
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1335,10 +1337,17 @@ void AutoResolve(const Content& c) {
 // Losses = starting counts minus living soldiers of that contingent, per troop.
 // The player's own troops and an allied party's troops both fight on
 // Team::Player but are tracked separately via Soldier::ally.
+// Reserves never sent in are survivors, not casualties (V75).
+void CreditReserves(std::vector<int>& losses, const std::vector<int>& reserve) {
+    for (size_t i = 0; i < losses.size() && i < reserve.size(); ++i)
+        losses[i] -= reserve[i];
+}
+
 std::vector<int> ComputeLosses() {
     std::vector<int> losses = B.setup.playerTroops;
     for (const Soldier& s : B.soldiers)
         if (s.team == Team::Player && !s.ally && s.hp > 0) losses[s.troop]--;
+    CreditReserves(losses, B.reserveOwn);
     return losses;
 }
 
@@ -1347,6 +1356,7 @@ std::vector<int> ComputeAllyLosses() {
     if (losses.empty()) return losses;
     for (const Soldier& s : B.soldiers)
         if (s.team == Team::Player && s.ally && s.hp > 0) losses[s.troop]--;
+    CreditReserves(losses, B.reserveAlly);
     return losses;
 }
 
@@ -1354,6 +1364,7 @@ std::vector<int> ComputeEnemyLosses() {
     std::vector<int> losses = B.setup.enemyTroops;
     for (const Soldier& s : B.soldiers)
         if (s.team == Team::Enemy && s.hp > 0) losses[s.troop]--;
+    CreditReserves(losses, B.reserveEnemy);
     return losses;
 }
 
@@ -1424,12 +1435,36 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
         if (ov.first >= 0 && ov.first < (int)B.troopGear.size())
             B.troopGear[ov.first] = ov.second;
 
-    SpawnLine(c, Team::Player, setup.playerTroops, -30.0f);
+    // Battle size (V75): field battles cap each contingent at the player's
+    // battleSize setting; the overflow waits as RESERVES and streams in as
+    // the field thins — Warband's battlefield cap. Sieges and bouts spawn
+    // whole as ever. Loss books add unspawned reserves back as survivors.
+    B.reserveOwn.clear(); B.reserveAlly.clear(); B.reserveEnemy.clear();
+    auto clampSide = [&](const std::vector<int>& counts, std::vector<int>& reserve) {
+        reserve.assign(counts.size(), 0);
+        if (setup.siege || setup.arena) return counts;
+        const int cap = (int)GetSettings().battleSize;
+        int total = 0;
+        for (int n : counts) total += n;
+        if (total <= cap) return counts;
+        std::vector<int> out(counts.size(), 0);
+        int placed = 0;
+        for (size_t i = 0; i < counts.size(); ++i) {   // proportional share
+            out[i]     = counts[i] * cap / total;
+            reserve[i] = counts[i] - out[i];
+            placed += out[i];
+        }
+        for (size_t i = 0; placed < cap && i < counts.size(); ++i)
+            while (reserve[i] > 0 && placed < cap) { out[i]++; reserve[i]--; placed++; }
+        return out;
+    };
+    SpawnLine(c, Team::Player, clampSide(setup.playerTroops, B.reserveOwn), -30.0f);
     if (B.hasWall) SpawnGarrison(c, setup.enemyTroops);   // walls + yard posts
-    else           SpawnLine(c, Team::Enemy, setup.enemyTroops, 30.0f);
+    else SpawnLine(c, Team::Enemy, clampSide(setup.enemyTroops, B.reserveEnemy), 30.0f);
     // An allied party, if one joined the fight, forms up just behind your line.
     if (!setup.allyTroops.empty())
-        SpawnLine(c, Team::Player, setup.allyTroops, -48.0f, /*ally=*/true);
+        SpawnLine(c, Team::Player, clampSide(setup.allyTroops, B.reserveAlly),
+                  -48.0f, /*ally=*/true);
 
     // Count the player's own troops (formation slots were assigned in SpawnLine)
     // and set up the hero's carried weapons.
@@ -1969,6 +2004,43 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     B.routText   = "THEY THROW DOWN THEIR ARMS!";
                     SfxPlay(Sfx::Fanfare, 0.7f);
                 }
+            }
+
+            // Reinforcement waves (V75): when a contingent thins below 60%
+            // of the cap and reserves remain, the next wave marches on from
+            // the rear — up to 20 men every few seconds.
+            B.reinforceCd -= dt;
+            if (B.reinforceCd <= 0 && !B.setup.arena && !B.setup.siege) {
+                B.reinforceCd = 4.0f;   // TODO(balance)
+                auto wave = [&](std::vector<int>& reserve, Team team, bool ally,
+                                float zBase) {
+                    int left = 0;
+                    for (int r : reserve) left += r;
+                    if (left <= 0) return;
+                    int alive = 0;
+                    for (const Soldier& s : B.soldiers)
+                        if (s.hp > 0 && !s.escaped && s.team == team &&
+                            s.ally == ally) alive++;
+                    const int cap = (int)GetSettings().battleSize;
+                    if (alive * 10 >= cap * 6) return;
+                    std::vector<int> batch(reserve.size(), 0);
+                    int take = 0;
+                    for (size_t i = 0; i < reserve.size() && take < 20; ++i)
+                        while (reserve[i] > 0 && take < 20) {
+                            reserve[i]--; batch[i]++; take++;
+                        }
+                    SpawnLine(c, team, batch, zBase, ally);
+                    if (team == Team::Player) B.startPlayerSide += take;
+                    else                      B.startEnemySide  += take;
+                    if (team == Team::Player && !ally) B.ownCount += take;
+                    B.cryTimer = 1.6f;
+                    B.cryText  = team == Team::Enemy ? "ENEMY REINFORCEMENTS!"
+                                                     : "YOUR NEXT WAVE ARRIVES!";
+                    SfxPlay(Sfx::WarCry, 0.5f);
+                };
+                wave(B.reserveOwn,   Team::Player, false, -55.0f);
+                wave(B.reserveAlly,  Team::Player, true,  -60.0f);
+                wave(B.reserveEnemy, Team::Enemy,  false,  55.0f);
             }
 
             // The standard falls (V32): the whole side feels it, and the
@@ -3019,6 +3091,9 @@ BattleView GetBattleView() {
     v.enemyName   = B.setup.enemyName;
     v.heroKicks   = B.heroKicksLanded;
     v.heroShieldHp = B.pShieldHp;
+    for (int r : B.reserveOwn)   v.reservesOwn += r;
+    for (int r : B.reserveAlly)  v.reservesOwn += r;
+    for (int r : B.reserveEnemy) v.reservesEnemy += r;
     v.bannerOwn   = B.bannerIdx[0] >= 0 && B.soldiers[B.bannerIdx[0]].hp > 0;
     v.bannerEnemy = B.bannerIdx[1] >= 0 && B.soldiers[B.bannerIdx[1]].hp > 0;
     v.looseHorses = (int)B.looseHorses.size();

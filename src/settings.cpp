@@ -43,14 +43,17 @@ void SaveSettings() {
          "#   particles        on | off   blood and hoof-dust puffs\n"
          "#   volume           0.0 .. 1.0 master audio volume\n"
          "#   inverty          on | off   flip vertical mouse look\n"
-         "#   textscale        1.0 .. 1.6 global lettering size (V72)\n\n"
+         "#   textscale        1.0 .. 1.6 global lettering size (V72)\n"
+         "#   battlesize       field-battle cap per side (V75); overflow\n"
+         "#                    arrives as reinforcement waves\n\n"
       << "width " << s.windowWidth << "\nheight " << s.windowHeight
       << "\nfullscreen " << (s.fullscreen ? "on" : "off")
       << "\nloddist " << (int)s.lodDistance
       << "\nparticles " << (s.particles ? "on" : "off")
       << "\nvolume " << TextFormat("%.2f", s.masterVolume)
       << "\ninverty " << (s.invertY ? "on" : "off")
-      << "\ntextscale " << TextFormat("%.2f", s.textScale) << '\n';
+      << "\ntextscale " << TextFormat("%.2f", s.textScale)
+      << "\nbattlesize " << (int)s.battleSize << '\n';
 }
 
 void LoadSettings() {
@@ -73,5 +76,6 @@ void LoadSettings() {
         else if (key == "volume")     s.masterVolume = std::stof(value);
         else if (key == "inverty")    s.invertY      = TruthValue(value);
         else if (key == "textscale")  s.textScale    = std::stof(value);
+        else if (key == "battlesize") s.battleSize   = std::stof(value);
     }
 }

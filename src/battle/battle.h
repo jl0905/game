@@ -112,6 +112,8 @@ struct BattleView {
     std::string enemyName;          // who the banner named at the horn (V24)
     int     heroKicks = 0;          // boots landed (V33)
     float   heroShieldHp = 0;       // wood left on the hero's arm (V71)
+    int     reservesOwn   = 0;      // men waiting off-field (V75)
+    int     reservesEnemy = 0;
     bool    bannerOwn   = false;    // our standard still flies (V32)
     bool    bannerEnemy = false;    // theirs still flies
     float   ownAvgDistToAnchor = 0; // player troops' mean distance from their

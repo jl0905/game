@@ -1,0 +1,14 @@
+# Battle size & reinforcement waves (V75): field battles cap each contingent
+# at the battleSize setting (default 200); the overflow waits as reserves
+# (reserves=own/enemy in the dump) and marches on in waves of up to 20 when
+# a side thins below 60% of the cap. Unspawned reserves are credited back as
+# survivors - the 307-man fixture must end the fight still 307 strong minus
+# only the truly fallen. Sieges and the arena spawn whole.
+load tests/fixtures/bigband.owb
+hunt 60
+tick 3
+state
+block on
+tick 120
+state
+quit

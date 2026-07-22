@@ -37,6 +37,7 @@ int RunBench(int perSide, Vector2 where) {
 
     GameState gs;
     LoadDefaultContent(gs.content);
+    GetSettings().battleSize = 1e6f;   // the bench measures ALL of them (V75)
 
     BattleSetup s;
     s.playerTroops.assign(gs.content.troops.size(), 0);
