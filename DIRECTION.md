@@ -1383,6 +1383,11 @@ this is the feedback the flat numbers were waiting for.
   only the ally line ("Your ally's banner falls"), and the colours
   pass within their contingent. Three standards can now fly and fall
   independently — own, enemy, ally.
+- [x] **V108. Iteration one-oh-eight — where the blow came from.** A red
+  arc flashes at the screen edge in the attacker's direction (melee
+  from the striker's position, arrows from the shaft's back-trail),
+  relative to your facing — get hit from behind and the arc says so.
+  Draw-only.
 
 ## Sequencing guidance
 

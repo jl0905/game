@@ -732,6 +732,8 @@ struct BattleState {
     std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
     std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
     float hornCd = 0;                  // the war horn's wind (V66)
+    Vector3 lastHitFrom{};             // where the last blow came from (V108)
+    float   hitFromTimer = 0;
     // The feed (V88): the fight's last moments, ticker-taped. Newest first.
     struct FeedLine { std::string text; float age = 0; };
     std::vector<FeedLine> feed;
@@ -2281,9 +2283,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     c, cmd.hitSoldier, B.soldiers[cmd.hitSoldier], cmd.swingDir,
                     ApplyArmor(cmd.hitDamage,
                                LoadoutArmor(c, TroopLoadout(c, B.soldiers[cmd.hitSoldier].troop))));
-            if (cmd.hitPlayer)
+            if (cmd.hitPlayer) {
                 playerDamage += ApplyArmor(cmd.hitDamage,
                                            LoadoutArmor(c, B.setup.heroLoadout));
+                B.lastHitFrom  = B.soldiers[i].pos;   // where it came from (V108)
+                B.hitFromTimer = 0.9f;
+            }
             if (cmd.shoot) {
                 // Loose an arrow from chest height, lobbed to compensate for
                 // gravity drop over the flight time (simple ballistic aim).
@@ -2456,6 +2461,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                     B.pHp -= d;
                     B.pFlash = 1.0f;
+                    // The shaft's back-trail names the shooter's side (V108).
+                    B.lastHitFrom  = Vector3Subtract(a.pos, a.vel);
+                    B.hitFromTimer = 0.9f;
                     if (B.blocking) {
                         SpawnSparks(B.pPos);
                         B.parryFlash = 0.9f;   // name the sparks on YOU (U5)
@@ -3015,6 +3023,21 @@ void BattleDraw(const Content& c) {
                      GetScreenHeight() / 3 + 88, 20, GOLD);
         }
     }
+    // Where the blow came from (V108): a red arc at the screen edge in the
+    // attacker's direction, relative to where you are looking.
+    B.hitFromTimer = fmaxf(0.0f, B.hitFromTimer - GetFrameTime());
+    if (B.hitFromTimer > 0 && !B.over && B.pHp > 0) {
+        const Vector3 to = Vector3Subtract(B.lastHitFrom, B.pPos);
+        const float worldAng  = atan2f(to.x, to.z);
+        const float rel       = worldAng - B.yaw;   // 0 = dead ahead
+        const float centerDeg = 270.0f + rel * RAD2DEG;
+        const float alpha     = fminf(B.hitFromTimer / 0.4f, 1.0f);
+        const Vector2 mid = { GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f };
+        const float r = fminf(mid.x, mid.y) * 0.72f;
+        DrawRing(mid, r - 10, r, centerDeg - 26, centerDeg + 26, 24,
+                 Fade(RED, 0.55f * alpha));
+    }
+
     // The feed (V88): the fight's last moments, bottom-right, fading out.
     if (!B.over) {
         int fy = GetScreenHeight() - 130;
