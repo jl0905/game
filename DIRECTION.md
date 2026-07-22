@@ -1373,6 +1373,11 @@ this is the feedback the flat numbers were waiting for.
   (one Color over the bridge; garrisons wear their owner's) instead of
   generic red — Sarleon fights teal, the Nords red-brown, Vaelings
   green. Friendlies stay blue for instant read. Draw-only.
+- [x] **V106. Iteration one-oh-six — allies in their colours.** The V105
+  rule completes: an allied contingent fights in ITS faction's colour
+  (the hired Free Company gleams gold beside your blue; a skirmish
+  side you joined keeps its crown's tint) via a per-soldier tint
+  helper. Three-banner fields finally read as three banners. Draw-only.
 
 ## Sequencing guidance
 

@@ -1262,6 +1262,14 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 // teal — the tint rides the bridge. Friendlies stay blue for readability.
 Color TeamTint(Team t) { return t == Team::Enemy ? B.setup.enemyTint : BLUE; }
 
+// Per-soldier tint (V106): the enemy in its colours, an allied contingent
+// in ITS colours (the Free Company gleams gold beside you), your own men
+// in captain's blue.
+Color SoldierTint(const Soldier& s) {
+    if (s.team == Team::Enemy) return B.setup.enemyTint;
+    return s.ally ? B.setup.allyTint : BLUE;
+}
+
 // Soft blob shadow pinned to the terrain — the cheapest depth cue there is.
 void BlobShadow(const Terrain& t, float x, float z, float r) {
     DrawCylinder({ x, t.HeightAt(x, z) + 0.04f, z }, r, r, 0.02f, 12,
@@ -2699,7 +2707,7 @@ void BattleDraw(const Content& c) {
         }
         BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
         if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
-            const Color tint = TeamTint(s.team);
+            const Color tint = SoldierTint(s);
             DrawCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
             DrawCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
                      Color{ 224, 188, 150, 255 });
@@ -2733,7 +2741,7 @@ void BattleDraw(const Content& c) {
         // Implicit health (U2): no floating bars — a hurt man reads from his
         // body, darkening and bloodying as the fight wears him down.
         const float hf = Clamp(s.hp / s.maxHp, 0.0f, 1.0f);
-        Color tint = TeamTint(s.team);
+        Color tint = SoldierTint(s);
         const float dim = 0.45f + 0.55f * hf;
         tint.r = (unsigned char)fminf(255.0f, tint.r * dim + 70.0f * (1.0f - hf));
         tint.g = (unsigned char)(tint.g * dim);
@@ -2768,7 +2776,7 @@ void BattleDraw(const Content& c) {
         if (bi < 0 || bi >= (int)B.soldiers.size()) continue;
         const Soldier& s = B.soldiers[bi];
         if (s.hp <= 0 || s.escaped) continue;
-        const Color col = TeamTint(s.team);
+        const Color col = SoldierTint(s);
         const float bob = sinf(s.walkPhase) * 0.1f;
         DrawCube({ s.pos.x, s.pos.y + 3.2f + bob, s.pos.z }, 0.10f, 4.4f, 0.10f,
                  Color{ 90, 70, 50, 255 });

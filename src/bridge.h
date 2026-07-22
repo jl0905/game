@@ -75,8 +75,12 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
                    ? gs.content.factions[foe.faction].name
                    : std::string("THE ENEMY"));   // V24
     }
-    if (gs.battleAllyIndex >= 0 && gs.battleAllyIndex < (int)gs.parties.size())
+    if (gs.battleAllyIndex >= 0 && gs.battleAllyIndex < (int)gs.parties.size()) {
         s.allyTroops = gs.parties[gs.battleAllyIndex].troopCounts;
+        const int af = gs.parties[gs.battleAllyIndex].faction;   // V106
+        if (gs.content.factions.valid(af))
+            s.allyTint = gs.content.factions[af].color;
+    }
     s.heroLoadout = gs.playerHero.loadout;
     s.heroMaxHp   = gs.playerHero.maxHp;
     s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)

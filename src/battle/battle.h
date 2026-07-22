@@ -40,6 +40,8 @@ struct BattleSetup {
     std::string enemyLordName;
     // The enemy fights in its own colours (V105). Presentation only.
     Color enemyTint = { 230, 41, 55, 255 };   // raylib RED
+    // ...and an allied contingent in its own (V106).
+    Color allyTint  = { 0, 121, 241, 255 };   // raylib BLUE until set
 
     // The destrier (V82): the hero's horse carries double hit points.
     bool warhorse = false;
