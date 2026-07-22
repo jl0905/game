@@ -1471,8 +1471,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         bool galloping = false;
         if (Vector3Length(move) > 0) {
             // A horse doubles your pace (identity; numbers TODO(balance)).
-            const float speed = B.mounted ? (B.blocking ? 6.0f : 14.0f)
-                                          : (B.blocking ? 3.0f : 7.0f);
+            const float speed = (B.mounted ? (B.blocking ? 6.0f : 14.0f)
+                                           : (B.blocking ? 3.0f : 7.0f))
+                * (1.0f + 0.02f * B.setup.heroAgi);   // Agility (V14)
             B.pPos = Vector3Add(B.pPos, Vector3Scale(Vector3Normalize(move), speed * dt));
             B.walkPhase += dt * 10.0f;
             galloping = B.mounted && !B.blocking;
@@ -1617,8 +1618,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             // Mounted identity (T5): the saddle adds reach, and the gallop
             // adds weight — up to +50% at full stride. TODO(balance).
             const float mountReach = B.mounted ? 0.9f : 0.0f;
-            const float momentum   = B.mounted
-                ? 1.0f + 0.5f * fminf(1.0f, B.heroSpeed / 14.0f) : 1.0f;
+            const float momentum   = (B.mounted
+                ? 1.0f + 0.5f * fminf(1.0f, B.heroSpeed / 14.0f) : 1.0f)
+                * (1.0f + 0.05f * B.setup.heroStr);   // Strength (V14)
             for (Soldier& s : B.soldiers) {
                 if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
                 Vector3 to = Vector3Subtract(s.pos, B.pPos);

@@ -32,6 +32,11 @@ struct BattleSetup {
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
 
+    // The hero's body (V14): Strength scales swing damage (+5%/pt),
+    // Agility his footwork (+2%/pt move speed). Read-only snapshot.
+    int heroStr = 0;
+    int heroAgi = 0;
+
     // Time of day (O3): the campaign clock's day fraction (0..1) — night
     // battles fight under a dark sky, dusk under amber. Presentation only.
     float timeOfDay = 0.3f;

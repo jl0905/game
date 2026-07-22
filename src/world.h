@@ -395,9 +395,18 @@ inline int EffectiveLordOpinion(GameState& gs, const std::string& name) {
     return LordOpinion(gs, name) + gs.honor;
 }
 
-// Party-size cap (M1): a base band plus one man per point of renown — fame
-// is what lets a captain hold a big warband together. TODO(balance).
-inline int PartyCap(const GameState& gs) { return 20 + gs.renown; }
+// A hero attribute by index (V14): 0 str, 1 agi, 2 int, 3 cha — the
+// registry order in content.cpp.
+inline int HeroAttr(const GameState& gs, int i) {
+    return i >= 0 && i < (int)gs.playerHero.attributes.size()
+               ? gs.playerHero.attributes[i] : 0;
+}
+
+// Party-size cap (M1): a base band plus one man per point of renown — and
+// one per point of Charisma (V14: the attributes awaken). TODO(balance).
+inline int PartyCap(const GameState& gs) {
+    return 20 + gs.renown + HeroAttr(gs, 3);
+}
 
 // Renown a crown demands before it accepts an oath (M1). TODO(balance).
 inline constexpr int RENOWN_TO_SWEAR = 5;

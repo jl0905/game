@@ -2201,9 +2201,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // prosperity a point a day. Interest → prosperity → prices.
             if ((int)gs.bankAt.size() < (int)gs.towns.size())
                 gs.bankAt.resize(gs.towns.size(), 0);
+            // Intelligence sharpens the ledger (V14): +0.5%/pt weekly.
+            const int intRate = 20 - HeroAttr(gs, 2);   // /20 = 5%; INT tightens
             for (int bi = 0; bi < (int)gs.bankAt.size(); ++bi) {
                 if (gs.day % 7 == 0 && gs.bankAt[bi] > 0)
-                    gs.bankAt[bi] += gs.bankAt[bi] / 20;
+                    gs.bankAt[bi] += gs.bankAt[bi] / std::max(10, intRate);
                 if (gs.bankAt[bi] >= 200)
                     gs.towns[bi].prosperity =
                         std::min(150, gs.towns[bi].prosperity + 1);
@@ -3933,7 +3935,8 @@ void CharacterDraw(const GameState& gs) {
         y += layout::CHAR_ROW_H;
     }
 
-    ui::Text("Attribute effects arrive with the balancing pass - spend freely.",
+    ui::Text("STR +5% swing damage   AGI +2% footwork   INT sharper interest   "
+             "CHA +1 party cap  (per point)",
              panelX, y + 10, 18, Fade(GOLD, 0.7f));
 
     // Standing with the powers of the land (F1).

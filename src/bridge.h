@@ -66,6 +66,10 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     s.heroLoadout = gs.playerHero.loadout;
     s.heroMaxHp   = gs.playerHero.maxHp;
     s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)
+    // The hero's body rides too (V14).
+    s.heroStr = HeroAttr(gs, 0);
+    s.heroAgi = HeroAttr(gs, 1);
+
     // The hour rides into battle with you (O3). 60 s/day mirrors the
     // campaign's DAY_LENGTH (TODO(balance) there).
     s.timeOfDay = gs.dayTimer / 60.0f;

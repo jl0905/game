@@ -805,6 +805,12 @@ this is the feedback the flat numbers were waiting for.
   now has geography, and holding towns is how campaigns are sustained.
   Flat TODO(balance).
 
+- [x] **V14. Iteration fourteen — the attributes awaken.** Every attribute
+  gets exactly one reader: STR +5%/pt hero swing damage (through the
+  BattleSetup snapshot), AGI +2%/pt battle footwork, INT sharpens the
+  moneylender's weekly rate, CHA +1/pt party cap. The character sheet
+  names the effects instead of apologising. Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
