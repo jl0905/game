@@ -20,6 +20,7 @@ the comment at the top of each script.
 | `veterancy.txt` | troop XP accrual + promotion in the party screen |
 | `town_tavern.txt` | walkable settlement: navigate to the tavern, recruit |
 | `lord_notice.txt` | lords ignore trivial parties; your-settlement siege alert |
+| `focus_fire.txt` | value-based targeting: the line finishes wounded foes, a contested clash resolves decisively (V119) |
 
 Scripts use fixed seeds but the world is chaotic — read outputs for the
 *mechanism* under test, not exact numbers.

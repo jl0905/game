@@ -1,0 +1,28 @@
+# Focus-fire targeting (V119, direction J1 follow-up).
+# The scored target search now leans the line onto wounded foes
+# (value-based targeting: a mark is scored by distance *and* how close
+# it is to death, not distance alone). A contested AI-driven clash then
+# resolves cleanly and decisively instead of leaving lines of half-dead
+# men wandering past each other trading fresh blows.
+#
+# hammer.owb fields a winnable band against a smaller enemy; the hero
+# blocks and lets his men do the work. Read enemies= grinding down to 0
+# and over=1 won=1 at the end - the line finishes the wounded rather
+# than milling about. World is chaotic - verify the mechanism (the fight
+# resolves, the wounded get finished), not exact numbers.
+load tests/fixtures/hammer.owb
+hunt 60
+tick 3
+state
+block on
+tick 15
+state
+tick 15
+state
+tick 15
+state
+tick 15
+state
+tick 240
+state
+quit

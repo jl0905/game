@@ -1451,6 +1451,26 @@ this is the feedback the flat numbers were waiting for.
   harvests his own volleys mid-fight. ARROWS count on the HUD, gold
   while stocked and red at zero; `quiver=` in the battle dump.
   `tests/quiver.txt`.
+- [x] **V119. Iteration one-nineteen — finish the wounded, keep the
+  cavalry crisp.** An arxiv sweep on the two systems the user named (crowd
+  LOD, combat-agent targeting) turned up two flat, in-engine wins that
+  match the J1 targeting surface and the U6 render roadmap. **Targeting:**
+  combat-agent research scores a foe by *value* (distance **and** the
+  mark's state/threat), not distance alone, so `FindTarget` gains a
+  `TARGET_WOUNDED_BONUS` — the line now leans onto a near-dead man and
+  finishes him before he swings again, thinning the enemy faster and
+  reading as a real focus-fire press instead of men milling past each
+  other. **LOD:** crowd-LOD perception studies grade a crowd by on-screen
+  *pixel size*, not raw world distance, so a taller/more-salient
+  silhouette earns its full detail farther out — mounted riders
+  (`LOD_MOUNTED_SALIENCE`) and champions/lords (`LOD_CHAMPION_SALIENCE`)
+  now hold the segmented humanoid proportionally longer while the
+  anonymous ranks still collapse to boxes on schedule (negligible cost —
+  they're a minority of bodies). All weights flat TODO(balance).
+  `tests/focus_fire.txt` proves a contested AI clash grinds the enemy to
+  zero (over=1 won=1) with the wounded finished. Follow-up: the salience
+  metric could fold in true screen projection (FOV/zoom) if a battle
+  camera ever zooms.
 
 ## Sequencing guidance
 

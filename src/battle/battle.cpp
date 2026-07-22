@@ -1018,10 +1018,16 @@ void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
 
 // Targeting (direction J1): pick a foe by score, not blind distance. Soldiers
 // spread across the enemy instead of dogpiling, turn on whoever is attacking
-// them, and archers favour unshielded marks. Weights are flat TODO(balance).
+// them, archers favour unshielded marks, and — like a real line — the whole
+// press leans onto a man who is already going down (focus fire finishes him
+// before he can strike again, so the line thins faster). The wounded-target
+// weighting follows the value-based targeting used in combat-agent research
+// (score a foe by distance *and* threat/state, not distance alone). Weights
+// are flat TODO(balance).
 constexpr float TARGET_CROWD_PENALTY   = 2.0f;  // per foe already aiming at him
 constexpr float TARGET_ATTACKER_BONUS  = 4.0f;  // he is attacking me
 constexpr float TARGET_UNSHIELDED_BONUS = 3.0f; // archers: no shield to raise
+constexpr float TARGET_WOUNDED_BONUS   = 3.0f;  // full pull toward a near-dead mark
 
 // Push one line onto the battle feed (V88), newest first, capped.
 void Feed(const char* text) {
@@ -1082,13 +1088,20 @@ int FindTarget(const Content& c, int self, Team wantTeam, bool imRanged) {
                 score += TARGET_CROWD_PENALTY * (float)B.targeted[j];
             if (o.target == self) score -= TARGET_ATTACKER_BONUS;
             if (imRanged && !HasShield(c, o)) score -= TARGET_UNSHIELDED_BONUS;
+            // Finish the wounded (value-based targeting): the closer a foe is
+            // to death, the more the line pulls onto him.
+            if (o.maxHp > 0.0f) {
+                const float woundFrac = 1.0f - Clamp(o.hp / o.maxHp, 0.0f, 1.0f);
+                score -= TARGET_WOUNDED_BONUS * woundFrac;
+            }
             if (score < bestScore) { bestScore = score; best = j; }
         });
         if (best >= 0) {
             // Grown past the best hit's shell — a wider sweep can't beat it
             // by more than the flat bonuses, so stop.
             if (radius >= bestScore + TARGET_ATTACKER_BONUS +
-                              TARGET_UNSHIELDED_BONUS + TARGET_CROWD_PENALTY)
+                              TARGET_UNSHIELDED_BONUS + TARGET_WOUNDED_BONUS +
+                              TARGET_CROWD_PENALTY)
                 break;
         }
     }
@@ -2810,6 +2823,15 @@ void BattleDraw(const Content& c) {
     // full segmented humanoids only where the player can appreciate them.
     const float LOD_DIST    = GetSettings().lodDistance;   // player-tunable (J4)
     const float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
+    // Perceptual LOD (V119): the eye grades a crowd by on-screen *pixel size*,
+    // not raw world distance (the metric crowd-LOD research forces its subjects
+    // to judge by). A rider sits a head-and-shoulders taller and a lord carries
+    // the gaze, so both cover more pixels at the same range and earn their full
+    // detail proportionally farther out — the silhouettes you actually watch
+    // stay crisp while the anonymous ranks still collapse to boxes on schedule.
+    // Scales the linear draw distance, so the squared thresholds get its square.
+    constexpr float LOD_MOUNTED_SALIENCE  = 1.6f;  // taller by ~a horse's back
+    constexpr float LOD_CHAMPION_SALIENCE = 1.4f;  // the lord draws the eye
 
     for (const Soldier& s : B.soldiers) {
         if (s.escaped) continue;   // off the field, alive
@@ -2832,12 +2854,19 @@ void BattleDraw(const Content& c) {
         }
         BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
         const float camDistSq = Vector3DistanceSqr(cam.position, s.pos);
-        if (camDistSq > LOD_DIST_SQ) {
+        // Salience-scaled LOD line: bigger/more-important silhouettes hold
+        // their full detail farther (V119). Square the linear salience because
+        // the comparisons are all against squared distances.
+        float lodScale = 1.0f;
+        if (IsMounted(c, s)) lodScale *= LOD_MOUNTED_SALIENCE;
+        if (s.champion)      lodScale *= LOD_CHAMPION_SALIENCE;
+        const float lodSq = LOD_DIST_SQ * lodScale * lodScale;
+        if (camDistSq > lodSq) {
             const Color tint = SoldierTint(s);
             // Far-far tier (V110): beyond twice the LOD line a man is one
             // box in his side's colour — a third of the far-tier vertices,
             // unreadable detail nobody was seeing anyway.
-            if (camDistSq > LOD_DIST_SQ * 4.0f) {
+            if (camDistSq > lodSq * 4.0f) {
                 DrawCube({ s.pos.x, s.pos.y + 1.1f, s.pos.z }, 0.7f, 1.9f, 0.45f,
                          tint);
                 continue;
