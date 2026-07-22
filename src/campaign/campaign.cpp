@@ -2349,6 +2349,32 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     "THE DEBT COMES DUE. You did not pay; it stands at %d now. "
                     "Word of it travels.", gs.debt);
                 Chronicle(gs, TextFormat("A debt missed; it compounds to %d.", gs.debt));
+
+                // Past 700 the lender stops writing letters (V86): a band of
+                // collectors takes the field, hunting you like any outlaw
+                // prize — every further missed date sends another.
+                if (gs.debt >= 700) {
+                    const int fRaiders = c.factions.find("raiders");
+                    const int tInf     = c.troops.find("infantry");
+                    const int tBrig    = c.troops.find("brigand");
+                    if (fRaiders >= 0 && (tInf >= 0 || tBrig >= 0)) {
+                        Party col;
+                        col.faction = fRaiders;
+                        col.lord    = "Graves";   // the lender's iron hand
+                        col.pos = col.wanderTarget = Vector2{
+                            Clamp(gs.player.pos.x + 300.0f, 100.0f, MAP_SIZE - 100.0f),
+                            Clamp(gs.player.pos.y + 220.0f, 100.0f, MAP_SIZE - 100.0f) };
+                        col.troopCounts.assign(c.troops.size(), 0);
+                        if (tInf  >= 0) col.troopCounts[tInf]  = 15;
+                        if (tBrig >= 0) col.troopCounts[tBrig] = 10;   // TODO(balance)
+                        gs.parties.push_back(col);
+                        gs.resultText = TextFormat(
+                            "THE LENDER'S MEN RIDE. Lord Graves and %d collectors "
+                            "hunt you for %d gold.",
+                            gs.parties.back().totalTroops(), gs.debt);
+                        Chronicle(gs, "The lender's collectors take the field.");
+                    }
+                }
             }
 
             // A mercenary contract runs out at dawn (V29).

@@ -1,0 +1,10 @@
+# The lender's men ride (V86): a debt compounding past 700 puts a collector
+# band on the map - Lord Graves, ~25 blades under the raider banner, hunting
+# you like any outlaw prize; every further missed date sends another.
+# Fixture: 700 owed, 1 day, clock 59. Expect the compound to 875, both
+# chronicle lines, and lord=Graves in the party list.
+load tests/fixtures/collect.owb
+state
+wait 5
+state
+quit

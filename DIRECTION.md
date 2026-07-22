@@ -1259,6 +1259,12 @@ this is the feedback the flat numbers were waiting for.
   enlists them (`recruit faction troop`). Ships live with the
   Halberdier in Patrol's levy; wage tiers, save ids and rosters all
   pick modded types up automatically. `tests/modded_troop.txt`.
+- [x] **V86. Iteration eighty-six — the lender's men ride.** Debt past
+  700 at a missed date spawns Lord Graves and ~25 collectors under
+  the raider banner, hunting the player like any prize — another band
+  per further miss. Financial risk becomes physical risk; beat them
+  and the quarter/loot rules apply as ever (the debt remains).
+  `tests/debt_collectors.txt`.
 
 ## Sequencing guidance
 
