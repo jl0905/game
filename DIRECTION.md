@@ -1069,6 +1069,13 @@ this is the feedback the flat numbers were waiting for.
   compounding investment and long wars hollow out both sides. Plus
   fortified stone gets its look: darker wall, timber hoarding band.
   `tests/peace_prosperity.txt`.
+- [x] **V54. Iteration fifty-four — companion perks.** Companions grant
+  data-driven party bonuses via a `perk` string on TroopDef: Rega the
+  surgeon (3/4 of the fallen live, not 1/2), Malin the scout (+15%
+  march), Torva the quartermaster (grain feeds 30, not 20). One
+  `HasPerk` helper, three effect sites, `perks:` in the dump — a new
+  perk is a string plus one hook. Makes each hire a strategic pick,
+  not a stat stick. `tests/perks.txt`.
 
 ## Sequencing guidance
 

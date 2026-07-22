@@ -226,6 +226,7 @@ void LoadDefaultContent(Content& c) {
     };
     TroopDef rega = makeCompanion("rega", "Rega the Grim");
     rega.temper = "grim";          // spoils are spoils (P3)
+    rega.perk   = "surgeon";       // V54: more of the fallen live
     rega.loadout.set(EquipSlot::Head,   a_helmet);
     rega.loadout.set(EquipSlot::Body,   a_plate);
     rega.loadout.set(EquipSlot::Hands,  a_gloves);
@@ -235,6 +236,7 @@ void LoadDefaultContent(Content& c) {
 
     TroopDef malin = makeCompanion("malin", "Malin Longeye");
     malin.temper = "honorable";    // wants no part of burned villages (P3)
+    malin.perk   = "scout";        // V54: the warband marches faster
     malin.loadout.set(EquipSlot::Head,   a_cap);
     malin.loadout.set(EquipSlot::Body,   a_mail);
     malin.loadout.set(EquipSlot::Feet,   a_boots);
@@ -243,6 +245,7 @@ void LoadDefaultContent(Content& c) {
 
     TroopDef torva = makeCompanion("torva", "Torva Ironhand");
     torva.temper = "honorable";    // an oath-keeper to the bone (P3)
+    torva.perk   = "quartermaster";   // V54: the grain goes further
     torva.mounted = true;
     torva.moveSpeed = base::TROOP_SPEED * 2.0f;
     torva.loadout.set(EquipSlot::Head,   a_kettle);

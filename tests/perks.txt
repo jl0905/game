@@ -1,0 +1,14 @@
+# Companion perks (V54): each companion carries a data-driven party bonus -
+# rega=surgeon (3/4 of the fallen live instead of 1/2), malin=scout (+15%
+# march), torva=quartermaster (grain feeds 30 men not 20). New perks are a
+# string in content.cpp plus one effect site. Hire Rega, see perks: surgeon,
+# then take losses and watch the wounded share rise.
+seed 42
+enter 0
+hire
+state
+leave
+hunt 90
+tick 60
+state
+quit

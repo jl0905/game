@@ -449,6 +449,16 @@ inline int AudienceFaction(const GameState& gs) {
     return -1;
 }
 
+// Does anyone in the warband carry this perk (V54)? Companions grant
+// party-wide bonuses by data: match TroopDef::perk over the roster.
+inline bool HasPerk(const GameState& gs, const char* perk) {
+    for (int t = 0; t < (int)gs.player.troopCounts.size() &&
+                    t < gs.content.troops.size(); ++t)
+        if (gs.player.troopCounts[t] > 0 && gs.content.troops[t].perk == perk)
+            return true;
+    return false;
+}
+
 // A hero attribute by index (V14): 0 str, 1 agi, 2 int, 3 cha — the
 // registry order in content.cpp.
 inline int HeroAttr(const GameState& gs, int i) {

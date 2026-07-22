@@ -95,6 +95,10 @@ struct TroopDef {
                                    // in the party, hired in taverns, in no roster
     std::string temper;            // companion voice (P3): "honorable" objects to
                                    // black deeds and may leave; "grim" approves
+    std::string perk;              // companion party bonus (V54): "surgeon" saves
+                                   // more of the fallen, "scout" hastens the march,
+                                   // "quartermaster" stretches the grain. Data-only:
+                                   // new perks are new strings + one effect site.
     Loadout     loadout;           // default gear (drives stats + look)
     Color       accent = WHITE;    // small identifying plume/banner colour
 };

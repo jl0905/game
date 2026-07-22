@@ -799,9 +799,12 @@ static void ApplyBattleResult(GameState& gs) {
         if ((int)gs.wounded.size() < gs.content.troops.size())
             gs.wounded.assign(gs.content.troops.size(), 0);
         int hurt = 0;
+        // A surgeon in the train (V54): three of four fallen live, not half.
+        const bool surgeon = HasPerk(gs, "surgeon");
         for (int t = 0; t < (int)gs.playerLosses.size() &&
                         t < (int)gs.wounded.size(); ++t) {
-            const int w = gs.playerLosses[t] / 2;
+            const int w = surgeon ? gs.playerLosses[t] * 3 / 4
+                                  : gs.playerLosses[t] / 2;
             gs.playerLosses[t] -= w;
             gs.wounded[t]      += w;
             hurt += w;
@@ -1715,7 +1718,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     if (moving) {
         move = Vector2Normalize(move);
         gs.player.pos = Vector2Add(gs.player.pos,
-            Vector2Scale(move, PARTY_SPEED * TravelSpeedFactor(gs, gs.player.pos) * dt));
+            Vector2Scale(move, PARTY_SPEED * TravelSpeedFactor(gs, gs.player.pos) *
+                                   (HasPerk(gs, "scout") ? 1.15f : 1.0f) * dt));
+        // A scout reads the land (V54): the warband marches 15% faster.
     }
     gs.player.pos.x = Clamp(gs.player.pos.x, 0, MAP_SIZE);
     gs.player.pos.y = Clamp(gs.player.pos.y, 0, MAP_SIZE);
@@ -2172,7 +2177,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 const int gGrain = c.goods.find("grain");
                 const int mouths = gs.player.totalTroops();
                 if (gGrain >= 0 && mouths > 0) {
-                    const int need = (mouths + 19) / 20;
+                    // A quartermaster stretches the sacks (V54): 30 to a
+                    // grain instead of 20.
+                    const int per  = HasPerk(gs, "quartermaster") ? 30 : 20;
+                    const int need = (mouths + per - 1) / per;
                     if ((int)gs.goods.size() > gGrain && gs.goods[gGrain] >= need) {
                         gs.goods[gGrain] -= need;
                         gs.hungryDays = 0;
