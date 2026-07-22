@@ -1230,6 +1230,10 @@ this is the feedback the flat numbers were waiting for.
   −20 prosperity, news-lined) — the same V51 walls the player buys, so
   crowns you leave in peace grow harder to storm and V53's peace
   growth now arms your future enemies. `tests/ai_fortify.txt`.
+- [x] **V81. Iteration eighty-one — stone you can see from horseback.**
+  Fortified settlements wear a ten-stud stone ring on the map and a
+  gold FORTIFIED note in the hover tooltip — siege planning reads at a
+  glance now that the world walls itself. Draw-only.
 
 ## Sequencing guidance
 

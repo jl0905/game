@@ -2821,6 +2821,16 @@ void CampaignDraw(const GameState& gs) {
 
     for (const Town& t : gs.towns) {
         DrawEllipse((int)t.pos.x, (int)t.pos.y + 16, 30, 9, Fade(BLACK, 0.25f));
+        // Stone you can see from horseback (V81): fortified settlements wear
+        // a studded ring — the V51/V80 wall-work, readable at any zoom.
+        if (t.fortified) {
+            for (int k = 0; k < 10; ++k) {
+                const float a = k * (2.0f * PI / 10.0f);
+                DrawRectangle((int)(t.pos.x + cosf(a) * 34.0f) - 3,
+                              (int)(t.pos.y + 8 + sinf(a) * 12.0f) - 3, 6, 6,
+                              Color{ 120, 118, 124, 255 });
+            }
+        }
         switch (t.type) {
             // Silhouettes readable at a glance (T3): a village is a low
             // huddle of thatched huts, a town a walled sprawl of red roofs
@@ -3028,9 +3038,11 @@ void CampaignDraw(const GameState& gs) {
                                                 : "none"),
                      px + 10, py + 34, 17,
                      ov ? c.factions[t.owner].color : Fade(RAYWHITE, 0.7f));
-            ui::Text(TextFormat("Garrison %d    Prosperity %d%%",
-                                t.garrisonSize(), t.prosperity),
-                     px + 10, py + 56, 16, Fade(RAYWHITE, 0.85f));
+            ui::Text(TextFormat("Garrison %d    Prosperity %d%%%s",
+                                t.garrisonSize(), t.prosperity,
+                                t.fortified ? "    FORTIFIED" : ""),
+                     px + 10, py + 56, 16,
+                     t.fortified ? GOLD : Fade(RAYWHITE, 0.85f));
             ui::Text(TextFormat("Standing %+d", standing), px + 10, py + 78, 16,
                      standing > 0 ? LIME
                      : standing < 0 ? Fade(RED, 0.9f) : Fade(RAYWHITE, 0.7f));
