@@ -3438,8 +3438,10 @@ void CampaignDraw(const GameState& gs) {
                      : "THE MEN ARE STARVING - they walk home at every dawn",
                  10, 122, 20, RED);
 
-    // Riding inside the storm (V64): the rain reaches the map screen —
-    // the same streaks the battle draws, plus a leaden dim.
+    // Riding inside the storm (V64/V115): the rain reaches the map screen —
+    // the same streaks the battle draws, plus a leaden dim, and now the
+    // same patter in your ears.
+    SfxRain(InStorm(gs, gs.player.pos) ? 0.30f : 0.0f);
     if (InStorm(gs, gs.player.pos)) {
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
                       Fade(Color{ 40, 48, 64, 255 }, 0.18f));

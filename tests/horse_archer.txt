@@ -1,0 +1,8 @@
+# Horse archers (V115): mounted + ranged composes from pure data - the cfg
+# Outrider (bow, tunic, mounted flag) rides, shoots through the same
+# weapon-keyed archery path as foot archers, and swaps to steel when
+# cornered. This script pins the roster load and wage books (3 outriders =
+# 9/day on top of the band's 12).
+load tests/fixtures/outrider.owb
+state
+quit

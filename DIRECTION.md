@@ -1423,6 +1423,12 @@ this is the feedback the flat numbers were waiting for.
   through intro and deployment, swelling with how much of the field
   still fights, gone when it's decided. Synthesized like every other
   sound — no assets, headless no-op.
+- [x] **V115. Iteration one-fifteen — outriders, and rain in your ears.**
+  The cfg Outrider proves mounted+ranged composes from data (bow +
+  mounted flag, riding the same weapon-keyed archery AI), enlisted
+  with the Nords; and the campaign map now plays the rain patter when
+  you ride inside the storm, matching V64's streaks.
+  `tests/horse_archer.txt`.
 
 ## Sequencing guidance
 
