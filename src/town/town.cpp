@@ -624,15 +624,17 @@ TownView GetTownView() {
 void TownTalkLord(GameState& gs) {
     const Content& c = gs.content;
     const int owner = gs.towns[gs.currentSettlement].owner;
+    gs.audienceLord.clear();
     if (owner == c.playerFaction)
         gs.dialogueName = "Your Castellan";
     else if (!gs.towns[gs.currentSettlement].fiefLord.empty())   // the seat's own
-        gs.dialogueName = TextFormat(                            // lord holds court (S4)
-            "Lord %s", gs.towns[gs.currentSettlement].fiefLord.c_str());
+        gs.audienceLord = gs.towns[gs.currentSettlement].fiefLord;   // lord (S4)
     else if (c.factions.valid(owner) && !c.factions[owner].lords.empty())
-        gs.dialogueName = TextFormat("Lord %s", c.factions[owner].lords[0].c_str());
+        gs.audienceLord = c.factions[owner].lords[0];
     else
         gs.dialogueName = "The Castellan";
+    if (!gs.audienceLord.empty())
+        gs.dialogueName = TextFormat("Lord %s", gs.audienceLord.c_str());
     gs.dialogueLord = true;
     gs.dialogueLines.clear();
     gs.dialogueLines.push_back("Speak, captain. The court listens.");
@@ -661,6 +663,7 @@ void TownTalkNearest(GameState& gs) {
                         gs.towns[gs.currentSettlement].type == SettlementType::Castle;
     gs.dialogueName = castle ? "Guardsman" : "Villager";
     gs.dialogueLord = false;
+    gs.audienceLord.clear();
     gs.dialogueLines.clear();
     gs.dialogueLines.push_back(best ? best->line : "Well met, captain.");
 }
@@ -752,6 +755,21 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryGrantFief(gs));
+    } else if (in.menuChoice == 7 && gs.dialogueLord) {   // court him with a gift (V26)
+        constexpr int GIFT_COST = 100, GIFT_OPINION = 10;   // TODO(balance)
+        gs.dialogueLines.clear();
+        if (gs.audienceLord.empty())
+            gs.dialogueLines.push_back("A castellan takes no gifts. His lord might.");
+        else if (gs.gold < GIFT_COST)
+            gs.dialogueLines.push_back("Gifts worth giving cost gold. Come back richer.");
+        else {
+            gs.gold -= GIFT_COST;
+            LordOpinion(gs, gs.audienceLord) += GIFT_OPINION;
+            gs.dialogueLines.push_back(TextFormat(
+                "Lord %s accepts your gift with grace. He will remember this. (%+d)",
+                gs.audienceLord.c_str(), EffectiveLordOpinion(gs, gs.audienceLord)));
+            SfxPlay(Sfx::Fanfare);
+        }
     } else if (in.menuChoice == 6 && gs.dialogueLord) {   // rebellion (O6)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryRebel(gs));
@@ -812,6 +830,12 @@ void DialogueDraw(const GameState& gs) {
     DrawCircle(x + 60, 140, 26, Color{ 214, 176, 142, 255 });          // head
     DrawRectangle(x + 24, 170, 72, 60, Color{ 96, 84, 60, 255 });      // shoulders
     ui::Title(gs.dialogueName.c_str(), x + 140, 110, 40, GOLD);
+    if (!gs.audienceLord.empty()) {   // his opinion of you, on his face (V26)
+        const int op = EffectiveLordOpinion(const_cast<GameState&>(gs), gs.audienceLord);
+        ui::Text(TextFormat("his opinion of you: %+d", op), x + 140, 160, 20,
+                 op >= 10 ? Fade(GREEN, 0.9f) : op <= -10 ? Fade(RED, 0.9f)
+                                              : Fade(RAYWHITE, 0.7f));
+    }
 
     int y = 270;
     for (const std::string& line : gs.dialogueLines) {
@@ -826,8 +850,13 @@ void DialogueDraw(const GameState& gs) {
         ui::Text("[3] Have you work for my warband?", x, y + 90, 22,
                  Fade(RAYWHITE, 0.85f));
         int leaveY = y + 120;
+        if (!gs.audienceLord.empty()) {   // court him with a gift (V26)
+            ui::Text("[7] A gift for your household. (100 gold)", x, leaveY, 22,
+                     Fade(GOLD, 0.85f));
+            leaveY += 30;
+        }
         if (gs.crowned) {   // a ruler's court has a ruler's business (M3)
-            ui::Text("[4] I grant this seat to a lord of mine.", x, y + 120, 22,
+            ui::Text("[4] I grant this seat to a lord of mine.", x, leaveY, 22,
                      Fade(GOLD, 0.85f));
             leaveY += 30;
         }

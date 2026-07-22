@@ -1168,6 +1168,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_FOUR))  in.menuChoice = 4;   // grant a fief (M3)
         if (IsKeyPressed(KEY_FIVE))  in.menuChoice = 5;   // marriage suit (M5)
         if (IsKeyPressed(KEY_SIX))   in.menuChoice = 6;   // rebellion (O6)
+        if (IsKeyPressed(KEY_SEVEN)) in.menuChoice = 7;   // a lord's gift (V26)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E)) in.leaveSettlement = true;
         return in;
     }
@@ -1428,10 +1429,16 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         }
         if (best >= 0) {
             gs.parleyParty  = best;
-            gs.dialogueName = TextFormat("Lord %s", gs.parties[best].lord.c_str());
+            gs.audienceLord = gs.parties[best].lord;
+            gs.dialogueName = TextFormat("Lord %s", gs.audienceLord.c_str());
             gs.dialogueLord = true;
             gs.dialogueLines.clear();
-            gs.dialogueLines.push_back("Well met on the road, captain. Speak.");
+            // The greeting wears his opinion of you (V26).
+            const int op = EffectiveLordOpinion(gs, gs.audienceLord);
+            gs.dialogueLines.push_back(
+                op >= 10  ? "Well met, friend! My fire and my counsel are yours."
+                : op <= -10 ? "You. Say your piece and be gone."
+                            : "Well met on the road, captain. Speak.");
             gs.screen = Screen::Dialogue;
         } else {
             gs.resultText = sawHostile ? "The only lord in hail is an enemy. He talks with steel."

@@ -184,6 +184,8 @@ struct GameState {
     bool                     dialogueLord = false;   // court audience (K2): oath/work topics
     int                      parleyParty  = -1;      // lord party in a map parley (S4);
                                                      // -1 = a settlement audience
+    std::string              audienceLord;           // the named lord in audience (V26);
+                                                     // empty = a castellan/villager
 
     // Active quest (F4): one at a time. `questTown` is the delivery target
     // for DeliverGrain; `questFaction` earns the relation reward.

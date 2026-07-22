@@ -1,0 +1,13 @@
+# Courting lords with gifts (V26): 100 gold buys +10 opinion with the lord
+# in audience - the currency TryRebel/defection already spend. Two gifts
+# leave Aldric at +20 (rebellion follow threshold is +10) and the purse at
+# 100 of its 300.
+load tests/fixtures/parley.owb
+fame 6 0
+parley
+topic 7
+topic 7
+state
+leave
+state
+quit

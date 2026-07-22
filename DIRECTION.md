@@ -885,6 +885,12 @@ this is the feedback the flat numbers were waiting for.
   courts now name the seat's own fief-holder. The dialogue state machine
   grew a `parleyParty` route so every settlement-bound topic degrades
   gracefully on the road.
+- [x] **V26. Iteration twenty-six — courting lords with gold.** TryRebel's
+  "Court them first" finally has a verb: topic [7] in any lord audience
+  gives a 100-gold gift for +10 opinion — the same number defection and
+  rebellion already read, so gold now buys a following. Audiences show
+  the lord's live opinion under his name, and a parley greeting warms or
+  chills with it. `tests/court_gift.txt`.
 
 ## Sequencing guidance
 
