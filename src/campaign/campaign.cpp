@@ -2630,7 +2630,7 @@ void CampaignDraw(const GameState& gs) {
                            "[B] ledger   [O]ptions   [F5-F7] quicksave   "
                            "[Esc,Esc] save+quit   (load: title, L)";
         DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
-                      Fade(BLACK, 0.72f));
+                      Fade(BLACK, 0.88f));
         DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
                       Fade(GOLD, 0.35f));
         ui::Text(keys, 12, GetScreenHeight() - 29, 20, RAYWHITE);
@@ -2643,8 +2643,8 @@ void CampaignDraw(const GameState& gs) {
 
     // News rides its own line (U13): below the what-now line, never on it.
     if (!gs.resultText.empty()) {
-        DrawRectangle(0, 62, ui::Measure(gs.resultText.c_str(), 20) + 20, 26,
-                      Fade(BLACK, 0.45f));
+        DrawRectangle(0, 62, ui::Measure(gs.resultText.c_str(), 20) + 20, 30,
+                      Fade(BLACK, 0.7f));
         ui::Text(gs.resultText.c_str(), 10, 66, 20, GOLD);
     }
 

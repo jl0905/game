@@ -707,6 +707,19 @@ this is the feedback the flat numbers were waiting for.
   implicit health, walls that hold, save/load surfacing, main-only
   branch.
 
+## Track V — The 5-minute loop (continuous iteration, 2026-07-21)
+
+- [x] **V1. Iteration one.** Settlement buttons audited end-to-end (rows →
+  intents → single implementations; sound). Lettering up again: global
+  scale 1.35 via fonts.cfg, and the text-bearing bands darkened hard
+  (footer 0.88, gate menu 0.92, news 0.7) for contrast. Extensibility
+  proof: the Crossbow (further/flatter/slower than the bow — a new
+  ranged identity in four lines) and the Arbalist (new troop from parts
+  on the shelf), fielded by Patrol and Sarleon — appended handles, so
+  nothing moved; the AI archery, arms counter, loot tables and paper-
+  doll all picked them up with zero code changes, which is the
+  interaction claim made concrete.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

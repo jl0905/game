@@ -1049,7 +1049,7 @@ void TownDraw(const GameState& gs) {
         const int x0 = cx - townmenu::X_HALF;
         DrawRectangle(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                       townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
-                      Fade(BLACK, 0.78f));
+                      Fade(BLACK, 0.92f));
         DrawRectangleLines(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                            townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
                            GOLD);

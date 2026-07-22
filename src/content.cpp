@@ -77,6 +77,14 @@ void LoadDefaultContent(Content& c) {
     spear.tileW = 1; spear.tileH = 4;
     bow.tileW   = 2; bow.tileH   = 3;
 
+    // Extensibility proof (V1): a whole new ranged identity in four lines —
+    // further, flatter, slower than the bow. No code elsewhere changes.
+    WeaponDef xbow = Weapon("xbow", "Crossbow", WeaponClass::Ranged, DARKGRAY);
+    xbow.missileRange = 55.0f;   // TODO(balance): outranges the bow
+    xbow.missileSpeed = 45.0f;   // flat, fast bolts
+    xbow.swingTime    = 3.2f;    // spanning a crossbow takes time
+    xbow.tileW = 2; xbow.tileH = 3;
+
     WeaponDef axe = Weapon("axe", "War Axe", WeaponClass::Axe, LIGHTGRAY);
     axe.tileW = 2; axe.tileH = 3;
 
@@ -90,6 +98,7 @@ void LoadDefaultContent(Content& c) {
     const int w_bow   = c.weapons.add(bow);
     const int w_axe   = c.weapons.add(axe);
     const int w_dane  = c.weapons.add(daneaxe);
+    const int w_xbow  = c.weapons.add(xbow);
 
     // ---- Troops ------------------------------------------------------------
     // Troops differ by loadout + identity, NOT by tuned numbers (all flat base).
@@ -228,6 +237,16 @@ void LoadDefaultContent(Content& c) {
     const int t_brigand  = c.troops.add(brigand);
     const int t_marksman = c.troops.add(marksman);
     const int t_marauder = c.troops.add(marauder);
+
+    // Extensibility proof (V1): a new troop from parts already on the shelf —
+    // the arbalist, fielded by the lawful crowns, appended so no handle moves.
+    TroopDef arbalist = makeTroop("arbalist", "Arbalist", DARKBLUE);
+    arbalist.loadout.set(EquipSlot::Head, a_kettle);
+    arbalist.loadout.set(EquipSlot::Body, a_mail);
+    arbalist.loadout.set(EquipSlot::Feet, a_boots);
+    arbalist.loadout.addWeapon(w_xbow);    // outranges bows, spans slowly
+    arbalist.loadout.addWeapon(w_sword);
+    const int t_arbalist = c.troops.add(arbalist);
     const int t_warrior  = c.troops.add(warrior);
     const int t_huscarl  = c.troops.add(huscarl);
 
@@ -276,7 +295,7 @@ void LoadDefaultContent(Content& c) {
     FactionDef patrol;
     patrol.id = "patrol"; patrol.name = "Patrol";
     patrol.color = PURPLE; patrol.behavior = PartyBehavior::Patrol;
-    patrol.roster = { t_infantry, t_veteran, t_knight };
+    patrol.roster = { t_infantry, t_veteran, t_knight, t_arbalist };
     patrol.lords = { "Aldric", "Corin" };
     patrol.lordPartySize = 150;     // TODO(balance)
     patrol.kingdom = true;
@@ -289,7 +308,7 @@ void LoadDefaultContent(Content& c) {
     sarleon.id = "sarleon"; sarleon.name = "Sarleon";
     sarleon.color = Color{ 0, 150, 150, 255 };
     sarleon.behavior = PartyBehavior::Patrol;
-    sarleon.roster = { t_infantry, t_veteran, t_archer, t_knight };
+    sarleon.roster = { t_infantry, t_veteran, t_archer, t_knight, t_arbalist };
     sarleon.lords = { "Aldemar", "Rowan" };
     sarleon.lordPartySize = 150;    // TODO(balance)
     sarleon.kingdom = true;
