@@ -1776,6 +1776,35 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         Clamp(1.0f - Vector3Distance(s.pos, B.pPos) / 45.0f, 0.05f, 0.8f));
             }
         }
+        // The press of bodies (U6): men cannot share ground. One positional
+        // relaxation per frame — grid-accelerated, half-push each — keeps
+        // crowds honest without a solver. TODO(balance): the gap.
+        {
+            constexpr float BODY_GAP = 0.9f;
+            for (int i = 0; i < n; ++i) {
+                Soldier& s = B.soldiers[i];
+                if (s.hp <= 0 || s.escaped || s.onWall) continue;
+                B.grid.ForNeighbors(s.pos, BODY_GAP + 0.6f, [&](int j) {
+                    if (j <= i) return;
+                    Soldier& o = B.soldiers[j];
+                    if (o.hp <= 0 || o.escaped || o.onWall) return;
+                    Vector3 d = Vector3Subtract(o.pos, s.pos);
+                    d.y = 0;
+                    const float dist = Vector3Length(d);
+                    if (dist >= BODY_GAP) return;
+                    if (dist < 1e-4f) {   // perfect overlap: pick a direction
+                        o.pos.x += (j & 1) ? 0.06f : -0.06f;
+                        return;
+                    }
+                    const Vector3 pd =
+                        Vector3Scale(d, (BODY_GAP - dist) * 0.5f / dist);
+                    s.pos = Vector3Subtract(s.pos, pd);
+                    o.pos = Vector3Add(o.pos, pd);
+                });
+                EnforceWall(s.pos);
+            }
+        }
+
         for (int i = 0; i < n; ++i) {
             Soldier& s = B.soldiers[i];
             if (s.hp <= 0) continue;

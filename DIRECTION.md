@@ -634,13 +634,30 @@ this is the feedback the flat numbers were waiting for.
   raise, so every action has one implementation and all 68 harness
   scripts pass untouched. Esc walks back to the menu; Esc again rides
   on. The tavern row walks you in at the hearth.
-- [ ] **U6. Press of bodies & scale (added mid-sprint).** Units should
-  crowd each other hard — no stacking. Strengthen separation into a
-  positional constraint (grid-driven pairwise push-out), then re-bench:
-  targeting AI per troop at hundreds-per-side stays the bar. (We already
-  run a shared-snapshot parallel AI on a uniform grid — closer to the
-  "hivemind" than it looks; the work is the constraint pass and keeping
-  it cache-friendly.)
+- [x] **U6. Press of bodies & scale.** Shipped: a hard positional
+  constraint — one grid-accelerated relaxation per frame, half-push per
+  overlapping pair at a 0.9 u body gap — men cannot share ground.
+  Research answer (the "hivemind" question): the engine already runs the
+  architecture large-battle games use — per-troop scored targeting reads
+  a shared immutable snapshot in parallel across cores, all proximity
+  queries go through a uniform grid rebuilt per tick (O(1) per query),
+  and mutations apply serially, so there are no locks anywhere in the
+  hot path. Bench: 35.7 ms avg at 2000 soldiers (+1.9 ms for the crowd
+  constraint, within the 15% tripwire). The next scale steps if ever
+  needed: SoA layout for the AI snapshot and staggered target refresh
+  (recompute every N frames per soldier) — noted, not needed at current
+  scale.
+  Addendum (user asked: stochastic/dumber targeting? GPU pipeline?):
+  targeting is *already lazy* — a soldier keeps his target until it dies
+  or invalidates, so searches are rare and further stupidity saves ~0.
+  The measured bottleneck is rendering (immediate-mode cubes per body
+  part; sim ≈ ⅓, render ≈ ⅔ of the frame on the test GPU). The GPU
+  roadmap, in payoff order: (1) instanced body parts
+  (`DrawMeshInstanced` — one draw call per part kind instead of tens of
+  thousands), (2) distance LOD — far soldiers as 2-box impostors (the
+  settings lodDistance already exists to drive it), (3) frustum-cull
+  soldiers behind the camera. Queued as V-track work when battles above
+  ~300-per-side become the norm.
 
 - [ ] **U8. Paper-doll equipment (added mid-sprint).** The inventory gains
   visible equipment slots — helmet, body, hands, feet, weapon — and
