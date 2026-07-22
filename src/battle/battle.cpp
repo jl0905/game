@@ -1376,6 +1376,12 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.mounted = !setup.siege && !setup.arena;   // walls and rings are fought on foot
     B.pHorseHp = HORSE_HP;
 
+    // Hungry men fight shaken (V37): the player's own line starts with a
+    // third of its nerve gone. Allies and enemies ate. TODO(balance).
+    if (setup.hungry)
+        for (Soldier& s : B.soldiers)
+            if (s.team == Team::Player && !s.ally) s.nerve *= 0.65f;
+
     // Raise the standards (V32): the first man of each side carries the
     // banner. Bouts in the ring fight without colours.
     B.bannerIdx[0] = B.bannerIdx[1] = -1;

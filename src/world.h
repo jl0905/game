@@ -191,6 +191,12 @@ struct GameState {
     std::string              audienceLord;           // the named lord in audience (V26);
                                                      // empty = a castellan/villager
 
+    // The commissary (V37): the warband eats one grain per 20 men (rounded
+    // up) at every dawn, from the saddlebags. Days without bread stack;
+    // from the second one, men start walking home and the line marches
+    // into battle with shaken nerve.
+    int hungryDays = 0;
+
     // Mercenary contract (V29): a hired company's party index and the days
     // left on its papers. It shadows the player's march and joins battles
     // within reach as the allied line.

@@ -176,6 +176,9 @@ bool SaveGame(const GameState& gs, const char* path) {
         f << "rally " << gs.lordsRallyPos.x << ' ' << gs.lordsRallyPos.y << ' '
           << gs.lordsRallyDays << '\n';
 
+    // Hungry days on the march (V37).
+    if (gs.hungryDays > 0) f << "hungry " << gs.hungryDays << '\n';
+
     // A running mercenary contract (V29).
     if (gs.mercParty >= 0 && gs.mercDays > 0)
         f << "merc " << gs.mercParty << ' ' << gs.mercDays << '\n';
@@ -464,6 +467,8 @@ bool LoadGame(GameState& gs, const char* path) {
         } else if (tag == "rally") {
             gs.lordsRally = true;
             ss >> gs.lordsRallyPos.x >> gs.lordsRallyPos.y >> gs.lordsRallyDays;
+        } else if (tag == "hungry") {
+            ss >> gs.hungryDays;
         } else if (tag == "merc") {
             ss >> gs.mercParty >> gs.mercDays;
         } else if (tag == "liege") {

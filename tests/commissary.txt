@@ -1,0 +1,12 @@
+# The commissary (V37): the warband eats one grain per 20 men at dawn from
+# the saddlebags. Seed 42 starts with empty sacks: expect hungry=1 after the
+# first dawn and "A hungry Recruit walked home" (party -1) at the second.
+# Buying grain at a market resets the counter - the fed path is probed in
+# development; this script pins the hunger arc.
+seed 42
+wait 65
+state
+wait 60
+wait 60
+state
+quit

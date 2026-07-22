@@ -956,6 +956,13 @@ this is the feedback the flat numbers were waiting for.
   (the currency N4 opinions and TryRebel already read), refusals in
   character when the train is empty or the band is full. Party screen
   shows the captive count and the price. `tests/press_captives.txt`.
+- [x] **V37. Iteration thirty-seven — the commissary.** An army marches on
+  its stomach: one grain per 20 men eaten from the saddlebags at every
+  dawn. Empty sacks → red HUD warning; from the second hungry dawn the
+  greenest men walk home nightly, and a hungry line marches into battle
+  at 65% nerve (K4). Ties markets/caravans/harvest events directly to
+  army staying-power. Saved/loaded; `hungry=` in the dump;
+  `tests/commissary.txt`.
 
 ## Sequencing guidance
 

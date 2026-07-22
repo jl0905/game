@@ -2096,6 +2096,36 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // Markets learn the war news by morning (V31).
             RefreshWarMarkups(gs);
 
+            // The commissary (V37): the warband eats at dawn — one grain per
+            // 20 men, rounded up, from the saddlebags. TODO(balance).
+            {
+                const int gGrain = c.goods.find("grain");
+                const int mouths = gs.player.totalTroops();
+                if (gGrain >= 0 && mouths > 0) {
+                    const int need = (mouths + 19) / 20;
+                    if ((int)gs.goods.size() > gGrain && gs.goods[gGrain] >= need) {
+                        gs.goods[gGrain] -= need;
+                        gs.hungryDays = 0;
+                    } else {
+                        gs.hungryDays++;
+                        if (gs.hungryDays == 1)
+                            gs.resultText = "The grain sacks are empty. The men march hungry.";
+                        else {
+                            // From the second hungry dawn, men walk home —
+                            // the greenest first; veterans endure longest.
+                            for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
+                                if (gs.player.troopCounts[t] > 0) {
+                                    gs.player.troopCounts[t]--;
+                                    gs.resultText = TextFormat(
+                                        "A hungry %s walked home in the night. Buy grain.",
+                                        c.troops[t].name.c_str());
+                                    break;
+                                }
+                        }
+                    }
+                }
+            }
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;
@@ -2914,6 +2944,14 @@ void CampaignDraw(const GameState& gs) {
 
     if (gs.player.totalTroops() == 0)
         ui::Text("Your warband is destroyed... press R to restart.", 10, 70, 20, RED);
+
+    // Empty sacks on the HUD (V37): hunger is a state you should never
+    // discover from a deserter.
+    if (gs.hungryDays > 0)
+        ui::Text(gs.hungryDays == 1
+                     ? "THE MEN MARCH HUNGRY - buy grain at a market"
+                     : "THE MEN ARE STARVING - they walk home at every dawn",
+                 10, 122, 20, RED);
 
     // A running contract on the books (V29/V30): who marches with you and
     // for how much longer.

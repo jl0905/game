@@ -73,6 +73,7 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     s.heroLoadout = gs.playerHero.loadout;
     s.heroMaxHp   = gs.playerHero.maxHp;
     s.gearOverrides = gs.companionGear;   // fitted companions fight dressed (K6)
+    s.hungry = gs.hungryDays > 0;   // empty sacks ride into battle (V37)
     // The hero's body rides too (V14).
     s.heroStr = HeroAttr(gs, 0);
     s.heroAgi = HeroAttr(gs, 1);

@@ -36,6 +36,10 @@ struct BattleSetup {
     // war-band, or a garrison. Presentation only.
     std::string enemyName;
 
+    // Hungry men fight shaken (V37): true when the warband has marched
+    // without bread — the player's own line starts with rattled nerve.
+    bool hungry = false;
+
     // The hero's body (V14): Strength scales swing damage (+5%/pt),
     // Agility his footwork (+2%/pt move speed). Read-only snapshot.
     int heroStr = 0;
