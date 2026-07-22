@@ -775,6 +775,12 @@ this is the feedback the flat numbers were waiting for.
   idempotently each dawn, so it survives loads for free. Verified:
   Sargoth's mill flipped grain 130%→70% and the shelf began to fill.
 
+- [x] **V9. Iteration nine — deposits carry their wars.** Coin banked in a
+  town that falls to a crown at war with you is seized with the vault
+  (the enterprise rule, extended) — banking pays best in safe heartland
+  and gambles in border towns, which is exactly the geography the whole
+  economy already speaks.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

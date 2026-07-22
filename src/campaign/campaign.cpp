@@ -1830,15 +1830,25 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         if (gs.dayTimer >= DAY_LENGTH) {
             gs.dayTimer -= DAY_LENGTH;
             gs.day++;
-            // Hostile hands seize enterprises before the books are drawn.
+            // Hostile hands seize enterprises before the books are drawn —
+            // and the moneylender's vault with them (V9): coin banked in a
+            // town that falls to your enemies is gone. Deposits carry the
+            // wars they sit in.
             for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti) {
                 const int e = gs.enterpriseAt[ti];
-                if (!c.enterprises.valid(e)) continue;
-                if (AtWar(gs, gs.towns[ti].owner, c.playerFaction)) {
+                if (c.enterprises.valid(e) &&
+                    AtWar(gs, gs.towns[ti].owner, c.playerFaction)) {
                     gs.enterpriseAt[ti] = -1;
                     gs.resultText = TextFormat("Your %s in %s is SEIZED by the enemy!",
                                                c.enterprises[e].name.c_str(),
                                                gs.towns[ti].name.c_str());
+                }
+                if (ti < (int)gs.bankAt.size() && gs.bankAt[ti] > 0 &&
+                    AtWar(gs, gs.towns[ti].owner, c.playerFaction)) {
+                    gs.resultText = TextFormat(
+                        "The enemy empties the vault at %s: %d gold of yours, gone.",
+                        gs.towns[ti].name.c_str(), gs.bankAt[ti]);
+                    gs.bankAt[ti] = 0;
                 }
             }
 
