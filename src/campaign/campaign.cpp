@@ -1258,6 +1258,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             }
         }
         in.buyEnterprise = IsKeyPressed(KEY_B);
+        in.buyWarhorse   = IsKeyPressed(KEY_W);   // the destrier (V82)
         in.sendCaravan   = IsKeyPressed(KEY_C);   // outfit a convoy (M4)
         if (IsKeyPressed(KEY_D))                  // the moneylender (V5)
             in.bankMove = (IsKeyDown(KEY_LEFT_SHIFT) ||
@@ -3755,6 +3756,22 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // The destrier (V82): one horse, once, for life. TODO(balance): price.
+    if (in.buyWarhorse && t.type == SettlementType::Town) {
+        constexpr int WARHORSE_COST = 200;
+        if (gs.warhorse)
+            gs.resultText = "You already ride the finest horse gold can buy.";
+        else if (gs.gold < WARHORSE_COST)
+            gs.resultText = TextFormat("A destrier costs %d gold.", WARHORSE_COST);
+        else {
+            gs.gold -= WARHORSE_COST;
+            gs.warhorse = true;
+            gs.resultText = "A DESTRIER! Twice the horse under you, every battle, for life.";
+            Chronicle(gs, "Bought a destrier.");
+            SfxPlay(Sfx::Gallop, 0.8f);
+        }
+    }
+
     if (in.leaveSettlement) gs.screen = Screen::Settlement;   // back to the streets
 }
 
@@ -3767,8 +3784,8 @@ void MarketDraw(const GameState& gs) {
     const int   x = 120;
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
     ui::Text("1-9 / click: buy one   Shift / right-click: sell one   "
-             "[C] send a caravan (200)   [D] deposit 100 / Shift+D withdraw   "
-             "Esc / M back",
+             "[C] caravan (200)   [D] deposit / Shift+D withdraw   "
+             "[W] destrier (200)   Esc / M back",
              x, 116, 20, Fade(RAYWHITE, 0.7f));
     if (gs.currentSettlement < (int)gs.bankAt.size() &&
         gs.bankAt[gs.currentSettlement] > 0)

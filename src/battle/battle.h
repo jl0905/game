@@ -36,6 +36,9 @@ struct BattleSetup {
     // war-band, or a garrison. Presentation only.
     std::string enemyName;
 
+    // The destrier (V82): the hero's horse carries double hit points.
+    bool warhorse = false;
+
     // Hungry men fight shaken (V37): true when the warband has marched
     // without bread — the player's own line starts with rattled nerve.
     bool hungry = false;

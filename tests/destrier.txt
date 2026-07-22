@@ -1,0 +1,16 @@
+# The destrier (V82): W at a town market, 200 gold, once, for life - the
+# hero's horse carries double hit points in every battle after (horse=120
+# in the dump, up from 60), carried over the bridge as BattleSetup.warhorse
+# and saved as the warhorse tag. A second purchase is refused.
+seed 42
+enter 0
+market
+destrier
+state
+destrier
+leave
+leave
+hunt 90
+tick 3
+state
+quit

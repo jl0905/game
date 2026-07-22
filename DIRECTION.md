@@ -1234,6 +1234,11 @@ this is the feedback the flat numbers were waiting for.
   Fortified settlements wear a ten-stud stone ring on the map and a
   gold FORTIFIED note in the hover tooltip — siege planning reads at a
   glance now that the world walls itself. Draw-only.
+- [x] **V82. Iteration eighty-two — the destrier.** W at a town market:
+  200 gold, once, for life — the hero's horse carries double HP in
+  every battle after (one bool over the bridge; horse=120 in the
+  dump), chronicled and saved. A permanent gold sink that makes the
+  cavalry identity durable. `tests/destrier.txt`.
 
 ## Sequencing guidance
 

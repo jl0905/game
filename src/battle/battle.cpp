@@ -1489,7 +1489,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.pMaxHp = (float)setup.heroMaxHp;
     B.pHp = B.pMaxHp;
     B.mounted = !setup.siege && !setup.arena;   // walls and rings are fought on foot
-    B.pHorseHp = HORSE_HP;
+    B.pHorseHp = HORSE_HP * (setup.warhorse ? 2.0f : 1.0f);   // the destrier (V82)
 
     // Hungry men fight shaken (V37): the player's own line starts with a
     // third of its nerve gone. Allies and enemies ate. TODO(balance).

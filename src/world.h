@@ -220,6 +220,10 @@ struct GameState {
     // (double income). Only meaningful where enterpriseAt is set.
     std::vector<int> enterpriseLvl;
 
+    // The warhorse (V82): 200 gold at any town market buys a destrier —
+    // twice the horse under you in every battle after, for life.
+    bool warhorse = false;
+
     // Mercenary contract (V29): a hired company's party index and the days
     // left on its papers. It shadows the player's march and joins battles
     // within reach as the allied line.
