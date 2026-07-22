@@ -529,6 +529,40 @@ void LoadDefaultContent(Content& c) {
     c.events.add({ "banditking", "A Bandit King Rises",
                    "Masterless men flock to a bandit king near %s!", -10, 0, 2, -2 });
 
+    // Moddable events (V90): assets/events.cfg joins the day rotation —
+    //   event <id> <Name_with_underscores> <News_with_underscores_%s>
+    //         <prosperityDelta> <stockDelta> <spawnParties> <poolDelta>
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/events.cfg"
+                : "assets/events.cfg",
+            "assets/events.cfg", "../assets/events.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name, news;
+                EventDef e;
+                if (!(ss >> tag) || tag != "event") continue;
+                if (!(ss >> id >> name >> news >> e.prosperityDelta
+                         >> e.stockDelta >> e.spawnParties >> e.poolDelta))
+                    continue;
+                if (c.events.find(id.c_str()) >= 0) continue;
+                for (char& ch : name) if (ch == '_') ch = ' ';
+                for (char& ch : news) if (ch == '_') ch = ' ';
+                e.id = id; e.name = name; e.news = news;
+                c.events.add(e);
+            }
+        }
+    }
+
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`
     // strings are the contract for the balancing pass.

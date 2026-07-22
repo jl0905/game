@@ -1282,6 +1282,11 @@ this is the feedback the flat numbers were waiting for.
   one into a fading four-line feed below the status chips — nothing is
   lost to the next announcement. Draw-only, zero refactoring of the
   ~60 resultText writers.
+- [x] **V90. Iteration ninety — events from a cfg.** World events join
+  the modding surface: `assets/events.cfg` lines enter the day
+  rotation beside the built-in three (name, news template, prosperity/
+  stock/party/pool deltas). Ships live with Fair Day; verified firing
+  on its rotation slot. `tests/modded_event.txt`.
 
 ## Sequencing guidance
 

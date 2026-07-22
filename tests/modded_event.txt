@@ -1,0 +1,9 @@
+# Moddable events (V90): assets/events.cfg joins the day rotation. The
+# shipped sample adds Fair Day (+15 prosperity, +4 stock, +1 pool), which
+# lands on day 10 in the current 4-event cycle. Fixture: day 9, clock 59.
+# Expect the fair news line after the dawn.
+load tests/fixtures/fair.owb
+state
+wait 5
+state
+quit
