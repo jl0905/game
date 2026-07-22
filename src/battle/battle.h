@@ -38,6 +38,8 @@ struct BattleSetup {
     // The lord himself (V101): when set, he takes the field in person — a
     // champion among his men, and a prize.
     std::string enemyLordName;
+    // The enemy fights in its own colours (V105). Presentation only.
+    Color enemyTint = { 230, 41, 55, 255 };   // raylib RED
 
     // The destrier (V82): the hero's horse carries double hit points.
     bool warhorse = false;

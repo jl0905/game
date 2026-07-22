@@ -45,6 +45,8 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         s.enemyTroops = t.garrison;
         s.enemyName   = "THE GARRISON OF " + t.name;   // V24
         s.fortified   = t.fortified;                   // stone bites back (V52)
+        if (gs.content.factions.valid(t.owner))        // their colours (V105)
+            s.enemyTint = gs.content.factions[t.owner].color;
         if (t.fortified) s.enemyName += " (FORTIFIED)";
         // A friendly lord in reach rides to the defence (P2): his host
         // fights beside the garrison in the same battle.
@@ -65,6 +67,8 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         s.enemyTroops = foe.troopCounts;
         s.campaignPos = gs.player.pos;
         s.enemyLordName = foe.lord;   // he rides in person (V101)
+        if (gs.content.factions.valid(foe.faction))    // their colours (V105)
+            s.enemyTint = gs.content.factions[foe.faction].color;
         s.enemyName   = !foe.lord.empty()
             ? "LORD " + foe.lord
             : (foe.faction >= 0 && foe.faction < (int)gs.content.factions.size()

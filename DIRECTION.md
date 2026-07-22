@@ -1368,6 +1368,11 @@ this is the feedback the flat numbers were waiting for.
   at war with Sarleon, fielding cfg hammermen via troops.cfg —
   roamers, hosts and town rotation picked them up on sight. quests.txt
   meaning-checked through the world shift. `tests/modded_faction.txt`.
+- [x] **V105. Iteration one-oh-five — the enemy in its colours.** Enemy
+  soldiers, banners and silhouettes tint by their faction's colour
+  (one Color over the bridge; garrisons wear their owner's) instead of
+  generic red — Sarleon fights teal, the Nords red-brown, Vaelings
+  green. Friendlies stay blue for instant read. Draw-only.
 
 ## Sequencing guidance
 

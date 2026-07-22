@@ -1258,7 +1258,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     return cmd;
 }
 
-Color TeamTint(Team t) { return t == Team::Enemy ? RED : BLUE; }
+// The enemy fights in its own colours (V105): Nords look Nord, Sarleon
+// teal — the tint rides the bridge. Friendlies stay blue for readability.
+Color TeamTint(Team t) { return t == Team::Enemy ? B.setup.enemyTint : BLUE; }
 
 // Soft blob shadow pinned to the terrain — the cheapest depth cue there is.
 void BlobShadow(const Terrain& t, float x, float z, float r) {
