@@ -126,6 +126,7 @@ struct BattleView {
     std::string enemyName;          // who the banner named at the horn (V24)
     int     heroKicks = 0;          // boots landed (V33)
     int     heroShots = 0;          // shafts loosed by the hero (V117)
+    int     heroQuiver = 0;         // shafts remaining on the hip (V118)
     float   heroShieldHp = 0;       // wood left on the hero's arm (V71)
     int     reservesOwn   = 0;      // men waiting off-field (V75)
     int     reservesEnemy = 0;

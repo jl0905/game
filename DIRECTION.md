@@ -1444,6 +1444,13 @@ this is the feedback the flat numbers were waiting for.
   the default arsenal on load, doubling the hero's weapons every
   save/load cycle — first carry now replaces wholesale (mirrors ccarry).
   `tests/herobow.txt`.
+- [x] **V118. Iteration one-eighteen — the quiver runs dry.** Hero arrows
+  are finite: 24 on the hip (TODO(balance)), one spent per loose, an
+  empty quiver refuses the shot and points at the ground — [G] pulls
+  landed shafts (yours or anyone's) back into the quiver, so an archer
+  harvests his own volleys mid-fight. ARROWS count on the HUD, gold
+  while stocked and red at zero; `quiver=` in the battle dump.
+  `tests/quiver.txt`.
 
 ## Sequencing guidance
 

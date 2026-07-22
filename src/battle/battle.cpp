@@ -726,6 +726,7 @@ struct BattleState {
     float kickCd = 0;                  // the boot's recovery (V33)
     int   heroKicksLanded = 0;
     int   heroArrowsLoosed = 0;   // hero archery (V117)
+    int   heroQuiver = 24;        // shafts on the hip (V118) TODO(balance)
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
@@ -1914,6 +1915,23 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         // ---- scavenge (V39): G over a fallen man takes up his weapon in
         //      place of your active one — the field re-arms the survivor.
         if (in.pickup && B.pHp > 0) {
+            // Shafts first (V118): spent arrows near your boots go back in
+            // the quiver — an archer harvests his own volleys mid-fight.
+            int pulled = 0;
+            for (size_t i = B.stuckArrows.size(); i-- > 0; ) {
+                Vector3 to = Vector3Subtract(B.stuckArrows[i].pos, B.pPos);
+                to.y = 0;
+                if (Vector3Length(to) > 3.0f) continue;
+                B.stuckArrows.erase(B.stuckArrows.begin() + i);
+                pulled++;
+            }
+            if (pulled > 0) {
+                B.heroQuiver += pulled;
+                B.pickupMsg   = TextFormat("PULLED %d SHAFT%s FREE", pulled,
+                                           pulled == 1 ? "" : "S");
+                B.pickupTimer = 1.8f;
+                SfxPlay(Sfx::Swing, 0.4f);
+            }
             for (Soldier& s : B.soldiers) {
                 if (s.hp > 0 || s.escaped || s.looted) continue;
                 Vector3 to = Vector3Subtract(s.pos, B.pPos);
@@ -1958,6 +1976,15 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             //      Same Arrow sim as every archer on the field.
             if (c.weapons.valid(wh) && c.weapons[wh].isRanged()) {
                 const WeaponDef& bw = c.weapons[wh];
+                // The quiver runs dry (V118): no shaft, no shot — the field
+                // gives them back one at a time under [G].
+                if (B.heroQuiver <= 0) {
+                    B.swing = 0.0f;
+                    B.pickupMsg   = "QUIVER EMPTY — pull shafts from the ground [G]";
+                    B.pickupTimer = 1.8f;
+                    SfxPlay(Sfx::Click, 0.7f);
+                } else {
+                B.heroQuiver--;
                 B.cooldown = WeaponCooldown(c, wh);
                 const Vector3 look = { sinf(B.yaw) * cosf(B.pitch),
                                        sinf(B.pitch),
@@ -1972,6 +1999,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 B.arrows.push_back(a);
                 B.heroArrowsLoosed++;
                 SfxPlay(Sfx::Loose);
+                }   // quiver had a shaft (V118)
             } else {
             SfxPlay(Sfx::Swing);
             const float reach = WeaponReach(c, wh);
@@ -3165,6 +3193,9 @@ void BattleDraw(const Content& c) {
     {
         const int hw = B.setup.heroLoadout.get(EquipSlot::Weapon);
         const bool bowInHand = c.weapons.valid(hw) && c.weapons[hw].isRanged();
+        if (bowInHand)   // the hip count (V118): always visible with a bow out
+            ui::Text(TextFormat("ARROWS %d", B.heroQuiver), 18, 104, 18,
+                     B.heroQuiver > 0 ? GOLD : RED);
         if (B.readying && bowInHand) {
             // Hero archery (V117): the ring tightens as the string comes back.
             ui::Text("Drawing...  (release to loose!)", 18, 82, 16, ORANGE);
@@ -3388,6 +3419,7 @@ BattleView GetBattleView() {
     v.enemyName   = B.setup.enemyName;
     v.heroKicks   = B.heroKicksLanded;
     v.heroShots   = B.heroArrowsLoosed;
+    v.heroQuiver  = B.heroQuiver;
     v.dueling     = B.dueling;
     v.heroShieldHp = B.pShieldHp;
     for (int r : B.reserveOwn)   v.reservesOwn += r;

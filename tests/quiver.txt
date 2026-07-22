@@ -1,0 +1,15 @@
+# Quiver (V118): the hero's arrows are finite - 24 on the hip, one spent
+# per loose, [G] pulls landed shafts back. This script pins the count:
+# quiver=24 with the bow drawn, 22 after two shots (shots=2 confirms both
+# actually flew rather than being refused).
+load tests/fixtures/herobow.owb
+hunt 60
+swap
+swap
+swap
+state
+attack up
+tick 3
+attack up
+state
+quit
