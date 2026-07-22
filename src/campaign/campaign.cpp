@@ -1145,6 +1145,8 @@ static void ApplyBattleResult(GameState& gs) {
 
 // Read the real devices into campaign intent. Windowed play only — the
 // headless harness builds CampaignInput directly.
+int KingdomOptionAt(Vector2 m);   // defined with KingdomDraw below (V56)
+
 CampaignInput GatherCampaignInput(const GameState& gs) {
     CampaignInput in;
 
@@ -1277,6 +1279,11 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         for (int r = 0; r < 9; ++r)   // sue for peace by war row (S1)
             if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
         if (IsKeyPressed(KEY_T)) in.cycleTax = true;   // the tax lever (V55)
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {  // rows click (V56)
+            const int id = KingdomOptionAt(GetMousePosition());
+            if (id == 100)    in.cycleTax = true;
+            else if (id > 0)  in.menuChoice = id;
+        }
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_B))
             in.leaveSettlement = true;
         return in;
@@ -3994,7 +4001,23 @@ void KingdomUpdate(GameState& gs, const CampaignInput& in) {
     }
 }
 
+namespace {
+// Kingdom-ledger click targets (V56): id 1..9 = war rows (menuChoice),
+// 100 = the tax lever. Draw records, gather hit-tests — the V27 pattern.
+struct LedgerHit { int x, y, id; };
+std::vector<LedgerHit> g_ledgerHits;
+}   // namespace
+
+int KingdomOptionAt(Vector2 m) {
+    for (const LedgerHit& h : g_ledgerHits)
+        if (m.x >= h.x - 8 && m.x < h.x + 560 &&
+            m.y >= h.y - 3 && m.y < h.y + 24)
+            return h.id;
+    return 0;
+}
+
 void KingdomDraw(const GameState& gs) {
+    g_ledgerHits.clear();
     const Content& c = gs.content;
     BeginDrawing();
     ClearBackground(Color{ 24, 26, 30, 255 });
@@ -4010,10 +4033,12 @@ void KingdomDraw(const GameState& gs) {
                         gs.renown, gs.honor, gs.gold), lx, 100, 22, RAYWHITE);
     {   // the tax lever (V55)
         static const char* TAXN[] = { "LIGHT", "CUSTOMARY", "HEAVY" };
+        const int taxY = 128 + (gs.spouseFaction >= 0 ? 24 : 0);
         ui::Text(TextFormat("[T] Taxes: %s  (heavy fattens the ledger, light "
                             "grows the land)", TAXN[gs.taxRate % 3]),
-                 lx, 128 + (gs.spouseFaction >= 0 ? 24 : 0), 18,
+                 lx, taxY, 18,
                  gs.taxRate == 1 ? Fade(RAYWHITE, 0.75f) : GOLD);
+        g_ledgerHits.push_back({ lx, taxY, 100 });   // clickable (V56)
     }
     if (gs.spouseFaction >= 0)
         ui::Text(TextFormat("Wed to Lady %s of %s", gs.spouseName.c_str(),
@@ -4059,20 +4084,6 @@ void KingdomDraw(const GameState& gs) {
                                           : Fade(RAYWHITE, 0.8f));
                 y += 24;
             }
-        }
-    }
-
-    // The chronicle (V50): the reign's own history, newest first, right
-    // column of the ledger.
-    if (!gs.chronicle.empty()) {
-        const int cx = GetScreenWidth() / 2 + 60;
-        int cy = 140;
-        ui::Text("THE CHRONICLE", cx, cy, 20, GOLD);
-        cy += 28;
-        const int n = (int)gs.chronicle.size();
-        for (int i = n - 1; i >= 0 && i >= n - 10; --i) {
-            ui::Text(gs.chronicle[i].c_str(), cx, cy, 17, Fade(RAYWHITE, 0.85f));
-            cy += 24;
         }
     }
 
@@ -4133,10 +4144,27 @@ void KingdomDraw(const GameState& gs) {
         ui::Text(TextFormat("[%d] At war with %-10s  sue for peace: %d gold",
                             warRow, c.factions[f].name.c_str(), tribute),
                  rx, ry, 19, Fade(RED, 0.9f));
+        g_ledgerHits.push_back({ rx, ry, warRow });   // clickable (V56)
         ry += 26;
     }
-    if (atPeaceAll)
+    if (atPeaceAll) {
         ui::Text("The realm is at peace.", rx, ry, 19, LIME);
+        ry += 26;
+    }
+
+    // The chronicle (V50, re-seated V56 below the wars — it used to overlap
+    // LORDS AFIELD): the reign's own history, newest first.
+    if (!gs.chronicle.empty()) {
+        ry += 12;
+        ui::Text("THE CHRONICLE", rx, ry, 20, GOLD);
+        ry += 28;
+        const int n = (int)gs.chronicle.size();
+        for (int i = n - 1; i >= 0 && i >= n - 8 &&
+                            ry < GetScreenHeight() - 70; --i) {
+            ui::Text(gs.chronicle[i].c_str(), rx, ry, 17, Fade(RAYWHITE, 0.85f));
+            ry += 24;
+        }
+    }
 
     ui::Text("[Esc / B] close the book", lx, GetScreenHeight() - 44, 20,
              Fade(RAYWHITE, 0.7f));

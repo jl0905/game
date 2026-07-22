@@ -1083,6 +1083,11 @@ this is the feedback the flat numbers were waiting for.
   feeds prices, recruit pools and income itself — a compounding policy
   choice, saved (`tax` tag), `tax=` in the dump. `tests/tax_lever.txt`
   pins 50 → 67 → 37 income.
+- [x] **V56. Iteration fifty-six — the ledger clicks.** Kingdom-ledger
+  war rows (sue for peace) and the tax lever are now mouse buttons via
+  the V27 record-and-hit-test pattern (per-hit x, two columns) — and a
+  V50 layout bug fixed: the chronicle overlapped LORDS AFIELD; it now
+  sits beneath the wars with a screen-bottom clamp.
 
 ## Sequencing guidance
 
