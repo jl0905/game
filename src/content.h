@@ -142,6 +142,8 @@ struct EventDef {
     int prosperityDelta = 0;      // applied to the settlement, clamped 30..150
     int stockDelta      = 0;      // per good, floored at 0
     int spawnParties    = 0;      // outlaw bands raised at the site
+    int poolDelta       = 0;      // recruit-pool swing (V4): events touch
+                                  // manpower too
 };
 
 // A hero attribute (roadmap D3). Pure structure: `hook` documents what the

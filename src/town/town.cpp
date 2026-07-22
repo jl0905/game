@@ -1086,14 +1086,24 @@ void TownDraw(const GameState& gs) {
             "[9]  Recall a soldier",
             "[W]  Visit the settlement  (walk the streets)",
         };
+        // Rows that can't act right now grey out with the reason implicit
+        // (V4): buttons that look alive ARE alive.
+        const bool mine   = town.owner == c.playerFaction;
+        const bool sworn  = gs.liege >= 0;
+        bool live[townmenu::ROWS];
+        for (int r = 0; r < townmenu::ROWS; ++r) live[r] = true;
+        live[5] = !sworn && !mine;          // swear: free captains only
+        live[7] = mine;                     // garrison a soldier
+        live[8] = mine && town.garrisonSize() > 0;   // recall
         int y = townmenu::Y;
         const Vector2 m = GetMousePosition();
         for (int r = 0; r < townmenu::ROWS; ++r) {
-            if (m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
+            if (live[r] && m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
                 m.y >= y && m.y < y + townmenu::ROW_H)
                 DrawRectangle(x0 - 8, y, townmenu::X_HALF * 2 + 16,
                               townmenu::ROW_H, Fade(GOLD, 0.14f));
-            ui::Text(rows[r], x0, y + 6, 20, RAYWHITE);
+            ui::Text(rows[r], x0, y + 6, 20,
+                     live[r] ? RAYWHITE : Fade(RAYWHITE, 0.35f));
             y += townmenu::ROW_H;
         }
         ui::Text("[Esc] ride on", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));

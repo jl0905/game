@@ -2054,6 +2054,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 t.prosperity = std::clamp(t.prosperity + ev.prosperityDelta, 30, 150);
                 for (int g = 0; g < (int)t.stock.size(); ++g)
                     t.stock[g] = std::max(0, t.stock[g] + ev.stockDelta);
+                // Events touch manpower too (V4): a harvest brings sons of
+                // age early; a bandit king presses them into his bands.
+                t.recruitPool = std::max(0, t.recruitPool + ev.poolDelta);
                 const int raiders = c.factions.find("raiders");
                 for (int n = 0; n < ev.spawnParties && raiders >= 0; ++n)
                     gs.parties.push_back(MakeParty(c, raiders,

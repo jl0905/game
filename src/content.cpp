@@ -370,11 +370,11 @@ void LoadDefaultContent(Content& c) {
     // Fired on the day rotation at a rotating settlement, announced as news.
     // TODO(balance): every number.
     c.events.add({ "harvest", "Good Harvest",
-                   "The harvest at %s is the best in years.", 20, 3, 0 });
+                   "The harvest at %s is the best in years.", 20, 3, 0, 2 });
     c.events.add({ "murrain", "Murrain",
-                   "A murrain strikes the herds at %s.", -20, -2, 0 });
+                   "A murrain strikes the herds at %s.", -20, -2, 0, -1 });
     c.events.add({ "banditking", "A Bandit King Rises",
-                   "Masterless men flock to a bandit king near %s!", -10, 0, 2 });
+                   "Masterless men flock to a bandit king near %s!", -10, 0, 2, -2 });
 
     // ---- Hero attributes (roadmap D3) ------------------------------------
     // Structure + intent only. No gameplay code reads these yet; the `hook`

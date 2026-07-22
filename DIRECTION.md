@@ -738,6 +738,15 @@ this is the feedback the flat numbers were waiting for.
   dear) and the Sawmill enterprise. Markets, caravans, world events and
   the ledger picked both up with zero code changes.
 
+- [x] **V4. Iteration four — sky, live buttons, events touch manpower.**
+  Battles get a real sky (zenith deepens, horizon pales, follows the
+  day clock — one gradient rectangle). Gate-menu rows that can't act
+  grey out (swear when sworn/at home, garrison rows at foreign towns) —
+  buttons that look alive ARE alive. And `EventDef::poolDelta` threads
+  events into manpower: a harvest brings sons of age early (+2 pool), a
+  murrain and a bandit king drain them — verified: Praven's pool 4→6 on
+  the day-one harvest. Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

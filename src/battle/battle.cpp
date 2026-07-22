@@ -2051,6 +2051,20 @@ void BattleDraw(const Content& c) {
     else if (tod >= 0.70f)  sky = { 178, 116, 84, 255 };   // dusk
     else if (tod < 0.10f)   sky = { 148, 120, 104, 255 };  // dawn
     ClearBackground(sky);
+    // A real sky (V4): zenith deepens, horizon pales — drawn flat before
+    // the 3D pass, which paints over it with depth. Costs one rectangle.
+    {
+        Color zen = { (unsigned char)(sky.r * 0.55f),
+                      (unsigned char)(sky.g * 0.60f),
+                      (unsigned char)(sky.b * 0.75f), 255 };
+        Color hor = { (unsigned char)fminf(255, sky.r * 1.25f + 18),
+                      (unsigned char)fminf(255, sky.g * 1.18f + 14),
+                      (unsigned char)fminf(255, sky.b * 1.08f + 8), 255 };
+        DrawRectangleGradientV(0, 0, GetScreenWidth(),
+                               GetScreenHeight() * 2 / 3, zen, hor);
+        DrawRectangle(0, GetScreenHeight() * 2 / 3, GetScreenWidth(),
+                      GetScreenHeight() / 3, hor);
+    }
     // Sky: gradient with a low sun — or a leaden overcast when it rains.
     if (B.raining) {
         DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
