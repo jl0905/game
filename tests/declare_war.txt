@@ -1,0 +1,10 @@
+# Declare war (V112): a peaceful crown's row on THE CROWNS is a button -
+# clicking it opens hostilities: hostile matrix set both ways, relation -30,
+# chronicled, and the V31/V53 machinery prices the war into your shelves by
+# next dawn. Expect the declaration, relation: patrol=-30, and the chronicle
+# line.
+seed 42
+ledger
+declarewar patrol
+state
+quit

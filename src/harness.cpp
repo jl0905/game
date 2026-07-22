@@ -702,6 +702,12 @@ int RunScript(const char* path) {
             // Buy the warhorse (V82) — W at a town market.
             CampaignInput cin; cin.buyWarhorse = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "declarewar") {
+            // Declare war on a peaceful crown (V112) — a CROWNS row click.
+            std::string fid; ss >> fid;
+            CampaignInput cin;
+            cin.declareWar = h.gs.content.factions.find(fid.c_str());
+            h.Step(cin, BattleInput{});
         } else if (cmd == "tax") {
             // Cycle the tax lever (V55) — T on the kingdom ledger.
             CampaignInput cin; cin.cycleTax = true;

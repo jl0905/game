@@ -1406,6 +1406,11 @@ this is the feedback the flat numbers were waiting for.
   red or at peace. Confirms in passing that player battles already
   feed war-weariness (no gap found). Draw-only; cfg factions listed
   automatically.
+- [x] **V112. Iteration one-twelve — declare war.** THE CROWNS rows are
+  buttons: click a peaceful kingdom to open hostilities — hostile
+  matrix both ways, −30 relation, chronicled, and V31/V53 price the
+  new war into your own shelves by morning. Free captains finally
+  choose their enemies. `tests/declare_war.txt`.
 
 ## Sequencing guidance
 

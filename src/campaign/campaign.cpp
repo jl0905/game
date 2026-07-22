@@ -1329,8 +1329,9 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_T)) in.cycleTax = true;   // the tax lever (V55)
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {  // rows click (V56)
             const int id = KingdomOptionAt(GetMousePosition());
-            if (id == 100)    in.cycleTax = true;
-            else if (id > 0)  in.menuChoice = id;
+            if (id == 100)      in.cycleTax = true;
+            else if (id >= 200) in.declareWar = id - 200;   // V112
+            else if (id > 0)    in.menuChoice = id;
         }
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_B))
             in.leaveSettlement = true;
@@ -4458,6 +4459,26 @@ bool TitleUpdate(GameState& gs, const CampaignInput& in) {
 void KingdomUpdate(GameState& gs, const CampaignInput& in) {
     if (in.leaveSettlement) { gs.screen = Screen::Campaign; return; }
 
+    // Declare war (V112): the pen starts what the sword must finish.
+    if (in.declareWar >= 0) {
+        const Content& c = gs.content;
+        const int f = in.declareWar;
+        const int n = c.factions.size();
+        if (f < n && f != c.playerFaction && c.factions[f].kingdom &&
+            !AtWar(gs, f, c.playerFaction) &&
+            (int)gs.hostile.size() == n * n) {
+            gs.hostile[(size_t)c.playerFaction * n + f] =
+                gs.hostile[(size_t)f * n + c.playerFaction] = 1;
+            NudgeRelation(gs, f, -30);   // TODO(balance)
+            gs.resultText = TextFormat("WAR IS DECLARED on %s. The shelves will "
+                                       "know it by morning.",
+                                       c.factions[f].name.c_str());
+            Chronicle(gs, TextFormat("War declared on %s.",
+                                     c.factions[f].name.c_str()));
+            SfxPlay(Sfx::WarCry);
+        }
+    }
+
     // The tax lever (V55): light / customary / heavy, cycled in place.
     if (in.cycleTax) {
         gs.taxRate = (gs.taxRate + 1) % 3;
@@ -4608,8 +4629,10 @@ void KingdomDraw(const GameState& gs) {
             const bool atWar    = AtWar(gs, f, c.playerFaction);
             ui::Text(TextFormat("%-11s %2d holding(s)   standing %+d   %s",
                                 c.factions[f].name.c_str(), held, standing,
-                                atWar ? "AT WAR" : "at peace"),
+                                atWar ? "AT WAR"
+                                      : "at peace   [click: DECLARE WAR]"),
                      lx, y, 18, atWar ? Fade(RED, 0.9f) : c.factions[f].color);
+            if (!atWar) g_ledgerHits.push_back({ lx, y, 200 + f });   // V112
             y += 24;
         }
     }

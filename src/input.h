@@ -43,6 +43,7 @@ struct CampaignInput {
     bool    ransomLords  = false;  // prisoner lords (O2): sell them back (U)
     bool    pressPrisoner = false; // party screen R: a captive takes the coin (V36)
     bool    cycleTax      = false; // kingdom screen T: light/customary/heavy (V55)
+    int     declareWar    = -1;    // kingdom screen: click a peaceful crown (V112)
     bool    buyWarhorse   = false; // market W: a destrier for life (V82)
     bool    loan          = false; // market L: borrow 300 / repay the debt (V84)
     bool    releaseLords = false;  // ...or set them free (Y)
