@@ -1,6 +1,7 @@
 # Veterancy: raise an army that survives the lord era, win battles to earn
-# XP, promote infantry to veterans in the party screen, and check the pools
-# persist in saves.
+# XP, promote recruits (slot 0, 0-based) in the party screen, and check the
+# pools persist in saves. Since V45 each promotion also costs 20 gold for
+# the man's new gear - expect recruit count -1, infantry +1, gold -20.
 seed 11
 enter 0
 bmove 1 0 2
@@ -13,7 +14,7 @@ tick 90
 state
 party
 state
-upgrade 1 2
+upgrade 0 1
 state
 party
 save C:/Users/hambu/AppData/Local/Temp/claude/test_vet.owb

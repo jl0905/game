@@ -1011,6 +1011,13 @@ this is the feedback the flat numbers were waiting for.
   (stacking with rain's wet strings) — attack after dark to blunt a
   crossbow line. The hour is saved (`clock` tag), `night=` joins the
   battle dump, `tests/night_battle.txt` on a midnight fixture.
+- [x] **V45. Iteration forty-five — a true night sky, and paid stripes.**
+  Fixed a real sky bug: an unconditional day gradient painted noon over
+  midnight — night now gets a dark gradient, 140 hashed stars, and a
+  crescent moon; dusk/dawn get their own tints. And promotions cost the
+  quartermaster: +20 gold per stripe on top of the XP, quoted on the
+  party screen. Repaired `tests/veterancy.txt` (0-based slot; it had
+  silently never promoted) — it now asserts the full arc.
 
 ## Sequencing guidance
 

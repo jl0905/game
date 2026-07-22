@@ -3653,11 +3653,20 @@ void PartyUpdate(GameState& gs, const CampaignInput& in) {
     if (in.upgradeSlot >= 0 && in.upgradeSlot < (int)rows.size()) {
         const int t  = rows[in.upgradeSlot];
         const TroopDef& td = c.troops[t];
+        // Promotion costs the quartermaster too (V45): better gear isn't
+        // free. TODO(balance): flat 20 for now.
+        constexpr int UPGRADE_GOLD = 20;
         if (td.upgradesTo >= 0 && gs.player.troopCounts[t] > 0 &&
             gs.troopXp[t] >= td.upgradeXp) {
-            gs.troopXp[t] -= td.upgradeXp;
-            gs.player.troopCounts[t]--;
-            gs.player.troopCounts[td.upgradesTo]++;
+            if (gs.gold < UPGRADE_GOLD) {
+                gs.resultText = TextFormat(
+                    "Promotion needs %d gold for the man's new gear.", UPGRADE_GOLD);
+            } else {
+                gs.gold -= UPGRADE_GOLD;
+                gs.troopXp[t] -= td.upgradeXp;
+                gs.player.troopCounts[t]--;
+                gs.player.troopCounts[td.upgradesTo]++;
+            }
         }
     }
     if (in.dismissSlot >= 0 && in.dismissSlot < (int)rows.size()) {
@@ -3787,7 +3796,7 @@ void PartyDraw(const GameState& gs) {
                          captives),
                      panelX, GetScreenHeight() - 82, 20, GOLD);
     }
-    ui::Text("[1-9 / click] promote one    [Shift / right-click] dismiss one    [Esc / P] back",
+    ui::Text("[1-9 / click] promote one (20 gold)    [Shift / right-click] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
     EndDrawing();
 }

@@ -2304,9 +2304,32 @@ void BattleDraw(const Content& c) {
     if (B.raining) {
         DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                                Color{ 96, 104, 120, 255 }, Color{ 150, 156, 166, 255 });
-    } else {
+    } else if (night) {
+        // A true night sky (V45): the old unconditional day gradient was
+        // painting noon over midnight. Stars in fixed hashed places, and a
+        // moon where the sun would stand.
         DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
-                               Color{ 92, 148, 214, 255 }, Color{ 208, 224, 238, 255 });
+                               Color{ 10, 14, 30, 255 }, Color{ 36, 44, 72, 255 });
+        const int w = GetScreenWidth(), h = GetScreenHeight();
+        for (int i = 0; i < 140; ++i) {
+            unsigned int s = (unsigned)i * 2654435761u;
+            s ^= s >> 13; s *= 0x5bd1e995u; s ^= s >> 15;
+            const int sx = (int)(s % (unsigned)w);
+            const int sy = (int)((s >> 11) % (unsigned)(h * 2 / 3));
+            const float tw = 0.35f + 0.65f * (((s >> 22) & 0xFF) / 255.0f);
+            DrawRectangle(sx, sy, ((s >> 7) & 3) == 0 ? 2 : 1, 1,
+                          Fade(RAYWHITE, tw));
+        }
+        DrawCircleGradient(w * 3 / 4, h / 4, 70,
+                           Fade(Color{ 224, 228, 240, 255 }, 0.95f),
+                           Fade(Color{ 224, 228, 240, 255 }, 0.0f));
+        DrawCircle(w * 3 / 4, h / 4, 26, Color{ 226, 230, 240, 255 });
+        DrawCircle(w * 3 / 4 + 9, h / 4 - 4, 22, Color{ 24, 30, 52, 255 });   // crescent
+    } else {
+        Color top = { 92, 148, 214, 255 }, bot = { 208, 224, 238, 255 };
+        if (tod >= 0.70f) { top = { 150, 96, 84, 255 };  bot = { 236, 168, 120, 255 }; }
+        else if (tod < 0.10f) { top = { 128, 108, 110, 255 }; bot = { 232, 196, 160, 255 }; }
+        DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), top, bot);
         DrawCircleGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
                            Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
     }
