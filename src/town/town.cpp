@@ -409,6 +409,26 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
                 }
                 break;
             }
+            case 13: {   // fortify the walls (V51)
+                constexpr int FORT_COST = 500;   // TODO(balance)
+                Town& t = gs.towns[gs.currentSettlement];
+                if (t.owner != c.playerFaction)
+                    gs.resultText = "You may only fortify your own walls.";
+                else if (t.fortified)
+                    gs.resultText = "These walls are already fortified.";
+                else if (gs.gold < FORT_COST)
+                    gs.resultText = TextFormat("Stone and masons cost %d gold.", FORT_COST);
+                else {
+                    gs.gold -= FORT_COST;
+                    t.fortified = true;
+                    gs.resultText = TextFormat(
+                        "%s IS FORTIFIED: +10 garrison beds, walls that bite back.",
+                        t.name.c_str());
+                    Chronicle(gs, TextFormat("%s fortified.", t.name.c_str()));
+                    SfxPlay(Sfx::Fanfare);
+                }
+                break;
+            }
             default: break;
         }
     }
@@ -1265,6 +1285,7 @@ void TownDraw(const GameState& gs) {
             "[W]  Visit the settlement  (walk the streets)",
             "[0]  Host a feast          (200 gold; lords and matches)",
             "[J]  Sellswords for hire   (a 5-man pack, 150 gold)",
+            "[F]  Fortify the walls     (500 gold; +10 garrison, harder to storm)",
         };
         // Rows that can't act right now grey out with the reason implicit
         // (V4): buttons that look alive ARE alive.
@@ -1277,6 +1298,7 @@ void TownDraw(const GameState& gs) {
         live[8] = mine && town.garrisonSize() > 0;   // recall
         live[10] = mine && gs.feastDays <= 0;        // host a feast (V34)
         live[11] = town.type == SettlementType::Town;   // sellswords (V47)
+        live[12] = mine && !town.fortified;             // fortify (V51)
         // Dead rows say why (V10): a greyed button that explains itself.
         const char* why[townmenu::ROWS] = { nullptr };
         if (!live[5]) why[5] = sworn ? "(already sworn)" : "(your own seat)";
@@ -1284,6 +1306,7 @@ void TownDraw(const GameState& gs) {
         if (!live[8]) why[8] = mine ? "(the wall is bare)" : "(not your walls)";
         if (!live[10]) why[10] = mine ? "(a feast already holds)" : "(not your hall)";
         if (!live[11]) why[11] = "(they drink in towns)";
+        if (!live[12]) why[12] = mine ? "(already fortified)" : "(not your walls)";
         int y = townmenu::Y;
         const Vector2 m = GetMousePosition();
         for (int r = 0; r < townmenu::ROWS; ++r) {

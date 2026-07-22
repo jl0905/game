@@ -1,0 +1,14 @@
+# Fortify (V51): gate row [F] in your own settlement sinks 500 gold into
+# the walls - +10 garrison cap (mustering fills the new beds daily) and
+# AI sieges face 2.2x wall strength instead of 1.7x. FORT marker in the
+# town dump, chronicled, persistent; a second fortify is refused.
+load tests/fixtures/rich.owb
+enter 0
+topic 13
+state
+topic 13
+state
+saveslot 3
+loadslot 3
+state
+quit

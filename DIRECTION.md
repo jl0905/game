@@ -1049,6 +1049,13 @@ this is the feedback the flat numbers were waiting for.
   kingdom ledger (last 10, newest first), saved as `chron` tags,
   dumped as `chron:`. Fifty iterations of systems, and now the game
   remembers them. `tests/chronicle.txt`.
+- [x] **V51. Iteration fifty-one — fortify the walls.** Gate row [F] in
+  your own settlement: 500 gold of wall-work, forever — +10 garrison
+  cap (daily muster fills the new beds) and AI sieges face ×2.2 wall
+  strength instead of ×1.7. The work stays with the settlement whoever
+  takes it, so fortifying a border town is arming your enemy's future
+  prize. FORT in the town dump, chronicled, saved (`fort` tag).
+  `tests/fortify.txt`.
 
 ## Sequencing guidance
 

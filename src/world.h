@@ -88,6 +88,11 @@ struct Town {
     // at war — markets learn the news by morning (refreshed at dawn).
     int warMarkup = 100;
 
+    // Fortified (V51): 500 gold of wall-work — +10 garrison cap and walls
+    // that fight harder in an AI siege. Stays with the settlement whoever
+    // holds it. TODO(balance).
+    bool fortified = false;
+
     int garrisonSize() const {
         int n = 0;
         for (int c : garrison) n += c;

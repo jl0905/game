@@ -472,8 +472,13 @@ inline int GarrisonCap(SettlementType t) {
     return 20;   // towns
 }
 
+// Wall-work raises the roof (V51): a fortified settlement bunks ten more.
+inline int GarrisonCap(const Town& t) {
+    return GarrisonCap(t.type) + (t.fortified ? 10 : 0);
+}
+
 void InstallGarrison(const Content& c, Town& t, Party& attacker) {
-    const int size = GarrisonCap(t.type);
+    const int size = GarrisonCap(t);   // fortified walls bunk more (V51)
     t.garrison.assign(c.troops.size(), 0);
     for (int i = 0; i < size; ++i) {
         // Detach from the attacker's most numerous type each pick, so the
@@ -503,7 +508,8 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
     if (sa <= 0) { a.alive = false; return; }
     const int defender = t.owner;
 
-    const float wallStrength = (float)sd * 1.7f;   // U3: walls fight too
+    const float wallStrength = (float)sd * (t.fortified ? 2.2f : 1.7f);
+    // U3: walls fight too; V51: fortified walls fight harder.
     const bool taken = Frand(0, (float)sa + wallStrength) < (float)sa;
     if (taken) {
         RemoveTroops(gs.content, a, GetRandomValue(sd / 2, sd + sd / 2));
@@ -583,7 +589,7 @@ void CampaignInit(GameState& gs) {
     for (Town& t : gs.towns) {
         t.garrison.assign(c.troops.size(), 0);
         if (t.owner < 0) continue;
-        const int size = GarrisonCap(t.type);   // U3: walls worth manning
+        const int size = GarrisonCap(t);        // U3: walls worth manning
         const std::vector<int>& roster = c.factions[t.owner].roster;
         for (int i = 0; i < size && !roster.empty(); ++i)
             t.garrison[roster[i % (int)roster.size()]]++;
@@ -1146,6 +1152,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (IsKeyPressed(KEY_W)) in.menuChoice = 10;      // visit the settlement
             if (IsKeyPressed(KEY_ZERO)) in.menuChoice = 11;   // host a feast (V34)
             if (IsKeyPressed(KEY_J)) in.menuChoice = 12;      // sellswords (V47)
+            if (IsKeyPressed(KEY_F)) in.menuChoice = 13;      // fortify (V51)
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 const Vector2 m = GetMousePosition();
                 const int x0 = GetScreenWidth() / 2 - townmenu::X_HALF;
@@ -2354,7 +2361,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             // worth manning now).
             for (Town& t : gs.towns) {
                 if (t.owner < 0 || t.owner >= c.factions.size()) continue;
-                const int cap = GarrisonCap(t.type);
+                const int cap = GarrisonCap(t);
                 const std::vector<int>& roster = c.factions[t.owner].roster;
                 for (int m = 0; m < 2 && !roster.empty() &&
                                 t.garrisonSize() < cap; ++m) {
