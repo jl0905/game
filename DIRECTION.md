@@ -1088,6 +1088,12 @@ this is the feedback the flat numbers were waiting for.
   the V27 record-and-hit-test pattern (per-hit x, two columns) — and a
   V50 layout bug fixed: the chronicle overlapped LORDS AFIELD; it now
   sits beneath the wars with a screen-bottom clamp.
+- [x] **V57. Iteration fifty-seven — Sereth the Drillmaster.** A fourth
+  companion, and the V54 perk hook proven end-to-end: her presence
+  drills every fielded troop type +5 XP at each dawn (companions
+  excluded) — time trains the line, paid stripes cash it in. One
+  registry block plus a three-line day-tick hook.
+  `tests/drillmaster.txt` on a clock-59 fixture pins the exact +5.
 
 ## Sequencing guidance
 

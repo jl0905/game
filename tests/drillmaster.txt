@@ -1,0 +1,10 @@
+# Dawn drill (V57): Sereth the Drillmaster (perk=drillmaster, one V54 hook)
+# pays every fielded troop type +5 XP at first light - time itself trains
+# the line, and V45's paid stripes cash it in. Fixture: Sereth aboard in an
+# empty map corner, clock 59 so dawn lands in seconds. Expect recruit and
+# infantry at xp5, the companion herself excluded.
+load tests/fixtures/drill.owb
+state
+wait 5
+state
+quit

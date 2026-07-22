@@ -255,9 +255,24 @@ void LoadDefaultContent(Content& c) {
     torva.loadout.addWeapon(w_spear);
     torva.loadout.addWeapon(w_axe);
 
+    // Extensibility proof (V57): a whole new companion — and the V54 perk
+    // hook exercised end-to-end — in one data block. Sereth drills the
+    // warband at every dawn camp; the effect site is three lines in the
+    // day tick, everything else is this registry entry.
+    TroopDef sereth = makeCompanion("sereth", "Sereth the Drillmaster");
+    sereth.temper = "grim";        // she has seen worse recruits
+    sereth.perk   = "drillmaster"; // V57: dawn drill pays XP
+    sereth.loadout.set(EquipSlot::Head,  a_kettle);
+    sereth.loadout.set(EquipSlot::Body,  a_mail);
+    sereth.loadout.set(EquipSlot::Hands, a_gloves);
+    sereth.loadout.set(EquipSlot::Feet,  a_boots);
+    sereth.loadout.addWeapon(w_spear);
+    sereth.loadout.addWeapon(w_sword);
+
     c.troops.add(rega);
     c.troops.add(malin);
     c.troops.add(torva);
+    c.troops.add(sereth);
 
     // Wage identity (V46): quality eats gold daily — a knight's horse and
     // plate cost six recruits' bread. Tiers are identity; exact numbers

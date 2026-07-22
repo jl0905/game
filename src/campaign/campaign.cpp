@@ -2214,6 +2214,18 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // Dawn drill (V57): a drillmaster in camp pays every fielded
+            // troop type XP at first light — time itself trains the line,
+            // and V45's paid stripes cash it in. TODO(balance): the rate.
+            if (HasPerk(gs, "drillmaster")) {
+                if ((int)gs.troopXp.size() < c.troops.size())
+                    gs.troopXp.assign(c.troops.size(), 0);
+                for (int t = 0; t < (int)gs.player.troopCounts.size() &&
+                                t < c.troops.size(); ++t)
+                    if (gs.player.troopCounts[t] > 0 && !c.troops[t].companion)
+                        gs.troopXp[t] += 5;
+            }
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;
