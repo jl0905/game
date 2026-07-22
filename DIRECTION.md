@@ -1335,6 +1335,13 @@ this is the feedback the flat numbers were waiting for.
   troops.cfg; the shipped Brigandine (body 5, between mail and plate)
   rides a fixture inventory by id. Every piece of content the combat
   model consumes is now mintable from assets/. `tests/modded_armor.txt`.
+- [x] **V100. Iteration one hundred — the saga.** A campaign's ending
+  writes its whole story to `saga.txt` beside the saves: the headline
+  (victory or the fall), the reign's numbers, and the full chronicle —
+  a keepsake authored entirely by the hundred systems that lived it.
+  Written once per ending, on victory and on the warband's
+  destruction alike. `tests/saga.txt` grinds the doomed fixture to a
+  wipe and finds the artifact.
 
 ## Sequencing guidance
 

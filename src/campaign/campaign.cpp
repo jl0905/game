@@ -1489,6 +1489,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
     gs.battleReportTimer = fmaxf(0.0f, gs.battleReportTimer - dt);
 
+    // The saga of a fallen house is written the moment it falls (V100).
+    if (gs.player.totalTroops() == 0 && !gs.sagaWritten &&
+        gs.screen == Screen::Campaign) {
+        WriteSaga(gs, "THE WARBAND WAS DESTROYED - the road ends here.");
+        gs.sagaWritten = true;
+    }
+
     // ---- restart after the warband is destroyed ----
     if (gs.player.totalTroops() == 0 && in.restart) {
         Content saved = std::move(gs.content);
@@ -2072,6 +2079,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             for (const Town& t : gs.towns)
                 if (t.owner != c.playerFaction) { all = false; break; }
             if (all) {
+                if (!gs.sagaWritten) {   // the saga is written once (V100)
+                    WriteSaga(gs, "THE LAND IS YOURS - every settlement "
+                                  "flies your banner.");
+                    gs.sagaWritten = true;
+                }
                 gs.screen = Screen::Victory;
                 return;
             }

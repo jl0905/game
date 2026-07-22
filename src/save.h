@@ -19,6 +19,10 @@ const char* AutoSavePath();
 const char* SaveSlotPath(int slot);              // 1..3
 bool PeekSave(const char* path, int& day, int& gold);
 
+// The saga (V100): write the chronicle + reign stats to saga.txt beside the
+// saves. Called once per ending (victory or the warband's fall).
+void WriteSaga(const GameState& gs, const char* ending);
+
 bool SaveGame(const GameState& gs, const char* path);
 
 // Requires gs.content to be loaded. On success the world is replaced by the

@@ -63,6 +63,26 @@ const char* SaveSlotPath(int slot) {
     return SavePathNamed(path, sizeof(path), name);
 }
 
+// The saga (V100): a campaign's ending writes its whole story to a plain
+// text file beside the saves — the chronicle, the reign's numbers, and how
+// it ended. One artifact per ending; a keepsake, not a save.
+void WriteSaga(const GameState& gs, const char* ending) {
+    static char path[512];
+    SavePathNamed(path, sizeof(path), "saga.txt");
+    std::ofstream f(path);
+    if (!f) return;
+    f << "=== THE SAGA OF YOUR CAMPAIGN ===\n"
+      << ending << "\n\n"
+      << "Day " << gs.day << "   Level " << gs.playerHero.level
+      << "   Renown " << gs.renown << "   Honor " << gs.honor
+      << "   Gold " << gs.gold << "\n\n"
+      << "--- The Chronicle ---\n";
+    if (gs.chronicle.empty())
+        f << "(a short story: no deeds were recorded)\n";
+    for (const std::string& ch : gs.chronicle) f << ch << '\n';
+    f << "\nWritten by OpenWarband.\n";
+}
+
 bool PeekSave(const char* path, int& day, int& gold) {
     std::ifstream f(path);
     if (!f) return false;

@@ -212,6 +212,8 @@ struct GameState {
     // taxes (−25%) let the land bloom. Set on the kingdom ledger (T).
     int taxRate = 1;
 
+    bool sagaWritten = false;   // the saga exports once per ending (V100)
+
     // The chronicle (V50): the campaign's own history, newest last —
     // conquests, oaths, crowns, contracts, defeats. Capped; day-stamped.
     std::vector<std::string> chronicle;
