@@ -1349,6 +1349,13 @@ this is the feedback the flat numbers were waiting for.
   kill feed, and a won field pays +3 renown plus a chronicle line.
   Found and fixed a last-tick blind spot (a lord dying as the battle
   ends now still counts). `tests/lord_champion.txt`.
+- [x] **V102. Iteration one-oh-two — single combat.** [D] at deployment
+  when a lord waits: the armies freeze while his champion charges YOU.
+  Kill him — lines crash, your side +25 nerve atop his host's
+  lord-fall shock; fall — the crash comes with your side shaken.
+  Fixed the champion politely holding his line during his own duel,
+  and purged a stale `-DDMG_DEBUG` from the worktree build cache.
+  `tests/duel.txt` fells Gorak in 25 blind overheads.
 
 ## Sequencing guidance
 
