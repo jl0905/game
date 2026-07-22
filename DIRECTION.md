@@ -1304,6 +1304,10 @@ this is the feedback the flat numbers were waiting for.
   Captured lords become a decision with a clock — ransom for 200,
   release for honor and friendship, or lose both options to the
   night. `tests/lord_escape.txt`.
+- [x] **V94. Iteration ninety-four — the circlet.** A crowned ruler
+  looks the part: a thin gold band rides above the hero's helm in
+  battle (one presentation bool over the bridge) and a three-point
+  crown tops the map banner. Draw-only.
 
 ## Sequencing guidance
 

@@ -3080,7 +3080,17 @@ void CampaignDraw(const GameState& gs) {
         DrawTriangleLines({ p.x, p.y - 30 }, { p.x, p.y - 16 }, { p.x + 22, p.y - 23 },
                           Fade(BLACK, 0.5f));
         DrawCircleV({ p.x, p.y - 32 }, 3, GOLD);
-        ui::Text("You", (int)p.x - 12, (int)p.y - 48, 16, RAYWHITE);
+        // A crown over the banner once you wear one (V94).
+        if (gs.crowned) {
+            const float cy = p.y - 40;
+            DrawRectangle((int)p.x - 8, (int)cy, 16, 5, GOLD);
+            for (int k = -1; k <= 1; ++k)
+                DrawTriangle({ p.x + k * 6.0f - 3, cy },
+                             { p.x + k * 6.0f + 3, cy },
+                             { p.x + k * 6.0f, cy - 6 }, GOLD);
+        }
+        ui::Text("You", (int)p.x - 12, (int)p.y - 48 - (gs.crowned ? 10 : 0),
+                 16, RAYWHITE);
 
         // Travel pace, impossible to miss (T4): a ring under the banner in
         // the pace's colour, and the going named right at your feet —

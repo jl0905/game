@@ -38,6 +38,8 @@ struct BattleSetup {
 
     // The destrier (V82): the hero's horse carries double hit points.
     bool warhorse = false;
+    // A crowned head wears its circlet into battle (V94). Presentation only.
+    bool crowned = false;
 
     // Hungry men fight shaken (V37): true when the warband has marched
     // without bread — the player's own line starts with rattled nerve.

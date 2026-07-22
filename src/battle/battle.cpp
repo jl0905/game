@@ -2761,6 +2761,15 @@ void BattleDraw(const Content& c) {
             ppose.walkPhase = 0;
         }
         DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
+        // A crowned head wears its circlet (V94): a thin gold band riding
+        // just above the helm, turned with the hero.
+        if (B.setup.crowned) {
+            const Vector3 crownAt = { heroDraw.x, heroDraw.y + 2.06f, heroDraw.z };
+            DrawCylinderWires(crownAt, 0.26f, 0.26f, 0.10f, 8,
+                              Color{ 255, 210, 80, 255 });
+            DrawCylinder(crownAt, 0.25f, 0.27f, 0.06f, 8,
+                         Fade(Color{ 255, 210, 80, 255 }, 0.85f));
+        }
     }
     EndShaderMode();
 
