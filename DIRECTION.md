@@ -839,6 +839,12 @@ this is the feedback the flat numbers were waiting for.
   hunt into a defeat until the script steered at prey its own size:
   the suite's meaning re-verified, not just its pass-marks.
 
+- [x] **V19. Iteration nineteen — loot turns to coin.** Pick a piece up in
+  the bag and press S inside any settlement: sold for 25 gold (half the
+  forge's price). The last unclosed circle — fight → loot → sell →
+  recruit — now runs, and battlefield plate is income as well as
+  armour. Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

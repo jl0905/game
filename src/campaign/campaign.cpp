@@ -1305,6 +1305,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                 in.equipSlotHit = s;
         in.invPick  = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         in.invEquip = IsKeyPressed(KEY_E) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+        in.sellItem = IsKeyPressed(KEY_S);   // sell the carried piece (V19)
         in.invCycleTarget = IsKeyPressed(KEY_TAB);
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) in.leaveSettlement = true;
         return in;
@@ -2920,6 +2921,19 @@ void InventoryUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // Sell the piece in your hand (V19): S inside a settlement turns loot
+    // to coin at half the forge's price — fight, loot, sell, recruit.
+    if (in.sellItem && gs.invCarry >= 0 &&
+        gs.invCarry < (int)gs.inventory.size() && gs.currentSettlement >= 0) {
+        const InvItem it = gs.inventory[gs.invCarry];
+        gs.inventory.erase(gs.inventory.begin() + gs.invCarry);
+        gs.invCarry = -1;
+        gs.gold += 25;   // TODO(balance): half of ARMS_PRICE
+        gs.resultText = TextFormat("Sold: %s (+25 gold).",
+            it.isWeapon ? c.weapons[it.handle].name.c_str()
+                        : c.armor[it.handle].name.c_str());
+    }
+
     if (in.invPick && in.invCellX >= 0) {
         if (gs.invCarry < 0) {
             gs.invCarry = ItemAtCell(gs, in.invCellX, in.invCellY);   // pick up
@@ -2978,7 +2992,8 @@ void InventoryDraw(const GameState& gs) {
 
     const int ox = InvOriginX(), oy = InvOriginY();
     ui::Title("INVENTORY", ox, 60, 44, GOLD);
-    ui::Text("LMB pick up / place   E equip   Tab fit hero/companion   Esc / I back",
+    ui::Text("LMB pick / place   E equip   S sell held (in town)   "
+             "Tab fit hero/companion   Esc / I back",
              ox, 116, 20, Fade(RAYWHITE, 0.7f));
 
     // Whose gear the bag fits right now (K6), and what they wear.
