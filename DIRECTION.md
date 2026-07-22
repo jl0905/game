@@ -1024,6 +1024,12 @@ this is the feedback the flat numbers were waiting for.
   a knight's horse and plate cost six recruits' bread, so elite armies
   drain the ledger the party screen and purse already display. With
   V45's paid stripes, the whole army-quality ladder now runs on gold.
+- [x] **V47. Iteration forty-seven — sellswords in the taproom.** Gate
+  menu row [J] (towns only): a 5-man pack for 150 gold up front —
+  instant manpower past the recruit pool, rotating pikeman/arbalist/
+  infantry by town+day. Cap respected, refusals in character, greyed
+  outside towns ("they drink in towns"). With V46 wages the trade-off
+  is honest: cheap to raise, costly to keep. `tests/sellswords.txt`.
 
 ## Sequencing guidance
 

@@ -35,7 +35,7 @@ void TownGoTavern(GameState& gs);   // stand at the tavern door (harness
 // shared layout keeps hit-boxes and drawing in one place (K7 rule).
 bool TownInMenu();
 namespace townmenu {
-inline constexpr int Y = 168, ROW_H = 34, ROWS = 11, X_HALF = 260;
+inline constexpr int Y = 168, ROW_H = 34, ROWS = 12, X_HALF = 260;
 }
 void DialogueUpdate(GameState& gs, const CampaignInput& in);
 

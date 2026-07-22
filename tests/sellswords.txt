@@ -1,0 +1,14 @@
+# Sellsword packs (V47): gate-menu row [J] in a TOWN hires a 5-man pack for
+# 150 gold up front - instant manpower past the recruit pool. The pack
+# rotates (pikeman/arbalist/infantry) by town+day. Party cap respected;
+# refusals name the reason. Seed 42 town 0 day 0 = pikemen: expect +5
+# pikeman and gold 300->150->0 across two packs.
+seed 42
+enter 0
+topic 12
+state
+topic 12
+state
+topic 12
+state
+quit

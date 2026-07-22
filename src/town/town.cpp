@@ -374,6 +374,39 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
                 }
                 break;
             }
+            case 12: {   // sellswords in the taproom (V47)
+                constexpr int PACK_COST = 150, PACK_SIZE = 5;   // TODO(balance)
+                const Town& t = gs.towns[gs.currentSettlement];
+                if (t.type != SettlementType::Town)
+                    gs.resultText = "Sellswords drink in towns, not here.";
+                else {
+                    // Whoever is in the taproom this week: the pack rotates
+                    // through the sellsword trades by town and day.
+                    static const char* PACKS[] = { "pikeman", "arbalist", "infantry" };
+                    const int pick = (gs.currentSettlement + gs.day) % 3;
+                    const int th   = c.troops.find(PACKS[pick]);
+                    const int room = PartyCap(gs) - gs.player.totalTroops();
+                    if (th < 0)
+                        gs.resultText = "The taproom is empty tonight.";
+                    else if (room < PACK_SIZE)
+                        gs.resultText = TextFormat(
+                            "The pack is five men. You have room for %d.", std::max(0, room));
+                    else if (gs.gold < PACK_COST)
+                        gs.resultText = TextFormat(
+                            "Sellswords take coin up front: %d gold.", PACK_COST);
+                    else {
+                        gs.gold -= PACK_COST;
+                        if ((int)gs.player.troopCounts.size() <= th)
+                            gs.player.troopCounts.resize(c.troops.size(), 0);
+                        gs.player.troopCounts[th] += PACK_SIZE;
+                        gs.resultText = TextFormat(
+                            "A pack of five (%s) drain their cups and fall in. (-%d gold)",
+                            c.troops[th].name.c_str(), PACK_COST);
+                        SfxPlay(Sfx::Fanfare);
+                    }
+                }
+                break;
+            }
             default: break;
         }
     }
@@ -1223,6 +1256,7 @@ void TownDraw(const GameState& gs) {
             "[9]  Recall a soldier",
             "[W]  Visit the settlement  (walk the streets)",
             "[0]  Host a feast          (200 gold; lords and matches)",
+            "[J]  Sellswords for hire   (a 5-man pack, 150 gold)",
         };
         // Rows that can't act right now grey out with the reason implicit
         // (V4): buttons that look alive ARE alive.
@@ -1234,12 +1268,14 @@ void TownDraw(const GameState& gs) {
         live[7] = mine;                     // garrison a soldier
         live[8] = mine && town.garrisonSize() > 0;   // recall
         live[10] = mine && gs.feastDays <= 0;        // host a feast (V34)
+        live[11] = town.type == SettlementType::Town;   // sellswords (V47)
         // Dead rows say why (V10): a greyed button that explains itself.
         const char* why[townmenu::ROWS] = { nullptr };
         if (!live[5]) why[5] = sworn ? "(already sworn)" : "(your own seat)";
         if (!live[7]) why[7] = "(not your walls)";
         if (!live[8]) why[8] = mine ? "(the wall is bare)" : "(not your walls)";
         if (!live[10]) why[10] = mine ? "(a feast already holds)" : "(not your hall)";
+        if (!live[11]) why[11] = "(they drink in towns)";
         int y = townmenu::Y;
         const Vector2 m = GetMousePosition();
         for (int r = 0; r < townmenu::ROWS; ++r) {
