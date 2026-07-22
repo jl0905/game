@@ -2289,6 +2289,34 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 gs.questDays   = 0;
             }
 
+            // The sword cuts both ways (V74): a lord of YOURS whose heart
+            // has soured — gifts forgotten, honor squandered — walks at
+            // dawn, host and all, to a crown that fights you. One a day at
+            // most; the chronicle remembers. TODO(balance): the threshold.
+            for (Party& p : gs.parties) {
+                if (!p.alive || p.faction != c.playerFaction || p.lord.empty())
+                    continue;
+                if (EffectiveLordOpinion(gs, p.lord) > -15) continue;
+                int newCrown = -1;
+                for (int f = 0; f < c.factions.size(); ++f)
+                    if (f != c.playerFaction && c.factions[f].kingdom &&
+                        AtWar(gs, f, c.playerFaction)) { newCrown = f; break; }
+                if (newCrown < 0)
+                    for (int f = 0; f < c.factions.size(); ++f)
+                        if (f != c.playerFaction && c.factions[f].kingdom) {
+                            newCrown = f; break;
+                        }
+                if (newCrown < 0) break;
+                p.faction = newCrown;
+                gs.resultText = TextFormat(
+                    "LORD %s ABANDONS YOUR BANNER for %s! A scorned lord walks.",
+                    p.lord.c_str(), c.factions[newCrown].name.c_str());
+                Chronicle(gs, TextFormat("Lord %s abandons your banner for %s.",
+                                         p.lord.c_str(),
+                                         c.factions[newCrown].name.c_str()));
+                break;   // one betrayal a dawn is drama enough
+            }
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;

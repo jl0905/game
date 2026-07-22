@@ -1,0 +1,10 @@
+# The sword cuts both ways (V74): a lord of YOURS at effective opinion -15
+# or worse walks at dawn - host and all - to a crown that fights you (one
+# betrayal a day; chronicled). Fixture: crowned, Aldric under your banner at
+# lop -20, clock 59, quiet corner. Expect the chronicle line and his party
+# at faction=sarleon after the dawn.
+load tests/fixtures/scorn.owb
+state
+wait 5
+state
+quit

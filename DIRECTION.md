@@ -1188,6 +1188,13 @@ this is the feedback the flat numbers were waiting for.
   he leaves; chronicled). Gifts, feasts, honor — the opinion economy
   now buys armies wholesale, the peaceful mirror of rebellion.
   `tests/poach_lord.txt` on a crowned fixture.
+- [x] **V74. Iteration seventy-four — the sword cuts both ways.** A lord
+  of YOURS at −15 effective opinion or worse abandons your banner at
+  dawn — host and all — preferring a crown at war with you (one
+  betrayal a day, chronicled, news-lined). Pressed captives, broken
+  oaths and forgotten gifts now have a price named in armies. The
+  probe caught him defecting and immediately fighting his old
+  comrades. `tests/scorned_lord.txt`.
 
 ## Sequencing guidance
 
