@@ -277,6 +277,27 @@ void LoadDefaultContent(Content& c) {
     const int t_warrior  = c.troops.add(warrior);
     const int t_huscarl  = c.troops.add(huscarl);
 
+    // Extensibility proof (V28): a new weapon identity AND the troop that
+    // carries it, appended so no handle moves. The pike is the longest haft
+    // on any field — it outreaches even the couched spear — but it is slow
+    // to reset and weak up close, so pikemen carry steel for the press.
+    WeaponDef pike = Weapon("pike", "Pike", WeaponClass::Polearm,
+                            Color{ 168, 148, 116, 255 });
+    pike.reach     = 5.2f;    // identity: nothing on the field reaches further
+    pike.damage    = 10.0f;   // TODO(balance)
+    pike.swingTime = 1.6f;    // TODO(balance): a pike is slow to reset
+    pike.tileW = 1; pike.tileH = 4;
+    const int w_pike = c.weapons.add(pike);
+
+    TroopDef pikeman = makeTroop("pikeman", "Free Pikeman",
+                                 Color{ 212, 175, 55, 255 });
+    pikeman.loadout.set(EquipSlot::Head, a_kettle);
+    pikeman.loadout.set(EquipSlot::Body, a_mail);
+    pikeman.loadout.set(EquipSlot::Feet, a_boots);
+    pikeman.loadout.addWeapon(w_pike);     // the wall of points at range,
+    pikeman.loadout.addWeapon(w_sword);    // steel when the press closes
+    const int t_pikeman = c.troops.add(pikeman);
+
     // Upgrade tree: recruit -> infantry -> veteran; archers are a branch off
     // recruit. Costs are flat placeholders.
     c.troops[t_recruit].upgradesTo  = t_infantry;
@@ -361,6 +382,19 @@ void LoadDefaultContent(Content& c) {
     travellers.behavior = PartyBehavior::Passive;
     travellers.roster = { t_recruit };
     c.factions.add(travellers);
+
+    // Extensibility proof (V28): a whole faction in one block — sellswords
+    // between the crowns. The blanket outlaw wars below make them bandit
+    // hunters automatically; they keep the peace with every crown, so the
+    // player meets them as parley partners (S4) and skirmish allies, not prey.
+    FactionDef freecompany;
+    freecompany.id = "freecompany"; freecompany.name = "Free Company";
+    freecompany.color = Color{ 212, 175, 55, 255 };   // sellsword gold
+    freecompany.behavior = PartyBehavior::Patrol;
+    freecompany.roster = { t_pikeman, t_infantry, t_arbalist };
+    freecompany.lords = { "Ostrec" };
+    freecompany.lordPartySize = 150;   // TODO(balance)
+    c.factions.add(freecompany);
 
     // ---- Trade goods (direction E1) --------------------------------------
     // Stackable market wares. basePrice is a flat placeholder; per-town

@@ -897,6 +897,14 @@ this is the feedback the flat numbers were waiting for.
   the same menuChoice intents the keys send, and the row under the mouse
   glows gold. Keyboard still works; headless play untouched (the hit
   cache only fills when drawing).
+- [x] **V28. Iteration twenty-eight — the Free Company.** Extensibility
+  proof at faction scale: a new weapon identity (the pike, 5.2 reach —
+  longest on any field, slow to reset), the Free Pikeman who carries it,
+  and a whole sellsword faction (gold banners, Lord Ostrec, pike/foot/
+  crossbow roster) — all from registry entries in `content.cpp`, zero
+  code changes. The blanket outlaw wars make them bandit hunters
+  automatically; verified roaming, holding a town, and besieging
+  outlaws within one world-day.
 
 ## Sequencing guidance
 
