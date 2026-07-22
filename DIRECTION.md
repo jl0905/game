@@ -781,6 +781,11 @@ this is the feedback the flat numbers were waiting for.
   and gambles in border towns, which is exactly the geography the whole
   economy already speaks.
 
+- [x] **V10. Iteration ten — dead rows say why.** Greyed gate-menu rows
+  carry their reason inline, right-aligned in quiet gold: "(already
+  sworn)", "(your own seat)", "(not your walls)", "(the wall is bare)".
+  A button that can't act now teaches instead of ignoring you.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

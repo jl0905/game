@@ -1095,6 +1095,11 @@ void TownDraw(const GameState& gs) {
         live[5] = !sworn && !mine;          // swear: free captains only
         live[7] = mine;                     // garrison a soldier
         live[8] = mine && town.garrisonSize() > 0;   // recall
+        // Dead rows say why (V10): a greyed button that explains itself.
+        const char* why[townmenu::ROWS] = { nullptr };
+        if (!live[5]) why[5] = sworn ? "(already sworn)" : "(your own seat)";
+        if (!live[7]) why[7] = "(not your walls)";
+        if (!live[8]) why[8] = mine ? "(the wall is bare)" : "(not your walls)";
         int y = townmenu::Y;
         const Vector2 m = GetMousePosition();
         for (int r = 0; r < townmenu::ROWS; ++r) {
@@ -1104,6 +1109,11 @@ void TownDraw(const GameState& gs) {
                               townmenu::ROW_H, Fade(GOLD, 0.14f));
             ui::Text(rows[r], x0, y + 6, 20,
                      live[r] ? RAYWHITE : Fade(RAYWHITE, 0.35f));
+            if (!live[r] && why[r])
+                ui::Text(why[r],
+                         x0 + townmenu::X_HALF * 2 - 10 -
+                             ui::Measure(why[r], 15),
+                         y + 9, 15, Fade(GOLD, 0.5f));
             y += townmenu::ROW_H;
         }
         ui::Text("[Esc] ride on", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));
