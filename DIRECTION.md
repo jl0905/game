@@ -855,6 +855,15 @@ this is the feedback the flat numbers were waiting for.
   campaign map in faint blue — archery weather is plannable before you
   give battle. Baked into the cached map texture: zero runtime cost.
 
+- [x] **V22. Iteration twenty-two — strays sold, soak softened.** Winning
+  a field rounds up its masterless horses at 30 gold a head (through
+  `BattleOutcome::horsesTaken` — the horse arc closes into the economy).
+  Found and fixed en route: V15's plate plus the flat-1 damage floor
+  made knights literally unkillable by low-tier troops (battles
+  stalled); `ApplyArmor` now floors at 25% of the raw blow — knights
+  fearsome, not immortal (verified ~90 s blind fight, then victory with
+  the roundup paying 90 on three mounts). TODO(balance): the curve.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

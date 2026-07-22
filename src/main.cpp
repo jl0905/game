@@ -228,6 +228,7 @@ int main(int argc, char** argv) {
                     gs.playerLosses = out.playerLosses;
                     gs.allyLosses   = out.allyLosses;
                     gs.enemyLosses  = out.enemyLosses;
+                    gs.battleHorses = out.horsesTaken;
                     gs.screen = Screen::BattleResult;
                     CampaignUpdate(gs, dt, CampaignInput{});  // apply + draw the map
                     CampaignDraw(gs);

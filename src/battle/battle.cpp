@@ -801,7 +801,10 @@ float WeaponCooldown(const Content& c, int wh) {
 // Worn armour soaks a flat amount per hit; a landed blow always tells a little.
 // TODO(balance): the soak curve is placeholder-simple.
 float ApplyArmor(float damage, int armor) {
-    return fmaxf(damage - (float)armor, 1.0f);
+    // A quarter always gets through (V22): plate blunts peasant swords
+    // without making knights literally unkillable — the flat-1 floor
+    // stalled battles once armour awoke (V15). TODO(balance): the curve.
+    return fmaxf(damage - (float)armor, damage * 0.25f);
 }
 
 // Riding someone down with a polearm levelled is a couched lance strike —
@@ -1668,6 +1671,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             out.playerLosses = ComputeLosses();
             out.allyLosses   = ComputeAllyLosses();
             out.enemyLosses  = ComputeEnemyLosses();
+            // A won field's strays are yours to round up (V22).
+            out.horsesTaken = B.won ? (int)B.looseHorses.size() : 0;
             return false;   // battle over — caller returns to the world map
         }
     }

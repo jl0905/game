@@ -1017,6 +1017,17 @@ static void ApplyBattleResult(GameState& gs) {
             }
         }
 
+        // Strays rounded up (V22): the mounts that outlived their riders on
+        // a won field sell to the drovers. TODO(balance): the price.
+        if (gs.battleHorses > 0) {
+            const int horseGold = gs.battleHorses * 30;
+            gs.gold += horseGold;
+            gs.battleReport.push_back(TextFormat(
+                "%d masterless horse(s) rounded up: +%d gold",
+                gs.battleHorses, horseGold));
+            gs.battleHorses = 0;
+        }
+
         // Battlefield pickings: a fallen foe's gear sometimes ends up in the
         // bag. TODO(balance): drop chance.
         if (GetRandomValue(0, 99) < 50) {

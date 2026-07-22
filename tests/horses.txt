@@ -1,11 +1,12 @@
-# Horses as entities (direction T6): killing a mounted rider frees his
-# mount - it wanders the field masterless, shying from the fighting. The
-# fixture plants three sarleon knights in the player's path.
+# Horses as entities (T6/V22): killing a mounted rider frees his mount to
+# wander; win the field and the strays are rounded up and sold (30 gold a
+# head). Plate makes knights slow to crack since V15 - the fight takes time.
 load tests/horses.owb
-walk 1 0 0.6       # ride into the knights
+walk 1 0 0.6       # ride into the three knights
 block on
-tick 13            # the melee takes its course; the first rider falls ~11s
-state              # expect horses>=1 with enemies+horses=3
-tick 3
-state              # more mounts masterless as the last knights fall
+tick 60            # armour makes this a real fight now
+state              # mid or late battle: horses= counts the fallen riders' mounts
+tick 60
+state              # expect VICTORY with the roundup in the purse
+                   # (loot + 3 horses x 30 on top of the 300 start)
 quit
