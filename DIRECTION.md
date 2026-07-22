@@ -1239,6 +1239,12 @@ this is the feedback the flat numbers were waiting for.
   every battle after (one bool over the bridge; horse=120 in the
   dump), chronicled and saved. A permanent gold sink that makes the
   cavalry identity durable. `tests/destrier.txt`.
+- [x] **V83. Iteration eighty-three — companions from a cfg.** The perk
+  system joins the modding surface: `assets/companions.cfg` mints
+  heroes-for-hire with no code (`companion id Name perk temper cost`),
+  perks reusing the V54 hook strings. Ships with Wren the Swift
+  (scout) as the live sample; MODDING.md documents the line.
+  `tests/modded_companion.txt` hires her from town 5's tavern.
 
 ## Sequencing guidance
 

@@ -286,6 +286,48 @@ void LoadDefaultContent(Content& c) {
     c.troops.add(sereth);
     c.troops.add(hodd);
 
+    // Moddable companions (V83): assets/companions.cfg mints extra heroes
+    // with no code — `companion id Name_with_underscores perk temper cost`.
+    // Underscores become spaces; perks reuse the V54 hook strings (or any
+    // new string a source mod adds a hook for). Default kit: cap, tunic,
+    // boots, sword and spear.
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/companions.cfg"
+                : "assets/companions.cfg",
+            "assets/companions.cfg", "../assets/companions.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name, perk, temper;
+                int cost = 100;
+                if (!(ss >> tag) || tag != "companion") continue;
+                if (!(ss >> id >> name >> perk >> temper >> cost)) continue;
+                for (char& ch : name)
+                    if (ch == '_') ch = ' ';
+                if (c.troops.find(id.c_str()) >= 0) continue;   // ids are unique
+                TroopDef t = makeCompanion(id.c_str(), name.c_str());
+                t.cost   = cost;
+                t.perk   = perk == "none" ? "" : perk;
+                t.temper = temper;
+                t.loadout.set(EquipSlot::Head, a_cap);
+                t.loadout.set(EquipSlot::Body, a_tunic);
+                t.loadout.set(EquipSlot::Feet, a_boots);
+                t.loadout.addWeapon(w_sword);
+                t.loadout.addWeapon(w_spear);
+                c.troops.add(t);
+            }
+        }
+    }
+
     // Wage identity (V46): quality eats gold daily — a knight's horse and
     // plate cost six recruits' bread. Tiers are identity; exact numbers
     // TODO(balance). (Companions already draw triple pay above.)

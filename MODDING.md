@@ -25,6 +25,10 @@ Documented in the file itself. One line per fact:
 | `biome …` | 8 floats | noise frequencies, forest/mountain thresholds, march-speed factors — drives the map paint, travel speed AND battlefield generation |
 | `road linkDist width` | | towns closer than `linkDist` are joined; within `width` of a link parties march at full pace |
 | `storm radius driftX driftY [startX startY]` | | the drifting weather cell (V62/V68): reach, per-dawn drift, and optional spawn point — inside it travel runs ×0.75 and battles fight in the rain |
+
+### assets/companions.cfg (V83)
+
+One hero-for-hire per line: `companion <id> <Name_with_underscores> <perk> <temper> <cost>`. Perks reuse the built-in hook strings (`surgeon`, `scout`, `quartermaster`, `drillmaster`, `jailer`, or `none`); tempers are `honorable`/`grim`. Modded companions join the tavern rotation beside the built-in five with a standard kit (cap, tunic, boots, sword and spear).
 | `lordnames A B C…` | one-token names | the pool for player-raised lords; pool size = the raised-lord cap |
 
 ### `assets/settings.cfg` — presentation

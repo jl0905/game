@@ -1,0 +1,9 @@
+# Moddable companions (V83): assets/companions.cfg mints heroes with no
+# code - the shipped sample adds Wren the Swift (scout, 120 gold) to the
+# tavern rotation. Town 5's tavern serves her (5 % 6 companions): expect
+# wren in the roster and perks: scout after the hire.
+seed 42
+enter 5
+hire
+state
+quit
