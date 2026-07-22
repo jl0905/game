@@ -667,6 +667,15 @@ this is the feedback the flat numbers were waiting for.
   adopts the inventory-interface look; mind the state seams — town stock,
   saddlebag goods (counts), and the tiled bag (items) are three different
   stores and must stay so.
+- [ ] **U10. Living map lettering (added mid-sprint).** Settlement names
+  render at constant screen size (scale with 1/zoom) so they read fully
+  zoomed out; the name takes the owner's faction colour with a banner
+  chip beside it; and hovering a settlement opens a Warband-style
+  tooltip — name, type, crown, garrison, prosperity, your standing.
+- [ ] **U11. Dismount (added mid-sprint).** Z dismounts mid-battle: your
+  horse waits where you left it (a loose horse of your own), walk back
+  and press Z to remount. Also make the hero's mount read better
+  visually (it's easy to miss you're mounted).
 - [ ] **U7. The played exe stays current (process).** After every push:
   pull + rebuild `C:\Users\hambu\projects\game\build\openwarband.exe` so
   the user always launches the latest. (Currently blocked when the game
