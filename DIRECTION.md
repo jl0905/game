@@ -1163,6 +1163,12 @@ this is the feedback the flat numbers were waiting for.
   instantly at −2 relation. The quest rotation widens to %4; the V59
   clock and V60 HUD chip apply unchanged. Meaning-checked quests.txt
   through the shift. `tests/escort_quest.txt`.
+- [x] **V70. Iteration seventy — the street knows.** Talking to villagers
+  and guardsmen adds a rumor drawn from live state: a real kingdom war,
+  the current feast, which town the storm sits over, or the local cheap
+  ware — rotated by day. The small folk become an information system
+  fed by the same state machine everything else runs on.
+  `tests/rumors.txt`.
 
 ## Sequencing guidance
 

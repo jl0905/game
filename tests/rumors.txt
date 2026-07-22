@@ -1,0 +1,10 @@
+# Street rumors (V70): talking to the small folk adds a second line drawn
+# from LIVE state - a real war, the current feast, where the storm sits, or
+# the local cheap ware - rotated by day. Expect the villager's flavour line
+# followed by a rumor naming actual factions/towns.
+seed 42
+enter 0
+topic 10
+talk
+state
+quit

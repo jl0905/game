@@ -774,6 +774,48 @@ void TownTalkNearest(GameState& gs) {
     gs.audienceLord.clear();
     gs.dialogueLines.clear();
     gs.dialogueLines.push_back(best ? best->line : "Well met, captain.");
+
+    // Rumors that know the world (V70): the small folk repeat what is
+    // actually happening — wars, feasts, the storm, a bargain on the
+    // shelves — rotated by the day so the street stays worth asking.
+    {
+        const Content& c = gs.content;
+        std::vector<std::string> rumors;
+        const int nf = c.factions.size();
+        for (int a = 0; a < nf && rumors.size() < 6; ++a)
+            for (int b = a + 1; b < nf; ++b)
+                if (c.factions[a].kingdom && c.factions[b].kingdom &&
+                    AtWar(gs, a, b)) {
+                    rumors.push_back(TextFormat(
+                        "They say %s and %s are at each other's throats.",
+                        c.factions[a].name.c_str(), c.factions[b].name.c_str()));
+                    break;
+                }
+        if (gs.feastDays > 0 && gs.feastTown >= 0)
+            rumors.push_back(TextFormat("There's feasting at %s - all at peace are welcome.",
+                                        gs.towns[gs.feastTown].name.c_str()));
+        {   // where the storm sits, roughly
+            int nearT = -1; float bd = 1e9f;
+            for (int t = 0; t < (int)gs.towns.size(); ++t) {
+                const float d = Vector2Distance(gs.stormPos, gs.towns[t].pos);
+                if (d < bd) { bd = d; nearT = t; }
+            }
+            if (nearT >= 0)
+                rumors.push_back(TextFormat("Foul weather over %s way, they say.",
+                                            gs.towns[nearT].name.c_str()));
+        }
+        if (gs.currentSettlement >= 0) {   // the local bargain
+            const Town& t = gs.towns[gs.currentSettlement];
+            for (int g = 0; g < c.goods.size() && g < (int)t.priceOffset.size(); ++g)
+                if (t.priceOffset[g] < 100) {
+                    rumors.push_back(TextFormat("%s is cheap here - traders buy it by the cart.",
+                                                c.goods[g].name.c_str()));
+                    break;
+                }
+        }
+        if (!rumors.empty())
+            gs.dialogueLines.push_back(rumors[gs.day % (int)rumors.size()]);
+    }
 }
 
 // Grant the seat you stand in to a raised lord without one (M3). Returns the
