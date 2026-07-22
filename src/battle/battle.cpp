@@ -719,6 +719,7 @@ struct BattleState {
     Vector2 lastMouse{ 0, 0 };
     bool    hasLastMouse = false;
     Vector2 aimAccum{ 0, 0 };       // recent mouse motion, for attack direction
+    float   soakFlash = 0;          // your swing just met wood (U5): teach it
 
     // Combat: hold LMB to ready a swing, release to strike.
     bool  readying = false;
@@ -1536,12 +1537,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         if (in.attackPress && B.cooldown <= 0 && !B.blocking) {
             B.readying = true;
             B.windup = 0.0f;
-        }
-        if (B.readying) {
-            B.windup = fminf(1.0f, B.windup + dt * 4.0f);
-            if (Vector2Length(B.aimAccum) > 3.0f)          // re-aim while holding
+            // Warband rule (U5): the swing direction locks at the moment of
+            // the click, read from the last mouse flick — mouse only, and
+            // holding just holds. Looking around mid-hold changes nothing.
+            if (Vector2Length(B.aimAccum) > 1.5f)
                 B.attackDir = DirFromMotion(B.aimAccum);
         }
+        if (B.readying)
+            B.windup = fminf(1.0f, B.windup + dt * 4.0f);
         if (in.attackRelease && B.readying) {
             B.readying = false;
             B.windup = 0.0f;
@@ -1575,7 +1578,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                                            LoadoutArmor(c, TroopLoadout(c, s.troop)));
                     const float before = dmg;
                     dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
-                    if (dmg < before) { SpawnSparks(s.pos); SfxPlay(Sfx::Clang, 0.6f); }
+                    if (dmg < before) {
+                        SpawnSparks(s.pos);
+                        SfxPlay(Sfx::Clang, 0.6f);
+                        B.soakFlash = 1.0f;   // name those sparks (U5)
+                    }
                     DamageSoldier(c, s, dmg);
                     if (s.hp <= 0) FreeHorse(c, s);   // (T6)
                     if (s.hp <= 0) {   // a kill by the hero's own hand rallies
@@ -2081,12 +2088,15 @@ void BattleDraw(const Content& c) {
             riderPos.y += 1.25f;
             pose.walkPhase = 0;   // the rider sits; the horse does the running
         }
-        DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, TeamTint(s.team));
-        // health bar — only once blood has been drawn (uninjured lines stay clean)
-        const float frac = s.hp / s.maxHp;
-        if (frac < 0.999f)
-            DrawCube({ s.pos.x, riderPos.y + 2.5f, s.pos.z }, 1.2f * frac, 0.08f, 0.08f,
-                     s.team == Team::Enemy ? RED : GREEN);
+        // Implicit health (U2): no floating bars — a hurt man reads from his
+        // body, darkening and bloodying as the fight wears him down.
+        const float hf = Clamp(s.hp / s.maxHp, 0.0f, 1.0f);
+        Color tint = TeamTint(s.team);
+        const float dim = 0.45f + 0.55f * hf;
+        tint.r = (unsigned char)fminf(255.0f, tint.r * dim + 70.0f * (1.0f - hf));
+        tint.g = (unsigned char)(tint.g * dim);
+        tint.b = (unsigned char)(tint.b * dim);
+        DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
 
     // Masterless horses (T6): riderless, wandering, nobody's to command.
@@ -2137,6 +2147,47 @@ void BattleDraw(const Content& c) {
     else if (tod >= 0.70f && tod < 0.82f)
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
                       Fade(Color{ 200, 120, 60, 255 }, 0.10f));
+
+    // Your swing met his shield (U5): say so, and say what beats it —
+    // those gold sparks finally have a name.
+    B.soakFlash = fmaxf(0.0f, B.soakFlash - GetFrameTime());
+    if (B.soakFlash > 0) {
+        const char* t1 = "SHIELD!  vary your swing direction";
+        const int w1 = ui::Measure(t1, 22);
+        ui::Text(t1, (GetScreenWidth() - w1) / 2, 70, 22,
+                 Fade(GOLD, fminf(1.0f, B.soakFlash * 2.0f)));
+    }
+
+    // The man in your sights (U2): one flat 2D bar, for him alone — the
+    // enemy nearest your crosshair line within striking conversation.
+    {
+        const Vector3 look = { sinf(B.yaw), 0, cosf(B.yaw) };
+        int aim = -1;
+        float bestDot = 0.90f;
+        for (int i = 0; i < (int)B.soldiers.size(); ++i) {
+            const Soldier& s = B.soldiers[i];
+            if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
+            Vector3 to = Vector3Subtract(s.pos, B.pPos);
+            to.y = 0;
+            const float d = Vector3Length(to);
+            if (d < 0.5f || d > 16.0f) continue;
+            const float dot = Vector3DotProduct(Vector3Scale(to, 1.0f / d), look);
+            if (dot > bestDot) { bestDot = dot; aim = i; }
+        }
+        if (aim >= 0) {
+            const Soldier& s = B.soldiers[aim];
+            const float hf = Clamp(s.hp / s.maxHp, 0.0f, 1.0f);
+            const int bw = 240, bx = (GetScreenWidth() - bw) / 2, by = 46;
+            DrawRectangle(bx - 2, by - 2, bw + 4, 14, Fade(BLACK, 0.6f));
+            DrawRectangle(bx, by, (int)(bw * hf), 10,
+                          hf > 0.5f ? Color{ 200, 60, 50, 255 }
+                                    : Color{ 130, 30, 25, 255 });
+            DrawRectangleLines(bx - 2, by - 2, bw + 4, 14, Fade(RAYWHITE, 0.4f));
+            const char* nm = c.troops.valid(s.troop)
+                                 ? c.troops[s.troop].name.c_str() : "?";
+            ui::Text(nm, bx, by - 20, 16, Fade(RAYWHITE, 0.85f));
+        }
+    }
 
     // ---------- HUD ----------
     DrawRectangle(16, GetScreenHeight() - 46, 306, 28, Fade(BLACK, 0.55f));

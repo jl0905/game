@@ -461,10 +461,16 @@ Vector2 FactionHome(const GameState& gs, int faction) {
 }
 
 // Install a fresh garrison detached from `attacker` into a captured town.
+// Garrison sizing (U3, playtest-tuned 2026-07-21): walls are worth manning —
+// settlements were falling like dominoes at 8/4/12.
+inline int GarrisonCap(SettlementType t) {
+    if (t == SettlementType::Village) return 10;
+    if (t == SettlementType::Castle)  return 30;
+    return 20;   // towns
+}
+
 void InstallGarrison(const Content& c, Town& t, Party& attacker) {
-    int size = 8;                                          // TODO(balance)
-    if (t.type == SettlementType::Village) size = 4;       // TODO(balance)
-    if (t.type == SettlementType::Castle)  size = 12;      // TODO(balance)
+    const int size = GarrisonCap(t.type);
     t.garrison.assign(c.troops.size(), 0);
     for (int i = 0; i < size; ++i) {
         // Detach from the attacker's most numerous type each pick, so the
@@ -478,8 +484,9 @@ void InstallGarrison(const Content& c, Town& t, Party& attacker) {
     }
 }
 
-// Auto-resolve an AI siege: strength-weighted, like skirmishes. TODO(balance):
-// defenders currently enjoy no walls bonus.
+// Auto-resolve an AI siege: strength-weighted, with the walls fighting for
+// the defenders (U3): the garrison counts 1.7x, and a repelled assault
+// bleeds the attacker white — armies can die on walls now.
 void ResolveAISiege(GameState& gs, AISiege& sg) {
     if (sg.party < 0 || sg.party >= (int)gs.parties.size()) return;
     Party& a = gs.parties[sg.party];
@@ -493,14 +500,15 @@ void ResolveAISiege(GameState& gs, AISiege& sg) {
     if (sa <= 0) { a.alive = false; return; }
     const int defender = t.owner;
 
-    const bool taken = Frand(0, (float)(sa + sd)) < (float)sa;
+    const float wallStrength = (float)sd * 1.7f;   // U3: walls fight too
+    const bool taken = Frand(0, (float)sa + wallStrength) < (float)sa;
     if (taken) {
-        RemoveTroops(gs.content, a, GetRandomValue(sd / 2, sd));   // storming has a price
+        RemoveTroops(gs.content, a, GetRandomValue(sd / 2, sd + sd / 2));
         t.owner = a.faction;
         InstallGarrison(gs.content, t, a);
         if (a.totalTroops() <= 0) a.alive = false;
     } else {
-        RemoveTroops(gs.content, a, GetRandomValue(sa / 3, sa / 2));   // repelled, mauled
+        RemoveTroops(gs.content, a, GetRandomValue(sa / 2, sa));   // repelled, bled white
         if (a.totalTroops() <= 0) a.alive = false;
         // the garrison is bloodied too
         int loss = GetRandomValue(0, sd / 2);
@@ -566,9 +574,7 @@ void CampaignInit(GameState& gs) {
     for (Town& t : gs.towns) {
         t.garrison.assign(c.troops.size(), 0);
         if (t.owner < 0) continue;
-        int size = 8;                                          // TODO(balance)
-        if (t.type == SettlementType::Village) size = 4;       // TODO(balance)
-        if (t.type == SettlementType::Castle)  size = 12;      // TODO(balance)
+        const int size = GarrisonCap(t.type);   // U3: walls worth manning
         const std::vector<int>& roster = c.factions[t.owner].roster;
         for (int i = 0; i < size && !roster.empty(); ++i)
             t.garrison[roster[i % (int)roster.size()]]++;
@@ -2080,15 +2086,15 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
-            // Every owner musters one soldier a day toward their garrison cap
-            // (roadmap B3c). TODO(balance): the rate.
+            // Every owner musters two soldiers a day toward the garrison cap
+            // (roadmap B3c; U3 doubled the rate and the caps — walls are
+            // worth manning now).
             for (Town& t : gs.towns) {
                 if (t.owner < 0 || t.owner >= c.factions.size()) continue;
-                int cap = 8;                                          // TODO(balance)
-                if (t.type == SettlementType::Village) cap = 4;
-                if (t.type == SettlementType::Castle)  cap = 12;
+                const int cap = GarrisonCap(t.type);
                 const std::vector<int>& roster = c.factions[t.owner].roster;
-                if (!roster.empty() && t.garrisonSize() < cap) {
+                for (int m = 0; m < 2 && !roster.empty() &&
+                                t.garrisonSize() < cap; ++m) {
                     if ((int)t.garrison.size() < c.troops.size())
                         t.garrison.assign(c.troops.size(), 0);
                     t.garrison[roster[t.garrisonSize() % (int)roster.size()]]++;
@@ -2543,12 +2549,14 @@ void CampaignDraw(const GameState& gs) {
 
     // Every door on one line (T7): the keys players kept not finding.
     {
-        const char* keys = "[Wheel] zoom  [P]arty  [C]haracter  [I] bag  "
-                           "[B] ledger  [O]ptions  [F5-F7] quicksave  "
-                           "[Esc,Esc] save+quit  (load: title, L)";
-        DrawRectangle(0, GetScreenHeight() - 26, GetScreenWidth(), 26,
-                      Fade(BLACK, 0.45f));
-        ui::Text(keys, 10, GetScreenHeight() - 22, 15, Fade(RAYWHITE, 0.75f));
+        const char* keys = "[Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
+                           "[B] ledger   [O]ptions   [F5-F7] quicksave   "
+                           "[Esc,Esc] save+quit   (load: title, L)";
+        DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
+                      Fade(BLACK, 0.72f));
+        DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
+                      Fade(GOLD, 0.35f));
+        ui::Text(keys, 12, GetScreenHeight() - 29, 20, RAYWHITE);
     }
 
     // Time state, top-right: the world is frozen until you move or wait.

@@ -608,6 +608,29 @@ this is the feedback the flat numbers were waiting for.
   clickable). The systems existed (N3/Q5/H3); the player couldn't find
   them, which is a UI bug by definition. Track T complete.
 
+## Track U — Playtest two (user feedback, 2026-07-21)
+
+- [x] **U1. Readable footer.** Shipped: size 20 white on a solid dark band
+  with a gold rule.
+- [x] **U2. Implicit health.** Shipped: the floating 3D bars are gone —
+  a hurt man darkens and bloodies as the fight wears him. One 2D HUD bar
+  (top-centre, named) for the enemy nearest your crosshair within 16 u.
+- [x] **U3. Sieges favour walls.** Shipped: `GarrisonCap` 20/10/30 (was
+  8/4/12) at init, capture, and muster (now 2/day); auto-resolve walls
+  fight at 1.7×; a repelled assault costs the attacker half to all of
+  his host. Playtest-sanctioned numbers.
+- [x] **U5. Combat clarity (added mid-sprint).** Pushed back with
+  evidence: WASD never touched attack direction (aim is mouse-only by
+  construction). The real confusion was continuous re-aim while holding —
+  now the swing locks at the click from the last mouse flick, Warband's
+  rule exactly. And the mystery yellow dots are named: they're shield
+  sparks, now captioned "SHIELD! vary your swing direction" when your
+  blow meets wood.
+- [ ] **U4. Settlement menu first.** Entering a settlement opens a GUI
+  menu (market, tavern, court, tournament, work, garrison...) with
+  "Visit the settlement" to walk the 3D streets — GUI or boots, the
+  player's choice.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

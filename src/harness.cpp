@@ -373,15 +373,18 @@ void DoAttack(Harness& h, const std::string& dir) {
     else if (dir == "left")  aim = { -20, 0 };
     else if (dir == "right") aim = { 20, 0 };
 
+    // Warband rule (U5): flick the mouse FIRST, then click — the direction
+    // locks at the moment of the press.
+    BattleInput flick;
+    flick.lookDelta = aim;
+    h.Step(CampaignInput{}, flick);
+
     BattleInput press;
     press.attackPress = true;
     press.lookDelta = { 0, 0 };
     h.Step(CampaignInput{}, press);
 
     BattleInput hold;
-    hold.lookDelta = aim;             // aim while winding up (camera turns a bit,
-    h.Step(CampaignInput{}, hold);    // exactly like flicking the mouse)
-    hold.lookDelta = { 0, 0 };
     for (int i = 0; i < 22; ++i) h.Step(CampaignInput{}, hold);
 
     BattleInput release;
