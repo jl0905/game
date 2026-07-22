@@ -19,10 +19,10 @@ whole game at once.
 | `base::TROOP_SPEED` | 6.0 | Foot troop move speed (mounted ×2) |
 | `base::TROOP_COST` | 0 | Recruit price — free recruits are a placeholder, not a design |
 | `base::TROOP_WAGE` | 1 | Daily upkeep per soldier — the economic brake on army size |
-| `base::WEAPON_DAMAGE` | 10.0 | Every weapon's hit damage — differentiate per class in tuning |
+| `base::WEAPON_DAMAGE` | 10.0 | Default hit damage — V16 gave per-weapon identity tiers (great 14, dane 13, xbow 12, axe 11, sword 10, spear 9, bow 8) |
 | `base::WEAPON_REACH` | 2.5 | Melee reach (spear 4.0, great/dane 3.2 by identity) |
 | `base::WEAPON_SWING` | 0.7 | Seconds between swings |
-| `base::ARMOR_VALUE` | 0 | Flat damage soak per worn piece — all zero today |
+| `base::ARMOR_VALUE` | 0 | Default soak — V15 gave per-piece identity tiers (cloth/leathers 1, iron helms 3, mail 4, plate 6) |
 | `base::ARMOR_WEIGHT` | 0.0 | Encumbrance — no effect yet |
 | `base::UPGRADE_XP` | 100 | XP to promote one troop a tier |
 
