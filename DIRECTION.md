@@ -811,6 +811,13 @@ this is the feedback the flat numbers were waiting for.
   moneylender's weekly rate, CHA +1/pt party cap. The character sheet
   names the effects instead of apologising. Flat TODO(balance).
 
+- [x] **V15. Iteration fifteen — armour awakens.** Every piece carries an
+  identity-tier soak at last (cloth 1, iron helm 3, mail 4, plate 6...),
+  flowing through the LoadoutArmor→ApplyArmor pipeline that waited since
+  the combat model shipped. Knights are finally hard to kill, the
+  paper-doll and forge arms matter defensively, and looted plate is a
+  prize. Tiers are identity; exact numbers TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

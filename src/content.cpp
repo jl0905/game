@@ -49,15 +49,31 @@ static WeaponDef Weapon(const char* id, const char* name, WeaponClass wc, Color 
 void LoadDefaultContent(Content& c) {
     // ---- Armour (grouped by slot) -----------------------------------------
     // Add new coverage by registering more entries with the matching slot.
-    const int a_cap    = c.armor.add(Armor("cap",    "Cloth Cap",    EquipSlot::Head, BROWN));
-    const int a_helmet = c.armor.add(Armor("helmet", "Iron Helmet",  EquipSlot::Head, GRAY));
-    const int a_tunic  = c.armor.add(Armor("tunic",  "Padded Tunic", EquipSlot::Body, BEIGE));
-    const int a_mail   = c.armor.add(Armor("mail",   "Mail Hauberk", EquipSlot::Body, DARKGRAY));
-    const int a_plate  = c.armor.add(Armor("plate",  "Plate Cuirass",EquipSlot::Body, LIGHTGRAY));
-    const int a_kettle = c.armor.add(Armor("kettle", "Kettle Helm",  EquipSlot::Head, Color{ 105, 105, 115, 255 }));
-    const int a_fur    = c.armor.add(Armor("fur",    "Fur Cloak",    EquipSlot::Body, Color{ 88, 66, 48, 255 }));
-    const int a_gloves = c.armor.add(Armor("gloves", "Leather Gloves",EquipSlot::Hands, DARKBROWN));
-    const int a_boots  = c.armor.add(Armor("boots",  "Leather Boots",EquipSlot::Feet, DARKBROWN));
+    // Armour awakens (V15): identity-tier soak values — cloth 1, iron 3,
+    // mail 4, plate 6 — flowing through the LoadoutArmor -> ApplyArmor
+    // pipeline that has waited for them since the combat model shipped.
+    // Tiers are identity; exact numbers still TODO(balance).
+    ArmorDef cap    = Armor("cap",    "Cloth Cap",    EquipSlot::Head, BROWN);
+    ArmorDef helmet = Armor("helmet", "Iron Helmet",  EquipSlot::Head, GRAY);
+    ArmorDef tunic  = Armor("tunic",  "Padded Tunic", EquipSlot::Body, BEIGE);
+    ArmorDef mail   = Armor("mail",   "Mail Hauberk", EquipSlot::Body, DARKGRAY);
+    ArmorDef plate  = Armor("plate",  "Plate Cuirass",EquipSlot::Body, LIGHTGRAY);
+    ArmorDef kettle = Armor("kettle", "Kettle Helm",  EquipSlot::Head, Color{ 105, 105, 115, 255 });
+    ArmorDef fur    = Armor("fur",    "Fur Cloak",    EquipSlot::Body, Color{ 88, 66, 48, 255 });
+    ArmorDef gloves = Armor("gloves", "Leather Gloves",EquipSlot::Hands, DARKBROWN);
+    ArmorDef boots  = Armor("boots",  "Leather Boots",EquipSlot::Feet, DARKBROWN);
+    cap.armor = 1;  helmet.armor = 3; tunic.armor = 1;  mail.armor = 4;
+    plate.armor = 6; kettle.armor = 3; fur.armor = 1;   gloves.armor = 1;
+    boots.armor = 1;
+    const int a_cap    = c.armor.add(cap);
+    const int a_helmet = c.armor.add(helmet);
+    const int a_tunic  = c.armor.add(tunic);
+    const int a_mail   = c.armor.add(mail);
+    const int a_plate  = c.armor.add(plate);
+    const int a_kettle = c.armor.add(kettle);
+    const int a_fur    = c.armor.add(fur);
+    const int a_gloves = c.armor.add(gloves);
+    const int a_boots  = c.armor.add(boots);
 
     // ---- Weapons (one per class shown; add freely) ------------------------
     // Reach differs by weapon *identity* (a spear is simply longer than a
