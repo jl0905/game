@@ -1090,6 +1090,26 @@ static void ApplyBattleResult(GameState& gs) {
         gs.resultText = "DEFEAT...  You escape with the survivors.";
         gs.battleReport.push_back("DEFEAT");
         gs.battleReport.push_back("You escape with the survivors.");
+        // The cost of a lost field (V43): the victors strip a fifth of your
+        // purse, and every captive in your train walks free. TODO(balance).
+        const int stripped = gs.gold > 0 ? std::max(25, gs.gold / 5) : 0;
+        if (stripped > 0) {
+            gs.gold = std::max(0, gs.gold - stripped);
+            gs.resultText += TextFormat("   The victors strip your purse: -%d gold", stripped);
+            gs.battleReport.push_back(TextFormat("Your purse is lighter: -%d gold", stripped));
+        }
+        int freed = 0;
+        for (int& n : gs.prisoners) { freed += n; n = 0; }
+        if (freed > 0) {
+            gs.resultText += TextFormat("   %d captive(s) go free", freed);
+            gs.battleReport.push_back(TextFormat("%d captive(s) freed by the victors", freed));
+        }
+        int plundered = 0;   // ...and half of every ware in the saddlebags
+        for (int& q : gs.goods) { const int take = (q + 1) / 2; q -= take; plundered += take; }
+        if (plundered > 0) {
+            gs.resultText += TextFormat("   %d ware(s) plundered", plundered);
+            gs.battleReport.push_back(TextFormat("%d ware(s) plundered from your bags", plundered));
+        }
         gs.player.pos.x = Clamp(gs.player.pos.x + Frand(-300, 300), 100, MAP_SIZE - 100);
         gs.player.pos.y = Clamp(gs.player.pos.y + Frand(-300, 300), 100, MAP_SIZE - 100);
         if (ally) ally->alive = false;   // the side you backed lost the field

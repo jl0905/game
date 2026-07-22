@@ -999,6 +999,12 @@ this is the feedback the flat numbers were waiting for.
   train ("Yielded: N", stacking with the slain-share captives and
   feeding ransom and V36 pressing). Small warbands (< 5) are exempt
   and fight to the end. `tests/surrender.txt`.
+- [x] **V43. Iteration forty-three — the cost of a lost field.** Defeat
+  has teeth beyond casualties: the victors strip a fifth of your purse
+  (min 25), free every captive in your train, and plunder half of
+  every ware in the saddlebags — so trading runs and prisoner trains
+  carry real risk, the mirror of V42's quarter. All spelled out in the
+  battle report. `tests/defeat_cost.txt` on a doomed fixture.
 
 ## Sequencing guidance
 

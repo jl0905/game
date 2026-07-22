@@ -1,0 +1,10 @@
+# The cost of a lost field (V43): defeat strips a fifth of your purse
+# (min 25), frees every captive in your train, and plunders half of every
+# ware in the saddlebags - trading runs carry real risk. The fixture stands
+# a 7-man band with 242 gold and 4 grain beside a 150-man raider host:
+# expect DEFEAT with "-48 gold" and "2 ware(s) plundered".
+load tests/fixtures/doom.owb
+hunt 60
+tick 120
+state
+quit
