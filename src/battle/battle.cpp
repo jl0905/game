@@ -724,6 +724,8 @@ struct BattleState {
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
+    struct StuckArrow { Vector3 pos, dir; };
+    std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -2131,6 +2133,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             a.vel.y -= ARROW_GRAVITY * dt;
             if (a.life <= 0 || a.pos.y <= B.terrain.HeightAt(a.pos.x, a.pos.z)) {
                 a.alive = false;   // stuck in the dirt
+                // ...and it STAYS there (V61): the field wears its volleys.
+                if (B.stuckArrows.size() < 240) {
+                    Vector3 d = Vector3Normalize(a.vel);
+                    B.stuckArrows.push_back(
+                        { { a.pos.x, B.terrain.HeightAt(a.pos.x, a.pos.z), a.pos.z },
+                          d });
+                }
                 continue;
             }
             // Siege wall stops low shafts (arrows can still arc over the top).
@@ -2502,6 +2511,19 @@ void BattleDraw(const Content& c) {
                  col);
         DrawCube({ s.pos.x + 0.75f, s.pos.y + 4.42f + bob, s.pos.z }, 1.4f, 0.06f, 0.08f,
                  Fade(BLACK, 0.4f));
+    }
+
+    // Spent volleys (V61): every landed shaft stands in the dirt at its
+    // arrival angle — after an archery duel the ground reads like a
+    // pincushion. Culled like everything else.
+    for (const auto& sa : B.stuckArrows) {
+        if (BehindCamera(sa.pos)) continue;
+        const Vector3 tail = { sa.pos.x - sa.dir.x * 0.9f,
+                               sa.pos.y + 0.75f,
+                               sa.pos.z - sa.dir.z * 0.9f };
+        DrawLine3D(tail, sa.pos, Color{ 122, 92, 56, 255 });
+        DrawCube({ tail.x, tail.y, tail.z }, 0.08f, 0.08f, 0.08f,
+                 Color{ 210, 205, 195, 255 });   // fletching
     }
 
     // Where men fell (V12): dark stains, flat on the ground, all battle long.

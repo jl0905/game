@@ -1111,6 +1111,12 @@ this is the feedback the flat numbers were waiting for.
   and the days left (red under 48 hours) — and the destination town
   pulses a gold ring on the map. A deadline you can see is a deadline
   you can keep. Draw-only.
+- [x] **V61. Iteration sixty-one — the field wears its volleys.** Every
+  arrow that lands stays: a shaft standing in the dirt at its arrival
+  angle with a pale fletching knob, capped at 240 and frustum-culled.
+  After an archery duel the ground reads like a pincushion — the
+  battle's history written on the terrain, like the blood stains
+  before it. Bench holds 20.4 ms.
 
 ## Sequencing guidance
 
