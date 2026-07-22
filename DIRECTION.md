@@ -677,7 +677,17 @@ this is the feedback the flat numbers were waiting for.
   loose horse swings you up (a fallen knight's mount will carry you
   too). The battle HUD names the key. `tests/dismount.txt` round-trips
   the saddle.
-- [ ] **U7. The played exe stays current (process).** After every push:
+- [x] **U12. The outer marches (map stress test).** Shipped: 9 new
+  settlements (Veidar, Ashfield, Dunmore, Saltcliff, Farwatch, Milldale,
+  Greymoor, Thornholt, Coldharbour) appended after the original nine so
+  every index-based scenario stays valid; 2 new dens; starting parties
+  7→16. Measured: 9 world-days (36k frames, 18 settlements, sieges,
+  caravans, events) simulate in ~0.1 s wall — campaign cost is
+  microseconds a frame and could scale 10× before mattering. 69/69
+  scenarios green on the big map; the arc still crowns.
+- [x] **U7. The played exe stays current (process).** Running: pull +
+  rebuild after every push (fails harmlessly while the game is open;
+  retried each cycle). After every push:
   pull + rebuild `C:\Users\hambu\projects\game\build\openwarband.exe` so
   the user always launches the latest. (Currently blocked when the game
   is running — Windows locks the exe; rebuild retries each push.)
