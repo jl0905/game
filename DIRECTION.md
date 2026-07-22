@@ -845,6 +845,11 @@ this is the feedback the flat numbers were waiting for.
   recruit — now runs, and battlefield plate is income as well as
   armour. Flat TODO(balance).
 
+- [x] **V20. Iteration twenty — the gate menu dashboards.** The header
+  shows your vault balance when coin sits here, and the tavern row
+  carries the live recruit pool inline — every number the door leads to,
+  visible before you open it.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

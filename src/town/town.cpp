@@ -1071,12 +1071,22 @@ void TownDraw(const GameState& gs) {
                                        : "no crown",
                             town.prosperity, town.garrisonSize()),
                  x0, 110, 19, RAYWHITE);
-        ui::Text(TextFormat("Your purse: %d gold      your band: %d / %d",
-                            gs.gold, gs.player.totalTroops(), PartyCap(gs)),
+        const int vault = gs.currentSettlement < (int)gs.bankAt.size()
+                              ? gs.bankAt[gs.currentSettlement] : 0;
+        ui::Text(TextFormat("Your purse: %d gold      your band: %d / %d"
+                            "%s",
+                            gs.gold, gs.player.totalTroops(), PartyCap(gs),
+                            vault > 0
+                                ? TextFormat("      in the vault here: %d", vault)
+                                : ""),
                  x0, 136, 17, Fade(RAYWHITE, 0.7f));
+        char tavernRow[96];
+        snprintf(tavernRow, sizeof(tavernRow),
+                 "[2]  The tavern            (%d recruits in the pool)",
+                 town.recruitPool);
         const char* rows[townmenu::ROWS] = {
-            "[1]  The market            (buy, sell, arms, caravans)",
-            "[2]  The tavern            (recruits, companions, ransom)",
+            "[1]  The market            (buy, sell, arms, the moneylender)",
+            tavernRow,
             "[3]  The tournament        (Shift-click to stake 50)",
             "[4]  Seek work             (the local quest)",
             "[5]  Hire the companion",
