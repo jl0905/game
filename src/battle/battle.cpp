@@ -728,6 +728,9 @@ struct BattleState {
     std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
     std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
     float hornCd = 0;                  // the war horn's wind (V66)
+    // The feed (V88): the fight's last moments, ticker-taped. Newest first.
+    struct FeedLine { std::string text; float age = 0; };
+    std::vector<FeedLine> feed;
     float pShieldHp = SHIELD_HP;       // the hero's own wood (V71)
     std::vector<int> reserveOwn, reserveAlly, reserveEnemy;   // waves (V75)
     float reinforceCd = 0;
@@ -1011,6 +1014,12 @@ void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
 constexpr float TARGET_CROWD_PENALTY   = 2.0f;  // per foe already aiming at him
 constexpr float TARGET_ATTACKER_BONUS  = 4.0f;  // he is attacking me
 constexpr float TARGET_UNSHIELDED_BONUS = 3.0f; // archers: no shield to raise
+
+// Push one line onto the battle feed (V88), newest first, capped.
+void Feed(const char* text) {
+    B.feed.insert(B.feed.begin(), { text, 0.0f });
+    if (B.feed.size() > 4) B.feed.pop_back();
+}
 
 // The hero carries wood by the same rule as his men (V71): a one-handed
 // blade implies a shield on the arm, with hit points of its own.
@@ -1889,6 +1898,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     if (s.hp <= 0) FreeHorse(c, s);   // (T6)
                     if (s.hp <= 0) {   // a kill by the hero's own hand rallies
                         B.heroKills++;
+                        Feed(TextFormat("You slay a %s", c.troops[s.troop].name.c_str()));
                         B.rallyPulse = RALLY_PULSE_TIME;
                         SfxPlay(Sfx::WarCry, 0.25f);
                         // The kill-cry stiffens friends and shakes foes (K4).
@@ -2002,6 +2012,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         }
                     B.routBanner = 2.5f;
                     B.routText   = "THEY THROW DOWN THEIR ARMS!";
+                    Feed("The enemy yields");
                     SfxPlay(Sfx::Fanfare, 0.7f);
                 }
             }
@@ -2036,6 +2047,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     B.cryTimer = 1.6f;
                     B.cryText  = team == Team::Enemy ? "ENEMY REINFORCEMENTS!"
                                                      : "YOUR NEXT WAVE ARRIVES!";
+                    Feed(team == Team::Enemy ? "Enemy wave arrives"
+                                             : "Your wave arrives");
                     SfxPlay(Sfx::WarCry, 0.5f);
                 };
                 wave(B.reserveOwn,   Team::Player, false, -55.0f);
@@ -2053,6 +2066,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     if (w.hp > 0 && w.team == team) w.nerve -= NERVE_ALLY_DEATH;
                 B.bannerFlash    = 2.2f;
                 B.bannerFellOurs = side == 0;
+                Feed(side == 0 ? "Your banner falls" : "Their banner falls");
                 SfxPlay(Sfx::Knell, 0.5f);
                 int   next = -1; float bestD = 1e9f;
                 for (int j = 0; j < n; ++j) {
@@ -2237,6 +2251,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     if (B.pShieldHp <= 0) {
                         B.cryTimer = 2.0f;
                         B.cryText  = "YOUR SHIELD SPLINTERS!";
+                        Feed("Your shield splinters");
                         SfxPlay(Sfx::Knell, 0.6f);
                     }
                 } else {
@@ -2865,6 +2880,21 @@ void BattleDraw(const Content& c) {
         ui::Text(d2, (GetScreenWidth() - ui::Measure(d2, 20)) / 2,
                  GetScreenHeight() / 3 + 62, 20, RAYWHITE);
     }
+    // The feed (V88): the fight's last moments, bottom-right, fading out.
+    if (!B.over) {
+        int fy = GetScreenHeight() - 130;
+        for (auto& fl : B.feed) {
+            fl.age += GetFrameTime();
+            const float a = Clamp(1.0f - fl.age / 6.0f, 0.0f, 1.0f);
+            if (a <= 0) continue;
+            const int fw = ui::Measure(fl.text.c_str(), 17);
+            ui::Text(fl.text.c_str(), GetScreenWidth() - fw - 18, fy, 17,
+                     Fade(RAYWHITE, 0.85f * a));
+            fy -= 24;
+        }
+        while (!B.feed.empty() && B.feed.back().age > 6.0f) B.feed.pop_back();
+    }
+
     // Every door on one line (V67), the T7 rule brought to the battle: the
     // keys players kept not finding, plus live readiness for the two
     // cooldown moves.

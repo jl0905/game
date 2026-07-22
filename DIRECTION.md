@@ -1270,6 +1270,11 @@ this is the feedback the flat numbers were waiting for.
   on the spot — full sum counted out in the road, the band turning
   for home, chronicled. Fight the collectors, outrun them, or pay
   them: the debt arc has all three exits. `tests/pay_graves.txt`.
+- [x] **V88. Iteration eighty-eight — the feed.** A battle ticker,
+  bottom-right, newest first, fading over six seconds: your kills by
+  troop name, banners falling, waves arriving, shields splintering,
+  quarter given — the fight's story readable without taking your eyes
+  off the melee. Draw-only; bench 20.2 ms.
 
 ## Sequencing guidance
 
