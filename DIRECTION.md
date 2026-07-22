@@ -1308,6 +1308,12 @@ this is the feedback the flat numbers were waiting for.
   looks the part: a thin gold band rides above the hero's helm in
   battle (one presentation bool over the bridge) and a three-point
   crown tops the map banner. Draw-only.
+- [x] **V95. Iteration ninety-five — the whole economy from cfgs.**
+  Goods and enterprises join the modding surface (`goods.cfg`,
+  `enterprises.cfg`) with a chained sample: Ale, and the Brewery
+  that makes it — spreads, scarcity, caravans, war markups and V49
+  expansion all apply automatically. Every content registry is now
+  moddable. `tests/modded_good.txt`.
 
 ## Sequencing guidance
 

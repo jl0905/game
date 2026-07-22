@@ -1,0 +1,11 @@
+# Moddable goods & enterprises (V95): assets/goods.cfg appends wares and
+# assets/enterprises.cfg appends works, joining every economic system
+# automatically. The shipped samples add Ale (town craftwork - offset 70
+# where made, 130 in villages) and the Brewery that makes it. Expect ale on
+# Sargoth's shelves, buyable into the saddlebags (good: ale=1).
+seed 42
+enter 0
+market
+buy ale 1
+state
+quit

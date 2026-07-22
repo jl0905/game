@@ -26,6 +26,10 @@ Documented in the file itself. One line per fact:
 | `road linkDist width` | | towns closer than `linkDist` are joined; within `width` of a link parties march at full pace |
 | `storm radius driftX driftY [startX startY]` | | the drifting weather cell (V62/V68): reach, per-dawn drift, and optional spawn point — inside it travel runs ×0.75 and battles fight in the rain |
 
+### assets/goods.cfg & assets/enterprises.cfg (V95)
+
+Wares: `good <id> <Name_with_underscores> <basePrice> <raw 0|1>` — raw goods are village produce, the rest town craftwork; new wares join shelves, caravans, quests and events automatically. Works: `enterprise <id> <Name_with_underscores> <cost> <daily-income> <makes-good-id|none>` — joins the one-per-town rotation, and a works that makes a good sells it cheap and restocks it each dawn.
+
 ### assets/events.cfg (V90)
 
 World events, one per line, joining the day rotation beside the built-in three: `event <id> <Name_with_underscores> <News_with_underscores_%s> <prosperityDelta> <stockDelta> <spawnParties> <poolDelta>`. `%s` in the news becomes the struck settlement's name.

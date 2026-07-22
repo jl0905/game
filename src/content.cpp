@@ -493,12 +493,72 @@ void LoadDefaultContent(Content& c) {
     // it cheap, towns pay dear, caravans haul it, events strike it.
     c.goods.add({ "timber", "Timber", 10, true, Color{ 120, 84, 50, 255 } });
 
+    // Moddable goods (V95): assets/goods.cfg appends wares —
+    //   good <id> <Name_with_underscores> <basePrice> <raw 0|1>
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/goods.cfg"
+                : "assets/goods.cfg",
+            "assets/goods.cfg", "../assets/goods.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name;
+                int price = 10, raw = 0;
+                if (!(ss >> tag) || tag != "good") continue;
+                if (!(ss >> id >> name >> price >> raw)) continue;
+                if (c.goods.find(id.c_str()) >= 0) continue;
+                for (char& ch : name) if (ch == '_') ch = ' ';
+                c.goods.add({ id, name, price, raw != 0,
+                              Color{ 200, 180, 140, 255 } });
+            }
+        }
+    }
+
     // ---- Enterprises (direction E4) --------------------------------------
     // One per town at most; bought at the market. TODO(balance): all numbers.
     c.enterprises.add({ "mill",     "Grain Mill", 300, 15, "grain" });
     c.enterprises.add({ "smithy",   "Smithy",     300, 15, "tools" });
     c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15, "wool" });
     c.enterprises.add({ "sawmill",  "Sawmill",    300, 15, "timber" });
+
+    // Moddable enterprises (V95): assets/enterprises.cfg —
+    //   enterprise <id> <Name_with_underscores> <cost> <income> <makes-good-id|none>
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/enterprises.cfg"
+                : "assets/enterprises.cfg",
+            "assets/enterprises.cfg", "../assets/enterprises.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name, makes;
+                int cost = 300, income = 15;
+                if (!(ss >> tag) || tag != "enterprise") continue;
+                if (!(ss >> id >> name >> cost >> income >> makes)) continue;
+                if (c.enterprises.find(id.c_str()) >= 0) continue;
+                for (char& ch : name) if (ch == '_') ch = ' ';
+                c.enterprises.add({ id, name, cost, income,
+                                    makes == "none" ? std::string() : makes });
+            }
+        }
+    }
 
     // ---- Quests (direction F4) -------------------------------------------
     // Shapes only; givers rotate through them. TODO(balance): all rewards.
