@@ -1,0 +1,11 @@
+# Dismount (direction U11): Z steps off the horse - it waits where you left
+# it (a loose horse of your own) - and Z beside it swings you back up.
+seed 3
+hunt 120
+block on
+state              # expect mounted=1 horses=0
+mount              # step down
+state              # expect mounted=0 horses=1 (your horse, waiting)
+mount              # swing back up (still beside it)
+state              # expect mounted=1 horses=0 again
+quit

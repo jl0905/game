@@ -646,6 +646,10 @@ int RunScript(const char* path) {
         } else if (cmd == "block") {
             std::string v; ss >> v;
             h.blockHeld = (v == "on");
+        } else if (cmd == "mount") {
+            // Dismount / remount (U11) — Z in the saddle or beside a horse.
+            BattleInput bin; bin.mountToggle = true;
+            h.Step(CampaignInput{}, bin);
         } else if (cmd == "swap") {
             BattleInput bin; bin.swapWeapon = true;
             h.Step(CampaignInput{}, bin);

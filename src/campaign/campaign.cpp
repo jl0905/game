@@ -2356,12 +2356,22 @@ void CampaignDraw(const GameState& gs) {
             DrawRectangle((int)bx, (int)by, 16, 10, ownerCol);
             DrawRectangleLines((int)bx, (int)by, 16, 10, Fade(BLACK, 0.5f));
         }
-        DrawRectangle((int)t.pos.x - 44, (int)t.pos.y + 24, 120, 20, Fade(BLACK, 0.40f));
-        ui::Text(TextFormat("%s (%s)", t.name.c_str(), SettlementTypeName(t.type)),
-                 (int)t.pos.x - 40, (int)t.pos.y + 26, 16, RAYWHITE);
-        if (ownerValid)
-            ui::Text(TextFormat("%s (%d)", c.factions[t.owner].name.c_str(), t.garrisonSize()),
-                     (int)t.pos.x - 40, (int)t.pos.y + 44, 14, ownerCol);
+        // Living lettering (U10): names hold constant screen size (scaled
+        // against the zoom) so the map reads fully zoomed out, in the
+        // owner's colour with a banner chip — the crown at a glance.
+        {
+            const float iz  = 1.0f / g_mapZoom;
+            const int   fs  = (int)(17.0f * iz);
+            const float lx  = t.pos.x - 40.0f * iz;
+            const float ly  = t.pos.y + 24.0f * iz;
+            DrawRectangle((int)(lx - 6 * iz), (int)ly,
+                          (int)((ui::Measure(t.name.c_str(), fs)) + 30 * iz),
+                          (int)(22.0f * iz), Fade(BLACK, 0.45f));
+            DrawRectangle((int)(lx - 2 * iz), (int)(ly + 5 * iz),
+                          (int)(10 * iz), (int)(12 * iz), ownerCol);   // chip
+            ui::Text(t.name.c_str(), (int)(lx + 12 * iz), (int)(ly + 2 * iz),
+                     fs, ownerValid ? ownerCol : RAYWHITE);
+        }
         DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(ownerCol, 0.45f));
     }
 
@@ -2465,6 +2475,44 @@ void CampaignDraw(const GameState& gs) {
         }
     }
     EndMode2D();
+
+    // Warband-style settlement tooltip (U10): rest the cursor on a town
+    // and the facts come to you.
+    {
+        const Vector2 mp    = GetMousePosition();
+        const Vector2 world = GetScreenToWorld2D(mp, cam);
+        for (const Town& t : gs.towns) {
+            if (Vector2Distance(world, t.pos) >
+                TOWN_CLICK_RADIUS * fmaxf(1.0f, 1.0f / g_mapZoom)) continue;
+            const bool ov = t.owner >= 0 && t.owner < c.factions.size();
+            const int  standing = (ov && t.owner < (int)gs.relations.size())
+                                      ? gs.relations[t.owner] : 0;
+            const int px = (int)fminf(mp.x + 18, (float)GetScreenWidth() - 250);
+            const int py = (int)fminf(mp.y + 12, (float)GetScreenHeight() - 150);
+            DrawRectangle(px, py, 240, 128, Fade(BLACK, 0.85f));
+            DrawRectangleLines(px, py, 240, 128, ov ? c.factions[t.owner].color
+                                                    : RAYWHITE);
+            ui::Text(TextFormat("%s  (%s)", t.name.c_str(),
+                                SettlementTypeName(t.type)), px + 10, py + 8,
+                     20, RAYWHITE);
+            ui::Text(TextFormat("Crown: %s", ov ? c.factions[t.owner].name.c_str()
+                                                : "none"),
+                     px + 10, py + 34, 17,
+                     ov ? c.factions[t.owner].color : Fade(RAYWHITE, 0.7f));
+            ui::Text(TextFormat("Garrison %d    Prosperity %d%%",
+                                t.garrisonSize(), t.prosperity),
+                     px + 10, py + 56, 16, Fade(RAYWHITE, 0.85f));
+            ui::Text(TextFormat("Standing %+d", standing), px + 10, py + 78, 16,
+                     standing > 0 ? LIME
+                     : standing < 0 ? Fade(RED, 0.9f) : Fade(RAYWHITE, 0.7f));
+            ui::Text(t.fiefLord.empty()
+                         ? (AtWar(gs, t.owner, c.playerFaction)
+                                ? "At war with you" : "At peace with you")
+                         : TextFormat("Held by Lord %s", t.fiefLord.c_str()),
+                     px + 10, py + 100, 16, Fade(GOLD, 0.85f));
+            break;
+        }
+    }
 
     // ---- day/night veil: dawn gold, dusk amber, deep blue night ----
     {

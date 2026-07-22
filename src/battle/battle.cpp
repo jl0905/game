@@ -524,6 +524,7 @@ struct LooseHorse {
     float   hp = 0;
     float   wanderT = 0;
     float   walkPhase = 0;
+    bool    yours = false;   // your own dismounted horse (U11): it waits
 };
 
 struct Arrow {
@@ -1383,6 +1384,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_F1))    in.order = 1;   // hold position (M2)
     if (IsKeyPressed(KEY_F2))    in.order = 2;   // follow me
     if (IsKeyPressed(KEY_F3))    in.order = 3;   // charge
+    if (IsKeyPressed(KEY_Z))     in.mountToggle = true;   // dismount (U11)
     if (IsKeyPressed(KEY_LEFT_BRACKET))  in.ranksDelta -= 1;
     if (IsKeyPressed(KEY_RIGHT_BRACKET)) in.ranksDelta += 1;
     return in;
@@ -1492,6 +1494,33 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.blocking = in.block;
         B.cooldown -= dt;
         if (B.swing > 0) B.swing -= dt * 4.0f;
+
+        // ---- dismount / remount (U11): Z, and the horse waits for you ----
+        if (in.mountToggle) {
+            if (B.mounted) {
+                LooseHorse h;
+                h.pos = B.pPos;
+                h.yaw = B.yaw;
+                h.hp  = B.pHorseHp;
+                h.target = h.pos;
+                h.yours  = true;   // it waits where you left it
+                B.looseHorses.push_back(h);
+                B.mounted = false;
+            } else {
+                for (auto it = B.looseHorses.begin();
+                     it != B.looseHorses.end(); ++it) {
+                    Vector3 d = Vector3Subtract(it->pos, B.pPos);
+                    d.y = 0;
+                    if (Vector3Length(d) < 3.0f) {   // any horse will carry you
+                        B.pHorseHp = it->hp;
+                        B.mounted  = true;
+                        B.looseHorses.erase(it);
+                        SfxPlay(Sfx::Gallop, 0.6f);
+                        break;
+                    }
+                }
+            }
+        }
 
         // ---- switch active weapon (a hero may carry several) ----
         if (in.swapWeapon && (int)B.heroArsenal.size() > 1) {
@@ -1913,6 +1942,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         // ---------- masterless horses (T6) ----------
         // They wander, shy from the nearest fighter, and keep off the walls.
         for (LooseHorse& h : B.looseHorses) {
+            if (h.yours) continue;   // your horse waits faithfully (U11)
             h.wanderT -= dt;
             if (h.wanderT <= 0) {
                 h.wanderT = 2.0f + (float)(PuffRand() % 300) / 100.0f;
@@ -2128,10 +2158,14 @@ void BattleDraw(const Content& c) {
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
 
-    // Masterless horses (T6): riderless, wandering, nobody's to command.
+    // Masterless horses (T6): riderless, wandering, nobody's to command —
+    // except yours (U11), marked so you can find your way back to it.
     for (const LooseHorse& h : B.looseHorses) {
         BlobShadow(B.terrain, h.pos.x, h.pos.z, 0.85f);
         DrawHorse(h.pos, h.yaw, h.walkPhase);
+        if (h.yours)
+            DrawCylinder({ h.pos.x, h.pos.y + 2.6f, h.pos.z }, 0.0f, 0.25f,
+                         0.5f, 6, GOLD);   // a little pennant point
     }
 
     // particles (blood, dust)
@@ -2238,9 +2272,12 @@ void BattleDraw(const Content& c) {
     const char* dirName[] = { "UP", "DOWN", "LEFT", "RIGHT" };
     const int hwh = B.setup.heroLoadout.get(EquipSlot::Weapon);
     const char* wname = c.weapons.valid(hwh) ? c.weapons[hwh].name.c_str() : "Unarmed";
-    ui::Text(TextFormat("Weapon: %s    Order: %s [F1-F3]    Shape: %s (ranks %d)",
+    ui::Text(TextFormat("Weapon: %s    Order: %s [F1-F3]    Shape: %s (ranks %d)%s",
                         wname, OrderName(B.order), FormationName(B.formation),
-                        B.ranks), 18, 60, 16, GOLD);
+                        B.ranks,
+                        B.mounted ? "    [Z] dismount"
+                        : B.pHorseHp > 0 ? "    [Z] mount (near a horse)" : ""),
+                 18, 60, 16, GOLD);
     if (B.deploying) {   // the planning pause (R2)
         const char* d1 = "DEPLOYMENT";
         const int w1 = ui::MeasureTitle(d1, 48);
