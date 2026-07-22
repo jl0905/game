@@ -797,6 +797,18 @@ void LoadDefaultContent(Content& c) {
                     const int fh = c.factions.find(fid.c_str());
                     const int th = c.troops.find(tid.c_str());
                     if (fh >= 0 && th >= 0) c.factions[fh].roster.push_back(th);
+                } else if (tag == "upgrade") {
+                    // upgrade <from-id> <to-id> [xp] — wire a promotion (V103).
+                    std::string fromId, toId;
+                    int xp = base::UPGRADE_XP;
+                    if (!(ss >> fromId >> toId)) continue;
+                    ss >> xp;   // optional
+                    const int from = c.troops.find(fromId.c_str());
+                    const int to   = c.troops.find(toId.c_str());
+                    if (from >= 0 && to >= 0 && from != to) {
+                        c.troops[from].upgradesTo = to;
+                        c.troops[from].upgradeXp  = xp;
+                    }
                 }
             }
         }

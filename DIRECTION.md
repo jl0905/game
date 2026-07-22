@@ -1356,6 +1356,11 @@ this is the feedback the flat numbers were waiting for.
   Fixed the champion politely holding his line during his own duel,
   and purged a stale `-DDMG_DEBUG` from the worktree build cache.
   `tests/duel.txt` fells Gorak in 25 blind overheads.
+- [x] **V103. Iteration one-oh-three — careers from a cfg.** troops.cfg
+  gains `upgrade <from> <to> [xp]`: promotion ladders are data now.
+  Shipped: Halberdier → Hammerman (a cfg troop promoting into a cfg
+  troop wielding a cfg weapon). The V45 paid-stripes flow applies
+  unchanged. `tests/modded_upgrade.txt`.
 
 ## Sequencing guidance
 

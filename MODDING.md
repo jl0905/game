@@ -44,7 +44,7 @@ Arms, one per line, loading before troops.cfg so modded troops can wield modded 
 
 ### assets/troops.cfg (V85)
 
-Mint soldier types and enlist them, no code. Two line kinds: `troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]` builds a type (standard cap/boots plus your body armour and weapon, sword sidearm); `recruit <faction-id> <troop-id>` appends it to a faction's levy so its towns recruit it and its lords field it. New types always append — existing handles and saves stay valid.
+Mint soldier types and enlist them, no code. Three line kinds: `troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]` builds a type (standard cap/boots plus your body armour and weapon, sword sidearm); `recruit <faction-id> <troop-id>` appends it to a faction's levy so its towns recruit it and its lords field it; `upgrade <from-id> <to-id> [xp]` (V103) wires a promotion ladder — the party screen's paid promote applies unchanged. New types always append — existing handles and saves stay valid.
 
 ### assets/companions.cfg (V83)
 

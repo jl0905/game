@@ -1,0 +1,10 @@
+# Modded promotion ladders (V103): troops.cfg `upgrade <from> <to> [xp]`
+# wires careers from data - the shipped line promotes Halberdiers into
+# Hammermen. Fixture: 2 halberdiers at 150 xp; the party-screen promote
+# (slot 3, 20 gold, 100 xp) should yield halberdier=1(xp50) hammerman=1.
+load tests/fixtures/ladder.owb
+state
+party
+upgrade 3 1
+state
+quit
