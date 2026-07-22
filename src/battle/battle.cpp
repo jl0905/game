@@ -726,6 +726,7 @@ struct BattleState {
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
     struct StuckArrow { Vector3 pos, dir; };
     std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
+    std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1512,6 +1513,20 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_E))     in.kick = true;          // the boot (V33)
     if (IsKeyPressed(KEY_G))     in.pickup = true;        // scavenge (V39)
     if (IsKeyPressed(KEY_N))     in.autoResolve = true;   // fight on paper (V41)
+    // Strategy-menu rows click (V65): while the ~ menu is open, LMB picks
+    // rows instead of readying a swing.
+    if (B.showMenu && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 m  = GetMousePosition();
+        const int     px = GetScreenWidth() - 300;
+        if (m.x >= px + 14)
+            for (const auto& h : B.menuHits)
+                if (m.y >= h.first - 3 && m.y < h.first + 26) {
+                    if (h.second <= 5)       in.formationSelect = h.second;
+                    else                     in.order = h.second - 10;
+                    in.attackPress = false;   // the click was spent on the menu
+                    break;
+                }
+    }
     if (IsKeyPressed(KEY_LEFT_BRACKET))  in.ranksDelta -= 1;
     if (IsKeyPressed(KEY_RIGHT_BRACKET)) in.ranksDelta += 1;
     return in;
@@ -1664,7 +1679,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         }
 
         // ---- strategy / formation menu (~ toggles it) ----
-        if (in.toggleMenu) B.showMenu = !B.showMenu;
+        if (in.toggleMenu) {
+            B.showMenu = !B.showMenu;
+            if (IsWindowReady()) {   // a menu needs a cursor to click (V65)
+                if (B.showMenu) EnableCursor();
+                else            DisableCursor();
+            }
+        }
         if (B.showMenu) {
             switch (in.formationSelect) {
                 // Picking a shape implies an order (M2): Charge frees the
@@ -2764,12 +2785,34 @@ void BattleDraw(const Content& c) {
         const FormationType opts[] = { FormationType::Charge, FormationType::Line,
                                        FormationType::Square, FormationType::Spread,
                                        FormationType::ShieldWall };
+        // Rows are buttons too (V65): the draw records their spots for the
+        // gather-side hit-test, and the row under the mouse glows.
+        B.menuHits.clear();
+        const Vector2 mmp = GetMousePosition();
+        auto menuRow = [&](int id, const char* text, Color col) {
+            const bool hover = mmp.x >= px + 14 && mmp.y >= y - 3 && mmp.y < y + 26;
+            if (hover) DrawRectangle(px + 14, y - 3, pw - 24, 28, Fade(GOLD, 0.15f));
+            ui::Text(text, px + 22, y, 22, hover ? RAYWHITE : col);
+            B.menuHits.push_back({ y, id });
+            y += 30;
+        };
         for (int i = 0; i < 5; ++i) {
             const bool sel = (B.formation == opts[i]);
-            ui::Text(TextFormat("[%d] %s%s", i + 1, FormationName(opts[i]), sel ? "   <" : ""),
-                     px + 22, y, 22, sel ? GOLD : RAYWHITE);
-            y += 30;
+            menuRow(i + 1,
+                    TextFormat("[%d] %s%s", i + 1, FormationName(opts[i]), sel ? "   <" : ""),
+                    sel ? GOLD : RAYWHITE);
         }
+        y += 8;
+        ui::Text("Orders", px + 22, y, 20, Fade(RAYWHITE, 0.75f)); y += 30;
+        menuRow(11, TextFormat("[F1] Hold position%s",
+                               B.order == OrderType::Hold ? "   <" : ""),
+                B.order == OrderType::Hold ? GOLD : RAYWHITE);
+        menuRow(12, TextFormat("[F2] Follow me%s",
+                               B.order == OrderType::Follow ? "   <" : ""),
+                B.order == OrderType::Follow ? GOLD : RAYWHITE);
+        menuRow(13, TextFormat("[F3] Charge%s",
+                               B.order == OrderType::Charge ? "   <" : ""),
+                B.order == OrderType::Charge ? GOLD : RAYWHITE);
         y += 14;
         ui::Text(TextFormat("Ranks: %d", B.ranks), px + 22, y, 22, RAYWHITE);      y += 28;
         ui::Text("[ and ] : fewer / more ranks", px + 22, y, 16, Fade(RAYWHITE, 0.7f)); y += 34;

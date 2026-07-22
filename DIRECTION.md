@@ -1134,6 +1134,12 @@ this is the feedback the flat numbers were waiting for.
   amber dusk, rose dawn, deep night — with a warm lit window on every
   building after dark), and riding inside the storm rains on the map
   screen itself: streaks and a leaden dim. Draw-only.
+- [x] **V65. Iteration sixty-five — the strategy menu clicks.** The last
+  keyboard-only UI: the ~ battle menu's formation rows (1–5) and new
+  order rows (Hold/Follow/Charge, with the current one marked) are
+  mouse buttons with hover glow; opening the menu shows the cursor,
+  closing it returns to mouse-look, and a menu click never spends a
+  swing. V27 pattern, battle-side.
 
 ## Sequencing guidance
 
