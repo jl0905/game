@@ -761,6 +761,12 @@ this is the feedback the flat numbers were waiting for.
   and current business, hostile-or-not at a glance, and a caravan's
   freight count — the freight bandits can smell, now the player can too.
 
+- [x] **V7. Iteration seven — the field wears grass.** 150 deterministic
+  ground props per battlefield (tufts and stones, seeded by the terrain
+  so the same field always dresses the same), drawn only within the
+  lodDistance setting of the hero, skipped in the arena. Bench: 33.8 ms
+  at 2000 soldiers — free.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

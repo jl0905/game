@@ -675,6 +675,8 @@ struct BattleState {
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
     std::vector<LooseHorse> looseHorses;   // mounts that outlived their riders (T6)
+    std::vector<Vector4> props;     // ground dressing (V7): xyz + w kind
+                                    // (0 grass tuft, 1 rock); deterministic
     Vector3 prevHeroPos{};          // for momentum (T5): last frame's position
     float   heroSpeed = 0;          // hero's current ground speed
 
@@ -1281,6 +1283,21 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
         tcfg.raining = false;
     }
     B.terrain.Generate(tcfg, ARENA);
+
+    // Ground dressing (V7): tufts and stones seeded by the battlefield —
+    // the same field always wears the same grass. Not in the sanded ring.
+    B.props.clear();
+    if (!setup.arena) {
+        unsigned int ph = tcfg.seed * 2654435761u + 17u;
+        for (int i = 0; i < 150; ++i) {
+            ph = ph * 1664525u + 1013904223u;
+            const float px = (float)(ph % 170u) - 85.0f;
+            const float pz = (float)((ph >> 9) % 170u) - 85.0f;
+            if (B.hasWall && fabsf(pz - WALL_Z) < WALL_BAND + 1.5f) continue;
+            B.props.push_back({ px, B.terrain.HeightAt(px, pz), pz,
+                                (float)((ph >> 20) & 3 ? 0 : 1) });
+        }
+    }
     B.raining = tcfg.raining;
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
 
@@ -2175,6 +2192,25 @@ void BattleDraw(const Content& c) {
         tint.g = (unsigned char)(tint.g * dim);
         tint.b = (unsigned char)(tint.b * dim);
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
+    }
+
+    // Ground dressing (V7): drawn only within the lodDistance setting of
+    // the hero — the far field stays cheap.
+    {
+        const float lod = GetSettings().lodDistance;
+        for (const Vector4& p : B.props) {
+            const float dx = p.x - B.pPos.x, dz = p.z - B.pPos.z;
+            if (dx * dx + dz * dz > lod * lod) continue;
+            if (p.w < 0.5f) {   // a tuft: two crossed blades
+                DrawCube({ p.x, p.y + 0.22f, p.z }, 0.5f, 0.44f, 0.05f,
+                         Color{ 64, 96, 48, 255 });
+                DrawCube({ p.x, p.y + 0.22f, p.z }, 0.05f, 0.44f, 0.5f,
+                         Color{ 72, 104, 52, 255 });
+            } else {            // a stone
+                DrawCube({ p.x, p.y + 0.16f, p.z }, 0.5f, 0.34f, 0.4f,
+                         Color{ 122, 118, 112, 255 });
+            }
+        }
     }
 
     // Masterless horses (T6): riderless, wandering, nobody's to command —
