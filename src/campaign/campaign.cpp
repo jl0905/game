@@ -1876,7 +1876,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if (bestD < SIEGE_REACH) {
                         e.engaged = true;
                         e.state   = PartyState::Besieging;
-                        gs.aiSieges.push_back({ i, bestTown, AI_SIEGE_TIME });
+                        // Your walls buy you time to ride home (V92): sieges
+                        // of the player's settlements burn 2.5x slower, so
+                        // the alarm is a summons, not an obituary.
+                        gs.aiSieges.push_back({ i, bestTown,
+                            AI_SIEGE_TIME *
+                                (gs.towns[bestTown].owner == c.playerFaction
+                                     ? 2.5f : 1.0f) });
                         // Sound the alarm when it's YOUR settlement invested.
                         if (gs.towns[bestTown].owner == c.playerFaction)
                             gs.resultText = TextFormat("%s IS UNDER SIEGE by Lord %s!",
@@ -2882,6 +2888,16 @@ void CampaignDraw(const GameState& gs) {
                            Fade(Color{ 70, 80, 100, 255 }, 0.0f));
         DrawCircleLines((int)gs.stormPos.x, (int)gs.stormPos.y,
                         c.map.stormRadius, Fade(Color{ 120, 132, 156, 255 }, 0.35f));
+    }
+
+    // Sieges burn red on the map (V92): every invested settlement pulses —
+    // ride into the besieger to break the camp before the timer runs out.
+    for (const AISiege& sg : gs.aiSieges) {
+        if (sg.town < 0 || sg.town >= (int)gs.towns.size()) continue;
+        const Vector2 sp = gs.towns[sg.town].pos;
+        const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 5.0f);
+        DrawCircleLines((int)sp.x, (int)sp.y, 48.0f + 6.0f * pulse,
+                        Fade(RED, 0.5f + 0.35f * pulse));
     }
 
     // The task's destination pulses gold on the map (V60).

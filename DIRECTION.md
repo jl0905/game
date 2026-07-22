@@ -1293,6 +1293,11 @@ this is the feedback the flat numbers were waiting for.
   strength joins the defense roll, his men bleed for it, his opinion
   rises +3 for serving well. Raising lords and granting fiefs now buys
   a standing defense, not just a banner count. `tests/own_relief.txt`.
+- [x] **V92. Iteration ninety-two — time to ride home.** Sieges of the
+  player's settlements burn ×2.5 slower (30s vs 12s, verified side by
+  side in one dump), and every invested settlement pulses a red ring
+  on the map — the alarm is a summons, not an obituary: ride into the
+  besieger to break the camp, or trust the V91 relief and V51 stone.
 
 ## Sequencing guidance
 
