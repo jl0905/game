@@ -128,6 +128,7 @@ std::string TrySwear(GameState& gs) {
                          c.factions[f].name.c_str());
     }
     gs.resultText = msg;
+    Chronicle(gs, TextFormat("Sworn to %s.", c.factions[f].name.c_str()));
     SfxPlay(Sfx::Fanfare);
     return msg;
 }
@@ -370,6 +371,7 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
                     gs.resultText = TextFormat(
                         "The hall is laid! %d lord(s) raise a cup to you. "
                         "Matches may be made while the feast holds.", lords);
+                    Chronicle(gs, TextFormat("A feast held at %s.", t.name.c_str()));
                     SfxPlay(Sfx::Fanfare);
                 }
                 break;
@@ -802,6 +804,8 @@ std::string TryRebel(GameState& gs) {
     gs.resultText = TextFormat(
         "REBELLION!  %d lord(s) declare for you. %s answers with war.",
         defected, c.factions[crown].name.c_str());
+    Chronicle(gs, TextFormat("Rebellion against %s - %d lord(s) follow you.",
+                             c.factions[crown].name.c_str(), defected));
     SfxPlay(Sfx::WarCry);
     return gs.resultText;
 }
@@ -853,6 +857,9 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
             gs.gold -= MERC_COST;
             gs.mercParty = gs.parleyParty;
             gs.mercDays  = MERC_DAYS;
+            Chronicle(gs, TextFormat(
+                "The %s taken under contract.",
+                gs.content.factions[gs.parties[gs.parleyParty].faction].name.c_str()));
             gs.resultText = TextFormat(
                 "The %s marches under your banner for %.0f days.",
                 gs.content.factions[gs.parties[gs.parleyParty].faction].name.c_str(),
@@ -896,6 +903,7 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
             gs.resultText = TextFormat(
                 "You are wed to Lady %s. Two houses are now one.",
                 gs.spouseName.c_str());
+            Chronicle(gs, gs.resultText);
             gs.dialogueLines.push_back(gs.resultText);
             SfxPlay(Sfx::Fanfare);
         }

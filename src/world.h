@@ -197,6 +197,10 @@ struct GameState {
     // into battle with shaken nerve.
     int hungryDays = 0;
 
+    // The chronicle (V50): the campaign's own history, newest last —
+    // conquests, oaths, crowns, contracts, defeats. Capped; day-stamped.
+    std::vector<std::string> chronicle;
+
     // Enterprise levels (V49), parallel to towns: 1 = as built, 2 = expanded
     // (double income). Only meaningful where enterpriseAt is set.
     std::vector<int> enterpriseLvl;
@@ -420,6 +424,14 @@ inline int& LordOpinion(GameState& gs, const std::string& name) {
 
 inline int EffectiveLordOpinion(GameState& gs, const std::string& name) {
     return LordOpinion(gs, name) + gs.honor;
+}
+
+// Write a line into the campaign's history (V50). Day-stamped, capped so
+// the book never bloats; newest entries last.
+inline void Chronicle(GameState& gs, const std::string& text) {
+    gs.chronicle.push_back(TextFormat("Day %d: %s", gs.day, text.c_str()));
+    if (gs.chronicle.size() > 40)
+        gs.chronicle.erase(gs.chronicle.begin());
 }
 
 // Whose court is the player standing in (S4)? A map parley speaks for the

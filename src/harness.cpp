@@ -198,6 +198,8 @@ struct Harness {
         for (int n : gs.prisoners) captives += n;
         if (captives > 0) std::printf("captives=%d\n", captives);
         if (gs.hungryDays > 0) std::printf("hungry=%d\n", gs.hungryDays);
+        for (int ci = (int)gs.chronicle.size() - 3; ci < (int)gs.chronicle.size(); ++ci)
+            if (ci >= 0) std::printf("chron: %s\n", gs.chronicle[ci].c_str());
         if (!gs.resultText.empty())
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
         for (int t = 0; t < (int)gs.towns.size(); ++t) {

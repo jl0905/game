@@ -950,6 +950,7 @@ static void ApplyBattleResult(GameState& gs) {
                              t.name.c_str(), loot)
                 : TextFormat("%s IS TAKEN!  The %s is yours. Loot: %d gold",
                              t.name.c_str(), SettlementTypeName(t.type), loot);
+            Chronicle(gs, TextFormat("%s falls to your banner.", t.name.c_str()));
         } else {
             gs.resultText = TextFormat("The assault on %s is repelled...", t.name.c_str());
             gs.player.pos.x = Clamp(gs.player.pos.x + Frand(-300, 300), 100, MAP_SIZE - 100);
@@ -1090,6 +1091,7 @@ static void ApplyBattleResult(GameState& gs) {
         }
     } else {
         gs.resultText = "DEFEAT...  You escape with the survivors.";
+        Chronicle(gs, "A field lost; the warband escapes with the survivors.");
         gs.battleReport.push_back("DEFEAT");
         gs.battleReport.push_back("You escape with the survivors.");
         // The cost of a lost field (V43): the victors strip a fifth of your
@@ -1498,6 +1500,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             if (t.owner == c.playerFaction) owned++;
         if (owned >= 2) {
             gs.crowned = true;
+            Chronicle(gs, "You claim a crown of your own.");
             const int n = c.factions.size();
             if (gs.liege >= 0) {
                 NudgeRelation(gs, gs.liege, -40);
@@ -3992,6 +3995,20 @@ void KingdomDraw(const GameState& gs) {
                                           : Fade(RAYWHITE, 0.8f));
                 y += 24;
             }
+        }
+    }
+
+    // The chronicle (V50): the reign's own history, newest first, right
+    // column of the ledger.
+    if (!gs.chronicle.empty()) {
+        const int cx = GetScreenWidth() / 2 + 60;
+        int cy = 140;
+        ui::Text("THE CHRONICLE", cx, cy, 20, GOLD);
+        cy += 28;
+        const int n = (int)gs.chronicle.size();
+        for (int i = n - 1; i >= 0 && i >= n - 10; --i) {
+            ui::Text(gs.chronicle[i].c_str(), cx, cy, 17, Fade(RAYWHITE, 0.85f));
+            cy += 24;
         }
     }
 

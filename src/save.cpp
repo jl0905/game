@@ -179,6 +179,10 @@ bool SaveGame(const GameState& gs, const char* path) {
         f << "rally " << gs.lordsRallyPos.x << ' ' << gs.lordsRallyPos.y << ' '
           << gs.lordsRallyDays << '\n';
 
+    // The chronicle (V50): free text, one tag per line.
+    for (const std::string& ch : gs.chronicle)
+        f << "chron " << ch << '\n';
+
     // Hungry days on the march (V37).
     if (gs.hungryDays > 0) f << "hungry " << gs.hungryDays << '\n';
 
@@ -477,6 +481,11 @@ bool LoadGame(GameState& gs, const char* path) {
             std::string g;
             ss >> g;
             if (!g.empty()) gs.feastGuests.push_back(g);
+        } else if (tag == "chron") {
+            std::string rest;
+            std::getline(ss, rest);
+            if (!rest.empty() && rest[0] == ' ') rest.erase(0, 1);
+            if (!rest.empty()) gs.chronicle.push_back(rest);
         } else if (tag == "hungry") {
             ss >> gs.hungryDays;
         } else if (tag == "merc") {

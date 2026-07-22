@@ -1042,6 +1042,13 @@ this is the feedback the flat numbers were waiting for.
   full stretch already" past that). Level survives save/load (`elvl`
   tag), quoted in the market line, `lvl=` in the dump. Deepens the
   gold → passive income → army upkeep chain. `tests/enterprise_expand.txt`.
+- [x] **V50. Iteration fifty — the chronicle.** The reign writes its own
+  history: conquests, oaths, crowns, weddings, rebellions, hosted
+  feasts, mercenary contracts and lost fields each add a day-stamped
+  line to a capped chronicle — shown as the right-hand column of the
+  kingdom ledger (last 10, newest first), saved as `chron` tags,
+  dumped as `chron:`. Fifty iterations of systems, and now the game
+  remembers them. `tests/chronicle.txt`.
 
 ## Sequencing guidance
 

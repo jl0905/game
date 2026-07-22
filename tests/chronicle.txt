@@ -1,0 +1,13 @@
+# The chronicle (V50): big campaign moments (conquests, oaths, crowns,
+# feasts, contracts, defeats, weddings, rebellions) write day-stamped lines
+# into a capped history, shown on the kingdom ledger and dumped as chron:.
+# Host a feast, then round-trip a save: the entry must survive.
+seed 42
+enter 0
+topic 11
+leave
+state
+saveslot 3
+loadslot 3
+state
+quit
