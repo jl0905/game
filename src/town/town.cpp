@@ -922,6 +922,35 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryGrantFief(gs));
+    } else if (in.menuChoice == 9 && gs.dialogueLord) {   // turn his coat (V73)
+        gs.dialogueLines.clear();
+        const Content& c = gs.content;
+        constexpr int POACH_OPINION = 20;   // TODO(balance)
+        const bool road = gs.parleyParty >= 0 &&
+                          gs.parleyParty < (int)gs.parties.size();
+        const int  pf   = road ? gs.parties[gs.parleyParty].faction : -1;
+        if (!gs.crowned)
+            gs.dialogueLines.push_back("Only a crowned head may offer a crown's service.");
+        else if (!road || !c.factions.valid(pf) || !c.factions[pf].kingdom ||
+                 pf == c.playerFaction)
+            gs.dialogueLines.push_back("He serves no crown worth stealing from.");
+        else if (EffectiveLordOpinion(gs, gs.audienceLord) < POACH_OPINION)
+            gs.dialogueLines.push_back(TextFormat(
+                "Lord %s is not yours yet. Court him first (%+d of %+d).",
+                gs.audienceLord.c_str(),
+                EffectiveLordOpinion(gs, gs.audienceLord), POACH_OPINION));
+        else {
+            Party& p  = gs.parties[gs.parleyParty];
+            p.faction = c.playerFaction;
+            NudgeRelation(gs, pf, -25);   // TODO(balance): the crown he leaves
+            gs.resultText = TextFormat(
+                "LORD %s TURNS HIS COAT!  His host of %d flies your banner now.",
+                p.lord.c_str(), p.totalTroops());
+            Chronicle(gs, TextFormat("Lord %s abandons %s for your banner.",
+                                     p.lord.c_str(), c.factions[pf].name.c_str()));
+            gs.dialogueLines.push_back(gs.resultText);
+            SfxPlay(Sfx::Fanfare);
+        }
     } else if (in.menuChoice == 8 && gs.dialogueLord) {   // hire the company (V29)
         constexpr int   MERC_COST = 300;   // TODO(balance)
         constexpr float MERC_DAYS = 3.0f;  // TODO(balance)
@@ -1063,6 +1092,11 @@ void DialogueDraw(const GameState& gs) {
             gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
             gs.content.factions[gs.parties[gs.parleyParty].faction].mercenary)
             option(8, "[8] March with me. (300 gold, 3 days)", Fade(GOLD, 0.85f));
+        if (gs.crowned && gs.parleyParty >= 0 &&   // turn his coat (V73)
+            gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
+            gs.content.factions[gs.parties[gs.parleyParty].faction].kingdom &&
+            gs.parties[gs.parleyParty].faction != gs.content.playerFaction)
+            option(9, "[9] Abandon your crown. Serve mine.", Fade(RED, 0.85f));
         if (gs.crowned)   // a ruler's court has a ruler's business (M3)
             option(4, "[4] I grant this seat to a lord of mine.", Fade(GOLD, 0.85f));
         if (gs.currentSettlement >= 0 &&

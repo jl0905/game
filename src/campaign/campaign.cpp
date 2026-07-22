@@ -1227,6 +1227,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_SIX))   in.menuChoice = 6;   // rebellion (O6)
         if (IsKeyPressed(KEY_SEVEN)) in.menuChoice = 7;   // a lord's gift (V26)
         if (IsKeyPressed(KEY_EIGHT)) in.menuChoice = 8;   // hire the company (V29)
+        if (IsKeyPressed(KEY_NINE))  in.menuChoice = 9;   // turn his coat (V73)
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {    // topics are buttons (V27)
             const int ch = DialogueOptionAt(GetMousePosition());
             if (ch > 0)               in.menuChoice = ch;

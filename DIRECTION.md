@@ -1182,6 +1182,12 @@ this is the feedback the flat numbers were waiting for.
   applied live via `ui::SetTextScale` and persisted as `textscale` in
   settings.cfg (overriding fonts.cfg at startup). The standing
   "bigger text" ask becomes a dial the player owns.
+- [x] **V73. Iteration seventy-three — turn his coat.** A crowned ruler
+  in a road parley offers a foreign kingdom's lord topic [9]: at +20
+  effective opinion he defects with his whole host (−25 with the crown
+  he leaves; chronicled). Gifts, feasts, honor — the opinion economy
+  now buys armies wholesale, the peaceful mirror of rebellion.
+  `tests/poach_lord.txt` on a crowned fixture.
 
 ## Sequencing guidance
 

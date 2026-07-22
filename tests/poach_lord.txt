@@ -1,0 +1,13 @@
+# Turning coats (V73): a crowned ruler in a road parley offers topic [9] to
+# a foreign kingdom's lord - if his effective opinion is +20 or better (the
+# currency gifts, feasts and honor build), he defects with his whole host,
+# at -25 relation with the crown he leaves. Fixture: crowned, Aldric at +25.
+# Expect LORD Aldric TURNS HIS COAT, his party at faction=kingdom, and the
+# chronicle line.
+load tests/fixtures/poach.owb
+parley
+topic 9
+state
+leave
+state
+quit
