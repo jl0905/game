@@ -43,6 +43,7 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
     if (gs.siegeTownIndex >= 0 && gs.siegeTownIndex < (int)gs.towns.size()) {
         const Town& t = gs.towns[gs.siegeTownIndex];
         s.enemyTroops = t.garrison;
+        s.enemyName   = "THE GARRISON OF " + t.name;   // V24
         // A friendly lord in reach rides to the defence (P2): his host
         // fights beside the garrison in the same battle.
         const int relief = ReliefLordFor(gs, gs.siegeTownIndex);
@@ -58,8 +59,14 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         s.siegeType   = t.type;
         s.siegePrep   = gs.siegeLaunchPrep;   // what the camp built (N1)
     } else {
-        s.enemyTroops = gs.parties[gs.battlePartyIndex].troopCounts;
+        const Party& foe = gs.parties[gs.battlePartyIndex];
+        s.enemyTroops = foe.troopCounts;
         s.campaignPos = gs.player.pos;
+        s.enemyName   = !foe.lord.empty()
+            ? "LORD " + foe.lord
+            : (foe.faction >= 0 && foe.faction < (int)gs.content.factions.size()
+                   ? gs.content.factions[foe.faction].name
+                   : std::string("THE ENEMY"));   // V24
     }
     if (gs.battleAllyIndex >= 0 && gs.battleAllyIndex < (int)gs.parties.size())
         s.allyTroops = gs.parties[gs.battleAllyIndex].troopCounts;

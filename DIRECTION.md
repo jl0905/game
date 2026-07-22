@@ -869,6 +869,12 @@ this is the feedback the flat numbers were waiting for.
   coin, the total at interest, and a red AT RISK flag on any account
   sitting in a town your enemies now hold — the V9 seizure rule made
   visible before it bites.
+- [x] **V24. Iteration twenty-four — name the foe, weight the blow.** The
+  battle-opening banner now names who stands against you (LORD so-and-so,
+  a crown's war-band, THE GARRISON OF a town) with the odds spelled out,
+  and the hero's landed hits play a thud whose volume scales with the
+  damage that actually got through armour — a glance taps, an overhead
+  through plate lands like a hammer. `foe=` in the harness battle dump.
 
 ## Sequencing guidance
 

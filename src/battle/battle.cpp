@@ -1644,6 +1644,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         SfxPlay(Sfx::Clang, 0.6f);
                         B.soakFlash = 1.0f;   // name those sparks (U5)
                     }
+                    // A landed blow sounds as heavy as it hit (V24): a glance
+                    // taps, a plate-cracking overhead lands like a hammer.
+                    if (dmg > 0.5f)
+                        SfxPlay(Sfx::Thud, Clamp(0.3f + dmg / 25.0f, 0.3f, 1.0f));
                     DamageSoldier(c, s, dmg);
                     if (s.hp <= 0) FreeHorse(c, s);   // (T6)
                     if (s.hp <= 0) {   // a kill by the hero's own hand rallies
@@ -2464,11 +2468,14 @@ void BattleDraw(const Content& c) {
         for (const Soldier& s : B.soldiers)
             (s.team == Team::Enemy ? foes : own) += (s.hp > 0) ? 1 : 0;
         const char* head = B.setup.siege ? "STORM THE WALLS" : "BATTLE IS JOINED";
-        const char* nums = TextFormat("%d men against %d", own, foes);
+        // Name the foe at the horn (V24): a lord, a crown, or a garrison.
+        const char* nums = B.setup.enemyName.empty()
+            ? TextFormat("%d men against %d", own, foes)
+            : TextFormat("%s — %d men against your %d", B.setup.enemyName.c_str(), foes, own);
         const int w1 = ui::MeasureTitle(head, 52);
         const int w2 = ui::Measure(nums, 24);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 16, GetScreenWidth(), 110, Fade(BLACK, 0.45f * a));
+        DrawRectangle(0, cy - 16, GetScreenWidth(), 116, Fade(BLACK, 0.6f * a));
         ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 52, Fade(GOLD, a));
         ui::Text(nums, (GetScreenWidth() - w2) / 2, cy + 62, 24, Fade(RAYWHITE, a));
     }
@@ -2531,6 +2538,7 @@ BattleView GetBattleView() {
     v.climbPoints = (int)g_climbs.size();
     v.raining     = B.raining;
     v.heroKills   = B.heroKills;
+    v.enemyName   = B.setup.enemyName;
     v.looseHorses = (int)B.looseHorses.size();
     {
         const Vector3 a = B.order == OrderType::Hold ? B.holdPos : B.pPos;

@@ -32,6 +32,10 @@ struct BattleSetup {
     Vector2          campaignPos{};  // where on the world map this fight happens
                                      // (drives terrain generation)
 
+    // Who stands against you (V24): named at the horn — a lord, a crown's
+    // war-band, or a garrison. Presentation only.
+    std::string enemyName;
+
     // The hero's body (V14): Strength scales swing damage (+5%/pt),
     // Agility his footwork (+2%/pt move speed). Read-only snapshot.
     int heroStr = 0;
@@ -90,6 +94,7 @@ struct BattleView {
     bool    raining = false;        // wet strings throw short (R1)
     int     heroKills = 0;          // kills by the hero's own hand
     int     looseHorses = 0;        // mounts that outlived their riders (T6)
+    std::string enemyName;          // who the banner named at the horn (V24)
     float   ownAvgDistToAnchor = 0; // player troops' mean distance from their
                                     // order anchor — lets scripts see obedience
     bool    over = false, won = false;
