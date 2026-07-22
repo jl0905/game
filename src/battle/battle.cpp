@@ -673,6 +673,7 @@ struct BattleState {
     Terrain              terrain;   // generated from setup.campaignPos
     bool                 hasWall = false;   // siege of a walled settlement
     bool                 raining = false;
+    bool                 night   = false;   // archery suffers in the dark (V44)
     std::vector<Soldier> soldiers;
     std::vector<Arrow>   arrows;    // missiles in flight
     std::vector<LooseHorse> looseHorses;   // mounts that outlived their riders (T6)
@@ -1116,9 +1117,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     const bool ranged = wd && wd->isRanged();
     // Archers advance until comfortably inside missile range, then stand and
     // loose; melee closes to arm's reach.
-    // Rain fights too (R1): wet strings throw short. TODO(balance).
-    const float rainRange = B.raining ? 0.6f : 1.0f;
-    const float engage = ranged ? wd->missileRange * 0.9f * rainRange
+    // Rain fights too (R1): wet strings throw short. And so does night
+    // (V44): you cannot loose at what you cannot see. TODO(balance).
+    const float rainRange  = B.raining ? 0.6f : 1.0f;
+    const float nightRange = B.night ? 0.55f : 1.0f;
+    const float engage = ranged ? wd->missileRange * 0.9f * rainRange * nightRange
                                 : WeaponReach(c, cmd.activeWeapon) * 0.8f +
                                       (IsMounted(c, s) ? 0.9f : 0.0f);   // T5
 
@@ -1161,6 +1164,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
             Vector3DistanceSqr(s.pos, B.pPos) < aura * aura)
             cdScale *= RALLY_COOLDOWN_SCALE;
         if (ranged && B.raining) cdScale *= 1.4f;   // slow, sodden nocking (R1)
+        if (ranged && B.night)   cdScale *= 1.25f;  // aiming by moonlight (V44)
         cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon) * cdScale;
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
@@ -1362,6 +1366,8 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
         }
     }
     B.raining = tcfg.raining;
+    // Night falls on the archery (V44): same clock the sky uses.
+    B.night = setup.timeOfDay >= 0.82f || setup.timeOfDay < 0.06f;
     B.hasWall = setup.siege && setup.siegeType != SettlementType::Village;
 
     // Siege engineering (N1): the standing pair of ladders, plus whatever
@@ -2781,6 +2787,7 @@ BattleView GetBattleView() {
     v.order       = OrderName(B.order);
     v.climbPoints = (int)g_climbs.size();
     v.raining     = B.raining;
+    v.night       = B.night;
     v.heroKills   = B.heroKills;
     v.enemyName   = B.setup.enemyName;
     v.heroKicks   = B.heroKicksLanded;

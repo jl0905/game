@@ -98,6 +98,7 @@ struct BattleView {
     const char* order = "Charge";   // current battlefield order (M2)
     int     climbPoints = 0;        // siege climbing lanes incl. tower (N1)
     bool    raining = false;        // wet strings throw short (R1)
+    bool    night   = false;        // darkness shortens bowshot (V44)
     int     heroKills = 0;          // kills by the hero's own hand
     int     looseHorses = 0;        // mounts that outlived their riders (T6)
     std::string enemyName;          // who the banner named at the horn (V24)

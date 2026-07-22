@@ -1005,6 +1005,12 @@ this is the feedback the flat numbers were waiting for.
   every ware in the saddlebags — so trading runs and prisoner trains
   carry real risk, the mirror of V42's quarter. All spelled out in the
   battle report. `tests/defeat_cost.txt` on a doomed fixture.
+- [x] **V44. Iteration forty-four — night falls on the archery.** The
+  campaign clock now changes how battles fight, not just how they
+  look: at night archers engage at ×0.55 range and nock ×1.25 slower
+  (stacking with rain's wet strings) — attack after dark to blunt a
+  crossbow line. The hour is saved (`clock` tag), `night=` joins the
+  battle dump, `tests/night_battle.txt` on a midnight fixture.
 
 ## Sequencing guidance
 

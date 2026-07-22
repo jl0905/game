@@ -1,0 +1,12 @@
+# Night battles (V44): the campaign clock rides into the fight (clock 55
+# of 60 = deep night). Archers cannot loose at what they cannot see -
+# engagement range x0.55 and nocking x1.25, stacking with rain's wet
+# strings. Expect night=1 in the battle dump under a night-dark sky.
+load tests/fixtures/night.owb
+walk 1 0 0.6
+tick 3
+state
+block on
+tick 120
+state
+quit
