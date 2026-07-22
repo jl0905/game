@@ -1,0 +1,10 @@
+# A lord will not wait forever (V93): every fourth day the longest-held
+# captive lord escapes at dawn - respawn queued, opinion -5 (he remembers
+# the rope), chronicled. Ransom (200 gold) or release (+honor, +opinion)
+# while the choice is still yours. Fixture: Corin captive, day 3, clock 59.
+# Expect the escape on day 4: plord gone, lop Corin=-5, chronicle line.
+load tests/fixtures/lordesc.owb
+state
+wait 5
+state
+quit

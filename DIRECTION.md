@@ -1298,6 +1298,12 @@ this is the feedback the flat numbers were waiting for.
   side in one dump), and every invested settlement pulses a red ring
   on the map — the alarm is a summons, not an obituary: ride into the
   besieger to break the camp, or trust the V91 relief and V51 stone.
+- [x] **V93. Iteration ninety-three — a lord will not wait forever.**
+  Every fourth day the longest-held captive lord escapes at dawn:
+  respawn queued, −5 opinion (he remembers the rope), chronicled.
+  Captured lords become a decision with a clock — ransom for 200,
+  release for honor and friendship, or lose both options to the
+  night. `tests/lord_escape.txt`.
 
 ## Sequencing guidance
 

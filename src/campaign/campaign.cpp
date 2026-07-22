@@ -2360,6 +2360,22 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 break;   // one betrayal a dawn is drama enough
             }
 
+            // A lord will not wait forever (V93): every fourth day, the
+            // longest-held captive lord slips his keepers at dawn — he rides
+            // again, and he remembers the rope at −5. Ransom or release
+            // while the choice is still yours. TODO(balance): the cadence.
+            if (!gs.capturedLords.empty() && gs.day % 4 == 0) {
+                const auto pl = gs.capturedLords.front();
+                gs.capturedLords.erase(gs.capturedLords.begin());
+                LordOpinion(gs, pl.first) -= 5;
+                gs.lordRespawns.push_back({ pl.second, pl.first, 10.0f });
+                gs.resultText = TextFormat(
+                    "LORD %s HAS ESCAPED your keeping. He remembers the rope.",
+                    pl.first.c_str());
+                Chronicle(gs, TextFormat("Lord %s escaped captivity.",
+                                         pl.first.c_str()));
+            }
+
             // Captives slip the rope (V77): a prisoner train larger than
             // half the warband is under-guarded — one man escapes at every
             // dawn until you ransom, press, or grow. TODO(balance).
