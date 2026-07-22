@@ -708,6 +708,44 @@ void LoadDefaultContent(Content& c) {
         }
     }
 
+    // Moddable armour (V99): assets/armor.cfg appends pieces before
+    // troops.cfg, closing the kit —
+    //   armor <id> <Name_with_underscores> <slot> <soak>
+    // Slots: head body hands feet.
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/armor.cfg"
+                : "assets/armor.cfg",
+            "assets/armor.cfg", "../assets/armor.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name, slot;
+                int soak = 1;
+                if (!(ss >> tag) || tag != "armor") continue;
+                if (!(ss >> id >> name >> slot >> soak)) continue;
+                if (c.armor.find(id.c_str()) >= 0) continue;
+                for (char& ch : name) if (ch == '_') ch = ' ';
+                const EquipSlot es = slot == "head"  ? EquipSlot::Head
+                                   : slot == "hands" ? EquipSlot::Hands
+                                   : slot == "feet"  ? EquipSlot::Feet
+                                                     : EquipSlot::Body;
+                ArmorDef ad = Armor(id.c_str(), name.c_str(), es,
+                                    Color{ 150, 140, 128, 255 });
+                ad.armor = soak;
+                c.armor.add(ad);
+            }
+        }
+    }
+
     // Moddable troops (V85): assets/troops.cfg mints soldier types and
     // enlists them into rosters, no code:
     //   troop <id> <Name_with_underscores> <weapon-id> <armor-id> <wage> <cost> [mounted]

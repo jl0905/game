@@ -34,6 +34,10 @@ Wares: `good <id> <Name_with_underscores> <basePrice> <raw 0|1>` — raw goods a
 
 World events, one per line, joining the day rotation beside the built-in three: `event <id> <Name_with_underscores> <News_with_underscores_%s> <prosperityDelta> <stockDelta> <spawnParties> <poolDelta>`. `%s` in the news becomes the struck settlement's name.
 
+### assets/armor.cfg (V99)
+
+Armour pieces, one per line, loading before troops.cfg: `armor <id> <Name_with_underscores> <slot> <soak>` with slots `head body hands feet`. Soak follows the V15 identity tiers (cloth 1 … plate 6); pieces drop as loot, wear in the paper-doll, and soak through `ApplyArmor` like any built-in.
+
 ### assets/weapons.cfg (V98)
 
 Arms, one per line, loading before troops.cfg so modded troops can wield modded steel: `weapon <id> <Name_with_underscores> <class> <damage> <reach> [missileRange missileSpeed]`. Classes: `onehanded twohanded polearm axe ranged` (ranged takes the two extra numbers); reach 0 keeps the class default.

@@ -1,0 +1,8 @@
+# Moddable armour (V99): assets/armor.cfg mints pieces (slot + soak tier),
+# loading before troops.cfg. The shipped Brigandine (body, soak 5, between
+# mail and plate) rides a fixture inventory by save id: expect
+# "item: armor brigandine" in the dump - wearable in the paper-doll, soaked
+# by ApplyArmor like any built-in.
+load tests/fixtures/brig.owb
+state
+quit

@@ -1330,6 +1330,11 @@ this is the feedback the flat numbers were waiting for.
   Warhammer is swung by the shipped Hammerman in Vaeling's levy — a
   modded troop wielding a modded weapon, zero code.
   `tests/modded_weapon.txt`.
+- [x] **V99. Iteration ninety-nine — plate from a cfg.** Armour joins,
+  completing the kit: `armor.cfg` (slot + soak tier) loads before
+  troops.cfg; the shipped Brigandine (body 5, between mail and plate)
+  rides a fixture inventory by id. Every piece of content the combat
+  model consumes is now mintable from assets/. `tests/modded_armor.txt`.
 
 ## Sequencing guidance
 
