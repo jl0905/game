@@ -478,6 +478,64 @@ void LoadDefaultContent(Content& c) {
     freecompany.mercenary = true;      // their steel is for sale (V29)
     c.factions.add(freecompany);
 
+    // Moddable factions (V104): assets/factions.cfg mints whole crowns —
+    //   faction <id> <Name_with_underscores> <r> <g> <b> <behavior> [kingdom] [mercenary]
+    //   lord <faction-id> <lord-name>
+    //   war <faction-id> <faction-id>       (applied with the relations below)
+    // Behaviors: patrol aggressive passive. Rosters default to recruits;
+    // enlist real levies via troops.cfg `recruit` lines (which load later).
+    std::vector<std::pair<std::string, std::string>> cfgWars;
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/factions.cfg"
+                : "assets/factions.cfg",
+            "assets/factions.cfg", "../assets/factions.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag;
+                if (!(ss >> tag)) continue;
+                if (tag == "faction") {
+                    std::string id, name, behavior, flag;
+                    int r = 128, g = 128, b = 128;
+                    if (!(ss >> id >> name >> r >> g >> b >> behavior)) continue;
+                    if (c.factions.find(id.c_str()) >= 0) continue;
+                    for (char& ch : name) if (ch == '_') ch = ' ';
+                    FactionDef fd;
+                    fd.id = id; fd.name = name;
+                    fd.color = { (unsigned char)r, (unsigned char)g,
+                                 (unsigned char)b, 255 };
+                    fd.behavior = behavior == "aggressive" ? PartyBehavior::Aggressive
+                                : behavior == "passive"    ? PartyBehavior::Passive
+                                                           : PartyBehavior::Patrol;
+                    fd.lordPartySize = 150;   // TODO(balance)
+                    fd.roster = { t_recruit };   // a levy until troops.cfg enlists
+                    while (ss >> flag) {
+                        if (flag == "kingdom")   fd.kingdom = true;
+                        if (flag == "mercenary") fd.mercenary = true;
+                    }
+                    c.factions.add(fd);
+                } else if (tag == "lord") {
+                    std::string fid, lname;
+                    if (!(ss >> fid >> lname)) continue;
+                    const int fh = c.factions.find(fid.c_str());
+                    if (fh >= 0) c.factions[fh].lords.push_back(lname);
+                } else if (tag == "war") {
+                    std::string a, b2;
+                    if (ss >> a >> b2) cfgWars.push_back({ a, b2 });
+                }
+            }
+        }
+    }
+
     // ---- Trade goods (direction E1) --------------------------------------
     // Stackable market wares. basePrice is a flat placeholder; per-town
     // spreads live on Town::priceOffset. TODO(balance): all prices.
@@ -657,6 +715,13 @@ void LoadDefaultContent(Content& c) {
     war(f_vaeling, f_sarleon);         // the sea-kings raid the rival crown
     war(f_vaeling, f_patrol);          // ...and the old order's coasts alike;
                                        // they have no quarrel with you (yet).
+
+    // Wars declared in factions.cfg (V104) join the base table here.
+    for (const auto& wp : cfgWars) {
+        const int a = c.factions.find(wp.first.c_str());
+        const int b = c.factions.find(wp.second.c_str());
+        if (a >= 0 && b >= 0 && a != b) war(a, b);
+    }
 
     // Moddable weapons (V98): assets/weapons.cfg appends arms after every
     // built-in (no handle moves) and before troops.cfg, so modded troops

@@ -1361,6 +1361,13 @@ this is the feedback the flat numbers were waiting for.
   Shipped: Halberdier → Hammerman (a cfg troop promoting into a cfg
   troop wielding a cfg weapon). The V45 paid-stripes flow applies
   unchanged. `tests/modded_upgrade.txt`.
+- [x] **V104. Iteration one-oh-four — crowns from a cfg.** Factions join
+  the modding surface: `factions.cfg` mints them (color, behavior,
+  kingdom/mercenary flags), names their lords, and declares wars that
+  merge into the base table. Ships live: the Nords, Lord Ragnar,
+  at war with Sarleon, fielding cfg hammermen via troops.cfg —
+  roamers, hosts and town rotation picked them up on sight. quests.txt
+  meaning-checked through the world shift. `tests/modded_faction.txt`.
 
 ## Sequencing guidance
 

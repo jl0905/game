@@ -1,0 +1,10 @@
+# Moddable factions (V104): assets/factions.cfg mints whole crowns - color,
+# behavior, kingdom flag, lords, wars. The shipped Nords (Lord Ragnar, war
+# with Sarleon, hammermen levy via troops.cfg) spawn as roamers and a
+# 150-man host and take a seat in the town rotation. Expect faction=nords
+# parties and lord=Ragnar in the dump.
+seed 42
+state
+wait 40
+state
+quit
