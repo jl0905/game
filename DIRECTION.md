@@ -1094,6 +1094,12 @@ this is the feedback the flat numbers were waiting for.
   excluded) — time trains the line, paid stripes cash it in. One
   registry block plus a three-line day-tick hook.
   `tests/drillmaster.txt` on a clock-59 fixture pins the exact +5.
+- [x] **V58. Iteration fifty-eight — deployment ghosts.** During the
+  planning pause (and whenever the ~ strategy menu is open mid-fight),
+  a translucent blue disc marks every own soldier's formation slot —
+  computed by the same anchor rules the AI obeys, so what you see is
+  exactly where they'll stand. Shape, ranks and orders become visual
+  dials instead of imagined ones. Draw-only; bench holds ~20.8 ms.
 
 ## Sequencing guidance
 

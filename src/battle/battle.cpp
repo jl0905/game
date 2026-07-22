@@ -2467,6 +2467,26 @@ void BattleDraw(const Content& c) {
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
 
+    // Deployment ghosts (V58): while the field holds its breath — or the
+    // ~ strategy menu is open mid-fight — show where the chosen shape will
+    // actually stand: one translucent disc per own soldier's formation
+    // slot, mirroring the AI's anchor rules exactly.
+    if (B.deploying || B.showMenu) {
+        FormationType ghostForm = B.formation;
+        Vector3       ghostAnchor = B.pPos;
+        if (B.order == OrderType::Charge) ghostForm = FormationType::Line;
+        else if (B.order == OrderType::Hold) ghostAnchor = B.holdPos;
+        if (ghostForm == FormationType::Charge) ghostForm = FormationType::Line;
+        for (const Soldier& s : B.soldiers) {
+            if (s.team != Team::Player || s.ally || s.hp <= 0) continue;
+            Vector3 g = FormationTarget(ghostForm, B.ranks, ghostAnchor,
+                                        B.yaw, s.slot, B.ownCount);
+            g.y = B.terrain.HeightAt(g.x, g.z);
+            DrawCylinder({ g.x, g.y + 0.03f, g.z }, 0.55f, 0.55f, 0.03f, 10,
+                         Fade(Color{ 80, 160, 255, 255 }, 0.35f));
+        }
+    }
+
     // The standards (V32): a tall pole and pennant over each bannerman,
     // drawn at any distance — the line reads from across the field.
     for (int side = 0; side < 2; ++side) {
