@@ -1,0 +1,62 @@
+# Single combat (V102): D at deployment (or the horn's grace, headless)
+# when a lord waits across the field. The armies freeze - no steps, no
+# swings, no arrows - while the champion charges YOU. Kill him and the
+# lines crash with your side +25 nerve (his host takes the V101 lord-fall
+# shock); go down and your side is shaken instead. Expect duel=1 while it
+# holds, then kills=1 and duel=0 after 25 blind overheads fell Lord Gorak.
+load tests/fixtures/lordfall.owb
+walk 1 0.5 1
+duel
+tick 2
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+attack down
+tick 1
+state
+quit

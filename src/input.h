@@ -103,4 +103,5 @@ struct BattleInput {
     bool    pickup          = false;   // G: take up a fallen man's weapon (V39)
     bool    autoResolve     = false;   // N: send them in without you (V41)
     bool    warCry          = false;   // V: the horn that turns routed men (V66)
+    bool    duel            = false;   // D at deployment: single combat (V102)
 };

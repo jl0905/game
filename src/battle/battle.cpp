@@ -722,6 +722,7 @@ struct BattleState {
     int   bannerIdx[2] = { -1, -1 };   // [0]=player side, [1]=enemy side
     int   championIdx  = -1;           // the enemy lord in person (V101)
     bool  lordFell     = false;
+    bool  dueling      = false;        // single combat (V102): armies hold
     float kickCd = 0;                  // the boot's recovery (V33)
     int   heroKicksLanded = 0;
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
@@ -1108,6 +1109,13 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     cmd.newSwing    = s.swing > 0 ? s.swing - dt * 4.0f : 0.0f;
     cmd.newTarget   = s.target;
 
+    // Single combat (V102): while the duel holds, every man but the
+    // champion stands and watches — no steps, no swings, no arrows.
+    if (B.dueling && i != B.championIdx) {
+        cmd.newCooldown = s.cooldown;   // cooldowns hold too
+        return cmd;
+    }
+
     // A broken soldier runs for his own field edge and never strikes back.
     if (s.routed) {
         cmd.newTarget = -1;
@@ -1171,7 +1179,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 
     Vector3 goal;
     bool holding = false;
-    if (enemyInLine) {
+    if (B.dueling && i == B.championIdx) {
+        goal = B.pPos;   // single combat (V102): the lord comes for YOU
+    } else if (enemyInLine) {
         goal = FormationTarget(FormationType::Line, 4, { 0, s.pos.y, 30.0f }, PI,
                                s.slot, B.enemyCount);
         holding = true;
@@ -1591,6 +1601,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_G))     in.pickup = true;        // scavenge (V39)
     if (IsKeyPressed(KEY_N))     in.autoResolve = true;   // fight on paper (V41)
     if (IsKeyPressed(KEY_V))     in.warCry = true;        // the horn (V66)
+    if (IsKeyPressed(KEY_D) && B.deploying) in.duel = true;   // single combat (V102)
     // Strategy-menu rows click (V65): while the ~ menu is open, LMB picks
     // rows instead of readying a swing.
     if (B.showMenu && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -1645,6 +1656,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             SfxPlay(Sfx::WarCry);
         }
         if (in.autoResolve) AutoResolve(c);   // fight it on paper (V41)
+        if (in.duel && B.championIdx >= 0) {  // single combat (V102)
+            B.deploying = false;
+            B.dueling   = true;
+            B.cryTimer  = 2.2f;
+            B.cryText   = "SINGLE COMBAT! THE ARMIES HOLD.";
+            Feed("You challenge the lord");
+            SfxPlay(Sfx::WarCry);
+        }
         return true;   // a held breath: no movement, no arrows, no clocks
     }
 
@@ -1652,6 +1671,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     // grace period stands in for it.
     if (in.autoResolve && !B.over && B.introTimer > 0 && !B.setup.arena)
         AutoResolve(c);
+    if (in.duel && !B.over && !B.dueling && B.introTimer > 0 &&
+        B.championIdx >= 0 && !B.setup.arena) {   // headless duel window (V102)
+        B.dueling  = true;
+        B.cryTimer = 2.2f;
+        B.cryText  = "SINGLE COMBAT! THE ARMIES HOLD.";
+        Feed("You challenge the lord");
+        SfxPlay(Sfx::WarCry);
+    }
 
     // ---------- player intent ----------
     Vector3 fwd = { sinf(B.yaw), 0, cosf(B.yaw) };
@@ -2085,6 +2112,29 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 wave(B.reserveOwn,   Team::Player, false, -55.0f);
                 wave(B.reserveAlly,  Team::Player, true,  -60.0f);
                 wave(B.reserveEnemy, Team::Enemy,  false,  55.0f);
+            }
+
+            // The duel resolves (V102): the champion dead frees the field
+            // with your side roaring; the hero beaten down frees it with
+            // your side shaken. Either way the lines crash.
+            if (B.dueling) {
+                if (B.championIdx < 0 || B.soldiers[B.championIdx].hp <= 0) {
+                    B.dueling  = false;
+                    B.cryTimer = 2.2f;
+                    B.cryText  = "THE DUEL IS YOURS! THE LINES CRASH!";
+                    for (Soldier& w : B.soldiers)
+                        if (w.hp > 0 && w.team == Team::Player)
+                            w.nerve = fminf(NERVE_MAX, w.nerve + 25.0f);
+                    Feed("You win the duel");
+                } else if (B.pHp <= 0 || B.heroDown) {
+                    B.dueling  = false;
+                    B.cryTimer = 2.2f;
+                    B.cryText  = "YOUR CHAMPION IS DOWN! THE LINES CRASH!";
+                    for (Soldier& w : B.soldiers)
+                        if (w.hp > 0 && w.team == Team::Player)
+                            w.nerve -= 25.0f;
+                    Feed("You lose the duel");
+                }
             }
 
             // The lord falls (V101): the whole host feels the heart go out
@@ -2940,6 +2990,11 @@ void BattleDraw(const Content& c) {
                          "SPACE sounds the horn   [N] send them in without you";
         ui::Text(d2, (GetScreenWidth() - ui::Measure(d2, 20)) / 2,
                  GetScreenHeight() / 3 + 62, 20, RAYWHITE);
+        if (B.championIdx >= 0) {   // a lord waits across the field (V102)
+            const char* d3 = "[D] challenge the lord to single combat";
+            ui::Text(d3, (GetScreenWidth() - ui::Measure(d3, 20)) / 2,
+                     GetScreenHeight() / 3 + 88, 20, GOLD);
+        }
     }
     // The feed (V88): the fight's last moments, bottom-right, fading out.
     if (!B.over) {
@@ -3190,6 +3245,7 @@ BattleView GetBattleView() {
     v.heroKills   = B.heroKills;
     v.enemyName   = B.setup.enemyName;
     v.heroKicks   = B.heroKicksLanded;
+    v.dueling     = B.dueling;
     v.heroShieldHp = B.pShieldHp;
     for (int r : B.reserveOwn)   v.reservesOwn += r;
     for (int r : B.reserveAlly)  v.reservesOwn += r;
