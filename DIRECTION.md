@@ -977,6 +977,13 @@ this is the feedback the flat numbers were waiting for.
   "[G] take up the fallen weapon" prompt appears in reach and a gold
   TAKEN UP caption confirms. Harness `pickup`; verified spear-for-sword
   off a fallen knight.
+- [x] **V40. Iteration forty — cull what the camera can't see.** Frustum
+  culling for the battle draw: soldiers, corpses, blood stains and
+  ground props meaningfully behind the camera (dot < −0.25 beyond a
+  12u safety bubble) are skipped before any GPU work. The 2000-man
+  bench drops 33.8 → 20.5 ms avg (p99 40.3 → 25.7) — a 40% frame-time
+  win from the first entry on the GPU roadmap. Draw-only; standards
+  stay visible at any angle.
 
 ## Sequencing guidance
 

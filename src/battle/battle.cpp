@@ -2174,6 +2174,16 @@ void BattleDraw(const Content& c) {
     cam.fovy = 60;
     cam.projection = CAMERA_PERSPECTIVE;
 
+    // Frustum cull (V40): anything meaningfully behind the camera never
+    // reaches the GPU. A wide margin (dot < -0.25, and never within 12u)
+    // keeps shoulders and swing trails from popping at the frame edge.
+    const Vector3 camFwd = Vector3Normalize(Vector3Subtract(cam.target, cam.position));
+    auto BehindCamera = [&](Vector3 p) {
+        const Vector3 to = Vector3Subtract(p, cam.position);
+        if (Vector3LengthSqr(to) < 144.0f) return false;   // 12u safety bubble
+        return Vector3DotProduct(Vector3Normalize(to), camFwd) < -0.25f;
+    };
+
     // ================= DRAW =================
     BeginDrawing();
     // The sky follows the campaign clock (O3): blue noon, amber dusk,
@@ -2265,6 +2275,7 @@ void BattleDraw(const Content& c) {
 
     for (const Soldier& s : B.soldiers) {
         if (s.escaped) continue;   // off the field, alive
+        if (BehindCamera(s.pos)) continue;   // never reaches the GPU (V40)
         if (s.hp <= 0) {
             const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
             DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
@@ -2329,9 +2340,11 @@ void BattleDraw(const Content& c) {
     }
 
     // Where men fell (V12): dark stains, flat on the ground, all battle long.
-    for (const Vector3& st : B.stains)
+    for (const Vector3& st : B.stains) {
+        if (BehindCamera(st)) continue;   // (V40)
         DrawCylinder({ st.x, B.terrain.HeightAt(st.x, st.z) + 0.02f, st.z },
                      0.7f, 0.9f, 0.015f, 8, Color{ 92, 24, 20, 200 });
+    }
 
     // Ground dressing (V7): drawn only within the lodDistance setting of
     // the hero — the far field stays cheap.
@@ -2340,6 +2353,7 @@ void BattleDraw(const Content& c) {
         for (const Vector4& p : B.props) {
             const float dx = p.x - B.pPos.x, dz = p.z - B.pPos.z;
             if (dx * dx + dz * dz > lod * lod) continue;
+            if (BehindCamera({ p.x, p.y, p.z })) continue;   // (V40)
             if (p.w < 0.5f) {   // a tuft: two crossed blades
                 DrawCube({ p.x, p.y + 0.22f, p.z }, 0.5f, 0.44f, 0.05f,
                          Color{ 64, 96, 48, 255 });

@@ -106,6 +106,7 @@ past ~15%.
 | post-G1 spatial grid | 38.0 | — | the original baseline |
 | Track N end (N6) | 33.3 | 39.5 | lord hosts raised to 150 |
 | Track R end | 33.8 | 40.3 | rain combat, deployment, events all landed free |
+| V40 frustum cull | 20.5 | 25.7 | behind-camera soldiers/props/stains skipped |
 
 ## How to run a tuning session
 
