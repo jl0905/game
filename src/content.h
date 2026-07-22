@@ -223,6 +223,11 @@ struct MapDef {
     BiomeSpec             biome;
     float                 roadLinkDist = 1350.0f;   // towns closer than this are joined
     float                 roadWidth    = 20.0f;     // within this of a link = on the road
+    // The storm (V62/V68): moddable weather. Radius of the cell, its
+    // per-dawn drift, and where it rolls in from at world start.
+    float   stormRadius = 250.0f;                   // TODO(balance)
+    Vector2 stormDrift  = { 90.0f, -60.0f };
+    Vector2 stormStart  = { -1.0f, -1.0f };         // <0 = fraction defaults
     std::vector<std::string> lordNames =            // pool for player-raised lords (F3)
         { "Bram", "Edric", "Sable", "Corwin" };
 };

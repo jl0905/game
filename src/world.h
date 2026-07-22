@@ -386,10 +386,10 @@ inline bool OnRoad(const GameState& gs, Vector2 p) {
 // Travel pace at a point: forests and mountains slow every party (player and
 // AI alike); a road negates the penalty. Factors live in the map (K8).
 // The storm (V62): a weather cell that drifts across the map. Inside its
-// reach travel slows and battles fight in the rain.
-constexpr float STORM_RADIUS = 250.0f;   // TODO(balance)
+// reach travel slows and battles fight in the rain. Radius and drift are
+// moddable via map.cfg `storm` (V68).
 inline bool InStorm(const GameState& gs, Vector2 p) {
-    return Vector2Distance(gs.stormPos, p) < STORM_RADIUS;
+    return Vector2Distance(gs.stormPos, p) < gs.content.map.stormRadius;
 }
 
 inline float TravelSpeedFactor(const GameState& gs, Vector2 p) {

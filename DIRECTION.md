@@ -1151,6 +1151,11 @@ this is the feedback the flat numbers were waiting for.
   scavenge, swap, mount, orders and strategy — and the right edge
   carries live readiness chips for the two cooldown moves (HORN READY
   in gold, or the seconds left). Draw-only.
+- [x] **V68. Iteration sixty-eight — the storm goes moddable.** map.cfg
+  gains `storm RADIUS DRIFTX DRIFTY [STARTX STARTY]` — the weather
+  cell's reach, per-dawn drift and spawn point are mod data now
+  (MODDING.md documents it; `InStorm` and the map draw read the
+  config). Two storms of house rules away from a monsoon world.
 
 ## Sequencing guidance
 

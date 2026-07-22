@@ -24,6 +24,7 @@ Documented in the file itself. One line per fact:
 | `lair faction X Y` | | a bandit den that breeds parties until stormed |
 | `biome …` | 8 floats | noise frequencies, forest/mountain thresholds, march-speed factors — drives the map paint, travel speed AND battlefield generation |
 | `road linkDist width` | | towns closer than `linkDist` are joined; within `width` of a link parties march at full pace |
+| `storm radius driftX driftY [startX startY]` | | the drifting weather cell (V62/V68): reach, per-dawn drift, and optional spawn point — inside it travel runs ×0.75 and battles fight in the rain |
 | `lordnames A B C…` | one-token names | the pool for player-raised lords; pool size = the raised-lord cap |
 
 ### `assets/settings.cfg` — presentation

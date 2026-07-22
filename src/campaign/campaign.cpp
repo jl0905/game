@@ -649,9 +649,11 @@ void CampaignInit(GameState& gs) {
     gs.truceDays.assign(gs.hostile.size(), 0.0f);
     RefreshWarMarkups(gs);   // war prices from day one (V31)
 
-    // The storm rolls in from a corner (V62).
-    gs.stormPos = { MAP_SIZE * 0.25f, MAP_SIZE * 0.7f };
-    gs.stormVel = { 90.0f, -60.0f };   // TODO(balance): drift per day
+    // The storm rolls in from a corner (V62) — or wherever the mod says (V68).
+    gs.stormPos = c.map.stormStart.x >= 0
+                      ? c.map.stormStart
+                      : Vector2{ MAP_SIZE * 0.25f, MAP_SIZE * 0.7f };
+    gs.stormVel = c.map.stormDrift;
 }
 
 // A party index is usable as a live entry in gs.parties.
@@ -2715,11 +2717,11 @@ void CampaignDraw(const GameState& gs) {
     {
         const float breathe = 1.0f + 0.04f * sinf((float)GetTime() * 1.2f);
         DrawCircleGradient((int)gs.stormPos.x, (int)gs.stormPos.y,
-                           STORM_RADIUS * breathe,
+                           c.map.stormRadius * breathe,
                            Fade(Color{ 70, 80, 100, 255 }, 0.4f),
                            Fade(Color{ 70, 80, 100, 255 }, 0.0f));
         DrawCircleLines((int)gs.stormPos.x, (int)gs.stormPos.y,
-                        STORM_RADIUS, Fade(Color{ 120, 132, 156, 255 }, 0.35f));
+                        c.map.stormRadius, Fade(Color{ 120, 132, 156, 255 }, 0.35f));
     }
 
     // The task's destination pulses gold on the map (V60).

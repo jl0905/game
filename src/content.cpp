@@ -557,6 +557,9 @@ void LoadMapConfig(Content& c, const char* path) {
                 m.biome = b;
         }
         else if (tag == "road") ss >> m.roadLinkDist >> m.roadWidth;
+        else if (tag == "storm")   // storm RADIUS DRIFTX DRIFTY [STARTX STARTY]
+            if (ss >> m.stormRadius >> m.stormDrift.x >> m.stormDrift.y)
+                ss >> m.stormStart.x >> m.stormStart.y;   // optional
         else if (tag == "lordnames") {
             std::vector<std::string> names;
             std::string n;
