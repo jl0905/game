@@ -2641,8 +2641,12 @@ void CampaignDraw(const GameState& gs) {
     ui::Text(clock, GetScreenWidth() - ui::Measure(clock, 20) - 12, 8, 20,
              gs.timeFlowing ? LIME : Fade(GOLD, 0.9f));
 
-    if (!gs.resultText.empty())
-        ui::Text(gs.resultText.c_str(), 10, 42, 20, GOLD);
+    // News rides its own line (U13): below the what-now line, never on it.
+    if (!gs.resultText.empty()) {
+        DrawRectangle(0, 62, ui::Measure(gs.resultText.c_str(), 20) + 20, 26,
+                      Fade(BLACK, 0.45f));
+        ui::Text(gs.resultText.c_str(), 10, 66, 20, GOLD);
+    }
 
     // Prompt to join a nearby clash.
     if (nearSkirmish >= 0 && gs.player.totalTroops() > 0) {

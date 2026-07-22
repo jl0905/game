@@ -20,6 +20,10 @@ void LoadFonts();
 void UnloadFonts();
 
 // Drop-in replacements for raylib's DrawText / MeasureText, using the body font.
+// Global text scale (U13): applied inside Text/Title AND their measures so
+// layouts stay coherent. Default 1.2; fonts.cfg `scale = ...` overrides.
+void SetTextScale(float s);
+
 void Text(const char* text, int x, int y, int fontSize, Color color);
 int  Measure(const char* text, int fontSize);
 

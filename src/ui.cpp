@@ -100,6 +100,10 @@ void LoadFonts() {
     gBody  = LoadRole(dir, ConfigValue(cfg, "body"),  atlas);
     gTitle = LoadRole(dir, ConfigValue(cfg, "title"), atlas);
 
+    // Global text scale (U13): moddable, clamped sane.
+    const std::string sc = ConfigValue(cfg, "scale");
+    if (!sc.empty()) SetTextScale((float)std::atof(sc.c_str()));
+
     if (cfg) UnloadFileText(cfg);
 }
 
@@ -113,20 +117,35 @@ void UnloadFonts() {
 const Font& BodyFont()  { return gBody.texture.id ? gBody  : gBody = GetFontDefault(); }
 const Font& TitleFont() { return gTitle.texture.id ? gTitle : gTitle = GetFontDefault(); }
 
+// Global text scale (U13, playtest: "bigger on all screens"). Every draw
+// AND every measure route through it, so centred layouts and hover bands
+// stay coherent as the scale moves. Moddable via fonts.cfg `scale = 1.2`.
+float gScale = 1.2f;
+
+void SetTextScale(float s) {
+    gScale = s < 0.8f ? 0.8f : s > 1.6f ? 1.6f : s;
+}
+
+static float Sz(int fontSize) { return fontSize * gScale; }
+
 void Text(const char* text, int x, int y, int fontSize, Color color) {
-    DrawTextEx(BodyFont(), text, { (float)x, (float)y }, (float)fontSize, Spacing(fontSize), color);
+    DrawTextEx(BodyFont(), text, { (float)x, (float)y }, Sz(fontSize),
+               Spacing(fontSize) * gScale, color);
 }
 
 int Measure(const char* text, int fontSize) {
-    return (int)MeasureTextEx(BodyFont(), text, (float)fontSize, Spacing(fontSize)).x;
+    return (int)MeasureTextEx(BodyFont(), text, Sz(fontSize),
+                              Spacing(fontSize) * gScale).x;
 }
 
 void Title(const char* text, int x, int y, int fontSize, Color color) {
-    DrawTextEx(TitleFont(), text, { (float)x, (float)y }, (float)fontSize, Spacing(fontSize), color);
+    DrawTextEx(TitleFont(), text, { (float)x, (float)y }, Sz(fontSize),
+               Spacing(fontSize) * gScale, color);
 }
 
 int MeasureTitle(const char* text, int fontSize) {
-    return (int)MeasureTextEx(TitleFont(), text, (float)fontSize, Spacing(fontSize)).x;
+    return (int)MeasureTextEx(TitleFont(), text, Sz(fontSize),
+                              Spacing(fontSize) * gScale).x;
 }
 
 }  // namespace ui
