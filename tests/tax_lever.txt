@@ -1,0 +1,12 @@
+# The tax lever (V55): T on the kingdom ledger cycles LIGHT / CUSTOMARY /
+# HEAVY. Heavy = +35% settlement income but your towns lose prosperity every
+# other day; light = -25% income and the land blooms (+1 extra). Seed 42:
+# purse income 50 -> 67 (heavy) -> 37 (light). Saved via the tax tag.
+seed 42
+state
+ledger
+tax
+state
+tax
+state
+quit

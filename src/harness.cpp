@@ -293,6 +293,7 @@ struct Harness {
                 std::printf("bank: town=%d gold=%d\n", bi, gs.bankAt[bi]);
         {
             const DayLedger L = ComputeLedger(gs);
+            std::printf("tax=%d\n", gs.taxRate);
             std::printf("purse: income=%d enterprise=%d wages=%d retainers=%d "
                         "garrisons=%d net=%+d\n", L.income, L.enterprise,
                         L.wages, L.lordPay, L.garrisonPay, L.net());
@@ -686,6 +687,10 @@ int RunScript(const char* path) {
             // Dismount / remount (U11) — Z in the saddle or beside a horse.
             BattleInput bin; bin.mountToggle = true;
             h.Step(CampaignInput{}, bin);
+        } else if (cmd == "tax") {
+            // Cycle the tax lever (V55) — T on the kingdom ledger.
+            CampaignInput cin; cin.cycleTax = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "press") {
             // Press a captive into the warband (V36) — party screen R.
             CampaignInput cin; cin.pressPrisoner = true;

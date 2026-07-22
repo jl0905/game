@@ -183,6 +183,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     for (const std::string& ch : gs.chronicle)
         f << "chron " << ch << '\n';
 
+    // The tax lever (V55).
+    if (gs.taxRate != 1) f << "tax " << gs.taxRate << '\n';
+
     // Hungry days on the march (V37).
     if (gs.hungryDays > 0) f << "hungry " << gs.hungryDays << '\n';
 
@@ -482,6 +485,8 @@ bool LoadGame(GameState& gs, const char* path) {
             std::string g;
             ss >> g;
             if (!g.empty()) gs.feastGuests.push_back(g);
+        } else if (tag == "tax") {
+            ss >> gs.taxRate;
         } else if (tag == "chron") {
             std::string rest;
             std::getline(ss, rest);

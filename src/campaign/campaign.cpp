@@ -685,7 +685,9 @@ DayLedger ComputeLedger(const GameState& gs) {
     for (const Town& t : gs.towns) {
         if (t.owner != c.playerFaction) continue;
         if (t.fiefLord.empty()) {
-            L.income      += SettlementIncome(t.type) * t.prosperity / 100;
+            L.income      += SettlementIncome(t.type) * t.prosperity / 100 *
+                             (gs.taxRate == 0 ? 75 : gs.taxRate == 2 ? 135 : 100) /
+                             100;   // the tax lever (V55). TODO(balance)
             L.garrisonPay += (t.garrisonSize() + 1) / 2;
         }
     }
@@ -1274,6 +1276,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (gs.screen == Screen::Kingdom) {
         for (int r = 0; r < 9; ++r)   // sue for peace by war row (S1)
             if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
+        if (IsKeyPressed(KEY_T)) in.cycleTax = true;   // the tax lever (V55)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_B))
             in.leaveSettlement = true;
         return in;
@@ -2424,6 +2427,14 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                         t.prosperity = std::min(150, t.prosperity + 1);
                     else if (gs.day % 2 == 0)
                         t.prosperity = std::max(60, t.prosperity - 1);
+                    // The tax lever bites the land (V55): your own towns
+                    // bloom under light taxes, wither under heavy ones.
+                    if (t.owner == c.playerFaction && gs.day % 2 == 1) {
+                        if (gs.taxRate == 2)
+                            t.prosperity = std::max(60, t.prosperity - 1);
+                        else if (gs.taxRate == 0)
+                            t.prosperity = std::min(150, t.prosperity + 1);
+                    }
                 }
             }
 
@@ -3937,6 +3948,17 @@ bool TitleUpdate(GameState& gs, const CampaignInput& in) {
 void KingdomUpdate(GameState& gs, const CampaignInput& in) {
     if (in.leaveSettlement) { gs.screen = Screen::Campaign; return; }
 
+    // The tax lever (V55): light / customary / heavy, cycled in place.
+    if (in.cycleTax) {
+        gs.taxRate = (gs.taxRate + 1) % 3;
+        static const char* NAMES[] = { "LIGHT", "CUSTOMARY", "HEAVY" };
+        gs.resultText = TextFormat(
+            "Taxes are now %s. %s", NAMES[gs.taxRate],
+            gs.taxRate == 2   ? "The ledger fattens; the land withers."
+            : gs.taxRate == 0 ? "The land blooms; the ledger thins."
+                              : "The old rates, the old balance.");
+    }
+
     // Sue for peace (S1): pick a war row (1-9), pay tribute scaled by its
     // score, and the guns fall silent under an ordinary truce. Wars you
     // start, you can end. TODO(balance): tribute; AI always accepts (v1).
@@ -3986,6 +4008,13 @@ void KingdomDraw(const GameState& gs) {
                                        : "Free captain";
     ui::Text(TextFormat("%s      Renown %d   Honor %+d      Gold %d", rank,
                         gs.renown, gs.honor, gs.gold), lx, 100, 22, RAYWHITE);
+    {   // the tax lever (V55)
+        static const char* TAXN[] = { "LIGHT", "CUSTOMARY", "HEAVY" };
+        ui::Text(TextFormat("[T] Taxes: %s  (heavy fattens the ledger, light "
+                            "grows the land)", TAXN[gs.taxRate % 3]),
+                 lx, 128 + (gs.spouseFaction >= 0 ? 24 : 0), 18,
+                 gs.taxRate == 1 ? Fade(RAYWHITE, 0.75f) : GOLD);
+    }
     if (gs.spouseFaction >= 0)
         ui::Text(TextFormat("Wed to Lady %s of %s", gs.spouseName.c_str(),
                             c.factions[gs.spouseFaction].name.c_str()),

@@ -202,6 +202,11 @@ struct GameState {
     // into battle with shaken nerve.
     int hungryDays = 0;
 
+    // Tax policy (V55): 0 = light, 1 = customary, 2 = heavy. Heavy taxes
+    // fatten the ledger (+35%) but grind your towns' prosperity; light
+    // taxes (−25%) let the land bloom. Set on the kingdom ledger (T).
+    int taxRate = 1;
+
     // The chronicle (V50): the campaign's own history, newest last —
     // conquests, oaths, crowns, contracts, defeats. Capped; day-stamped.
     std::vector<std::string> chronicle;

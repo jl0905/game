@@ -1076,6 +1076,13 @@ this is the feedback the flat numbers were waiting for.
   `HasPerk` helper, three effect sites, `perks:` in the dump — a new
   perk is a string plus one hook. Makes each hire a strategic pick,
   not a stat stick. `tests/perks.txt`.
+- [x] **V55. Iteration fifty-five — the tax lever.** T on the kingdom
+  ledger cycles LIGHT/CUSTOMARY/HEAVY: heavy = +35% settlement income
+  but your towns wither (−1 prosperity every other day, on top of the
+  V53 drift); light = −25% income and the land blooms. Prosperity then
+  feeds prices, recruit pools and income itself — a compounding policy
+  choice, saved (`tax` tag), `tax=` in the dump. `tests/tax_lever.txt`
+  pins 50 → 67 → 37 income.
 
 ## Sequencing guidance
 
