@@ -1146,6 +1146,11 @@ this is the feedback the flat numbers were waiting for.
   RE-FORMS!" The player's answer to the K4 morale spiral: banners fall,
   lines crack, and now a leader's voice can stitch them back once in a
   while. Harness `warcry`.
+- [x] **V67. Iteration sixty-seven — every door on one battle line.** The
+  T7 key-footer rule brought to battle: a dark band lists horn, kick,
+  scavenge, swap, mount, orders and strategy — and the right edge
+  carries live readiness chips for the two cooldown moves (HORN READY
+  in gold, or the seconds left). Draw-only.
 
 ## Sequencing guidance
 

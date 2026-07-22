@@ -2741,6 +2741,26 @@ void BattleDraw(const Content& c) {
         ui::Text(d2, (GetScreenWidth() - ui::Measure(d2, 20)) / 2,
                  GetScreenHeight() / 3 + 62, 20, RAYWHITE);
     }
+    // Every door on one line (V67), the T7 rule brought to the battle: the
+    // keys players kept not finding, plus live readiness for the two
+    // cooldown moves.
+    if (!B.over && !B.deploying) {
+        DrawRectangle(0, GetScreenHeight() - 32, GetScreenWidth(), 32,
+                      Fade(BLACK, 0.75f));
+        ui::Text("[V] horn   [E] kick   [G] take weapon   [Q] swap   [Z] mount"
+                 "   [F1-F3] orders   [~] strategy",
+                 12, GetScreenHeight() - 26, 17, Fade(RAYWHITE, 0.85f));
+        const char* horn = B.hornCd <= 0 ? "HORN READY"
+                                         : TextFormat("horn %ds", (int)B.hornCd + 1);
+        const char* boot = B.kickCd <= 0 ? "BOOT READY"
+                                         : TextFormat("boot %.1fs", B.kickCd);
+        const int hw = ui::Measure(horn, 17), bw = ui::Measure(boot, 17);
+        ui::Text(horn, GetScreenWidth() - hw - bw - 40, GetScreenHeight() - 26, 17,
+                 B.hornCd <= 0 ? GOLD : Fade(RAYWHITE, 0.5f));
+        ui::Text(boot, GetScreenWidth() - bw - 16, GetScreenHeight() - 26, 17,
+                 B.kickCd <= 0 ? GOLD : Fade(RAYWHITE, 0.5f));
+    }
+
     if (B.readying)
         ui::Text(TextFormat("Readying swing: %s  (release!)", dirName[(int)B.attackDir]),
                  18, 82, 16, ORANGE);
