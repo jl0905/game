@@ -770,6 +770,31 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryGrantFief(gs));
+    } else if (in.menuChoice == 8 && gs.dialogueLord) {   // hire the company (V29)
+        constexpr int   MERC_COST = 300;   // TODO(balance)
+        constexpr float MERC_DAYS = 3.0f;  // TODO(balance)
+        gs.dialogueLines.clear();
+        const bool sellsword = gs.parleyParty >= 0 &&
+            gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
+            gs.content.factions[gs.parties[gs.parleyParty].faction].mercenary;
+        if (!sellsword)
+            gs.dialogueLines.push_back("This is no sellsword. His oath is not for sale.");
+        else if (gs.mercParty >= 0 && gs.mercDays > 0)
+            gs.dialogueLines.push_back("You already keep a company under contract.");
+        else if (gs.gold < MERC_COST)
+            gs.dialogueLines.push_back(TextFormat(
+                "Steel costs gold, captain. %d of it.", MERC_COST));
+        else {
+            gs.gold -= MERC_COST;
+            gs.mercParty = gs.parleyParty;
+            gs.mercDays  = MERC_DAYS;
+            gs.resultText = TextFormat(
+                "The %s marches under your banner for %.0f days.",
+                gs.content.factions[gs.parties[gs.parleyParty].faction].name.c_str(),
+                MERC_DAYS);
+            gs.dialogueLines.push_back(gs.resultText);
+            SfxPlay(Sfx::Fanfare);
+        }
     } else if (in.menuChoice == 7 && gs.dialogueLord) {   // court him with a gift (V26)
         constexpr int GIFT_COST = 100, GIFT_OPINION = 10;   // TODO(balance)
         gs.dialogueLines.clear();
@@ -878,6 +903,10 @@ void DialogueDraw(const GameState& gs) {
         option(3, "[3] Have you work for my warband?", Fade(RAYWHITE, 0.85f));
         if (!gs.audienceLord.empty())   // court him with a gift (V26)
             option(7, "[7] A gift for your household. (100 gold)", Fade(GOLD, 0.85f));
+        if (gs.parleyParty >= 0 &&      // a sellsword sells (V29)
+            gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
+            gs.content.factions[gs.parties[gs.parleyParty].faction].mercenary)
+            option(8, "[8] March with me. (300 gold, 3 days)", Fade(GOLD, 0.85f));
         if (gs.crowned)   // a ruler's court has a ruler's business (M3)
             option(4, "[4] I grant this seat to a lord of mine.", Fade(GOLD, 0.85f));
         if (gs.currentSettlement >= 0 &&

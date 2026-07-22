@@ -177,6 +177,10 @@ struct FactionDef {
     // Kingdoms wage declared wars and can swear truces (live diplomacy, C4);
     // outlaw rabble fights everyone forever and never treats.
     bool kingdom = false;
+
+    // Sellswords (V29): lords of a mercenary faction offer their company for
+    // hire in audience — a contract shadows your march and joins your battles.
+    bool mercenary = false;
 };
 
 // The overworld map (direction I1): bounds, the player's start and every

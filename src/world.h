@@ -187,6 +187,12 @@ struct GameState {
     std::string              audienceLord;           // the named lord in audience (V26);
                                                      // empty = a castellan/villager
 
+    // Mercenary contract (V29): a hired company's party index and the days
+    // left on its papers. It shadows the player's march and joins battles
+    // within reach as the allied line.
+    int   mercParty = -1;
+    float mercDays  = 0;
+
     // Active quest (F4): one at a time. `questTown` is the delivery target
     // for DeliverGrain; `questFaction` earns the relation reward.
     int activeQuest   = -1;   // quest handle, -1 none

@@ -394,6 +394,7 @@ void LoadDefaultContent(Content& c) {
     freecompany.roster = { t_pikeman, t_infantry, t_arbalist };
     freecompany.lords = { "Ostrec" };
     freecompany.lordPartySize = 150;   // TODO(balance)
+    freecompany.mercenary = true;      // their steel is for sale (V29)
     c.factions.add(freecompany);
 
     // ---- Trade goods (direction E1) --------------------------------------

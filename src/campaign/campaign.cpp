@@ -171,6 +171,8 @@ std::vector<int> RoamingFactions(const Content& c) {
 
 // --- party-vs-party warfare tuning (world-map scale, not battle balance) -----
 constexpr float PARTY_COLLIDE_DIST = 22.0f;   // AI parties touch -> skirmish
+constexpr float MERC_BATTLE_REACH  = 90.0f;   // hired company joins fights this
+                                              // close (V29). TODO(balance)
 constexpr float PLAYER_COLLIDE_DIST = 24.0f;  // AI party touches you -> battle
 constexpr float PERCEPTION         = 500.0f;  // how far a party notices a foe
 constexpr float SKIRMISH_TIME      = 6.0f;    // seconds a clash takes to resolve
@@ -1169,6 +1171,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_FIVE))  in.menuChoice = 5;   // marriage suit (M5)
         if (IsKeyPressed(KEY_SIX))   in.menuChoice = 6;   // rebellion (O6)
         if (IsKeyPressed(KEY_SEVEN)) in.menuChoice = 7;   // a lord's gift (V26)
+        if (IsKeyPressed(KEY_EIGHT)) in.menuChoice = 8;   // hire the company (V29)
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {    // topics are buttons (V27)
             const int ch = DialogueOptionAt(GetMousePosition());
             if (ch > 0)               in.menuChoice = ch;
@@ -1793,9 +1796,17 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
 
             if (!haveTarget) {
-                const PartyBehavior behavior = c.factions[e.faction].behavior;
-                const Foe foe = NearestHostile(gs, c, i);
-                target = SteerTarget(e, behavior, foe, sim);
+                // A contracted company shadows your banner (V29): the hired
+                // party overrides its own errands and marches where you march.
+                if (i == gs.mercParty && gs.mercDays > 0) {
+                    target     = gs.player.pos;
+                    haveTarget = true;
+                    e.state    = PartyState::Travelling;
+                } else {
+                    const PartyBehavior behavior = c.factions[e.faction].behavior;
+                    const Foe foe = NearestHostile(gs, c, i);
+                    target = SteerTarget(e, behavior, foe, sim);
+                }
             }
             const Vector2 dir = Vector2Subtract(target, e.pos);
             if (Vector2Length(dir) > 5)
@@ -1847,6 +1858,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
                 gs.battlePartyIndex = i;
                 gs.battleAllyIndex  = -1;
+                // A contracted company in reach marches into your line (V29).
+                if (gs.mercParty >= 0 && gs.mercParty != i && gs.mercDays > 0 &&
+                    gs.mercParty < (int)gs.parties.size() &&
+                    gs.parties[gs.mercParty].alive &&
+                    Vector2Distance(gs.parties[gs.mercParty].pos, gs.player.pos) <
+                        MERC_BATTLE_REACH)
+                    gs.battleAllyIndex = gs.mercParty;
                 gs.screen = Screen::Battle;
                 return;
             }
@@ -2072,6 +2090,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             }
             if (gs.lordsRally && (gs.lordsRallyDays -= 1.0f) <= 0)
                 gs.lordsRally = false;
+
+            // A mercenary contract runs out at dawn (V29).
+            if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
+                gs.mercParty = -1;
+                gs.mercDays  = 0;
+                gs.resultText = "The company's contract is done. They march their own road again.";
+            }
 
             // Engines take shape in the siege camp (N1).
             if (gs.siegeCampTown >= 0) gs.siegeCampDays -= 1.0f;

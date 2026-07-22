@@ -1,0 +1,13 @@
+# Mercenary contract (V29): hail Lord Ostrec of the Free Company (a
+# mercenary=true faction), buy his steel for 300 gold / 3 days, and his
+# 150 march into your next battle as the allied line (allies ~157 with
+# the warband's own 7). The company shadows your march meanwhile.
+load tests/fixtures/merc.owb
+parley
+topic 8
+leave
+state
+hunt 90
+tick 3
+state
+quit

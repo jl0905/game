@@ -905,6 +905,13 @@ this is the feedback the flat numbers were waiting for.
   code changes. The blanket outlaw wars make them bandit hunters
   automatically; verified roaming, holding a town, and besieging
   outlaws within one world-day.
+- [x] **V29. Iteration twenty-nine — steel for sale.** The Free Company
+  earns its name: a data-driven `mercenary` faction flag unlocks topic
+  [8] in a road parley — 300 gold buys 3 days of contract. The hired
+  party shadows your march, joins any battle within 90u as the allied
+  line (the existing `battleAllyIndex` path), and the papers expire at
+  dawn. Saved/loaded, `merc:` in the harness dump, `tests/mercenary.txt`
+  proves 7 men become 157.
 
 ## Sequencing guidance
 

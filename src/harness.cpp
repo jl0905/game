@@ -244,6 +244,8 @@ struct Harness {
                         gs.lordsRallyPos.y, gs.lordsRallyDays);
         if (gs.liege >= 0 && gs.liege < c.factions.size())
             std::printf("liege=%s\n", c.factions[gs.liege].id.c_str());
+        if (gs.mercParty >= 0 && gs.mercDays > 0)
+            std::printf("merc: party=%d days=%.1f\n", gs.mercParty, gs.mercDays);
         if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size())
             std::printf("quest: %s progress=%d target=%d\n",
                         c.quests[gs.activeQuest].id.c_str(), gs.questProgress,

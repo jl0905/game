@@ -176,6 +176,10 @@ bool SaveGame(const GameState& gs, const char* path) {
         f << "rally " << gs.lordsRallyPos.x << ' ' << gs.lordsRallyPos.y << ' '
           << gs.lordsRallyDays << '\n';
 
+    // A running mercenary contract (V29).
+    if (gs.mercParty >= 0 && gs.mercDays > 0)
+        f << "merc " << gs.mercParty << ' ' << gs.mercDays << '\n';
+
     // The sworn liege (F2).
     if (gs.liege >= 0 && gs.liege < c.factions.size())
         f << "liege " << c.factions[gs.liege].id << '\n';
@@ -460,6 +464,8 @@ bool LoadGame(GameState& gs, const char* path) {
         } else if (tag == "rally") {
             gs.lordsRally = true;
             ss >> gs.lordsRallyPos.x >> gs.lordsRallyPos.y >> gs.lordsRallyDays;
+        } else if (tag == "merc") {
+            ss >> gs.mercParty >> gs.mercDays;
         } else if (tag == "liege") {
             std::string fid;
             ss >> fid;
