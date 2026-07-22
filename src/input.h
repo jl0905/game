@@ -32,6 +32,8 @@ struct CampaignInput {
 
     // market screen (rows are goods-registry order)
     bool    sendCaravan = false;   // outfit a trade convoy here (M4, C at market)
+    int     bankMove = 0;          // the moneylender (V5): +100 deposit / -100
+                                   // withdraw at the market (D / Shift+D)
     int     saveSlot = 0;          // quicksave to slot 1..3 (N3, F5-F7 on the map)
     int     equipSlotHit = -1;     // paper-doll slot under the cursor (U8)
     bool    openLedger = false;    // kingdom ledger screen (O1, B on the map)

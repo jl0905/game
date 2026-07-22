@@ -168,6 +168,9 @@ struct GameState {
     int                  invTarget = 0;          // who the bag fits: 0 hero, 1.. hired companions (K6)
     std::vector<std::pair<int, Loadout>> companionGear;   // per-companion fitted gear (K6)
     std::vector<int>     goods;                  // trade goods held, per good type (E1)
+    std::vector<int>     bankAt;                 // gold on deposit per town (V5):
+                                                 // earns weekly interest, and banked
+                                                 // capital feeds local prosperity
     std::vector<int>     enterpriseAt;           // enterprise handle per town, -1 none (E4)
     int                invCarry = -1;            // inventory item being moved (transient)
 

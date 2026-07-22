@@ -198,6 +198,8 @@ bool SaveGame(const GameState& gs, const char* path) {
         if (!gs.towns[t].fiefLord.empty())
             f << "fief " << t << ' ' << gs.towns[t].fiefLord << '\n';
         f << "rpool " << t << ' ' << gs.towns[t].recruitPool << '\n';
+        if (t < (int)gs.bankAt.size() && gs.bankAt[t] > 0)
+            f << "bank " << t << ' ' << gs.bankAt[t] << '\n';
         // Explicit reset so an emptied garrison doesn't resurrect on load.
         f << "garrisonreset " << t << '\n';
         for (int tr = 0; tr < (int)gs.towns[t].garrison.size() && tr < c.troops.size(); ++tr)
@@ -310,6 +312,14 @@ bool LoadGame(GameState& gs, const char* path) {
             const int fh = c.factions.find(fid.c_str());
             if (idx >= 0 && idx < (int)gs.towns.size() && fh >= 0)
                 gs.towns[idx].owner = fh;
+        } else if (tag == "bank") {
+            int idx = -1, v = 0;
+            ss >> idx >> v;
+            if (idx >= 0 && idx < (int)gs.towns.size() && v > 0) {
+                if ((int)gs.bankAt.size() < (int)gs.towns.size())
+                    gs.bankAt.resize(gs.towns.size(), 0);
+                gs.bankAt[idx] = v;
+            }
         } else if (tag == "rpool") {
             int idx = -1, v = 0;
             ss >> idx >> v;

@@ -747,6 +747,15 @@ this is the feedback the flat numbers were waiting for.
   murrain and a bandit king drain them — verified: Praven's pool 4→6 on
   the day-one harvest. Flat TODO(balance).
 
+- [x] **V5. Iteration five — the moneylender.** The sprint's own example,
+  made real: [D] at any market deposits 100 (Shift+D withdraws), the
+  account earns 5% a week, and 200+ banked at a town is *investment* —
+  +1 prosperity a day there, which the living market turns into prices,
+  the pool into recruits, the ledger into income. Interest → prosperity
+  → prices, concretely. `bank` save tag, harness `deposit`/`withdraw` +
+  `bank:` dump, `tests/bank.txt` round-trips an account through a
+  reload. Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

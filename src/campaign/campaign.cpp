@@ -1178,6 +1178,9 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         }
         in.buyEnterprise = IsKeyPressed(KEY_B);
         in.sendCaravan   = IsKeyPressed(KEY_C);   // outfit a convoy (M4)
+        if (IsKeyPressed(KEY_D))                  // the moneylender (V5)
+            in.bankMove = (IsKeyDown(KEY_LEFT_SHIFT) ||
+                           IsKeyDown(KEY_RIGHT_SHIFT)) ? -100 : 100;
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) in.leaveSettlement = true;
         return in;
     }
@@ -2134,6 +2137,19 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // The moneylender's books (V5): 5% a week on deposits, and
+            // banked capital works — 200+ on deposit lifts that town's
+            // prosperity a point a day. Interest → prosperity → prices.
+            if ((int)gs.bankAt.size() < (int)gs.towns.size())
+                gs.bankAt.resize(gs.towns.size(), 0);
+            for (int bi = 0; bi < (int)gs.bankAt.size(); ++bi) {
+                if (gs.day % 7 == 0 && gs.bankAt[bi] > 0)
+                    gs.bankAt[bi] += gs.bankAt[bi] / 20;
+                if (gs.bankAt[bi] >= 200)
+                    gs.towns[bi].prosperity =
+                        std::min(150, gs.towns[bi].prosperity + 1);
+            }
+
             // The land raises sons (V2): each settlement's recruit pool
             // refills one a day toward prosperity/25 — so a burned village
             // genuinely has no spears to give until it recovers. The same
@@ -3079,6 +3095,27 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // The moneylender (V5): coin on deposit earns 5% a week, and banked
+    // capital is investment — it feeds this town's prosperity daily, which
+    // feeds prices, recruits and income. Interest touching prices, made
+    // real. TODO(balance): every rate.
+    if (in.bankMove != 0) {
+        if ((int)gs.bankAt.size() < (int)gs.towns.size())
+            gs.bankAt.resize(gs.towns.size(), 0);
+        int& acct = gs.bankAt[gs.currentSettlement];
+        if (in.bankMove > 0 && gs.gold >= in.bankMove) {
+            gs.gold -= in.bankMove;
+            acct    += in.bankMove;
+            gs.resultText = TextFormat("Deposited 100. %s holds %d of yours.",
+                                       t.name.c_str(), acct);
+        } else if (in.bankMove < 0 && acct >= -in.bankMove) {
+            acct    += in.bankMove;
+            gs.gold -= in.bankMove;
+            gs.resultText = TextFormat("Withdrew 100. %s holds %d of yours.",
+                                       t.name.c_str(), acct);
+        }
+    }
+
     // Buy a business here (E4): towns only, one per town, deterministic pick
     // of the next unbuilt enterprise kind.
     if (in.buyEnterprise && t.type == SettlementType::Town &&
@@ -3106,8 +3143,14 @@ void MarketDraw(const GameState& gs) {
     const int   x = 120;
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
     ui::Text("1-9 / click: buy one   Shift / right-click: sell one   "
-             "[C] send a caravan (200)   Esc / M back",
+             "[C] send a caravan (200)   [D] deposit 100 / Shift+D withdraw   "
+             "Esc / M back",
              x, 116, 20, Fade(RAYWHITE, 0.7f));
+    if (gs.currentSettlement < (int)gs.bankAt.size() &&
+        gs.bankAt[gs.currentSettlement] > 0)
+        ui::Text(TextFormat("On deposit here: %d gold  (5%%/week; 200+ feeds "
+                            "prosperity)", gs.bankAt[gs.currentSettlement]),
+                 x, 210, 18, Fade(GOLD, 0.85f));
     int carried = 0;
     for (int q : gs.goods) carried += q;
     ui::Text(TextFormat("Gold: %d      Saddlebags: %d / %d", gs.gold, carried,

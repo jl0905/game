@@ -270,6 +270,9 @@ struct Harness {
             for (int w : gs.wounded) hurt += w;
             if (hurt > 0) std::printf("wounded=%d\n", hurt);
         }
+        for (int bi = 0; bi < (int)gs.bankAt.size(); ++bi)
+            if (gs.bankAt[bi] > 0)
+                std::printf("bank: town=%d gold=%d\n", bi, gs.bankAt[bi]);
         {
             const DayLedger L = ComputeLedger(gs);
             std::printf("purse: income=%d enterprise=%d wages=%d retainers=%d "
@@ -540,6 +543,11 @@ int RunScript(const char* path) {
         } else if (cmd == "setopt") {
             CampaignInput cin; ss >> cin.settingsRow;
             cin.settingsRow--;   // 1-based on the command line, like the keys
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "deposit" || cmd == "withdraw") {
+            // The moneylender (V5): move gold in 100s at the open market.
+            CampaignInput cin;
+            cin.bankMove = cmd == "deposit" ? 100 : -100;
             h.Step(cin, BattleInput{});
         } else if (cmd == "sendcaravan") {
             // Outfit a player trade convoy at the open market (M4).

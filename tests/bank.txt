@@ -1,0 +1,17 @@
+# The moneylender (direction V5): deposits earn 5% a week, and 200+ banked
+# at a town works as investment, feeding its prosperity daily - interest
+# touching prices through the living market, concretely.
+seed 2
+enter 0
+market
+deposit
+deposit            # 200 on deposit at Sargoth
+state              # expect bank: town=0 gold=200 and purse down 200
+withdraw
+state              # expect bank 100, purse back up 100
+market
+leave
+save bank_test.owb
+load bank_test.owb
+state              # the account survives the reload
+quit
