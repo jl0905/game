@@ -2715,6 +2715,13 @@ void BattleDraw(const Content& c) {
         if (BehindCamera(s.pos)) continue;   // never reaches the GPU (V40)
         if (s.hp <= 0) {
             const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
+            // Corpse LOD (V110): past the LOD line the fallen are one dark
+            // slab — pools and faces only where the player can mourn them.
+            if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
+                DrawCube({ s.pos.x, gy + 0.12f, s.pos.z }, 1.4f, 0.25f, 0.6f,
+                         Fade(DARKGRAY, 0.8f));
+                continue;
+            }
             DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
                          Fade(Color{ 110, 20, 20, 255 }, 0.5f));   // blood pool
             DrawCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.8f));
@@ -2723,8 +2730,17 @@ void BattleDraw(const Content& c) {
             continue;
         }
         BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
-        if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
+        const float camDistSq = Vector3DistanceSqr(cam.position, s.pos);
+        if (camDistSq > LOD_DIST_SQ) {
             const Color tint = SoldierTint(s);
+            // Far-far tier (V110): beyond twice the LOD line a man is one
+            // box in his side's colour — a third of the far-tier vertices,
+            // unreadable detail nobody was seeing anyway.
+            if (camDistSq > LOD_DIST_SQ * 4.0f) {
+                DrawCube({ s.pos.x, s.pos.y + 1.1f, s.pos.z }, 0.7f, 1.9f, 0.45f,
+                         tint);
+                continue;
+            }
             DrawCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
             DrawCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
                      Color{ 224, 188, 150, 255 });

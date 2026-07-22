@@ -1394,6 +1394,12 @@ this is the feedback the flat numbers were waiting for.
   the red DEBT beside it; the gate-menu dashboard quotes FORTIFIED and
   war-price markup. No new state — existing state, surfaced where the
   decision is made. Draw-only.
+- [x] **V110. Iteration one-ten — LOD tiers for the far and the fallen.**
+  Beyond 2× the LOD line a soldier is one box in his side's colour;
+  beyond 1× a corpse is one dark slab (pools and faces only up close).
+  Scalability guards for 500-a-side settings and long corpse-strewn
+  fights — the 2000-man bench holds 20.2 ms (fill-bound at that
+  range), the headroom shows at scale. Draw-only.
 
 ## Sequencing guidance
 
