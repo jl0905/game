@@ -1400,6 +1400,12 @@ this is the feedback the flat numbers were waiting for.
   Scalability guards for 500-a-side settings and long corpse-strewn
   fights — the 2000-man bench holds 20.2 ms (fill-bound at that
   range), the headroom shows at scale. Draw-only.
+- [x] **V111. Iteration one-eleven — THE CROWNS.** The kingdom ledger
+  gains the missing diplomacy overview: every kingdom in one list,
+  each in its banner colour — holdings, standing with you, AT WAR in
+  red or at peace. Confirms in passing that player battles already
+  feed war-weariness (no gap found). Draw-only; cfg factions listed
+  automatically.
 
 ## Sequencing guidance
 

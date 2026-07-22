@@ -4594,6 +4594,26 @@ void KingdomDraw(const GameState& gs) {
         }
     }
 
+    // The crowns of the land (V111): every kingdom at a glance — holdings,
+    // standing, and where you stand with them.
+    {
+        y += 8;
+        ui::Text("THE CROWNS", lx, y, 22, GOLD); y += 30;
+        for (int f = 0; f < c.factions.size(); ++f) {
+            if (!c.factions[f].kingdom || f == c.playerFaction) continue;
+            int held = 0;
+            for (const Town& t : gs.towns)
+                if (t.owner == f) held++;
+            const int  standing = f < (int)gs.relations.size() ? gs.relations[f] : 0;
+            const bool atWar    = AtWar(gs, f, c.playerFaction);
+            ui::Text(TextFormat("%-11s %2d holding(s)   standing %+d   %s",
+                                c.factions[f].name.c_str(), held, standing,
+                                atWar ? "AT WAR" : "at peace"),
+                     lx, y, 18, atWar ? Fade(RED, 0.9f) : c.factions[f].color);
+            y += 24;
+        }
+    }
+
     // One purse, all flows (S5) — the same books the day tick settles.
     const DayLedger L = ComputeLedger(gs);
     y += 8;
