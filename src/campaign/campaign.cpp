@@ -2557,6 +2557,41 @@ void CampaignDraw(const GameState& gs) {
         }
     }
 
+    // Party tooltip (V6): the settlements' courtesy, extended to the roads.
+    {
+        const Vector2 mp    = GetMousePosition();
+        const Vector2 world = GetScreenToWorld2D(mp, cam);
+        for (const Party& e : gs.parties) {
+            if (!e.alive) continue;
+            if (Vector2Distance(world, e.pos) >
+                24.0f * fmaxf(1.0f, 1.0f / g_mapZoom)) continue;
+            const FactionDef& f = c.factions[e.faction];
+            const bool hostile  = AtWar(gs, e.faction, c.playerFaction);
+            const int px = (int)fminf(mp.x + 18, (float)GetScreenWidth() - 240);
+            const int py = (int)fminf(mp.y + 12, (float)GetScreenHeight() - 120);
+            DrawRectangle(px, py, 230, 104, Fade(BLACK, 0.85f));
+            DrawRectangleLines(px, py, 230, 104, f.color);
+            ui::Text(e.lord.empty()
+                         ? (e.caravan ? TextFormat("%s caravan", f.name.c_str())
+                                      : f.name.c_str())
+                         : TextFormat("Lord %s", e.lord.c_str()),
+                     px + 10, py + 8, 20, f.color);
+            ui::Text(TextFormat("%d troops   %s", e.totalTroops(),
+                                PartyStateName(e.state)),
+                     px + 10, py + 36, 17, RAYWHITE);
+            ui::Text(hostile ? "Hostile to you" : "No quarrel with you",
+                     px + 10, py + 60, 16,
+                     hostile ? Fade(RED, 0.9f) : LIME);
+            if (e.caravan) {
+                int freight = 0;
+                for (int q : e.cargo) freight += q;
+                ui::Text(TextFormat("Freight: %d wares", freight), px + 10,
+                         py + 82, 15, Fade(GOLD, 0.8f));
+            }
+            break;
+        }
+    }
+
     // ---- day/night veil: dawn gold, dusk amber, deep blue night ----
     {
         const int sw = GetScreenWidth(), sh = GetScreenHeight();

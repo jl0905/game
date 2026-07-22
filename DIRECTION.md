@@ -756,6 +756,11 @@ this is the feedback the flat numbers were waiting for.
   `bank:` dump, `tests/bank.txt` round-trips an account through a
   reload. Flat TODO(balance).
 
+- [x] **V6. Iteration six — tooltips for the roads.** Hovering any party
+  opens its card: the lord or faction (border in their colour), strength
+  and current business, hostile-or-not at a glance, and a caravan's
+  freight count — the freight bandits can smell, now the player can too.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
