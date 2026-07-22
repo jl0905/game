@@ -1018,6 +1018,12 @@ this is the feedback the flat numbers were waiting for.
   quartermaster: +20 gold per stripe on top of the XP, quoted on the
   party screen. Repaired `tests/veterancy.txt` (0-based slot; it had
   silently never promoted) — it now asserts the full arc.
+- [x] **V46. Iteration forty-six — quality eats gold.** Wage identity
+  tiers (the V15/V16 pattern applied to upkeep): recruits and brigands
+  1/day, line foot 2, veterans and shooters 3, huscarls 4, knights 6 —
+  a knight's horse and plate cost six recruits' bread, so elite armies
+  drain the ledger the party screen and purse already display. With
+  V45's paid stripes, the whole army-quality ladder now runs on gold.
 
 ## Sequencing guidance
 

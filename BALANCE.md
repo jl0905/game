@@ -18,7 +18,7 @@ whole game at once.
 | `base::TROOP_HP` | 100 | Every troop's max HP — fights should survive ~5-10 clean hits |
 | `base::TROOP_SPEED` | 6.0 | Foot troop move speed (mounted ×2) |
 | `base::TROOP_COST` | 0 | Recruit price — free recruits are a placeholder, not a design |
-| `base::TROOP_WAGE` | 1 | Daily upkeep per soldier — the economic brake on army size |
+| `base::TROOP_WAGE` | 1 | Daily upkeep per soldier — V46 gave per-troop identity tiers (recruit/brigand 1, foot 2, veteran/shooters 3, huscarl 4, knight 6; companions ×3) |
 | `base::WEAPON_DAMAGE` | 10.0 | Default hit damage — V16 gave per-weapon identity tiers (great 14, dane 13, xbow 12, axe 11, sword 10, spear 9, bow 8) |
 | `base::WEAPON_REACH` | 2.5 | Melee reach (spear 4.0, great/dane 3.2 by identity) |
 | `base::WEAPON_SWING` | 0.7 | Seconds between swings |

@@ -256,6 +256,13 @@ void LoadDefaultContent(Content& c) {
     c.troops.add(malin);
     c.troops.add(torva);
 
+    // Wage identity (V46): quality eats gold daily — a knight's horse and
+    // plate cost six recruits' bread. Tiers are identity; exact numbers
+    // TODO(balance). (Companions already draw triple pay above.)
+    infantry.wage = 2; archer.wage   = 2; marauder.wage = 2; warrior.wage = 2;
+    veteran.wage  = 3; marksman.wage = 3;
+    huscarl.wage  = 4; knight.wage   = 6;
+
     const int t_recruit  = c.troops.add(recruit);
     const int t_infantry = c.troops.add(infantry);
     const int t_veteran  = c.troops.add(veteran);
@@ -273,6 +280,7 @@ void LoadDefaultContent(Content& c) {
     arbalist.loadout.set(EquipSlot::Feet, a_boots);
     arbalist.loadout.addWeapon(w_xbow);    // outranges bows, spans slowly
     arbalist.loadout.addWeapon(w_sword);
+    arbalist.wage = 3;   // wage identity (V46)
     const int t_arbalist = c.troops.add(arbalist);
     const int t_warrior  = c.troops.add(warrior);
     const int t_huscarl  = c.troops.add(huscarl);
@@ -296,6 +304,7 @@ void LoadDefaultContent(Content& c) {
     pikeman.loadout.set(EquipSlot::Feet, a_boots);
     pikeman.loadout.addWeapon(w_pike);     // the wall of points at range,
     pikeman.loadout.addWeapon(w_sword);    // steel when the press closes
+    pikeman.wage = 2;   // wage identity (V46): sellswords bill modestly
     const int t_pikeman = c.troops.add(pikeman);
 
     // Upgrade tree: recruit -> infantry -> veteran; archers are a branch off
