@@ -95,4 +95,5 @@ struct BattleInput {
                                    // 3 charge (F1/F2/F3, no menu needed)
     bool    beginBattle     = false;   // sound the horn: end deployment (R2)
     bool    mountToggle     = false;   // Z: dismount / remount (U11)
+    bool    kick            = false;   // E: the boot that opens a guard (V33)
 };

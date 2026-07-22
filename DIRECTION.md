@@ -932,6 +932,12 @@ this is the feedback the flat numbers were waiting for.
   colours pass to the nearest living hand — kill the standard again and
   again to break an army's spirit. Arena bouts fight without colours.
   `banners=x/y` in the harness battle dump.
+- [x] **V33. Iteration thirty-three — the kick.** Warband's answer to a
+  turtled shield: E boots the man in front (2.2u, ~120° arc, on foot
+  only) — 1 hp of insult, but a stagger that goes THROUGH shield and
+  stun-immunity both, opening him for the real blow. 1.2s recovery so
+  it's a tool, not a spam. Harness `kick` command prints boots landed;
+  mechanics verified against charging knights.
 
 ## Sequencing guidance
 

@@ -671,6 +671,11 @@ int RunScript(const char* path) {
             // Dismount / remount (U11) — Z in the saddle or beside a horse.
             BattleInput bin; bin.mountToggle = true;
             h.Step(CampaignInput{}, bin);
+        } else if (cmd == "kick") {
+            // The boot (V33): stagger the man in front through his shield.
+            BattleInput bin; bin.kick = true;
+            h.Step(CampaignInput{}, bin);
+            std::printf("kick: landed=%d\n", GetBattleView().heroKicks);
         } else if (cmd == "swap") {
             BattleInput bin; bin.swapWeapon = true;
             h.Step(CampaignInput{}, bin);

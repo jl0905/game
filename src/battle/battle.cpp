@@ -714,6 +714,8 @@ struct BattleState {
     // the line from across the field; his death shakes his side's nerve and
     // the banner passes to the nearest living hand.
     int   bannerIdx[2] = { -1, -1 };   // [0]=player side, [1]=enemy side
+    float kickCd = 0;                  // the boot's recovery (V33)
+    int   heroKicksLanded = 0;
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1431,6 +1433,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_F2))    in.order = 2;   // follow me
     if (IsKeyPressed(KEY_F3))    in.order = 3;   // charge
     if (IsKeyPressed(KEY_Z))     in.mountToggle = true;   // dismount (U11)
+    if (IsKeyPressed(KEY_E))     in.kick = true;          // the boot (V33)
     if (IsKeyPressed(KEY_LEFT_BRACKET))  in.ranksDelta -= 1;
     if (IsKeyPressed(KEY_RIGHT_BRACKET)) in.ranksDelta += 1;
     return in;
@@ -1605,6 +1608,32 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             B.cryTimer = 1.6f;   // the banner rings the order
             B.cryText  = OrderName(B.order);
             SfxPlay(Sfx::WarCry);
+        }
+
+        // ---- the kick (V33): a short shove, Warband's answer to a turtled
+        //      shield — no damage to speak of, but it staggers THROUGH a
+        //      guard and opens the man for the real blow. On foot only.
+        B.kickCd = fmaxf(0.0f, B.kickCd - dt);
+        if (in.kick && B.kickCd <= 0 && !B.mounted && B.pHp > 0) {
+            B.kickCd = 1.2f;   // TODO(balance)
+            const Vector3 kfwd = { sinf(B.yaw), 0, cosf(B.yaw) };
+            for (Soldier& s : B.soldiers) {
+                if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
+                Vector3 to = Vector3Subtract(s.pos, B.pPos);
+                to.y = 0;
+                const float d = Vector3Length(to);
+                if (d > 2.2f || d < 0.01f) continue;
+                if (Vector3DotProduct(Vector3Normalize(to), kfwd) < 0.5f) continue;
+                s.stun  = STUN_TIME * 1.5f;   // through shield and immunity both
+                s.swing = 0;
+                s.hp   -= 1.0f;               // an insult, not a wound
+                s.flash = 1.0f;
+                const Vector3 push = Vector3Scale(Vector3Normalize(to), 1.1f);
+                s.pos = Vector3Add(s.pos, push);
+                B.heroKicksLanded++;
+                SfxPlay(Sfx::Thud, 0.8f);
+                break;   // one boot, one man
+            }
         }
 
         // ---- attack: HOLD LMB to ready a swing in the direction you move the
@@ -2602,6 +2631,7 @@ BattleView GetBattleView() {
     v.raining     = B.raining;
     v.heroKills   = B.heroKills;
     v.enemyName   = B.setup.enemyName;
+    v.heroKicks   = B.heroKicksLanded;
     v.bannerOwn   = B.bannerIdx[0] >= 0 && B.soldiers[B.bannerIdx[0]].hp > 0;
     v.bannerEnemy = B.bannerIdx[1] >= 0 && B.soldiers[B.bannerIdx[1]].hp > 0;
     v.looseHorses = (int)B.looseHorses.size();
