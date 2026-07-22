@@ -3261,6 +3261,32 @@ void CampaignDraw(const GameState& gs) {
         ui::Text(gs.resultText.c_str(), 10, 66, 20, GOLD);
     }
 
+    // The news keeps a short memory (V89): dawns fire several events at
+    // once and each used to overwrite the last — now every change to the
+    // news line also stacks into a fading feed, so nothing is lost to the
+    // next announcement. Windowed-only presentation state.
+    {
+        struct OldNews { std::string text; float age; };
+        static std::vector<OldNews> feed;
+        static std::string          prev;
+        if (gs.resultText != prev) {
+            if (!prev.empty()) {
+                feed.insert(feed.begin(), { prev, 0.0f });
+                if (feed.size() > 4) feed.pop_back();
+            }
+            prev = gs.resultText;
+        }
+        int ny = 196;   // below the status-chip stack (merc/hunger/task/debt)
+        for (auto& n : feed) {
+            n.age += GetFrameTime();
+            const float a = Clamp(1.0f - n.age / 12.0f, 0.0f, 1.0f);
+            if (a <= 0) continue;
+            ui::Text(n.text.c_str(), 10, ny, 16, Fade(RAYWHITE, 0.6f * a));
+            ny += 20;
+        }
+        while (!feed.empty() && feed.back().age > 12.0f) feed.pop_back();
+    }
+
     // Prompt to join a nearby clash.
     if (nearSkirmish >= 0 && gs.player.totalTroops() > 0) {
         const Skirmish& sk = gs.skirmishes[nearSkirmish];

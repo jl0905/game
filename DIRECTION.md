@@ -1275,6 +1275,13 @@ this is the feedback the flat numbers were waiting for.
   troop name, banners falling, waves arriving, shields splintering,
   quarter given — the fight's story readable without taking your eyes
   off the melee. Draw-only; bench 20.2 ms.
+- [x] **V89. Iteration eighty-nine — the news keeps a short memory.**
+  Dawns fire several events at once and each overwrote the last on the
+  single news line (watched it happen all sprint: harvest news eating
+  debt notices). Now every change to the line also stacks the previous
+  one into a fading four-line feed below the status chips — nothing is
+  lost to the next announcement. Draw-only, zero refactoring of the
+  ~60 resultText writers.
 
 ## Sequencing guidance
 
