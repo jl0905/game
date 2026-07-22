@@ -677,6 +677,10 @@ int RunScript(const char* path) {
             // Press a captive into the warband (V36) — party screen R.
             CampaignInput cin; cin.pressPrisoner = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "autoresolve") {
+            // Fight it on paper (V41) — N during the horn's grace period.
+            BattleInput bin; bin.autoResolve = true;
+            h.Step(CampaignInput{}, bin);
         } else if (cmd == "pickup") {
             // Take up a fallen man's weapon (V39) — G in battle.
             BattleInput bin; bin.pickup = true;

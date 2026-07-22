@@ -984,6 +984,14 @@ this is the feedback the flat numbers were waiting for.
   bench drops 33.8 → 20.5 ms avg (p99 40.3 → 25.7) — a 40% frame-time
   win from the first entry on the GPU roadmap. Draw-only; standards
   stay visible at any angle.
+- [x] **V41. Iteration forty-one — send them in without you.** N during
+  deployment (or the horn's grace, headless) auto-resolves the battle
+  on paper: expected strength from steel + armour, nobody's blade-work
+  counted — so it's always bloodier than a fight you lead (0.55 loss
+  factor, beaten side ruined; TODO(balance)). Losses land on real
+  soldiers, so loot/captives/horses/banners all flow the normal path;
+  a lost paper battle carries you off at 1 hp. Harness `autoresolve`;
+  `tests/autoresolve.txt`.
 
 ## Sequencing guidance
 

@@ -1,0 +1,11 @@
+# Auto-resolve (V41): N during deployment (or the horn's 3s grace, which is
+# the headless window) fights the battle on paper - expected strength from
+# steel and armour, no swordsmanship, so it is always bloodier than a fight
+# you lead. Outcome flows the normal path: loot, captives, per-troop losses.
+# Seed 42 hunt: expect instant VICTORY with heavy own losses.
+seed 42
+hunt 90
+autoresolve
+tick 4
+state
+quit

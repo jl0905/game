@@ -98,4 +98,5 @@ struct BattleInput {
     bool    mountToggle     = false;   // Z: dismount / remount (U11)
     bool    kick            = false;   // E: the boot that opens a guard (V33)
     bool    pickup          = false;   // G: take up a fallen man's weapon (V39)
+    bool    autoResolve     = false;   // N: send them in without you (V41)
 };

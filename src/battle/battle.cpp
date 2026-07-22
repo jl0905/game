@@ -1259,6 +1259,45 @@ void EndBattle(bool won) {
     if (IsWindowReady()) EnableCursor();   // headless harness has no window
 }
 
+// Fight it on paper (V41): expected-strength resolution for a battle the
+// player would rather not ride. Steel and armour count, but nobody's
+// swordsmanship does — the auto-resolved field is always bloodier for you
+// than a fight you lead. Losses land on real soldiers so the normal
+// outcome bookkeeping (per-troop losses, horses, banners) just works.
+// TODO(balance): every constant.
+void AutoResolve(const Content& c) {
+    auto power = [&](const Soldier& s) {
+        const Loadout& lo = TroopLoadout(c, s.troop);
+        const int w = lo.weaponCount() > 0 ? lo.weaponAt(0) : -1;
+        return s.hp * (WeaponDamage(c, w) + (float)LoadoutArmor(c, lo));
+    };
+    float pP = B.pHp * 30.0f;   // the hero counts for a squad, no more
+    float pE = 0;
+    for (const Soldier& s : B.soldiers) {
+        if (s.hp <= 0 || s.escaped) continue;
+        (s.team == Team::Enemy ? pE : pP) += power(s);
+    }
+    const bool  won   = pP >= pE;
+    const float wPow  = won ? pP : pE, lPow = won ? pE : pP;
+    const float wLoss = wPow > 1.0f ? Clamp(0.55f * lPow / wPow, 0.10f, 0.85f)
+                                    : 0.85f;
+    int k = 0;
+    for (Soldier& s : B.soldiers) {
+        if (s.hp <= 0 || s.escaped) continue;
+        const bool winnerSide = (s.team == Team::Enemy) != won;
+        const bool dies = winnerSide ? ((k++ % 100) < (int)(wLoss * 100.0f))
+                                     : ((k++ % 10) < 9);   // the beaten side is ruined
+        if (dies) {
+            s.hp = 0;
+            FreeHorse(c, s);
+            StainGround(s.pos);
+        }
+    }
+    if (!won) B.pHp = 1.0f;   // carried off the field, not killed
+    B.deploying = false;
+    EndBattle(won);
+}
+
 // Losses = starting counts minus living soldiers of that contingent, per troop.
 // The player's own troops and an allied party's troops both fight on
 // Team::Player but are tracked separately via Soldier::ally.
@@ -1444,6 +1483,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_Z))     in.mountToggle = true;   // dismount (U11)
     if (IsKeyPressed(KEY_E))     in.kick = true;          // the boot (V33)
     if (IsKeyPressed(KEY_G))     in.pickup = true;        // scavenge (V39)
+    if (IsKeyPressed(KEY_N))     in.autoResolve = true;   // fight on paper (V41)
     if (IsKeyPressed(KEY_LEFT_BRACKET))  in.ranksDelta -= 1;
     if (IsKeyPressed(KEY_RIGHT_BRACKET)) in.ranksDelta += 1;
     return in;
@@ -1482,8 +1522,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             B.cryText   = "SOUND THE HORN!";
             SfxPlay(Sfx::WarCry);
         }
+        if (in.autoResolve) AutoResolve(c);   // fight it on paper (V41)
         return true;   // a held breath: no movement, no arrows, no clocks
     }
+
+    // Headless path (V41): scripts have no deployment pause; the horn's
+    // grace period stands in for it.
+    if (in.autoResolve && !B.over && B.introTimer > 0 && !B.setup.arena)
+        AutoResolve(c);
 
     // ---------- player intent ----------
     Vector3 fwd = { sinf(B.yaw), 0, cosf(B.yaw) };
@@ -2507,7 +2553,7 @@ void BattleDraw(const Content& c) {
                       GetScreenWidth(), 110, Fade(BLACK, 0.55f));
         ui::Title(d1, (GetScreenWidth() - w1) / 2, GetScreenHeight() / 3, 48, GOLD);
         const char* d2 = "[1-4] shape   [ / ] ranks   [F1-F3] first order   "
-                         "SPACE sounds the horn";
+                         "SPACE sounds the horn   [N] send them in without you";
         ui::Text(d2, (GetScreenWidth() - ui::Measure(d2, 20)) / 2,
                  GetScreenHeight() / 3 + 62, 20, RAYWHITE);
     }
