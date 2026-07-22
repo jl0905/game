@@ -786,6 +786,13 @@ this is the feedback the flat numbers were waiting for.
   sworn)", "(your own seat)", "(not your walls)", "(the wall is bare)".
   A button that can't act now teaches instead of ignoring you.
 
+- [x] **V11. Iteration eleven — engines are built of timber.** Ladders
+  want 2 timber, a tower 5 — drawn from the saddlebags first, shortfall
+  bought from camp sutlers at 8 gold a beam, refused clean if you lack
+  both. V3's toy ware now has a war to fight in: fell it cheap in
+  villages, mill it at your sawmill, and haul it to the walls you mean
+  to take. Flat TODO(balance).
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

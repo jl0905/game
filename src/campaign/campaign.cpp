@@ -1474,15 +1474,38 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 [[fallthrough]];
             case 3: { // engineering (walled targets only, N1)
                 if (village) break;
+                // Engines are built of timber (V11): ladders want 2, a
+                // tower 5 — from your saddlebags first, the shortfall
+                // bought dear from camp sutlers at 8 gold a beam.
+                const int need = in.menuChoice == 2 ? 2 : 5;   // TODO(balance)
+                const int gT   = c.goods.find("timber");
+                int fromBags   = 0;
+                if (gT >= 0 && gT < (int)gs.goods.size()) {
+                    fromBags = std::min(need, gs.goods[gT]);
+                    gs.goods[gT] -= fromBags;
+                }
+                const int sutler = (need - fromBags) * 8;
+                if (gs.gold < sutler) {
+                    if (gT >= 0 && gT < (int)gs.goods.size())
+                        gs.goods[gT] += fromBags;   // hand the beams back
+                    gs.resultText = TextFormat(
+                        "The engines want %d timber (or %d gold a beam). "
+                        "You lack both.", need, 8);
+                    break;
+                }
+                gs.gold -= sutler;
                 gs.siegeCampTown = target;
                 gs.siegeCampPrep = in.menuChoice - 1;
                 gs.siegeCampDays = (float)(in.menuChoice - 1);
                 // The warband pitches camp under the walls.
                 const Vector2 tp = gs.towns[target].pos;
                 gs.player.pos = { tp.x + SIEGE_REACH, tp.y + SIEGE_REACH };
-                gs.resultText = in.menuChoice == 2
-                    ? "The camp rings with saws. Ladders by tomorrow."
-                    : "A tower rises in the camp. Two days.";
+                gs.resultText = TextFormat(
+                    "%s  (%d timber from the bags, %d gold to the sutlers.)",
+                    in.menuChoice == 2
+                        ? "The camp rings with saws. Ladders by tomorrow."
+                        : "A tower rises in the camp. Two days.",
+                    fromBags, sutler);
                 break;
             }
             default: break;   // thought better of it
