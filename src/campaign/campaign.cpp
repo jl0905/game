@@ -2410,13 +2410,19 @@ void CampaignDraw(const GameState& gs) {
             DrawTriangle({ e.pos.x - 6, fy - 2 }, { e.pos.x + 6, fy - 2 },
                          { e.pos.x, fy - 10 }, GOLD);
         if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, 15, RAYWHITE);
+        // Party labels hold constant screen size like the settlements (V3):
+        // a lord's banner reads from any height.
+        const float piz = 1.0f / g_mapZoom;
         ui::Text(isLord ? TextFormat("Lord %s %d", e.lord.c_str(), e.totalTroops())
                         : TextFormat("%s %d", f.name.c_str(), e.totalTroops()),
-                 (int)e.pos.x - 20, (int)e.pos.y - (isLord ? 44 : 36), 14, f.color);
+                 (int)(e.pos.x - 20 * piz),
+                 (int)(e.pos.y - (isLord ? 44 : 36) * piz),
+                 (int)(14 * piz), f.color);
         // A small italic-feeling status word under the name, so the map reads as
         // a living world of parties each about their own business.
-        ui::Text(PartyStateName(e.state), (int)e.pos.x - 20,
-                 (int)e.pos.y - (isLord ? 30 : 22), 11, Fade(f.color, 0.75f));
+        ui::Text(PartyStateName(e.state), (int)(e.pos.x - 20 * piz),
+                 (int)(e.pos.y - (isLord ? 24 : 16) * piz),
+                 (int)(11 * piz), Fade(f.color, 0.75f));
     }
 
     // Besieged settlements: a pulsing ring in the attacker's colour.

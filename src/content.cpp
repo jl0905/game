@@ -346,12 +346,16 @@ void LoadDefaultContent(Content& c) {
     c.goods.add({ "tools", "Tools",  10, false, LIGHTGRAY });
     c.goods.add({ "salt",  "Salt",   10, true,  Color{ 235, 235, 245, 255 } });
     c.goods.add({ "spice", "Spice",  10, false, ORANGE });
+    // Extensibility proof (V3): a seventh ware in one line — villages fell
+    // it cheap, towns pay dear, caravans haul it, events strike it.
+    c.goods.add({ "timber", "Timber", 10, true, Color{ 120, 84, 50, 255 } });
 
     // ---- Enterprises (direction E4) --------------------------------------
     // One per town at most; bought at the market. TODO(balance): all numbers.
     c.enterprises.add({ "mill",     "Grain Mill", 300, 15 });
     c.enterprises.add({ "smithy",   "Smithy",     300, 15 });
     c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15 });
+    c.enterprises.add({ "sawmill",  "Sawmill",    300, 15 });   // V3 proof
 
     // ---- Quests (direction F4) -------------------------------------------
     // Shapes only; givers rotate through them. TODO(balance): all rewards.

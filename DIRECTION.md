@@ -730,6 +730,14 @@ this is the feedback the flat numbers were waiting for.
   `tests/recruit_pool.txt` drains Sargoth dry and watches a son come of
   age. Flat TODO(balance).
 
+- [x] **V3. Iteration three — a floor under the small print.** HUD text
+  requested at 14+ never renders below 19 px (deliberate fine print and
+  zoom-encoded map text pass through), party labels join the settlements
+  at constant screen size, and two more registries prove out in one line
+  each: Timber (a seventh ware the villages fell cheap and the towns pay
+  dear) and the Sawmill enterprise. Markets, caravans, world events and
+  the ledger picked both up with zero code changes.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

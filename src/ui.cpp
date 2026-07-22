@@ -126,7 +126,14 @@ void SetTextScale(float s) {
     gScale = s < 0.8f ? 0.8f : s > 1.6f ? 1.6f : s;
 }
 
-static float Sz(int fontSize) { return fontSize * gScale; }
+// A floor under the small print (V3): HUD-range labels (requested size
+// >= 14) never render below 19 px. Sizes under 14 are deliberate fine
+// print — mostly world-space map text whose size already encodes the
+// zoom — and pass through untouched.
+static float Sz(int fontSize) {
+    const float s = fontSize * gScale;
+    return (fontSize >= 14 && s < 19.0f) ? 19.0f : s;
+}
 
 void Text(const char* text, int x, int y, int fontSize, Color color) {
     DrawTextEx(BodyFont(), text, { (float)x, (float)y }, Sz(fontSize),
