@@ -850,6 +850,11 @@ this is the feedback the flat numbers were waiting for.
   carries the live recruit pool inline — every number the door leads to,
   visible before you open it.
 
+- [x] **V21. Iteration twenty-one — rain country on the map.** The
+  positional weather formula battles already use (R1) now hatches the
+  campaign map in faint blue — archery weather is plannable before you
+  give battle. Baked into the cached map texture: zero runtime cost.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

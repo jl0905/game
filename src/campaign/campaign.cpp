@@ -2317,6 +2317,20 @@ void PaintMapGround(const MapDef& m) {
                                    (unsigned char)(48 + 10.0f * n1), 255 };
             DrawRectangle(gx * CELL, gy * CELL, CELL, CELL, ground);
 
+            // Rain country (V21): the same positional formula battles use
+            // (R1 — wet strings throw short) hatches the map, so archery
+            // weather is plannable. Baked into the cached texture: free.
+            if (sinf(wp.x * 0.0017f - wp.y * 0.0023f) > 0.45f) {
+                DrawRectangle(gx * CELL, gy * CELL, CELL, CELL,
+                              Fade(Color{ 40, 55, 90, 255 }, 0.13f));
+                for (int rl = 0; rl < 3; ++rl)
+                    DrawLineEx({ (float)(gx * CELL + 12 + rl * 30),
+                                 (float)(gy * CELL + 10) },
+                               { (float)(gx * CELL + 2 + rl * 30),
+                                 (float)(gy * CELL + 34) },
+                               1.5f, Fade(Color{ 120, 140, 190, 255 }, 0.35f));
+            }
+
             unsigned int h = (unsigned)(gx * 73856093) ^ (unsigned)(gy * 19349663);
             h ^= h >> 13;
             if (n2 > m.biome.forestThreshold) {   // forest clumps
