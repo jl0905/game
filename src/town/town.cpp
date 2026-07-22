@@ -46,6 +46,8 @@ struct TownScene {
     std::vector<Npc>      npcs;
     int     tavern = -1;
     bool    stalls = false;   // market stalls ring the plaza (N5; towns only)
+    bool    menu   = true;    // the settlement menu (U4): GUI first, boots
+                              // by choice ("Visit the settlement")
 
     Vector3 pPos{};
     float   yaw = 0, pitch = 0;
@@ -291,16 +293,57 @@ void TownInit(const GameState& gs) {
     }
 
     T.pPos = { 0, 0, -14 };            // start at the plaza's south edge
-    if (IsWindowReady()) DisableCursor();
+    T.menu = true;                     // arrive at the gate menu (U4)
+    if (IsWindowReady()) EnableCursor();   // the menu is mouse-driven
     T.hasLastMouse = false;
 }
 
-bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignInput& cin) {
+// Whether the settlement menu is up (U4) — the input gatherer needs to know
+// so number keys mean menu rows, not tavern recruits.
+bool TownInMenu() { return T.menu; }
+
+bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignInput& cinRaw) {
     if (dt > 0.05f) dt = 0.05f;
     const Content& c = gs.content;
 
+    // The settlement menu (U4): rows translate into the same intents the
+    // hotkeys raise, so every action below has exactly one implementation.
+    CampaignInput cin = cinRaw;
+    if (T.menu) {
+        switch (cinRaw.menuChoice) {
+            case 1: cin.openMarket = true; break;
+            case 2:   // the tavern: walk in at the hearth
+                TownGoTavern(gs);
+                T.menu = false;
+                if (IsWindowReady()) DisableCursor();
+                break;
+            case 3: cin.tournament = true; break;
+            case 4: cin.quest = true; break;
+            case 5: cin.hire = true; break;
+            case 6: cin.swear = true; break;
+            case 7:   // the hall: court at a castle, else the local talk
+                TownTalkLord(gs);
+                gs.screen = Screen::Dialogue;
+                return true;
+            case 8: cin.garrisonOne = true; break;
+            case 9: cin.ungarrisonOne = true; break;
+            case 10:   // boots on the ground
+                T.menu = false;
+                if (IsWindowReady()) DisableCursor();
+                break;
+            default: break;
+        }
+    }
+
     // ---- leave ----
+    // Esc while walking returns to the gate menu (windowed); from the menu
+    // (or headless, where scripts expect one hop) it leaves outright.
     if (cin.leaveSettlement) {
+        if (!T.menu && IsWindowReady()) {
+            T.menu = true;
+            EnableCursor();
+            return true;
+        }
         gs.currentSettlement = -1;
         gs.screen = Screen::Campaign;
         if (IsWindowReady()) EnableCursor();
@@ -411,25 +454,30 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
     }
 
     // ---- hero movement (battle-style third person) ----
-    T.yaw   -= in.lookDelta.x * 0.003f;
-    T.pitch  = Clamp(T.pitch - in.lookDelta.y * 0.003f, -0.4f, 0.6f);
-    const Vector3 fwd   = { sinf(T.yaw), 0, cosf(T.yaw) };
-    const Vector3 right = { -fwd.z, 0, fwd.x };
-    Vector3 move = Vector3Add(Vector3Scale(fwd, in.moveForward),
-                              Vector3Scale(right, in.moveRight));
-    if (T.inside) {
-        if (Vector3Length(move) > 0) {
-            T.iPos = Vector3Add(T.iPos, Vector3Scale(Vector3Normalize(move),
-                                                     WALK_SPEED * 0.7f * dt));
+    // Frozen while the gate menu is up (U4): the cursor belongs to the
+    // rows — but every intent handler below still runs (the menu raises
+    // the same intents; the harness injects them directly).
+    if (!T.menu) {
+        T.yaw   -= in.lookDelta.x * 0.003f;
+        T.pitch  = Clamp(T.pitch - in.lookDelta.y * 0.003f, -0.4f, 0.6f);
+        const Vector3 fwd   = { sinf(T.yaw), 0, cosf(T.yaw) };
+        const Vector3 right = { -fwd.z, 0, fwd.x };
+        Vector3 move = Vector3Add(Vector3Scale(fwd, in.moveForward),
+                                  Vector3Scale(right, in.moveRight));
+        if (T.inside) {
+            if (Vector3Length(move) > 0) {
+                T.iPos = Vector3Add(T.iPos, Vector3Scale(Vector3Normalize(move),
+                                                         WALK_SPEED * 0.7f * dt));
+                T.walkPhase += dt * 10.0f;
+            }
+            T.iPos.x = Clamp(T.iPos.x, -5.0f, 5.0f);   // the common room
+            T.iPos.z = Clamp(T.iPos.z, -3.5f, 4.2f);
+        } else if (Vector3Length(move) > 0) {
+            T.pPos = Vector3Add(T.pPos, Vector3Scale(Vector3Normalize(move), WALK_SPEED * dt));
             T.walkPhase += dt * 10.0f;
         }
-        T.iPos.x = Clamp(T.iPos.x, -5.0f, 5.0f);   // the common room
-        T.iPos.z = Clamp(T.iPos.z, -3.5f, 4.2f);
-    } else if (Vector3Length(move) > 0) {
-        T.pPos = Vector3Add(T.pPos, Vector3Scale(Vector3Normalize(move), WALK_SPEED * dt));
-        T.walkPhase += dt * 10.0f;
+        if (!T.inside) T.pPos = CollideBuildings(T.pPos, 0.5f);
     }
-    if (!T.inside) T.pPos = CollideBuildings(T.pPos, 0.5f);
 
     // ---- tavern recruiting ----
     if (TownAtTavern() && cin.recruitSlot >= 0) {
@@ -988,8 +1036,59 @@ void TownDraw(const GameState& gs) {
         ui::Text("[T] tournament   [M] market   [G] work   [H] hire   [V] oath   "
                  "[E] talk   [F] garrison (yours)",
                  10, GetScreenHeight() - 50, 18, Fade(GOLD, 0.85f));
-        ui::Text("WASD walk, mouse look. The gold roof is the tavern. Esc leaves.",
+        ui::Text("WASD walk, mouse look. The gold roof is the tavern. Esc: gate menu.",
                  10, GetScreenHeight() - 26, 16, Fade(RAYWHITE, 0.7f));
+    }
+
+    // The gate menu (U4): the town breathes behind a clear list of
+    // everything there is to do here — boots are one row among many.
+    if (T.menu && gs.currentSettlement >= 0) {
+        const Town& town = gs.towns[gs.currentSettlement];
+        const Content& c = gs.content;
+        const int cx = GetScreenWidth() / 2;
+        const int x0 = cx - townmenu::X_HALF;
+        DrawRectangle(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
+                      townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
+                      Fade(BLACK, 0.78f));
+        DrawRectangleLines(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
+                           townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
+                           GOLD);
+        ui::Title(town.name.c_str(), x0, 56, 40, GOLD);
+        const bool ownerValid = town.owner >= 0 && town.owner < c.factions.size();
+        ui::Text(TextFormat("%s of %s      prosperity %d%%      garrison %d",
+                            town.type == SettlementType::Village ? "Village"
+                            : town.type == SettlementType::Castle ? "Castle"
+                                                                  : "Town",
+                            ownerValid ? c.factions[town.owner].name.c_str()
+                                       : "no crown",
+                            town.prosperity, town.garrisonSize()),
+                 x0, 110, 19, RAYWHITE);
+        ui::Text(TextFormat("Your purse: %d gold      your band: %d / %d",
+                            gs.gold, gs.player.totalTroops(), PartyCap(gs)),
+                 x0, 136, 17, Fade(RAYWHITE, 0.7f));
+        const char* rows[townmenu::ROWS] = {
+            "[1]  The market            (buy, sell, arms, caravans)",
+            "[2]  The tavern            (recruits, companions, ransom)",
+            "[3]  The tournament        (Shift-click to stake 50)",
+            "[4]  Seek work             (the local quest)",
+            "[5]  Hire the companion",
+            "[6]  Swear to this crown",
+            "[7]  The hall              (court, news, politics)",
+            "[8]  Garrison a soldier    (yours only)",
+            "[9]  Recall a soldier",
+            "[W]  Visit the settlement  (walk the streets)",
+        };
+        int y = townmenu::Y;
+        const Vector2 m = GetMousePosition();
+        for (int r = 0; r < townmenu::ROWS; ++r) {
+            if (m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
+                m.y >= y && m.y < y + townmenu::ROW_H)
+                DrawRectangle(x0 - 8, y, townmenu::X_HALF * 2 + 16,
+                              townmenu::ROW_H, Fade(GOLD, 0.14f));
+            ui::Text(rows[r], x0, y + 6, 20, RAYWHITE);
+            y += townmenu::ROW_H;
+        }
+        ui::Text("[Esc] ride on", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));
     }
     EndDrawing();
 }

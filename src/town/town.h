@@ -29,6 +29,14 @@ void TownTalkNearest(GameState& gs);
 void TownTalkLord(GameState& gs);   // the castle court audience (K2)
 void TownGoTavern(GameState& gs);   // stand at the tavern door (harness
                                     // shortcut, Q1 — recruiting lives there)
+
+// The settlement gate menu (U4): GUI first, boots by choice. The input
+// gatherer asks TownInMenu() so number keys mean rows, not recruits; the
+// shared layout keeps hit-boxes and drawing in one place (K7 rule).
+bool TownInMenu();
+namespace townmenu {
+inline constexpr int Y = 168, ROW_H = 34, ROWS = 10, X_HALF = 260;
+}
 void DialogueUpdate(GameState& gs, const CampaignInput& in);
 void DialogueDraw(const GameState& gs);
 

@@ -626,10 +626,39 @@ this is the feedback the flat numbers were waiting for.
   rule exactly. And the mystery yellow dots are named: they're shield
   sparks, now captioned "SHIELD! vary your swing direction" when your
   blow meets wood.
-- [ ] **U4. Settlement menu first.** Entering a settlement opens a GUI
-  menu (market, tavern, court, tournament, work, garrison...) with
-  "Visit the settlement" to walk the 3D streets — GUI or boots, the
-  player's choice.
+- [x] **U4. Settlement menu first.** Shipped: entering a settlement opens
+  the gate menu — name, owner, prosperity, garrison and your purse up
+  top, then ten rows (market, tavern, tournament, work, hire, oath,
+  hall, garrison±, and "[W] Visit the settlement" for the streets), all
+  clickable with hover. Rows translate into the same intents the hotkeys
+  raise, so every action has one implementation and all 68 harness
+  scripts pass untouched. Esc walks back to the menu; Esc again rides
+  on. The tavern row walks you in at the hearth.
+- [ ] **U6. Press of bodies & scale (added mid-sprint).** Units should
+  crowd each other hard — no stacking. Strengthen separation into a
+  positional constraint (grid-driven pairwise push-out), then re-bench:
+  targeting AI per troop at hundreds-per-side stays the bar. (We already
+  run a shared-snapshot parallel AI on a uniform grid — closer to the
+  "hivemind" than it looks; the work is the constraint pass and keeping
+  it cache-friendly.)
+
+- [ ] **U8. Paper-doll equipment (added mid-sprint).** The inventory gains
+  visible equipment slots — helmet, body, hands, feet, weapon — and
+  drag-and-drop from the bag grid into them (and back), one interface.
+  (E-to-equip exists; this makes it visual and mouse-native.)
+- [ ] **U9. Market meets the bag (added mid-sprint).** The market screen
+  adopts the inventory-interface look; mind the state seams — town stock,
+  saddlebag goods (counts), and the tiled bag (items) are three different
+  stores and must stay so.
+- [ ] **U7. The played exe stays current (process).** After every push:
+  pull + rebuild `C:\Users\hambu\projects\game\build\openwarband.exe` so
+  the user always launches the latest. (Currently blocked when the game
+  is running — Windows locks the exe; rebuild retries each push.)
+  Audit note: all other user asks to date are shipped — zoom,
+  silhouettes, pace ring, stun/arrow-stun, mouse-locked aiming, block
+  captions, hero damage, riderless horses, mounted identity, footer,
+  implicit health, walls that hold, save/load surfacing, main-only
+  branch.
 
 ## Sequencing guidance
 

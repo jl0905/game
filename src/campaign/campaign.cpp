@@ -4,6 +4,7 @@
 #include "../battle/character.h"   // roster parade preview (read-only reuse)
 #include "../save.h"
 #include "../sfx.h"
+#include "../town/town.h"   // the gate menu's state + shared layout (U4)
 #include "../ui.h"
 #include <algorithm>
 #include <cmath>
@@ -1078,6 +1079,24 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     CampaignInput in;
 
     if (gs.screen == Screen::Settlement) {
+        // The gate menu (U4): number keys and clicks pick rows; walking
+        // hands the same keys back to recruits and hotkeys.
+        if (TownInMenu()) {
+            for (int r = 0; r < 9; ++r)
+                if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
+            if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_ZERO))
+                in.menuChoice = 10;   // visit the settlement
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                const Vector2 m = GetMousePosition();
+                const int x0 = GetScreenWidth() / 2 - townmenu::X_HALF;
+                const int row = ((int)m.y - townmenu::Y) / townmenu::ROW_H;
+                if (m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
+                    m.y >= townmenu::Y && row >= 0 && row < townmenu::ROWS)
+                    in.menuChoice = row + 1;
+            }
+            if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
+            return in;
+        }
         // Walking a settlement: menu intents only — movement is gathered
         // separately via GatherBattleInput (same third-person controls).
         const std::vector<int>& roster =

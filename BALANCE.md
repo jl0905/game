@@ -46,7 +46,7 @@ enterprises all `cost 300` / `dailyIncome 15`; quests hunt `1 band, 100g,
 | Lord siege gate | garrison×2 < host | When a lord dares invest a settlement |
 | `WAR_WEARINESS` | 40 | Casualties that push a war to truce |
 | `TRUCE_DAYS` | 4 | How long peace holds before rekindling |
-| Garrison sizes | 8 / 4 / 12 | Default / village / castle — both at init and on capture; +1 mustered per day |
+| Garrison sizes | 20 / 10 / 30 | Town / village / castle (`GarrisonCap`, U3 playtest-tuned from 8/4/12) — init, capture, and muster (+2/day); auto-resolve walls fight at 1.7×, repelled attackers lose ½–all |
 | Den breeding | every 2 days, cap 14 | Bandit spawn pressure; dens defend at ×2 troops |
 | `lordsRallyDays` / `musterDays` | 3 / 3 | Crown rally duration; days to answer a liege's summons |
 | Crown requirement | 2 settlements | Plus −40 liege / −20 other crowns on claiming |
