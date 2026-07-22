@@ -831,6 +831,14 @@ this is the feedback the flat numbers were waiting for.
   crown +5 standing (K3's follow-up closed; the host captured before
   the bracket clears the settlement, caught in review).
 
+- [x] **V18. Iteration eighteen — quests carry any ware.** `QuestDef`
+  gains `goodId`: delivery quests name their cargo from the goods
+  registry (proof: "Timber for the Walls", one line). The quests
+  scenario was re-anchored twice en route — the third quest shifted the
+  giver rotation, and the V15/V16 combat physics turned seed 5's blind
+  hunt into a defeat until the script steered at prey its own size:
+  the suite's meaning re-verified, not just its pass-marks.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1

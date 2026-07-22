@@ -1561,10 +1561,12 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 gs.siegePrompt = in.clickSettlement;
             }
         } else {
-            // Grain deliveries (F4) pay at the destination gate.
+            // Deliveries (F4) pay at the destination gate — any ware the
+            // quest names (V18).
             if (gs.activeQuest >= 0 && in.clickSettlement == gs.questTown &&
                 c.quests[gs.activeQuest].type == QuestType::DeliverGrain) {
-                const int g = c.goods.find("grain");
+                const int g = c.goods.find(
+                    c.quests[gs.activeQuest].goodId.c_str());
                 const int need = c.quests[gs.activeQuest].amount;
                 if (g >= 0 && g < (int)gs.goods.size() && gs.goods[g] >= need) {
                     gs.goods[g] -= need;

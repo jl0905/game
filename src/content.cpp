@@ -388,10 +388,14 @@ void LoadDefaultContent(Content& c) {
     // Shapes only; givers rotate through them. TODO(balance): all rewards.
     c.quests.add({ "hunt",  "Bandit Hunt",
                    "Outlaws plague the roads. Break a band of them.",
-                   QuestType::HuntBandits, 1, 100, 5 });
+                   QuestType::HuntBandits, 1, 100, 5, "" });
     c.quests.add({ "grain", "Grain Delivery",
                    "The granary runs thin. Bring grain from afar.",
-                   QuestType::DeliverGrain, 5, 80, 5 });
+                   QuestType::DeliverGrain, 5, 80, 5, "grain" });
+    // V18 proof: a delivery quest for any ware — one registry line.
+    c.quests.add({ "timber", "Timber for the Walls",
+                   "The palisade rots. Bring timber for the wrights.",
+                   QuestType::DeliverGrain, 4, 90, 5, "timber" });
 
     // ---- World events (R4) ------------------------------------------------
     // Fired on the day rotation at a rotating settlement, announced as news.

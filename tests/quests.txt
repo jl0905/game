@@ -1,15 +1,20 @@
 # Quests (direction F4): a bandit hunt taken in town pays out on the kill;
 # a grain delivery pays at the destination gate.
 seed 5
+background 3       # three brigands: the hunt needs teeth now that armour
+                   # and weapon tiers are live (V15/V16)
 enter 0            # Sargoth, day 0 -> the giver offers the Bandit Hunt
 quest
 state              # expect quest: hunt progress=0
 leave
-hunt 120           # ride down the nearest outlaw band
+walk -0.93 -0.37 5 # steer west toward the small deserter band first —
+                   # the raider war-band near spawn eats blind hunts now
+hunt 60            # ride down the nearest outlaw band
 block on
-tick 150
+tick 30
 state              # expect QUEST COMPLETE (+100 gold on top of loot)
-enter 3            # Jelkala, day 0 -> the giver offers the Grain Delivery
+enter 1            # Praven, day 0 -> (1+0)%3=1: the Grain Delivery (the
+                   # V18 timber quest joined the rotation at slot 2)
 quest
 state              # expect quest: grain target=8 (Emberfall)
 leave
