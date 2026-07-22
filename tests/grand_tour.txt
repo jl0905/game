@@ -1,0 +1,29 @@
+# The grand tour (V76) - the 100th script: one continuous career touching
+# the V-era systems end to end. Buy grain (commissary), set taxes, host a
+# feast (chronicle + guests), hire a sellsword pack, take work, fight with
+# the war horn available, and read every ledger. Not a scenario assert so
+# much as an integration sweep: if any system's state machine snags on
+# another's, this run trips over it.
+seed 42
+enter 0
+market
+buy grain 3
+leave
+leave
+ledger
+tax
+leave
+enter 0
+topic 11
+topic 12
+state
+leave
+hunt 90
+tick 4
+warcry
+autoresolve
+tick 4
+state
+ledger
+state
+quit

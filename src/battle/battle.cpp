@@ -2829,6 +2829,15 @@ void BattleDraw(const Content& c) {
                      f > 0 ? Fade(RAYWHITE, 0.7f) : Fade(RED, 0.9f));
         }
     }
+    {   // the waves still to come (V75/V76)
+        int rOwn = 0, rEnemy = 0;
+        for (int r : B.reserveOwn)   rOwn += r;
+        for (int r : B.reserveAlly)  rOwn += r;
+        for (int r : B.reserveEnemy) rEnemy += r;
+        if (rOwn > 0 || rEnemy > 0)
+            ui::Text(TextFormat("Reserves - yours: %d   theirs: %d", rOwn, rEnemy),
+                     18, 40, 18, Fade(GOLD, 0.85f));
+    }
     ui::Text(TextFormat("Allies: %d   Enemies: %d   Your kills: %d",
                         B.aliveAllies, B.aliveEnemies, B.heroKills), 18, 12, 22, RAYWHITE);
     if (B.rallyPulse > 0)

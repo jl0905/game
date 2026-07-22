@@ -1203,6 +1203,12 @@ this is the feedback the flat numbers were waiting for.
   reserves are credited back as survivors in the loss books; sieges
   and the arena spawn whole; the bench exempts itself.
   `reserves=` in the dump; `tests/battle_size.txt` fields 307 men.
+- [x] **V76. Iteration seventy-six — the hundredth script.** A reserves
+  chip on the battle HUD (yours/theirs, gold, only when waves wait) —
+  and `tests/grand_tour.txt`, the suite's 100th script: one unbroken
+  career sweeping commissary, taxes, feast, sellswords, war horn,
+  auto-resolve and defeat costs in a single run, tripping over any
+  state-machine snag between systems. Suite: 100/100.
 
 ## Sequencing guidance
 
