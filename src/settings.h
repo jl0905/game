@@ -15,6 +15,7 @@ struct Settings {
     bool  particles    = true;    // blood / hoof-dust puffs
     float masterVolume = 1.0f;    // 0..1
     bool  invertY      = false;   // flip vertical mouse look
+    float textScale    = 1.4f;    // global lettering size (V72), 1.0–1.6
 };
 
 // The live settings. Defaults above until LoadSettings() has run.

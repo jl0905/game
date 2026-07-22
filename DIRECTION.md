@@ -1177,6 +1177,11 @@ this is the feedback the flat numbers were waiting for.
   blocking. Q-swapping is now a real trade (greatsword damage vs the
   wall on your arm). Shield bar over the HP bar; HUD lifted clear of
   the V67 footer it overlapped.
+- [x] **V72. Iteration seventy-two — lettering in the player's hands.**
+  The settings screen gains row [6] Lettering: 100/120/140/160%,
+  applied live via `ui::SetTextScale` and persisted as `textscale` in
+  settings.cfg (overriding fonts.cfg at startup). The standing
+  "bigger text" ask becomes a dial the player owns.
 
 ## Sequencing guidance
 

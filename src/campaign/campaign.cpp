@@ -135,7 +135,7 @@ constexpr float TOWN_CLICK_RADIUS = 36.0f;
 // row layouts in the draw functions both quote these — never mirrored
 // literals, so they cannot drift apart.
 namespace layout {
-constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 5;
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 6;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 constexpr int MARKET_X0  = 120, MARKET_X1      = 700;
 constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 4;
@@ -1205,7 +1205,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Settings) {
-        for (int row = 0; row < 5; ++row)
+        for (int row = 0; row < 6; ++row)
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
         // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -3817,6 +3817,11 @@ void SettingsUpdate(GameState& gs, const CampaignInput& in) {
         case 4:
             s.invertY = !s.invertY;
             break;
+        case 5:   // lettering steps 1.0 / 1.2 / 1.4 / 1.6 and applies live (V72)
+            s.textScale += 0.2f;
+            if (s.textScale > 1.61f) s.textScale = 1.0f;
+            ui::SetTextScale(s.textScale);
+            break;
         default: break;
     }
     if (in.leaveSettlement) {
@@ -3832,7 +3837,7 @@ void SettingsDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int x = GetScreenWidth() / 2 - 300;
     ui::Title("SETTINGS", x, 60, 44, GOLD);
-    ui::Text("[1-5 / click] change    [Esc / O] save and back", x, 120, 20,
+    ui::Text("[1-6 / click] change    [Esc / O] save and back", x, 120, 20,
              Fade(RAYWHITE, 0.7f));
 
     int y = layout::SETTINGS_Y;
@@ -3846,6 +3851,7 @@ void SettingsDraw(const GameState& gs) {
     row(2, "Particles",     s.particles ? "on" : "off");
     row(3, "Volume",        TextFormat("%.0f%%", s.masterVolume * 100));
     row(4, "Invert look Y", s.invertY ? "on" : "off");
+    row(5, "Lettering",     TextFormat("%.0f%%", s.textScale * 100));   // V72
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));

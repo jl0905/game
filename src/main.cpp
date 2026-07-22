@@ -99,6 +99,7 @@ int main(int argc, char** argv) {
     SetTargetFPS(120);
     SetExitKey(KEY_NULL);   // ESC shouldn't insta-quit mid battle
     ui::LoadFonts();        // smooth TTF text everywhere (see assets/fonts.cfg)
+    ui::SetTextScale(GetSettings().textScale);   // the player's letters win (V72)
     SfxInit();              // procedural sound effects
     SetMasterVolume(st.masterVolume);
 
