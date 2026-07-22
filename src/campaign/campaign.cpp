@@ -4347,6 +4347,16 @@ void PartyDraw(const GameState& gs) {
                          "Captives in the train: %d    [R] press one into the line (-1 honor)",
                          captives),
                      panelX, GetScreenHeight() - 82, 20, GOLD);
+        // The cart behind the column (V109): wounded men healing their way
+        // back, and the empty sacks that thin the line.
+        int hurt = 0;
+        for (int w : gs.wounded) hurt += w;
+        if (hurt > 0 || gs.hungryDays > 0)
+            ui::Text(TextFormat("%s%s",
+                         hurt > 0 ? TextFormat("Wounded healing: %d    ", hurt) : "",
+                         gs.hungryDays > 0 ? "THE MEN MARCH HUNGRY - buy grain" : ""),
+                     panelX, GetScreenHeight() - 110, 20,
+                     gs.hungryDays > 0 ? Fade(RED, 0.9f) : Fade(RAYWHITE, 0.85f));
     }
     ui::Text("[1-9 / click] promote one (20 gold)    [Shift / right-click] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
@@ -4562,8 +4572,12 @@ void KingdomDraw(const GameState& gs) {
         for (int bi = 0; bi < (int)gs.bankAt.size(); ++bi) total += gs.bankAt[bi];
         if (total > 0) {
             y += 8;
-            ui::Text(TextFormat("DEPOSITS: %d gold at interest", total), lx, y,
-                     20, GOLD);
+            ui::Text(TextFormat("DEPOSITS: %d gold at interest%s", total,
+                                gs.debt > 0
+                                    ? TextFormat("      DEBT: %d (%.0f days)",
+                                                 gs.debt, gs.debtDays)
+                                    : ""),
+                     lx, y, 20, gs.debt > 0 ? Fade(RED, 0.9f) : GOLD);
             y += 26;
             for (int bi = 0; bi < (int)gs.bankAt.size() &&
                              bi < (int)gs.towns.size(); ++bi) {

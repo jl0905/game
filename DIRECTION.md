@@ -1388,6 +1388,12 @@ this is the feedback the flat numbers were waiting for.
   from the striker's position, arrows from the shaft's back-trail),
   relative to your facing — get hit from behind and the arc says so.
   Draw-only.
+- [x] **V109. Iteration one-oh-nine — the books show where you look.**
+  Three visibility stitches: the party screen carries the wounded cart
+  and the hunger warning; the kingdom ledger's DEPOSITS line carries
+  the red DEBT beside it; the gate-menu dashboard quotes FORTIFIED and
+  war-price markup. No new state — existing state, surfaced where the
+  decision is made. Draw-only.
 
 ## Sequencing guidance
 

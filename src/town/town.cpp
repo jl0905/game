@@ -1387,14 +1387,21 @@ void TownDraw(const GameState& gs) {
                            GOLD);
         ui::Title(town.name.c_str(), x0, 56, 40, GOLD);
         const bool ownerValid = town.owner >= 0 && town.owner < c.factions.size();
-        ui::Text(TextFormat("%s of %s      prosperity %d%%      garrison %d",
+        ui::Text(TextFormat("%s of %s      prosperity %d%%      garrison %d%s%s",
                             town.type == SettlementType::Village ? "Village"
                             : town.type == SettlementType::Castle ? "Castle"
                                                                   : "Town",
                             ownerValid ? c.factions[town.owner].name.c_str()
                                        : "no crown",
-                            town.prosperity, town.garrisonSize()),
-                 x0, 110, 19, RAYWHITE);
+                            town.prosperity, town.garrisonSize(),
+                            town.fortified ? "      FORTIFIED" : "",
+                            town.warMarkup > 100
+                                ? TextFormat("      war prices +%d%%",
+                                             town.warMarkup - 100)
+                                : ""),
+                 x0, 110, 19,
+                 town.warMarkup > 100 ? Fade(Color{ 255, 180, 120, 255 }, 0.95f)
+                                      : RAYWHITE);
         const int vault = gs.currentSettlement < (int)gs.bankAt.size()
                               ? gs.bankAt[gs.currentSettlement] : 0;
         ui::Text(TextFormat("Your purse: %d gold      your band: %d / %d"
