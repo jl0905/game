@@ -1,0 +1,9 @@
+# Captives slip the rope (V77): a prisoner train larger than half the
+# warband is under-guarded - one escapes per dawn until you ransom, press,
+# or grow. Fixture: 8-man band hauling 6 captive knights, clock 59.
+# Expect captives 6 -> 5 across the dawn.
+load tests/fixtures/rope.owb
+state
+wait 5
+state
+quit

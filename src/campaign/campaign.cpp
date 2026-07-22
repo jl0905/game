@@ -2317,6 +2317,24 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 break;   // one betrayal a dawn is drama enough
             }
 
+            // Captives slip the rope (V77): a prisoner train larger than
+            // half the warband is under-guarded — one man escapes at every
+            // dawn until you ransom, press, or grow. TODO(balance).
+            {
+                int train = 0;
+                for (int n : gs.prisoners) train += n;
+                if (train > 0 && train * 2 > gs.player.totalTroops()) {
+                    for (int t = 0; t < (int)gs.prisoners.size(); ++t)
+                        if (gs.prisoners[t] > 0) {
+                            gs.prisoners[t]--;
+                            gs.resultText = TextFormat(
+                                "A captive %s slipped the rope in the night. "
+                                "(too few guards)", c.troops[t].name.c_str());
+                            break;
+                        }
+                }
+            }
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;

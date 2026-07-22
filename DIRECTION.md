@@ -1209,6 +1209,12 @@ this is the feedback the flat numbers were waiting for.
   career sweeping commissary, taxes, feast, sellswords, war horn,
   auto-resolve and defeat costs in a single run, tripping over any
   state-machine snag between systems. Suite: 100/100.
+- [x] **V77. Iteration seventy-seven — darker bands, slipping ropes.**
+  Contrast sweep on every battle overlay (intro/rout/knockout bands
+  0.55–0.6 → 0.65–0.75 black; strategy panel 0.62 → 0.85) so banner
+  text holds against noon snow. And captives slip the rope: a train
+  larger than half the warband loses one prisoner per dawn — ransom
+  fast, press, or grow. `tests/prisoner_escape.txt`.
 
 ## Sequencing guidance
 

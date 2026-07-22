@@ -2858,7 +2858,7 @@ void BattleDraw(const Content& c) {
         const char* d1 = "DEPLOYMENT";
         const int w1 = ui::MeasureTitle(d1, 48);
         DrawRectangle(0, GetScreenHeight() / 3 - 14,
-                      GetScreenWidth(), 110, Fade(BLACK, 0.55f));
+                      GetScreenWidth(), 110, Fade(BLACK, 0.75f));
         ui::Title(d1, (GetScreenWidth() - w1) / 2, GetScreenHeight() / 3, 48, GOLD);
         const char* d2 = "[1-5] shape   [ / ] ranks   [F1-F3] first order   "
                          "SPACE sounds the horn   [N] send them in without you";
@@ -2941,7 +2941,7 @@ void BattleDraw(const Content& c) {
         const int pw = 300;
         const int px = GetScreenWidth() - pw;
         const int ph = GetScreenHeight();
-        DrawRectangle(px, 0, pw, ph, Fade(Color{ 40, 44, 52, 255 }, 0.62f));
+        DrawRectangle(px, 0, pw, ph, Fade(Color{ 40, 44, 52, 255 }, 0.85f));
         DrawRectangle(px, 0, 3, ph, Fade(RAYWHITE, 0.25f));
         int y = 26;
         ui::Title("STRATEGY", px + 22, y, 30, RAYWHITE);                      y += 48;
@@ -3001,7 +3001,7 @@ void BattleDraw(const Content& c) {
         const int w1 = ui::MeasureTitle(head, 52);
         const int w2 = ui::Measure(nums, 24);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 16, GetScreenWidth(), 116, Fade(BLACK, 0.6f * a));
+        DrawRectangle(0, cy - 16, GetScreenWidth(), 116, Fade(BLACK, 0.75f * a));
         ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 52, Fade(GOLD, a));
         ui::Text(nums, (GetScreenWidth() - w2) / 2, cy + 62, 24, Fade(RAYWHITE, a));
     }
@@ -3050,7 +3050,7 @@ void BattleDraw(const Content& c) {
         const char* head = B.cryText;
         const int w = ui::MeasureTitle(head, 44);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.4f * a));
+        DrawRectangle(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.65f * a));
         ui::Title(head, (GetScreenWidth() - w) / 2, cy, 44, Fade(Color{ 235, 90, 70, 255 }, a));
     }
 
@@ -3061,7 +3061,7 @@ void BattleDraw(const Content& c) {
         const int w1 = ui::MeasureTitle(head, 44);
         const int w2 = ui::Measure(sub, 22);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 12, GetScreenWidth(), 96, Fade(BLACK, 0.5f));
+        DrawRectangle(0, cy - 12, GetScreenWidth(), 96, Fade(BLACK, 0.7f));
         ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 44, Fade(RED, 0.9f));
         ui::Text(sub, (GetScreenWidth() - w2) / 2, cy + 54, 22, Fade(RAYWHITE, 0.9f));
     }
