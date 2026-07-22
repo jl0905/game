@@ -970,6 +970,13 @@ this is the feedback the flat numbers were waiting for.
   YOUR feast warms +4 opinion — so a well-attended feast is bulk
   courting and the marriage window has real witnesses. `guests=` in
   the feast dump; `tests/feast_guests.txt`.
+- [x] **V39. Iteration thirty-nine — the field re-arms you.** G over a
+  fallen man (2.5u) takes up his weapon in place of your active one —
+  lose your blade to a duel of attrition and finish the fight with a
+  dead knight's spear. Each corpse yields once (`looted`); a quiet
+  "[G] take up the fallen weapon" prompt appears in reach and a gold
+  TAKEN UP caption confirms. Harness `pickup`; verified spear-for-sword
+  off a fallen knight.
 
 ## Sequencing guidance
 

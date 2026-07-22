@@ -97,4 +97,5 @@ struct BattleInput {
     bool    beginBattle     = false;   // sound the horn: end deployment (R2)
     bool    mountToggle     = false;   // Z: dismount / remount (U11)
     bool    kick            = false;   // E: the boot that opens a guard (V33)
+    bool    pickup          = false;   // G: take up a fallen man's weapon (V39)
 };

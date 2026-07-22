@@ -677,6 +677,14 @@ int RunScript(const char* path) {
             // Press a captive into the warband (V36) — party screen R.
             CampaignInput cin; cin.pressPrisoner = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "pickup") {
+            // Take up a fallen man's weapon (V39) — G in battle.
+            BattleInput bin; bin.pickup = true;
+            h.Step(CampaignInput{}, bin);
+            const BattleView v = GetBattleView();
+            std::printf("pickup: weapon=%s\n",
+                        h.gs.content.weapons.valid(v.heroWeapon)
+                            ? h.gs.content.weapons[v.heroWeapon].id.c_str() : "none");
         } else if (cmd == "kick") {
             // The boot (V33): stagger the man in front through his shield.
             BattleInput bin; bin.kick = true;

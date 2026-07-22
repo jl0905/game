@@ -575,6 +575,7 @@ struct Soldier {
     float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
     float   stun = 0;          // hit-stun (T): reeling, can't move or swing
     float   stunImmune = 0;    // post-stun grace — an opening, not a lock
+    bool    looted = false;    // his weapon already taken up (V39)
     int     guardDir = -1;     // reactive shield guard (T): covers where last
                                // struck; -1 = the old positional habit
     float   nerve = NERVE_MAX; // courage left (K4); at 0 the soldier breaks
@@ -716,6 +717,8 @@ struct BattleState {
     int   bannerIdx[2] = { -1, -1 };   // [0]=player side, [1]=enemy side
     float kickCd = 0;                  // the boot's recovery (V33)
     int   heroKicksLanded = 0;
+    std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
+    float       pickupTimer = 0;
     float bannerFlash  = 0;            // "THE BANNER FALLS" fade
     bool  bannerFellOurs = false;      // whose banner just fell
     const char* routText = "";
@@ -1440,6 +1443,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyPressed(KEY_F3))    in.order = 3;   // charge
     if (IsKeyPressed(KEY_Z))     in.mountToggle = true;   // dismount (U11)
     if (IsKeyPressed(KEY_E))     in.kick = true;          // the boot (V33)
+    if (IsKeyPressed(KEY_G))     in.pickup = true;        // scavenge (V39)
     if (IsKeyPressed(KEY_LEFT_BRACKET))  in.ranksDelta -= 1;
     if (IsKeyPressed(KEY_RIGHT_BRACKET)) in.ranksDelta += 1;
     return in;
@@ -1639,6 +1643,27 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 B.heroKicksLanded++;
                 SfxPlay(Sfx::Thud, 0.8f);
                 break;   // one boot, one man
+            }
+        }
+
+        // ---- scavenge (V39): G over a fallen man takes up his weapon in
+        //      place of your active one — the field re-arms the survivor.
+        if (in.pickup && B.pHp > 0) {
+            for (Soldier& s : B.soldiers) {
+                if (s.hp > 0 || s.escaped || s.looted) continue;
+                Vector3 to = Vector3Subtract(s.pos, B.pPos);
+                to.y = 0;
+                if (Vector3Length(to) > 2.5f) continue;
+                const Loadout& lo = TroopLoadout(c, s.troop);
+                const int w = lo.weaponCount() > 0 ? lo.weaponAt(0) : -1;
+                if (!c.weapons.valid(w)) continue;
+                s.looted = true;
+                B.heroArsenal[B.heroWeapon] = w;   // yours falls where he lies
+                B.setup.heroLoadout.set(EquipSlot::Weapon, w);
+                B.pickupMsg   = TextFormat("TAKEN UP: %s", c.weapons[w].name.c_str());
+                B.pickupTimer = 1.8f;
+                SfxPlay(Sfx::Swing, 0.6f);
+                break;
             }
         }
 
@@ -2575,6 +2600,28 @@ void BattleDraw(const Content& c) {
         const float ra = fminf(B.routBanner / 0.5f, 1.0f);
         const int   rw = ui::Measure(B.routText, 40);
         ui::Title(B.routText, (GetScreenWidth() - rw) / 2, 150, 40, Fade(GOLD, ra));
+    }
+    B.pickupTimer = fmaxf(0.0f, B.pickupTimer - GetFrameTime());
+    if (B.pickupTimer > 0 && !B.over) {   // the field re-arms you (V39)
+        const float pa = fminf(B.pickupTimer / 0.4f, 1.0f);
+        const int pw = ui::Measure(B.pickupMsg.c_str(), 24);
+        ui::Text(B.pickupMsg.c_str(), (GetScreenWidth() - pw) / 2,
+                 GetScreenHeight() - 150, 24, Fade(GOLD, pa));
+    } else if (!B.over && B.pHp > 0) {
+        // A quiet prompt when a fallen man's weapon lies in reach.
+        for (const Soldier& s : B.soldiers) {
+            if (s.hp > 0 || s.escaped || s.looted) continue;
+            Vector3 to = Vector3Subtract(s.pos, B.pPos);
+            to.y = 0;
+            if (Vector3Length(to) > 2.5f) continue;
+            const Loadout& lo = TroopLoadout(c, s.troop);
+            if (lo.weaponCount() <= 0) continue;
+            const char* hint = "[G] take up the fallen weapon";
+            const int hw = ui::Measure(hint, 20);
+            ui::Text(hint, (GetScreenWidth() - hw) / 2, GetScreenHeight() - 150,
+                     20, Fade(RAYWHITE, 0.75f));
+            break;
+        }
     }
     B.bannerFlash = fmaxf(0.0f, B.bannerFlash - GetFrameTime());
     if (B.bannerFlash > 0 && B.introTimer <= 0 && !B.over) {   // V32
