@@ -220,6 +220,12 @@ struct GameState {
     // (double income). Only meaningful where enterpriseAt is set.
     std::vector<int> enterpriseLvl;
 
+    // The loan (V84): the moneylender advances 300 against your name —
+    // 350 due within ten days. Miss the date and the debt compounds by a
+    // quarter, your honor and the lender's crown both remember.
+    int   debt     = 0;
+    float debtDays = 0;
+
     // The warhorse (V82): 200 gold at any town market buys a destrier —
     // twice the horse under you in every battle after, for life.
     bool warhorse = false;

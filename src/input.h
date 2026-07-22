@@ -44,6 +44,7 @@ struct CampaignInput {
     bool    pressPrisoner = false; // party screen R: a captive takes the coin (V36)
     bool    cycleTax      = false; // kingdom screen T: light/customary/heavy (V55)
     bool    buyWarhorse   = false; // market W: a destrier for life (V82)
+    bool    loan          = false; // market L: borrow 300 / repay the debt (V84)
     bool    releaseLords = false;  // ...or set them free (Y)
     int     buyGood  = -1;            // good row to buy one unit of
     int     sellGood = -1;            // good row to sell one unit of (Shift+key)

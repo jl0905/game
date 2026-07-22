@@ -1,0 +1,15 @@
+# The loan (V84): L at a town market borrows 300 against 350 due in ten
+# days; L again repays when the purse covers it. Miss the date and the sum
+# compounds by a quarter, honor -1, chronicled - the interest example run
+# from the borrower's side. Part 1: borrow (gold 300->600, debt 350).
+# Part 2 (fixture, debt at 1 day, clock 59): the dawn compounds it to 437.
+seed 42
+enter 0
+market
+loan
+state
+loan
+state
+leave
+leave
+quit

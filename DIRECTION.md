@@ -1245,6 +1245,14 @@ this is the feedback the flat numbers were waiting for.
   perks reusing the V54 hook strings. Ships with Wren the Swift
   (scout) as the live sample; MODDING.md documents the line.
   `tests/modded_companion.txt` hires her from town 5's tavern.
+- [x] **V84. Iteration eighty-four — the loan.** The moneylender lends
+  both ways now: L at a market borrows 300 against 350 due in ten
+  days (L again repays). A missed date compounds the debt by a
+  quarter, costs a point of honor, resets the term, and is
+  chronicled; a red DEBT chip rides the HUD. Borrowing funds a
+  sellsword pack TODAY at the price of tomorrow — the interest
+  example, borrower's side. `tests/moneylender_loan.txt`,
+  `tests/debt_compounds.txt`.
 
 ## Sequencing guidance
 

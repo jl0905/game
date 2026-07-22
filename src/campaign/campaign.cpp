@@ -1259,6 +1259,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         }
         in.buyEnterprise = IsKeyPressed(KEY_B);
         in.buyWarhorse   = IsKeyPressed(KEY_W);   // the destrier (V82)
+        in.loan          = IsKeyPressed(KEY_L);   // borrow / repay (V84)
         in.sendCaravan   = IsKeyPressed(KEY_C);   // outfit a convoy (M4)
         if (IsKeyPressed(KEY_D))                  // the moneylender (V5)
             in.bankMove = (IsKeyDown(KEY_LEFT_SHIFT) ||
@@ -2338,6 +2339,18 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // The debt comes due (V84): a missed date compounds the sum by
+            // a quarter and costs your name — the lender's word travels.
+            if (gs.debt > 0 && (gs.debtDays -= 1.0f) <= 0) {
+                gs.debt += gs.debt / 4;
+                gs.debtDays = 10.0f;
+                gs.honor -= 1;
+                gs.resultText = TextFormat(
+                    "THE DEBT COMES DUE. You did not pay; it stands at %d now. "
+                    "Word of it travels.", gs.debt);
+                Chronicle(gs, TextFormat("A debt missed; it compounds to %d.", gs.debt));
+            }
+
             // A mercenary contract runs out at dawn (V29).
             if (gs.mercParty >= 0 && (gs.mercDays -= 1.0f) <= 0) {
                 gs.mercParty = -1;
@@ -3280,6 +3293,12 @@ void CampaignDraw(const GameState& gs) {
                  gs.questDays > 0 && gs.questDays <= 2 ? Fade(RED, 0.95f) : GOLD);
     }
 
+    // The lender's shadow (V84): debt on the HUD, red as it should be.
+    if (gs.debt > 0)
+        ui::Text(TextFormat("DEBT: %d gold - %.0f day(s) before it compounds",
+                            gs.debt, gs.debtDays),
+                 10, 170, 19, Fade(RED, 0.95f));
+
     // A running contract on the books (V29/V30): who marches with you and
     // for how much longer.
     if (gs.mercParty >= 0 && gs.mercDays > 0 &&
@@ -3756,6 +3775,30 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // The loan (V84): borrow against your name, or clear the slate.
+    // TODO(balance): principal, vig, term.
+    if (in.loan && t.type == SettlementType::Town) {
+        if (gs.debt > 0) {
+            if (gs.gold >= gs.debt) {
+                gs.gold -= gs.debt;
+                gs.resultText = TextFormat(
+                    "Debt of %d repaid. The moneylender smiles again.", gs.debt);
+                gs.debt = 0;
+                gs.debtDays = 0;
+            } else {
+                gs.resultText = TextFormat(
+                    "You owe %d and carry %d. The lender waits (%.0f days).",
+                    gs.debt, gs.gold, gs.debtDays);
+            }
+        } else {
+            gs.gold += 300;
+            gs.debt = 350;
+            gs.debtDays = 10.0f;
+            gs.resultText =
+                "The moneylender counts out 300. He wants 350 within ten days.";
+        }
+    }
+
     // The destrier (V82): one horse, once, for life. TODO(balance): price.
     if (in.buyWarhorse && t.type == SettlementType::Town) {
         constexpr int WARHORSE_COST = 200;
@@ -3785,7 +3828,7 @@ void MarketDraw(const GameState& gs) {
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
     ui::Text("1-9 / click: buy one   Shift / right-click: sell one   "
              "[C] caravan (200)   [D] deposit / Shift+D withdraw   "
-             "[W] destrier (200)   Esc / M back",
+             "[W] destrier (200)   [L] loan / repay   Esc / M back",
              x, 116, 20, Fade(RAYWHITE, 0.7f));
     if (gs.currentSettlement < (int)gs.bankAt.size() &&
         gs.bankAt[gs.currentSettlement] > 0)

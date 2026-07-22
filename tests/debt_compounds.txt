@@ -1,0 +1,8 @@
+# The debt comes due (V84): fixture carries 350 owed with 1 day left,
+# clock 59. Expect the dawn to compound it to 437, reset the term to 10
+# days, and write the chronicle line.
+load tests/fixtures/debt.owb
+state
+wait 5
+state
+quit

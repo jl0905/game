@@ -199,6 +199,8 @@ struct Harness {
         if (captives > 0) std::printf("captives=%d\n", captives);
         if (gs.hungryDays > 0) std::printf("hungry=%d\n", gs.hungryDays);
         if (gs.warhorse) std::printf("warhorse=1\n");
+        if (gs.debt > 0)
+            std::printf("debt: %d days=%.0f\n", gs.debt, gs.debtDays);
         std::printf("storm: pos=(%.0f,%.0f) inside=%d\n", gs.stormPos.x,
                     gs.stormPos.y, InStorm(gs, gs.player.pos) ? 1 : 0);
         {
@@ -691,6 +693,10 @@ int RunScript(const char* path) {
             // Dismount / remount (U11) — Z in the saddle or beside a horse.
             BattleInput bin; bin.mountToggle = true;
             h.Step(CampaignInput{}, bin);
+        } else if (cmd == "loan") {
+            // Borrow or repay at the moneylender (V84) — L at a town market.
+            CampaignInput cin; cin.loan = true;
+            h.Step(cin, BattleInput{});
         } else if (cmd == "destrier") {
             // Buy the warhorse (V82) — W at a town market.
             CampaignInput cin; cin.buyWarhorse = true;

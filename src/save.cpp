@@ -188,6 +188,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     f << "storm " << gs.stormPos.x << ' ' << gs.stormPos.y << ' '
       << gs.stormVel.x << ' ' << gs.stormVel.y << '\n';
 
+    // The loan (V84).
+    if (gs.debt > 0) f << "debt " << gs.debt << ' ' << gs.debtDays << '\n';
+
     // The destrier (V82).
     if (gs.warhorse) f << "warhorse 1\n";
 
@@ -495,6 +498,8 @@ bool LoadGame(GameState& gs, const char* path) {
             std::string g;
             ss >> g;
             if (!g.empty()) gs.feastGuests.push_back(g);
+        } else if (tag == "debt") {
+            ss >> gs.debt >> gs.debtDays;
         } else if (tag == "warhorse") {
             int v = 0; ss >> v; gs.warhorse = v != 0;
         } else if (tag == "storm") {
