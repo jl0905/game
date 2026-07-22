@@ -223,6 +223,8 @@ bool SaveGame(const GameState& gs, const char* path) {
             f << "prosper " << t << ' ' << gs.towns[t].prosperity << '\n';
         if (t < (int)gs.enterpriseAt.size() && c.enterprises.valid(gs.enterpriseAt[t]))
             f << "enterprise " << t << ' ' << c.enterprises[gs.enterpriseAt[t]].id << '\n';
+        if (t < (int)gs.enterpriseLvl.size() && gs.enterpriseLvl[t] > 1)
+            f << "elvl " << t << ' ' << gs.enterpriseLvl[t] << '\n';   // (V49)
     }
 
     // Live diplomacy: only pairs that differ from the base relations (or hold
@@ -494,6 +496,13 @@ bool LoadGame(GameState& gs, const char* path) {
             const int e = c.enterprises.find(eid.c_str());
             if (idx >= 0 && idx < (int)gs.enterpriseAt.size() && e >= 0)
                 gs.enterpriseAt[idx] = e;
+        } else if (tag == "elvl") {
+            int idx = -1, v = 1;
+            ss >> idx >> v;
+            if ((int)gs.enterpriseLvl.size() < (int)gs.towns.size())
+                gs.enterpriseLvl.assign(gs.towns.size(), 1);
+            if (idx >= 0 && idx < (int)gs.enterpriseLvl.size())
+                gs.enterpriseLvl[idx] = v;
         } else if (tag == "prosper") {
             int idx = -1, v = 100;
             ss >> idx >> v;

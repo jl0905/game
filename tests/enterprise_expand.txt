@@ -1,0 +1,15 @@
+# Enterprise expansion (V49): B at a market where you already own the works
+# sinks the build cost again and doubles the daily take (lvl=2, capped).
+# Fixture: Sargoth mill owned, 500 gold. Expect EXPANDED, lvl=2, purse
+# enterprise 15 -> 30, and the level surviving a save/load.
+load tests/fixtures/rich.owb
+enter 0
+market
+enterprise
+state
+leave
+leave
+saveslot 2
+loadslot 2
+state
+quit

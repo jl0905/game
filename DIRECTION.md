@@ -1036,6 +1036,12 @@ this is the feedback the flat numbers were waiting for.
   steel), march at ×0.6 and swing ×1.3 slower — braced, slow, hard.
   Mounted men and allies are exempt; strategy menu lists it; `form=`
   joins the battle dump. `tests/shieldwall.txt`.
+- [x] **V49. Iteration forty-nine — expand the works.** The same B at a
+  market where you already own the enterprise sinks the build cost
+  again and doubles the daily take (lvl 2, capped; "the works run at
+  full stretch already" past that). Level survives save/load (`elvl`
+  tag), quoted in the market line, `lvl=` in the dump. Deepens the
+  gold → passive income → army upkeep chain. `tests/enterprise_expand.txt`.
 
 ## Sequencing guidance
 

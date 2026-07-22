@@ -257,9 +257,10 @@ struct Harness {
                 std::printf("relation: %s=%+d\n", c.factions[f].id.c_str(), gs.relations[f]);
         for (int t = 0; t < (int)gs.enterpriseAt.size() && t < (int)gs.towns.size(); ++t)
             if (c.enterprises.valid(gs.enterpriseAt[t]))
-                std::printf("enterprise: %s in %s\n",
+                std::printf("enterprise: %s in %s lvl=%d\n",
                             c.enterprises[gs.enterpriseAt[t]].id.c_str(),
-                            gs.towns[t].name.c_str());
+                            gs.towns[t].name.c_str(),
+                            t < (int)gs.enterpriseLvl.size() ? gs.enterpriseLvl[t] : 1);
         if (gs.screen == Screen::Market && gs.currentSettlement >= 0) {
             const Town& tw = gs.towns[gs.currentSettlement];
             int carried = 0;

@@ -197,6 +197,10 @@ struct GameState {
     // into battle with shaken nerve.
     int hungryDays = 0;
 
+    // Enterprise levels (V49), parallel to towns: 1 = as built, 2 = expanded
+    // (double income). Only meaningful where enterpriseAt is set.
+    std::vector<int> enterpriseLvl;
+
     // Mercenary contract (V29): a hired company's party index and the days
     // left on its papers. It shadows the player's march and joins battles
     // within reach as the allied line.

@@ -608,6 +608,7 @@ void CampaignInit(GameState& gs) {
     }
     gs.goods.assign(c.goods.size(), 0);
     gs.enterpriseAt.assign(gs.towns.size(), -1);
+    gs.enterpriseLvl.assign(gs.towns.size(), 1);   // expandable later (V49)
 
     // Bandit dens from the map definition (H2).
     gs.lairs.clear();
@@ -685,7 +686,8 @@ DayLedger ComputeLedger(const GameState& gs) {
     for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.enterpriseAt.size(); ++ti)
         if (c.enterprises.valid(gs.enterpriseAt[ti]) &&
             !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
-            L.enterprise += c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
+            L.enterprise += (ti < (int)gs.enterpriseLvl.size() ? gs.enterpriseLvl[ti] : 1) *
+                            c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
                             gs.towns[ti].prosperity / 100;
     for (int t = 0; t < (int)gs.player.troopCounts.size() && t < c.troops.size(); ++t)
         L.wages += gs.player.troopCounts[t] * c.troops[t].wage;
@@ -3455,15 +3457,35 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
     // Buy a business here (E4): towns only, one per town, deterministic pick
     // of the next unbuilt enterprise kind.
     if (in.buyEnterprise && t.type == SettlementType::Town &&
-        gs.currentSettlement < (int)gs.enterpriseAt.size() &&
-        gs.enterpriseAt[gs.currentSettlement] < 0 && c.enterprises.size() > 0) {
-        const int kind = gs.currentSettlement % c.enterprises.size();
-        const EnterpriseDef& e = c.enterprises[kind];
-        if (gs.gold >= e.cost) {
-            gs.gold -= e.cost;
-            gs.enterpriseAt[gs.currentSettlement] = kind;
-            gs.resultText = TextFormat("You now own the %s of %s.",
-                                       e.name.c_str(), t.name.c_str());
+        gs.currentSettlement < (int)gs.enterpriseAt.size() && c.enterprises.size() > 0) {
+        if ((int)gs.enterpriseLvl.size() < (int)gs.towns.size())
+            gs.enterpriseLvl.assign(gs.towns.size(), 1);
+        const int owned = gs.enterpriseAt[gs.currentSettlement];
+        if (owned < 0) {
+            const int kind = gs.currentSettlement % c.enterprises.size();
+            const EnterpriseDef& e = c.enterprises[kind];
+            if (gs.gold >= e.cost) {
+                gs.gold -= e.cost;
+                gs.enterpriseAt[gs.currentSettlement] = kind;
+                gs.resultText = TextFormat("You now own the %s of %s.",
+                                           e.name.c_str(), t.name.c_str());
+            }
+        } else if (gs.enterpriseLvl[gs.currentSettlement] < 2) {
+            // Expand it (V49): the same B, sunk again, doubles the take.
+            const EnterpriseDef& e = c.enterprises[owned];
+            if (gs.gold < e.cost)
+                gs.resultText = TextFormat("Expanding the %s costs %d gold.",
+                                           e.name.c_str(), e.cost);
+            else {
+                gs.gold -= e.cost;
+                gs.enterpriseLvl[gs.currentSettlement] = 2;
+                gs.resultText = TextFormat(
+                    "The %s of %s is EXPANDED - twice the take from this day on.",
+                    e.name.c_str(), t.name.c_str());
+                SfxPlay(Sfx::Fanfare);
+            }
+        } else {
+            gs.resultText = "The works run at full stretch already.";
         }
     }
 
@@ -3501,11 +3523,20 @@ void MarketDraw(const GameState& gs) {
     // Enterprise line (E4): what you own here, or the offer to buy.
     if (t.type == SettlementType::Town && gs.currentSettlement < (int)gs.enterpriseAt.size()) {
         const int owned = gs.enterpriseAt[gs.currentSettlement];
-        if (c.enterprises.valid(owned))
-            ui::Text(TextFormat("Your %s pays %d a day (by prosperity).",
-                                c.enterprises[owned].name.c_str(),
-                                c.enterprises[owned].dailyIncome),
+        if (c.enterprises.valid(owned)) {
+            const int lvl = gs.currentSettlement < (int)gs.enterpriseLvl.size()
+                                ? gs.enterpriseLvl[gs.currentSettlement] : 1;
+            ui::Text(lvl >= 2
+                         ? TextFormat("Your EXPANDED %s pays %d a day (by prosperity).",
+                                      c.enterprises[owned].name.c_str(),
+                                      c.enterprises[owned].dailyIncome * 2)
+                         : TextFormat("Your %s pays %d a day.  [B] expand it (%d) "
+                                      "for twice the take.",
+                                      c.enterprises[owned].name.c_str(),
+                                      c.enterprises[owned].dailyIncome,
+                                      c.enterprises[owned].cost),
                      x, 180, 20, Fade(GOLD, 0.9f));
+        }
         else if (c.enterprises.size() > 0) {
             const EnterpriseDef& e = c.enterprises[gs.currentSettlement % c.enterprises.size()];
             ui::Text(TextFormat("[B] Buy the %s  -  %d gold, pays %d a day",
