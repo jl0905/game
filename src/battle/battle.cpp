@@ -719,7 +719,7 @@ struct BattleState {
     // Battle standards (V32): one bannerman a side. His tall standard marks
     // the line from across the field; his death shakes his side's nerve and
     // the banner passes to the nearest living hand.
-    int   bannerIdx[2] = { -1, -1 };   // [0]=player side, [1]=enemy side
+    int   bannerIdx[3] = { -1, -1, -1 };   // [0]=own, [1]=enemy, [2]=ally (V107)
     int   championIdx  = -1;           // the enemy lord in person (V101)
     bool  lordFell     = false;
     bool  dueling      = false;        // single combat (V102): armies hold
@@ -1551,10 +1551,11 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
 
     // Raise the standards (V32): the first man of each side carries the
     // banner. Bouts in the ring fight without colours.
-    B.bannerIdx[0] = B.bannerIdx[1] = -1;
+    B.bannerIdx[0] = B.bannerIdx[1] = B.bannerIdx[2] = -1;
     if (!setup.arena)
         for (int i = 0; i < (int)B.soldiers.size(); ++i) {
-            const int side = B.soldiers[i].team == Team::Enemy ? 1 : 0;
+            const int side = B.soldiers[i].team == Team::Enemy ? 1
+                           : B.soldiers[i].ally                ? 2 : 0;   // V107
             if (B.bannerIdx[side] < 0 && B.soldiers[i].hp > 0) B.bannerIdx[side] = i;
         }
     B.bannerFlash = 0;
@@ -2161,22 +2162,30 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 SfxPlay(Sfx::Knell, 0.8f);
             }
 
-            // The standard falls (V32): the whole side feels it, and the
-            // nearest living hand takes up the colours.
-            for (int side = 0; side < 2; ++side) {
+            // The standard falls (V32/V107): the contingent that carried it
+            // feels it, and the nearest living hand of that contingent
+            // takes up the colours. Three standards can fly: own, enemy,
+            // and an allied party's.
+            for (int side = 0; side < 3; ++side) {
                 const int bi = B.bannerIdx[side];
                 if (bi < 0 || B.soldiers[bi].hp > 0) continue;
-                const Team team = side == 1 ? Team::Enemy : Team::Player;
+                const Team team  = side == 1 ? Team::Enemy : Team::Player;
+                const bool wantAlly = side == 2;
                 for (Soldier& w : B.soldiers)
-                    if (w.hp > 0 && w.team == team) w.nerve -= NERVE_ALLY_DEATH;
+                    if (w.hp > 0 && w.team == team &&
+                        (side == 1 || w.ally == wantAlly))
+                        w.nerve -= NERVE_ALLY_DEATH;
                 B.bannerFlash    = 2.2f;
                 B.bannerFellOurs = side == 0;
-                Feed(side == 0 ? "Your banner falls" : "Their banner falls");
+                Feed(side == 0 ? "Your banner falls"
+                     : side == 2 ? "Your ally's banner falls"
+                                 : "Their banner falls");
                 SfxPlay(Sfx::Knell, 0.5f);
                 int   next = -1; float bestD = 1e9f;
                 for (int j = 0; j < n; ++j) {
                     const Soldier& w = B.soldiers[j];
                     if (w.hp <= 0 || w.team != team || w.routed) continue;
+                    if (side != 1 && w.ally != wantAlly) continue;
                     const float d = Vector3DistanceSqr(w.pos, B.soldiers[bi].pos);
                     if (d < bestD) { bestD = d; next = j; }
                 }
@@ -2771,7 +2780,7 @@ void BattleDraw(const Content& c) {
 
     // The standards (V32): a tall pole and pennant over each bannerman,
     // drawn at any distance — the line reads from across the field.
-    for (int side = 0; side < 2; ++side) {
+    for (int side = 0; side < 3; ++side) {   // own, enemy, ally (V107)
         const int bi = B.bannerIdx[side];
         if (bi < 0 || bi >= (int)B.soldiers.size()) continue;
         const Soldier& s = B.soldiers[bi];

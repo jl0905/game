@@ -1378,6 +1378,11 @@ this is the feedback the flat numbers were waiting for.
   (the hired Free Company gleams gold beside your blue; a skirmish
   side you joined keeps its crown's tint) via a per-soldier tint
   helper. Three-banner fields finally read as three banners. Draw-only.
+- [x] **V107. Iteration one-oh-seven — the third standard.** An allied
+  contingent raises its own banner in its own colours: its fall shocks
+  only the ally line ("Your ally's banner falls"), and the colours
+  pass within their contingent. Three standards can now fly and fall
+  independently — own, enemy, ally.
 
 ## Sequencing guidance
 
