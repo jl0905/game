@@ -926,6 +926,27 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
     } else if (in.menuChoice == 4 && gs.dialogueLord) {   // "I grant this seat." (M3)
         gs.dialogueLines.clear();
         gs.dialogueLines.push_back(TryGrantFief(gs));
+    } else if (in.menuChoice == 10 && gs.dialogueLord) {   // pay Graves (V87)
+        gs.dialogueLines.clear();
+        if (gs.audienceLord != "Graves" || gs.debt <= 0)
+            gs.dialogueLines.push_back("He has no bill with your name on it.");
+        else if (gs.gold < gs.debt)
+            gs.dialogueLines.push_back(TextFormat(
+                "Graves counts your purse from the saddle: %d against %d owed. "
+                "Not enough.", gs.gold, gs.debt));
+        else {
+            gs.gold -= gs.debt;
+            gs.resultText = TextFormat(
+                "You count out %d in the road. Graves turns his men without a word.",
+                gs.debt);
+            gs.debt = 0;
+            gs.debtDays = 0;
+            if (gs.parleyParty >= 0 && gs.parleyParty < (int)gs.parties.size())
+                gs.parties[gs.parleyParty].alive = false;   // the hunt is over
+            Chronicle(gs, "Paid the collectors off in the open field.");
+            gs.dialogueLines.push_back(gs.resultText);
+            SfxPlay(Sfx::Fanfare);
+        }
     } else if (in.menuChoice == 9 && gs.dialogueLord) {   // turn his coat (V73)
         gs.dialogueLines.clear();
         const Content& c = gs.content;
@@ -1096,6 +1117,9 @@ void DialogueDraw(const GameState& gs) {
             gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
             gs.content.factions[gs.parties[gs.parleyParty].faction].mercenary)
             option(8, "[8] March with me. (300 gold, 3 days)", Fade(GOLD, 0.85f));
+        if (gs.audienceLord == "Graves" && gs.debt > 0)   // pay the man (V87)
+            option(10, TextFormat("[0] Pay what you owe. (%d gold)", gs.debt),
+                   Fade(RED, 0.9f));
         if (gs.crowned && gs.parleyParty >= 0 &&   // turn his coat (V73)
             gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
             gs.content.factions[gs.parties[gs.parleyParty].faction].kingdom &&

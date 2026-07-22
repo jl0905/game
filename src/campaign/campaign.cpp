@@ -1228,6 +1228,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_SEVEN)) in.menuChoice = 7;   // a lord's gift (V26)
         if (IsKeyPressed(KEY_EIGHT)) in.menuChoice = 8;   // hire the company (V29)
         if (IsKeyPressed(KEY_NINE))  in.menuChoice = 9;   // turn his coat (V73)
+        if (IsKeyPressed(KEY_ZERO))  in.menuChoice = 10;  // pay Graves (V87)
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {    // topics are buttons (V27)
             const int ch = DialogueOptionAt(GetMousePosition());
             if (ch > 0)               in.menuChoice = ch;
@@ -1497,7 +1498,13 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             if (!p.alive || p.lord.empty()) continue;
             const float d = Vector2Distance(gs.player.pos, p.pos);
             if (d >= bestD) continue;
-            if (AtWar(gs, p.faction, c.playerFaction)) { sawHostile = true; continue; }
+            // Collectors talk (V87): Graves will always hear the sound of
+            // gold, hostile banner or not.
+            const bool graves = p.lord == "Graves" && gs.debt > 0;
+            if (!graves && AtWar(gs, p.faction, c.playerFaction)) {
+                sawHostile = true;
+                continue;
+            }
             best = i; bestD = d;
         }
         if (best >= 0) {

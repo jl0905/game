@@ -1,0 +1,11 @@
+# Pay the man (V87): Graves always hears gold - his band is the one hostile
+# party you can hail (T), and topic [0] settles the debt on the spot: gold
+# down by the full sum, debt cleared, the collector band turning for home
+# (alive=false), chronicled. Fixture: 900 gold, 700 owed, Graves 25u away.
+load tests/fixtures/payup.owb
+parley
+topic 10
+state
+leave
+state
+quit

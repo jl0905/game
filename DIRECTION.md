@@ -1265,6 +1265,11 @@ this is the feedback the flat numbers were waiting for.
   per further miss. Financial risk becomes physical risk; beat them
   and the quarter/loot rules apply as ever (the debt remains).
   `tests/debt_collectors.txt`.
+- [x] **V87. Iteration eighty-seven — pay the man.** Graves is the one
+  hostile party you can hail: topic [0] in his parley settles the debt
+  on the spot — full sum counted out in the road, the band turning
+  for home, chronicled. Fight the collectors, outrun them, or pay
+  them: the debt arc has all three exits. `tests/pay_graves.txt`.
 
 ## Sequencing guidance
 
