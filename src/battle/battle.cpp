@@ -677,6 +677,8 @@ struct BattleState {
     std::vector<LooseHorse> looseHorses;   // mounts that outlived their riders (T6)
     std::vector<Vector4> props;     // ground dressing (V7): xyz + w kind
                                     // (0 grass tuft, 1 rock); deterministic
+    std::vector<Vector3> stains;    // where men fell (V12): the field
+                                    // remembers until the battle ends
     Vector3 prevHeroPos{};          // for momentum (T5): last frame's position
     float   heroSpeed = 0;          // hero's current ground speed
 
@@ -889,6 +891,12 @@ void SpawnDust(Vector3 at) {
 constexpr float STUN_TIME     = 0.45f;
 constexpr float STUN_MIN_DMG  = 4.0f;   // shield-soaked taps don't stagger
 
+// The field remembers (V12): mark where a man fell. Capped so a rout
+// doesn't paint the whole plain.
+void StainGround(const Vector3& p) {
+    if (B.stains.size() < 240) B.stains.push_back(p);
+}
+
 // A slain rider's mount survives him (T6): it bolts free and wanders.
 void FreeHorse(const Content& c, const Soldier& s) {
     if (!c.troops.valid(s.troop) || !c.troops[s.troop].mounted) return;
@@ -916,6 +924,7 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     }
     s.hp -= dmg;
     s.flash = 1.0f;
+    if (s.hp <= 0) StainGround(s.pos);   // the field remembers (V12)
     if (dmg >= STUN_MIN_DMG && s.stunImmune <= 0) {
         s.stun       = STUN_TIME;          // reeling (T)
         s.stunImmune = STUN_TIME + 0.9f;   // then finds his feet — a crowd
@@ -2193,6 +2202,11 @@ void BattleDraw(const Content& c) {
         tint.b = (unsigned char)(tint.b * dim);
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
+
+    // Where men fell (V12): dark stains, flat on the ground, all battle long.
+    for (const Vector3& st : B.stains)
+        DrawCylinder({ st.x, B.terrain.HeightAt(st.x, st.z) + 0.02f, st.z },
+                     0.7f, 0.9f, 0.015f, 8, Color{ 92, 24, 20, 200 });
 
     // Ground dressing (V7): drawn only within the lodDistance setting of
     // the hero — the far field stays cheap.

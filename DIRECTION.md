@@ -793,6 +793,12 @@ this is the feedback the flat numbers were waiting for.
   villages, mill it at your sawmill, and haul it to the walls you mean
   to take. Flat TODO(balance).
 
+- [x] **V12. Iteration twelve — the field remembers.** Dark stains mark
+  where every soldier fell, flat on the ground for the rest of the
+  battle (capped at 240 so a rout doesn't paint the plain). A fight's
+  story stays readable in the dirt — where the line held, where it
+  broke.
+
 ## Sequencing guidance
 
 User-directive tracks I and J lead: G1+J1 (spatial grid → targeting AI) and I1
