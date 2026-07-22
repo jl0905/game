@@ -721,6 +721,7 @@ struct BattleState {
     bool    hasLastMouse = false;
     Vector2 aimAccum{ 0, 0 };       // recent mouse motion, for attack direction
     float   soakFlash = 0;          // your swing just met wood (U5): teach it
+    float   parryFlash = 0;         // you just blocked a hit (U5): say so
 
     // Combat: hold LMB to ready a swing, release to strike.
     bool  readying = false;
@@ -1927,8 +1928,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                     B.pHp -= d;
                     B.pFlash = 1.0f;
-                    if (B.blocking) SpawnSparks(B.pPos);
-                    else            SpawnBlood(B.pPos);
+                    if (B.blocking) {
+                        SpawnSparks(B.pPos);
+                        B.parryFlash = 0.9f;   // name the sparks on YOU (U5)
+                    } else {
+                        SpawnBlood(B.pPos);
+                    }
                     B.shake = fminf(1.0f, B.shake + 0.35f);
                     SfxPlay(B.blocking ? Sfx::Clang : Sfx::Thud);
                     a.alive = false;
@@ -2213,6 +2218,12 @@ void BattleDraw(const Content& c) {
 
     // Your swing met his shield (U5): say so, and say what beats it —
     // those gold sparks finally have a name.
+    B.parryFlash = fmaxf(0.0f, B.parryFlash - GetFrameTime());
+    if (B.parryFlash > 0) {
+        const char* tb = "BLOCKED";
+        ui::Text(tb, (GetScreenWidth() - ui::Measure(tb, 24)) / 2, 96, 24,
+                 Fade(SKYBLUE, fminf(1.0f, B.parryFlash * 2.0f)));
+    }
     B.soakFlash = fmaxf(0.0f, B.soakFlash - GetFrameTime());
     if (B.soakFlash > 0) {
         const char* t1 = "SHIELD!  vary your swing direction";
