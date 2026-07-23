@@ -1508,6 +1508,13 @@ this is the feedback the flat numbers were waiting for.
         bench 19.69→18.59ms, p99 26.5→22.4, 54fps. Day total
         20.30→18.59. True per-part instancing of DrawCharacter remains
         the endgame ticket)
+  - [x] perf endgame (V128 — per-part instancing of the humanoid: tier-1
+        soldiers' limbs/weapons emit as oriented boxes into the V126
+        colour buckets via SetCharacterBatcher/LimbSink; the whole
+        mid-distance army renders in a handful of DrawMeshInstanced
+        calls. Bench 18.59→12.30ms, p99 22.4→15.6, 81fps at 2000 men —
+        day total 20.30→12.30, −39%. Remaining: DrawHorse still
+        immediate-mode; batch it the same way if more is ever needed)
 
 ## Sequencing guidance
 

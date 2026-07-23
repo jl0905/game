@@ -27,6 +27,14 @@ struct Pose {
 // the silhouette is identical, the vertex bill is not. Sticky until changed.
 void SetCharacterDetail(int tier);
 
+// Per-part instancing hook (V128): when a batcher is installed AND the
+// detail tier is 1, every limb/weapon primitive is emitted as one oriented
+// box (a→b, radius, colour) into the sink instead of an immediate raylib
+// call — the caller batches them into instanced draws. Null restores
+// direct drawing. A degenerate a==b box is a sphere-ish blob (the head).
+using LimbSink = void (*)(Vector3 a, Vector3 b, float r, Color c);
+void SetCharacterBatcher(LimbSink sink);
+
 // Draws a humanoid standing on `feet` (its ground point), wearing `loadout`.
 // `teamTint` colours anything not covered by equipment so sides stay readable.
 void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,

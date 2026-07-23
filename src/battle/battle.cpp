@@ -1352,6 +1352,37 @@ void InstCube(Vector3 center, float sx, float sy, float sz, Color col) {
                        MatrixTranslate(center.x, center.y, center.z)));
 }
 
+// The limb sink (V128): character.cpp hands tier-1 limbs here as a→b boxes;
+// we build the oriented transform and drop it into the same colour buckets
+// as the LOD boxes, so the whole mid-distance army flushes together.
+void LimbBox(Vector3 a, Vector3 b, float r, Color col) {
+    if (!g_instReady) return;   // no batcher without the shader
+    const unsigned key = (unsigned)col.r | ((unsigned)col.g << 8) |
+                         ((unsigned)col.b << 16) | ((unsigned)col.a << 24);
+    const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
+    Vector3 d = Vector3Subtract(b, a);
+    const float len = Vector3Length(d);
+    const float w = r * 1.8f;   // box width ~ capsule diameter, slightly slim
+    if (len < 0.001f) {         // degenerate: a blob (the head)
+        g_instBatch[key].push_back(
+            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
+                           MatrixTranslate(mid.x, mid.y, mid.z)));
+        return;
+    }
+    const Vector3 y  = Vector3Scale(d, 1.0f / len);
+    const Vector3 up = fabsf(y.y) < 0.99f ? Vector3{ 0, 1, 0 } : Vector3{ 1, 0, 0 };
+    const Vector3 x  = Vector3Normalize(Vector3CrossProduct(up, y));
+    const Vector3 z  = Vector3CrossProduct(x, y);
+    const float sy = len + r;   // cover the capsule caps, near enough
+    // raylib Matrix braces take the mathematical rows; columns are the
+    // scaled basis vectors, translation in the last column.
+    const Matrix m = { x.x * w, y.x * sy, z.x * w, mid.x,
+                       x.y * w, y.y * sy, z.y * w, mid.y,
+                       x.z * w, y.z * sy, z.z * w, mid.z,
+                       0.0f,    0.0f,     0.0f,    1.0f };
+    g_instBatch[key].push_back(m);
+}
+
 void FlushInstanced() {
     if (!g_instReady) return;
     for (auto& [key, mats] : g_instBatch) {
@@ -2918,6 +2949,7 @@ void BattleDraw(const Content& c) {
     const float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
 
     EnsureInstancing();   // one-time shader/mesh setup (V126)
+    SetCharacterBatcher(g_instReady ? &LimbBox : nullptr);   // (V128)
     for (const Soldier& s : B.soldiers) {
         if (s.escaped) continue;   // off the field, alive
         if (BehindCamera(s.pos)) continue;   // never reaches the GPU (V40)

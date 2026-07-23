@@ -19,6 +19,24 @@ int g_charTier = 0;
 int S(int full) { return g_charTier ? (full > 5 ? full / 2 : 4) : full; }
 int R(int full) { return g_charTier ? 2 : full; }
 
+// Per-part instancing (V128): with a sink installed and tier 1 active,
+// primitives become oriented boxes handed to the caller's batcher.
+LimbSink g_sink = nullptr;
+bool Batched() { return g_sink != nullptr && g_charTier == 1; }
+
+void Cap(Vector3 a, Vector3 b, float r, int sl, int ri, Color c) {
+    if (Batched()) { g_sink(a, b, r, c); return; }
+    DrawCapsule(a, b, r, sl, ri, c);
+}
+void Cyl(Vector3 a, Vector3 b, float r0, float r1, int sl, Color c) {
+    if (Batched()) { g_sink(a, b, r0 > r1 ? r0 : r1, c); return; }
+    DrawCylinderEx(a, b, r0, r1, sl, c);
+}
+void Sph(Vector3 p, float r, int ri, int sl, Color c) {
+    if (Batched()) { g_sink(p, p, r, c); return; }
+    DrawSphereEx(p, r, ri, sl, c);
+}
+
 // Local (right, up, fwd) -> world, rotating around Y by yaw about `feet`.
 Vector3 ToWorld(Vector3 feet, float yaw, float right, float up, float fwd) {
     const float s = sinf(yaw), c = cosf(yaw);
@@ -73,6 +91,7 @@ void BladeLine(const Vector3& aim, Vector3& hilt, Vector3& tip, float reach) {
 }  // namespace
 
 void SetCharacterDetail(int tier) { g_charTier = tier; }
+void SetCharacterBatcher(LimbSink sink) { g_sink = sink; }
 
 void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                    const Pose& pose, Color teamTint) {
@@ -98,23 +117,23 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const float legSwing = sinf(pose.walkPhase) * 0.35f;
 
     // ---- Legs ----
-    DrawCapsule(at(-0.16f, 0.05f,  legSwing), at(-0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
-    DrawCapsule(at( 0.16f, 0.05f, -legSwing), at( 0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
+    Cap(at(-0.16f, 0.05f,  legSwing), at(-0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
+    Cap(at( 0.16f, 0.05f, -legSwing), at( 0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
 
     // ---- Torso (+ a team surcoat stripe down the chest so sides read) ----
-    DrawCapsule(at(0.0f, 0.95f, 0.0f), at(0.0f, 1.6f, 0.0f), 0.30f, S(10), R(6), bodyC);
-    DrawCapsule(at(0.0f, 1.0f, 0.24f), at(0.0f, 1.55f, 0.24f), 0.09f, S(6), R(4), flashed(teamTint));
+    Cap(at(0.0f, 0.95f, 0.0f), at(0.0f, 1.6f, 0.0f), 0.30f, S(10), R(6), bodyC);
+    Cap(at(0.0f, 1.0f, 0.24f), at(0.0f, 1.55f, 0.24f), 0.09f, S(6), R(4), flashed(teamTint));
 
     // ---- Head: dome helmet with a nasal bar, or a bare head ----
-    DrawSphereEx(at(0.0f, 1.85f, 0.0f), 0.22f, R(16), S(16), headC);
+    Sph(at(0.0f, 1.85f, 0.0f), 0.22f, R(16), S(16), headC);
     if (hasHelm) {
-        DrawCylinderEx(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
-        DrawCylinderEx(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, S(10), headC); // dome
-        DrawCapsule(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);       // nasal
+        Cyl(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
+        Cyl(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, S(10), headC); // dome
+        Cap(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);       // nasal
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
     if (pose.accent.a > 0)
-        DrawCapsule(at(0.0f, 2.05f, -0.05f), at(0.0f, 2.30f, -0.18f), 0.05f, S(5), R(3),
+        Cap(at(0.0f, 2.05f, -0.05f), at(0.0f, 2.30f, -0.18f), 0.05f, S(5), R(3),
                     flashed(pose.accent));
 
     // ---- Left arm + shield ----
@@ -124,19 +143,19 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const bool  oneHanded = content.weapons.valid(whShield) &&
                             content.weapons[whShield].wclass == WeaponClass::OneHanded;
     const float guard = pose.blocking ? 0.6f : 0.0f;
-    DrawCapsule(at(-0.34f, 1.5f, 0.0f), at(-0.34f, 1.05f + guard, 0.2f + guard), 0.11f, S(8), R(4), bodyC);
+    Cap(at(-0.34f, 1.5f, 0.0f), at(-0.34f, 1.05f + guard, 0.2f + guard), 0.11f, S(8), R(4), bodyC);
     if (pose.blocking) {
-        DrawCylinderEx(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, S(14),
+        Cyl(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, S(14),
                        flashed(DARKBROWN));
-        DrawCylinderEx(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, S(8),
+        Cyl(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, S(8),
                        flashed(GRAY));   // boss
     } else if (oneHanded) {   // carried at the forearm when not raised
-        DrawCylinderEx(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, S(12),
+        Cyl(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, S(12),
                        flashed(DARKBROWN));
     }
 
     // ---- Right arm (weapon side) ----
-    DrawCapsule(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, S(8), R(4), handsC);
+    Cap(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, S(8), R(4), handsC);
 
     // ---- Weapon (the active one; a character may carry several) ----
     const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
@@ -162,21 +181,21 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 gpose.swing = 1.0f - gp;
                 Vector3 gh, gt;
                 BladeLine(SwingAim(gpose), gh, gt, reach);
-                DrawCylinderEx(at(gh.x, gh.y, gh.z), at(gt.x, gt.y, gt.z),
+                Cyl(at(gh.x, gh.y, gh.z), at(gt.x, gt.y, gt.z),
                                0.02f, 0.01f, 6, Fade(w.tint, 0.18f * (4 - g)));
             }
         }
 
         switch (w.wclass) {
             case WeaponClass::Polearm: {
-                DrawCylinderEx(hilt, tip, 0.035f, 0.035f, 6, Color{ 110, 78, 48, 255 }); // shaft
+                Cyl(hilt, tip, 0.035f, 0.035f, 6, Color{ 110, 78, 48, 255 }); // shaft
                 const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
-                DrawCylinderEx(tip, Vector3Add(tip, Vector3Scale(dir, 0.35f)), 0.06f, 0.0f, 6, w.tint); // head
+                Cyl(tip, Vector3Add(tip, Vector3Scale(dir, 0.35f)), 0.06f, 0.0f, 6, w.tint); // head
                 break;
             }
             case WeaponClass::Ranged:
                 // A simple bow held vertically in the hand.
-                DrawCylinderEx(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), 0.03f, 0.03f, 6, w.tint);
+                Cyl(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), 0.03f, 0.03f, 6, w.tint);
                 DrawLine3D(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), Fade(RAYWHITE, 0.6f)); // string
                 break;
             case WeaponClass::Axe: {
@@ -185,8 +204,8 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 const Vector3 side = { dir.z, 0, -dir.x };
                 const Vector3 neck = Vector3Add(hilt, Vector3Scale(dir,
                                         Vector3Distance(hilt, tip) * 0.8f));
-                DrawCylinderEx(hilt, tip, 0.035f, 0.03f, 6, Color{ 110, 78, 48, 255 }); // haft
-                DrawCylinderEx(Vector3Subtract(neck, Vector3Scale(side, 0.05f)),
+                Cyl(hilt, tip, 0.035f, 0.03f, 6, Color{ 110, 78, 48, 255 }); // haft
+                Cyl(Vector3Subtract(neck, Vector3Scale(side, 0.05f)),
                                Vector3Add(neck, Vector3Scale(side, 0.30f)),
                                0.16f, 0.05f, 6, w.tint);                                 // blade
                 break;
@@ -194,8 +213,8 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
             case WeaponClass::TwoHanded: {
                 const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
                 const Vector3 guard = { dir.z, 0, -dir.x };  // crossguard, perpendicular
-                DrawCylinderEx(hilt, tip, 0.06f, 0.03f, 8, w.tint);
-                DrawCylinderEx(Vector3Subtract(hilt, Vector3Scale(guard, 0.22f)),
+                Cyl(hilt, tip, 0.06f, 0.03f, 8, w.tint);
+                Cyl(Vector3Subtract(hilt, Vector3Scale(guard, 0.22f)),
                                Vector3Add(hilt, Vector3Scale(guard, 0.22f)), 0.035f, 0.035f, 6, DARKGRAY);
                 break;
             }
@@ -203,8 +222,8 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
             default: {
                 const Vector3 dir = Vector3Normalize(Vector3Subtract(tip, hilt));
                 const Vector3 guard = { dir.z, 0, -dir.x };
-                DrawCylinderEx(hilt, tip, 0.05f, 0.02f, 8, w.tint);
-                DrawCylinderEx(Vector3Subtract(hilt, Vector3Scale(guard, 0.16f)),
+                Cyl(hilt, tip, 0.05f, 0.02f, 8, w.tint);
+                Cyl(Vector3Subtract(hilt, Vector3Scale(guard, 0.16f)),
                                Vector3Add(hilt, Vector3Scale(guard, 0.16f)), 0.03f, 0.03f, 6, DARKGRAY);
                 break;
             }
@@ -212,5 +231,5 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     }
 
     // ---- Team banner accent (small marker above head) ----
-    DrawSphere(at(0.0f, 2.2f, 0.0f), 0.07f, teamTint);
+    Sph(at(0.0f, 2.2f, 0.0f), 0.07f, R(8), S(8), teamTint);
 }
