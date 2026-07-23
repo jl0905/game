@@ -732,6 +732,7 @@ struct BattleState {
     int   heroKicksLanded = 0;
     int   heroArrowsLoosed = 0;   // hero archery (V117)
     int   heroQuiver = 24;        // shafts on the hip (V118) TODO(balance)
+    float camDist = 4.5f;         // shoulder distance, wheel-adjustable (V121)
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
@@ -1615,6 +1616,7 @@ BattleInput GatherBattleInput() {
     if (IsKeyDown(KEY_D)) in.moveRight   += 1;
     if (IsKeyDown(KEY_A)) in.moveRight   -= 1;
     in.jump          = IsKeyPressed(KEY_SPACE);
+    in.camZoom       = GetMouseWheelMove();   // ride the camera in/out (V121)
     in.block         = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
     in.attackPress   = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     in.attackRelease = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -1713,6 +1715,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     }
 
     // ---------- player intent ----------
+    // The wheel rides the camera in and out (V121): closer for the duel,
+    // farther for the field. TODO(balance): the clamp range.
+    if (in.camZoom != 0.0f)
+        B.camDist = Clamp(B.camDist - in.camZoom * 0.6f, 2.2f, 9.0f);
     Vector3 fwd = { sinf(B.yaw), 0, cosf(B.yaw) };
     if (!B.over && !B.heroDown) {
         const Vector2 md = in.lookDelta;
@@ -2677,7 +2683,7 @@ void BattleDraw(const Content& c) {
         eye.x += (((h1 & 0xFF) / 255.0f) - 0.5f) * 0.30f * B.shake;
         eye.y += (((h2 & 0xFF) / 255.0f) - 0.5f) * 0.30f * B.shake;
     }
-    cam.position = Vector3Subtract(eye, Vector3Scale(look, 6.0f));
+    cam.position = Vector3Subtract(eye, Vector3Scale(look, B.camDist));
     cam.position.y = fmaxf(cam.position.y, 0.5f);
     cam.target = Vector3Add(eye, Vector3Scale(look, 4.0f));
     cam.up = { 0, 1, 0 };

@@ -90,6 +90,7 @@ struct BattleInput {
     float   moveRight   = 0;       // -1..1  (A..D), camera-relative
     Vector2 lookDelta{};           // camera rotation this frame (mouse pixels)
     bool    jump          = false;
+    float   camZoom       = 0;     // mouse wheel: camera closer/farther (V121)
     bool    block         = false; // held
     bool    attackPress   = false; // begin readying a swing (LMB down)
     bool    attackRelease = false; // release the swing (LMB up)

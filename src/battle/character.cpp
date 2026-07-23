@@ -142,20 +142,8 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
         const Vector3 hilt = at(lh.x, lh.y, lh.z);
         const Vector3 tip  = at(lt.x, lt.y, lt.z);
 
-        // Wind-up telegraph: a faint ghost of the FULL upcoming arc, so the
-        // swing plane (and how to block it) is readable before it lands.
-        if (pose.windup > 0.05f && pose.swing <= 0.0f && w.wclass != WeaponClass::Ranged) {
-            Vector3 cocked, follow;
-            SwingArc(pose.attackDir, cocked, follow);
-            const int STEPS = 6;
-            for (int gi = 0; gi <= STEPS; ++gi) {
-                const float p = (float)gi / STEPS;
-                Vector3 gh, gt;
-                BladeLine(Vector3Lerp(cocked, follow, p), gh, gt, reach);
-                DrawSphere(at(gt.x, gt.y, gt.z), 0.06f,
-                           Fade(ORANGE, 0.6f * pose.windup));
-            }
-        }
+        // (V121) The orange wind-up arc dots are gone by user request — the
+        // cocked blade pose itself telegraphs the swing plane well enough.
 
         // Motion trail: faint ghosts of the blade slightly earlier in the arc.
         if (pose.swing > 0.0f && w.wclass != WeaponClass::Ranged) {

@@ -1467,8 +1467,10 @@ this is the feedback the flat numbers were waiting for.
   the state dump. `tests/travelcourse.txt`.
 - [ ] **U-track (user directive 2026-07-22, priority):**
   - [x] proximity gate on map-click town entry (V120)
-  - [ ] battle camera: closer to the player and player-adjustable (zoom)
-  - [ ] remove the yellow swing-direction dots in melee
+  - [x] battle camera: closer to the player and player-adjustable (V121 —
+        default shoulder distance 6.0→4.5, mouse wheel zooms 2.2–9.0)
+  - [x] remove the yellow swing-direction dots in melee (V121 — the orange
+        wind-up arc telegraph is gone; the cocked blade pose reads alone)
   - [ ] settlement menu buttons fully wired end to end
   - [ ] all menus centered / responsive to window size and GUI scale
   - [ ] remove leftover text behind the bottom-left control panel
