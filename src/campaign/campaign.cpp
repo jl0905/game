@@ -1241,6 +1241,22 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             in.garrisonOne   = IsKeyPressed(KEY_F) && !shiftF;
             in.ungarrisonOne = IsKeyPressed(KEY_F) && shiftF;
         }
+        // The service chips are buttons (V122): a click fires the same
+        // intent as the key it names — TownDraw recorded where they are.
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            switch (const int svc = TownServiceAt(GetMousePosition())) {
+                case SVC_TOURNEY:  in.tournament  = true; break;
+                case SVC_MARKET:   in.openMarket  = true; break;
+                case SVC_WORK:     in.quest       = true; break;
+                case SVC_HIRE:     in.hire        = true; break;
+                case SVC_OATH:     in.swear       = true; break;
+                case SVC_TALK:     in.interact    = true; break;
+                case SVC_GARRISON: in.garrisonOne = true; break;
+                case SVC_RANSOM:   in.ransom      = true; break;
+                default:
+                    if (svc >= SVC_RECRUIT0) in.recruitSlot = svc - SVC_RECRUIT0;
+            }
+        }
         if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
         return in;
     }
@@ -3366,14 +3382,20 @@ void CampaignDraw(const GameState& gs) {
 
     // Every door on one line (T7): the keys players kept not finding.
     {
-        const char* keys = "[Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
+        const char* keys = "[WASD] travel (time flows)   [SPACE] wait   "
+                           "[Click] town: near enters, far sets course   "
+                           "[Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
                            "[B] ledger   [T] hail a lord   [O]ptions   "
                            "[F5-F7] quicksave   [Esc,Esc] save+quit";
         DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
                       Fade(BLACK, 0.88f));
         DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
                       Fade(GOLD, 0.35f));
-        ui::Text(keys, 12, GetScreenHeight() - 29, 20, RAYWHITE);
+        // Fit the bar to the window (V122): step the size down until the
+        // line fits rather than letting it run off a narrow screen.
+        int ks = 20;
+        while (ks > 12 && ui::Measure(keys, ks) > GetScreenWidth() - 24) ks--;
+        ui::Text(keys, 12, GetScreenHeight() - 36 + (36 - ks) / 2, ks, RAYWHITE);
     }
 
     // Time state, top-right: the world is frozen until you move or wait.
@@ -3428,8 +3450,8 @@ void CampaignDraw(const GameState& gs) {
                  470, by, 20, fb.color);
     }
 
-    ui::Text("WASD / hold LMB to travel (time flows). Hold SPACE to wait. Click a settlement to enter.",
-             10, GetScreenHeight() - 22, 16, Fade(RAYWHITE, 0.7f));
+    // (V122) The old travel hint that printed here overlapped the key bar —
+    // its content lives in the bar's line now.
 
     if (gs.player.totalTroops() == 0)
     {   // The fall of the house (V97): the mirror of the V96 legacy screen —

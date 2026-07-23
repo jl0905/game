@@ -46,6 +46,14 @@ inline constexpr int DLG_LEAVE = -9;
 int DialogueOptionAt(Vector2 mouse);
 void DialogueDraw(const GameState& gs);
 
+// Walking-mode service chips are clickable too (V122): TownDraw records the
+// rect of every service it prints; this hit-tests them. Returns 0 for no hit
+// or one of the SVC_* ids below (SVC_RECRUIT0+n = tavern recruit slot n).
+inline constexpr int SVC_TOURNEY = 1, SVC_MARKET = 2, SVC_WORK = 3,
+                     SVC_HIRE = 4, SVC_OATH = 5, SVC_TALK = 6,
+                     SVC_GARRISON = 7, SVC_RANSOM = 8, SVC_RECRUIT0 = 100;
+int TownServiceAt(Vector2 mouse);
+
 // Read-only scene info for harnesses / debugging.
 struct TownView {
     Vector3 heroPos{};

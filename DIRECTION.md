@@ -1471,9 +1471,15 @@ this is the feedback the flat numbers were waiting for.
         default shoulder distance 6.0→4.5, mouse wheel zooms 2.2–9.0)
   - [x] remove the yellow swing-direction dots in melee (V121 — the orange
         wind-up arc telegraph is gone; the cocked blade pose reads alone)
-  - [ ] settlement menu buttons fully wired end to end
+  - [x] settlement menu buttons fully wired end to end (V122 — walking-mode
+        service chips and tavern recruit/ransom rows are hover-lit click
+        targets firing the same intents as their keys; gate menu rows were
+        already clickable)
   - [ ] all menus centered / responsive to window size and GUI scale
-  - [ ] remove leftover text behind the bottom-left control panel
+        (started V122: campaign key bar shrinks-to-fit; overlays next)
+  - [x] remove leftover text behind the bottom-left control panel (V122 —
+        the stale travel hint that printed under the key bar is gone; its
+        content merged into the bar)
   - [ ] shader / graphics pass (lighting or post effects within raylib)
   - [ ] playtest pass on quest-completion UX (clearer goals, progress,
         payoff moments)

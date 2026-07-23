@@ -902,7 +902,19 @@ namespace {
 // shared state between draw and the gather-side hit-test.
 std::vector<std::pair<int, int>> g_dlgHits;   // {rowY, menuChoice}
 int g_dlgHitX = 0;
+
+// Walking-mode service chips (V122): {x, y, w, h, id} recorded by TownDraw.
+struct SvcHit { int x, y, w, h, id; };
+std::vector<SvcHit> g_svcHits;
 }   // namespace
+
+int TownServiceAt(Vector2 mouse) {
+    for (const auto& h : g_svcHits)
+        if (mouse.x >= h.x && mouse.x < h.x + h.w &&
+            mouse.y >= h.y && mouse.y < h.y + h.h)
+            return h.id;
+    return 0;
+}
 
 int DialogueOptionAt(Vector2 mouse) {
     for (const auto& h : g_dlgHits)
@@ -1344,6 +1356,20 @@ void TownDraw(const GameState& gs) {
     ui::Text(TextFormat("%s  ·  Gold: %d   Party: %d", town.name.c_str(), gs.gold,
                         gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
 
+    g_svcHits.clear();
+    const Vector2 svcMouse = GetMousePosition();
+    // A clickable chip (V122): prints the label, records its rect, and
+    // brightens under the mouse — the key still works, the mouse now does too.
+    auto Chip = [&](const char* label, int x, int y, int size, Color col,
+                    int id) -> int {
+        const int w = ui::Measure(label, size);
+        const bool hov = svcMouse.x >= x - 4 && svcMouse.x < x + w + 4 &&
+                         svcMouse.y >= y - 3 && svcMouse.y < y + size + 5;
+        if (hov) DrawRectangle(x - 4, y - 3, w + 8, size + 8, Fade(GOLD, 0.22f));
+        ui::Text(label, x, y, size, hov ? RAYWHITE : col);
+        g_svcHits.push_back({ x - 4, y - 3, w + 8, size + 8, id });
+        return w;
+    };
     if (TownAtTavern()) {
         const std::vector<int>& roster = c.factions[c.playerFaction].roster;
         int captives = 0;
@@ -1354,20 +1380,26 @@ void TownDraw(const GameState& gs) {
                             gs.towns[gs.currentSettlement].recruitPool),
                  10, y, 20, GOLD);
         if (captives > 0)
-            ui::Text(TextFormat("[R] Ransom %d captives (%d gold)", captives, captives * 10),
-                     10, GetScreenHeight() - 54, 20, LIME);
+            Chip(TextFormat("[R] Ransom %d captives (%d gold)", captives, captives * 10),
+                 10, GetScreenHeight() - 54, 20, LIME, SVC_RANSOM);
         for (int slot = 0; slot < (int)roster.size(); ++slot) {
             const TroopDef& td = c.troops[roster[slot]];
-            ui::Text(TextFormat("[%d] %s - %d gold  (have %d)", slot + 1, td.name.c_str(),
-                                td.cost, gs.player.troopCounts[roster[slot]]),
-                     10, y + 26 + slot * 24, 20, RAYWHITE);
+            Chip(TextFormat("[%d] %s - %d gold  (have %d)", slot + 1, td.name.c_str(),
+                            td.cost, gs.player.troopCounts[roster[slot]]),
+                 10, y + 26 + slot * 24, 20, RAYWHITE, SVC_RECRUIT0 + slot);
         }
     } else {
-        // The local keys, always on show (K7) — every settlement service in
-        // one line, so nothing shipped stays undiscovered.
-        ui::Text("[T] tournament   [M] market   [G] work   [H] hire   [V] oath   "
-                 "[E] talk   [F] garrison (yours)",
-                 10, GetScreenHeight() - 50, 18, Fade(GOLD, 0.85f));
+        // The local services, always on show (K7) — and clickable (V122).
+        struct { const char* label; int id; } svcs[] = {
+            { "[T] tournament", SVC_TOURNEY }, { "[M] market",   SVC_MARKET },
+            { "[G] work",       SVC_WORK },    { "[H] hire",     SVC_HIRE },
+            { "[V] oath",       SVC_OATH },    { "[E] talk",     SVC_TALK },
+            { "[F] garrison (yours)", SVC_GARRISON },
+        };
+        int sx = 10;
+        for (const auto& s : svcs)
+            sx += Chip(s.label, sx, GetScreenHeight() - 50, 18,
+                       Fade(GOLD, 0.85f), s.id) + 26;
         ui::Text("WASD walk, mouse look. The gold roof is the tavern. Esc: gate menu.",
                  10, GetScreenHeight() - 26, 16, Fade(RAYWHITE, 0.7f));
     }
