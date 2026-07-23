@@ -1484,7 +1484,11 @@ this is the feedback the flat numbers were waiting for.
   - [x] remove leftover text behind the bottom-left control panel (V122 —
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)
-  - [ ] shader / graphics pass (lighting or post effects within raylib)
+  - [~] shader / graphics pass (started V129 — Lambert sun shading on the
+        instanced army: faces toward the sun brighten, faces away fall
+        into shade (moonlight line at night), restoring the depth cue the
+        flat boxes lacked; bench 12.80ms/78fps. Next: lighting for the
+        near-tier models and terrain, kingdom ledger centering still open)
   - [x] playtest pass on quest-completion UX (V124 — payoff banner with
         fanfare/knell, richer HUD tracker with have/need + distances, and
         a full quest journal screen [Q]: task, progress, reward, clock,

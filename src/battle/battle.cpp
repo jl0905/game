@@ -1308,19 +1308,33 @@ Color SoldierTint(const Soldier& s) {
 // colour. Windowed-only — headless runs never draw. Falls back to DrawCube
 // if the instancing shader fails to compile (ancient GL).
 // ---------------------------------------------------------------------------
+// Lambert-lit (V129): faces turned toward the sun brighten, faces away
+// fall into shade — the instanced army stops reading as flat cardboard
+// and gains the depth cue the flat boxes lacked.
 constexpr const char* INST_VS =
     "#version 330\n"
     "in vec3 vertexPosition;\n"
+    "in vec3 vertexNormal;\n"
     "in mat4 instanceTransform;\n"
     "uniform mat4 mvp;\n"
-    "void main() { gl_Position = mvp * instanceTransform * vec4(vertexPosition, 1.0); }\n";
+    "out vec3 fragNormal;\n"
+    "void main() {\n"
+    "    fragNormal  = mat3(instanceTransform) * vertexNormal;\n"
+    "    gl_Position = mvp * instanceTransform * vec4(vertexPosition, 1.0);\n"
+    "}\n";
 constexpr const char* INST_FS =
     "#version 330\n"
+    "in vec3 fragNormal;\n"
     "uniform vec4 colDiffuse;\n"
+    "uniform vec3 sunDir;\n"
     "out vec4 finalColor;\n"
-    "void main() { finalColor = colDiffuse; }\n";
+    "void main() {\n"
+    "    float shade = 0.6 + 0.4 * max(dot(normalize(fragNormal), -sunDir), 0.0);\n"
+    "    finalColor  = vec4(colDiffuse.rgb * shade, colDiffuse.a);\n"
+    "}\n";
 
 bool     g_instTried = false, g_instReady = false;
+int      g_instSunLoc = -1;
 Shader   g_instShader{};
 Mesh     g_instCube{};
 Material g_instMat{};
@@ -1335,6 +1349,7 @@ void EnsureInstancing() {
         GetShaderLocation(g_instShader, "mvp");
     g_instShader.locs[SHADER_LOC_MATRIX_MODEL] =
         GetShaderLocationAttrib(g_instShader, "instanceTransform");
+    g_instSunLoc = GetShaderLocation(g_instShader, "sunDir");
     g_instCube = GenMeshCube(1.0f, 1.0f, 1.0f);
     g_instMat  = LoadMaterialDefault();
     g_instMat.shader = g_instShader;
@@ -1385,6 +1400,11 @@ void LimbBox(Vector3 a, Vector3 b, float r, Color col) {
 
 void FlushInstanced() {
     if (!g_instReady) return;
+    // A low late-afternoon sun (V129); by night the moon takes its line.
+    const Vector3 sun = Vector3Normalize(
+        B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
+    if (g_instSunLoc >= 0)
+        SetShaderValue(g_instShader, g_instSunLoc, &sun, SHADER_UNIFORM_VEC3);
     for (auto& [key, mats] : g_instBatch) {
         if (mats.empty()) continue;
         g_instMat.maps[MATERIAL_MAP_DIFFUSE].color =
