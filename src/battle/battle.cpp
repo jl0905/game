@@ -2997,8 +2997,12 @@ void BattleDraw(const Content& c) {
         tint.r = (unsigned char)fminf(255.0f, tint.r * dim + 70.0f * (1.0f - hf));
         tint.g = (unsigned char)(tint.g * dim);
         tint.b = (unsigned char)(tint.b * dim);
+        // Half-tessellation past half the LOD line (V127): same silhouette,
+        // a fraction of the vertices, exactly where detail stops reading.
+        SetCharacterDetail(camDistSq > LOD_DIST_SQ * 0.25f ? 1 : 0);
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
+    SetCharacterDetail(0);   // the hero and town scenes draw full (V127)
     FlushInstanced();   // the whole far field in a handful of draw calls (V126)
 
     // Deployment ghosts (V58): while the field holds its breath â€” or the

@@ -1502,6 +1502,12 @@ this is the feedback the flat numbers were waiting for.
         segmented humanoids (DrawCharacter) are now the dominant draw
         cost — instancing THEM needs per-part transforms and is the next
         big perf ticket)
+  - [~] perf hunt continued (V127 — half-tessellation tier for humanoids
+        past half the LOD line: SetCharacterDetail(1) halves capsule/
+        cylinder slices and floors rings, sphere heads drop 16×16→2×8;
+        bench 19.69→18.59ms, p99 26.5→22.4, 54fps. Day total
+        20.30→18.59. True per-part instancing of DrawCharacter remains
+        the endgame ticket)
 
 ## Sequencing guidance
 

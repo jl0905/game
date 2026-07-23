@@ -22,6 +22,11 @@ struct Pose {
     Color     accent    = { 0, 0, 0, 0 };     // troop plume colour; alpha 0 = none
 };
 
+// Tessellation tier (V127): 0 = full detail (hero, town NPCs, close ranks),
+// 1 = roughly half the slices/rings for soldiers past half the LOD line —
+// the silhouette is identical, the vertex bill is not. Sticky until changed.
+void SetCharacterDetail(int tier);
+
 // Draws a humanoid standing on `feet` (its ground point), wearing `loadout`.
 // `teamTint` colours anything not covered by equipment so sides stay readable.
 void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,

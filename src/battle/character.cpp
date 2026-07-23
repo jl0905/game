@@ -13,6 +13,12 @@ namespace {
 
 constexpr Color SKIN{ 214, 176, 142, 255 };
 
+// Tessellation tier (V127): tier 1 halves slices and floors rings — the
+// mid-distance ranks keep their silhouette at a fraction of the vertices.
+int g_charTier = 0;
+int S(int full) { return g_charTier ? (full > 5 ? full / 2 : 4) : full; }
+int R(int full) { return g_charTier ? 2 : full; }
+
 // Local (right, up, fwd) -> world, rotating around Y by yaw about `feet`.
 Vector3 ToWorld(Vector3 feet, float yaw, float right, float up, float fwd) {
     const float s = sinf(yaw), c = cosf(yaw);
@@ -66,6 +72,8 @@ void BladeLine(const Vector3& aim, Vector3& hilt, Vector3& tip, float reach) {
 
 }  // namespace
 
+void SetCharacterDetail(int tier) { g_charTier = tier; }
+
 void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                    const Pose& pose, Color teamTint) {
     const float yaw = pose.yaw;
@@ -90,23 +98,23 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const float legSwing = sinf(pose.walkPhase) * 0.35f;
 
     // ---- Legs ----
-    DrawCapsule(at(-0.16f, 0.05f,  legSwing), at(-0.16f, 0.95f, 0.0f), 0.14f, 8, 4, feetC);
-    DrawCapsule(at( 0.16f, 0.05f, -legSwing), at( 0.16f, 0.95f, 0.0f), 0.14f, 8, 4, feetC);
+    DrawCapsule(at(-0.16f, 0.05f,  legSwing), at(-0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
+    DrawCapsule(at( 0.16f, 0.05f, -legSwing), at( 0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
 
     // ---- Torso (+ a team surcoat stripe down the chest so sides read) ----
-    DrawCapsule(at(0.0f, 0.95f, 0.0f), at(0.0f, 1.6f, 0.0f), 0.30f, 10, 6, bodyC);
-    DrawCapsule(at(0.0f, 1.0f, 0.24f), at(0.0f, 1.55f, 0.24f), 0.09f, 6, 4, flashed(teamTint));
+    DrawCapsule(at(0.0f, 0.95f, 0.0f), at(0.0f, 1.6f, 0.0f), 0.30f, S(10), R(6), bodyC);
+    DrawCapsule(at(0.0f, 1.0f, 0.24f), at(0.0f, 1.55f, 0.24f), 0.09f, S(6), R(4), flashed(teamTint));
 
     // ---- Head: dome helmet with a nasal bar, or a bare head ----
-    DrawSphere(at(0.0f, 1.85f, 0.0f), 0.22f, headC);
+    DrawSphereEx(at(0.0f, 1.85f, 0.0f), 0.22f, R(16), S(16), headC);
     if (hasHelm) {
-        DrawCylinderEx(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, 10, headC); // brim
-        DrawCylinderEx(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, 10, headC); // dome
-        DrawCapsule(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, 4, 3, headC);       // nasal
+        DrawCylinderEx(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
+        DrawCylinderEx(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, S(10), headC); // dome
+        DrawCapsule(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);       // nasal
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
     if (pose.accent.a > 0)
-        DrawCapsule(at(0.0f, 2.05f, -0.05f), at(0.0f, 2.30f, -0.18f), 0.05f, 5, 3,
+        DrawCapsule(at(0.0f, 2.05f, -0.05f), at(0.0f, 2.30f, -0.18f), 0.05f, S(5), R(3),
                     flashed(pose.accent));
 
     // ---- Left arm + shield ----
@@ -116,19 +124,19 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const bool  oneHanded = content.weapons.valid(whShield) &&
                             content.weapons[whShield].wclass == WeaponClass::OneHanded;
     const float guard = pose.blocking ? 0.6f : 0.0f;
-    DrawCapsule(at(-0.34f, 1.5f, 0.0f), at(-0.34f, 1.05f + guard, 0.2f + guard), 0.11f, 8, 4, bodyC);
+    DrawCapsule(at(-0.34f, 1.5f, 0.0f), at(-0.34f, 1.05f + guard, 0.2f + guard), 0.11f, S(8), R(4), bodyC);
     if (pose.blocking) {
-        DrawCylinderEx(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, 14,
+        DrawCylinderEx(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, S(14),
                        flashed(DARKBROWN));
-        DrawCylinderEx(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, 8,
+        DrawCylinderEx(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, S(8),
                        flashed(GRAY));   // boss
     } else if (oneHanded) {   // carried at the forearm when not raised
-        DrawCylinderEx(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, 12,
+        DrawCylinderEx(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, S(12),
                        flashed(DARKBROWN));
     }
 
     // ---- Right arm (weapon side) ----
-    DrawCapsule(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, 8, 4, handsC);
+    DrawCapsule(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, S(8), R(4), handsC);
 
     // ---- Weapon (the active one; a character may carry several) ----
     const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
