@@ -130,6 +130,9 @@ Vector2 RandomEdgePos() {
 
 // Radius (in world units) within which a click counts as selecting a town.
 constexpr float TOWN_CLICK_RADIUS = 36.0f;
+// You enter a gate by standing at it (V120): clicking a distant town no
+// longer teleports the party inside — it sets a travel course instead.
+constexpr float TOWN_ENTER_RADIUS = 48.0f;
 
 // Shared Gather/Draw layout (K7): the mouse hit-boxes in Gather*Input and the
 // row layouts in the draw functions both quote these — never mirrored
@@ -1721,8 +1724,28 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
 
     // ---- enter (friendly) or assault (hostile) a settlement ----
-    if (in.clickSettlement >= 0 && in.clickSettlement < (int)gs.towns.size()) {
-        Town& t = gs.towns[in.clickSettlement];
+    // Distance matters (V120): a click on a far town sets a travel course;
+    // the party must actually reach the gate before anything opens. Arrival
+    // (checked here each frame) converts the course into a real entry.
+    int  wantEnter  = in.clickSettlement;
+    bool forceEnter = in.forceEnter;
+    if (gs.travelTarget >= 0 && gs.travelTarget < (int)gs.towns.size() &&
+        Vector2Distance(gs.player.pos, gs.towns[gs.travelTarget].pos) <=
+            TOWN_ENTER_RADIUS) {
+        wantEnter      = gs.travelTarget;
+        forceEnter     = true;
+        gs.travelTarget = -1;
+    }
+    if (wantEnter >= 0 && wantEnter < (int)gs.towns.size() && !forceEnter &&
+        Vector2Distance(gs.player.pos, gs.towns[wantEnter].pos) >
+            TOWN_ENTER_RADIUS) {
+        gs.travelTarget = wantEnter;
+        gs.resultText   = TextFormat("You make for %s.",
+                                     gs.towns[wantEnter].name.c_str());
+        wantEnter = -1;
+    }
+    if (wantEnter >= 0 && wantEnter < (int)gs.towns.size()) {
+        Town& t = gs.towns[wantEnter];
         if (AtWar(gs, t.owner, c.playerFaction)) {
             if (t.garrisonSize() <= 0) {
                 // Nobody mans the walls — it simply changes hands.
@@ -1731,12 +1754,12 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             } else if (gs.player.totalTroops() > 0) {
                 // Walls or fields, the same question opens (N1/P1):
                 // conquest, engineering, or — at a village — plunder.
-                gs.siegePrompt = in.clickSettlement;
+                gs.siegePrompt = wantEnter;
             }
         } else {
             // Deliveries (F4) pay at the destination gate — any ware the
             // quest names (V18).
-            if (gs.activeQuest >= 0 && in.clickSettlement == gs.questTown &&
+            if (gs.activeQuest >= 0 && wantEnter == gs.questTown &&
                 c.quests[gs.activeQuest].type == QuestType::DeliverGrain) {
                 const int g = c.goods.find(
                     c.quests[gs.activeQuest].goodId.c_str());
@@ -1747,16 +1770,16 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
             // Walking into a feast (M5): the hall notices a famous guest.
-            if (in.clickSettlement == gs.feastTown && gs.feastDays > 0 &&
+            if (wantEnter == gs.feastTown && gs.feastDays > 0 &&
                 !gs.feastAttended) {
                 gs.feastAttended = true;
                 NudgeRelation(gs, gs.feastFaction, +5);   // TODO(balance)
                 gs.renown += 1;
                 gs.resultText = TextFormat(
                     "You join the feast at %s. The hall drinks to your name.",
-                    gs.towns[in.clickSettlement].name.c_str());
+                    gs.towns[wantEnter].name.c_str());
             }
-            gs.currentSettlement = in.clickSettlement;
+            gs.currentSettlement = wantEnter;
             gs.screen = Screen::Settlement;
             return;
         }
@@ -1783,6 +1806,17 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     // Travelling is an action, so time flows while you move. Standing still
     // freezes the whole overworld; wait (SPACE) lets time pass without moving.
     Vector2 move = in.move;
+    // Click-to-travel (V120): with the reins free, the party steers itself
+    // toward the clicked town; any manual input takes the reins back.
+    if (gs.travelTarget >= 0 && gs.travelTarget < (int)gs.towns.size()) {
+        if (Vector2Length(move) > 0) {
+            gs.travelTarget = -1;
+        } else {
+            const Vector2 d = Vector2Subtract(gs.towns[gs.travelTarget].pos,
+                                              gs.player.pos);
+            if (Vector2Length(d) > 1.0f) move = Vector2Normalize(d);
+        }
+    }
     const bool moving  = Vector2Length(move) > 0;
     gs.timeFlowing = moving || in.wait;
     const float sim = gs.timeFlowing ? dt : 0.0f;

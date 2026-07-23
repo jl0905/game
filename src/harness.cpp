@@ -174,12 +174,12 @@ struct Harness {
     void DumpState() const {
         const Content& c = gs.content;
         std::printf("screen=%s day=%d gold=%d pos=(%.0f,%.0f) party=%d timeFlowing=%d "
-                    "terrain=%s%s speed=%.2f\n",
+                    "terrain=%s%s speed=%.2f course=%d\n",
                     ScreenName(), gs.day, gs.gold, gs.player.pos.x, gs.player.pos.y,
                     gs.player.totalTroops(), gs.timeFlowing ? 1 : 0,
                     WorldTerrainName(WorldTerrainAt(gs.content.map, gs.player.pos)),
                     OnRoad(gs, gs.player.pos) ? " road" : "",
-                    TravelSpeedFactor(gs, gs.player.pos));
+                    TravelSpeedFactor(gs, gs.player.pos), gs.travelTarget);
         std::printf("hero: level=%d xp=%d points=%d renown=%d honor=%d cap=%d "
                     "hints=%u attrs=[",
                     gs.playerHero.level, gs.playerHero.xp, gs.playerHero.attrPoints,
@@ -466,6 +466,12 @@ int RunScript(const char* path) {
             CampaignInput cin; cin.wait = true;
             h.Ticks(t, cin, BattleInput{});
         } else if (cmd == "enter") {
+            // Scripts teleport through the gate (V120): the distance rule is
+            // a windowed-UX gate; `goto N` exercises the travel course.
+            CampaignInput cin; ss >> cin.clickSettlement;
+            cin.forceEnter = true;
+            h.Step(cin, BattleInput{});
+        } else if (cmd == "goto") {
             CampaignInput cin; ss >> cin.clickSettlement;
             h.Step(cin, BattleInput{});
         } else if (cmd == "leave") {

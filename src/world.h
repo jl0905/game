@@ -261,6 +261,7 @@ struct GameState {
     // the invested town before the days run out, or pay in standing. And the
     // crown's rally: a crowned ruler calls raised lords to the banner.
     int     musterTown = -1;   // besieged town you are summoned to, -1 none
+    int     travelTarget = -1; // click-to-travel course toward a town (V120), -1 none
     float   musterDays = 0;    // days left to answer
     bool    lordsRally = false;
     Vector2 lordsRallyPos{};

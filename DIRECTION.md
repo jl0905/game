@@ -1458,10 +1458,23 @@ this is the feedback the flat numbers were waiting for.
   shift naturally from missile exchange to steel. Verified with a temp
   2-shaft quiver: outriders volleyed (arrows=4), ran dry (arrows=0
   thereafter), closed to melee and finished the fight.
-- [ ] **U-track (user directive 2026-07-22, priority):** proximity gate on
-  map-click town entry; settlement menu buttons fully wired; all menus
-  centered/responsive to window size; remove leftover text behind the
-  bottom-left control panel; playtest pass on quest-completion UX.
+- [x] **V120. Iteration one-twenty — you enter a gate by standing at it
+  (U-track).** Clicking a distant town no longer teleports the party
+  inside: within 48 units the gate opens as before; beyond it the click
+  sets a travel course — the party self-steers there with time flowing
+  (any manual input takes the reins back) and enters on arrival. Harness:
+  `goto N` travels, `enter N` keeps the scripted teleport, `course=` in
+  the state dump. `tests/travelcourse.txt`.
+- [ ] **U-track (user directive 2026-07-22, priority):**
+  - [x] proximity gate on map-click town entry (V120)
+  - [ ] battle camera: closer to the player and player-adjustable (zoom)
+  - [ ] remove the yellow swing-direction dots in melee
+  - [ ] settlement menu buttons fully wired end to end
+  - [ ] all menus centered / responsive to window size and GUI scale
+  - [ ] remove leftover text behind the bottom-left control panel
+  - [ ] shader / graphics pass (lighting or post effects within raylib)
+  - [ ] playtest pass on quest-completion UX (clearer goals, progress,
+        payoff moments)
 
 ## Sequencing guidance
 

@@ -1,0 +1,15 @@
+# Click-to-travel (V120): clicking a distant town no longer teleports you
+# through its gate - it sets a course (course=N in the dump), the party
+# self-steers with time flowing, and the gate opens only on arrival.
+# Jelkala (town 3) is at the start position, so `goto 3` enters at once;
+# Praven (town 1) is ~1000 away, so `goto 1` must set a course and stay
+# on the campaign screen, then progress toward it over ticks.
+seed 7
+state
+goto 1
+state
+tick 30
+state
+goto 3
+state
+quit
