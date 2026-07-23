@@ -1489,6 +1489,14 @@ this is the feedback the flat numbers were waiting for.
         into shade (moonlight line at night), restoring the depth cue the
         flat boxes lacked; bench 12.80ms/78fps. Next: lighting for the
         near-tier models and terrain, kingdom ledger centering still open)
+- [x] **V130. Iteration one-thirty — the hero is one man among many
+  (user ask 2026-07-23).** Enemy targeting scores the player exactly
+  like a soldier: distance + the J1 crowd penalty (B.playerTargeted)
+  + attacker stickiness, replacing the unconditional closest-wins rule
+  that herded every nearby enemy onto the player. In a joined battle
+  line the hero draws a handful at most (ptargets≈0 standing at the
+  line); nearly alone he still draws the whole mob (6/6, control test).
+  `ptargets=` in the dump; `tests/notarget_herd.txt` + `notarget_solo.txt`.
   - [x] playtest pass on quest-completion UX (V124 — payoff banner with
         fanfare/knell, richer HUD tracker with have/need + distances, and
         a full quest journal screen [Q]: task, progress, reward, clock,

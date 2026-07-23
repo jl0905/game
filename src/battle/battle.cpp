@@ -514,6 +514,7 @@ struct AICmd {
     int     newTarget = -1;
     int     activeWeapon = -1;
     bool    guard = false;   // hold the block this frame (V125)
+    bool    aimPlayer = false; // chose the hero as foe this frame (V130)
     int     hitSoldier = -1; // soldier index to damage this frame, or -1
     bool    hitPlayer = false;
     float   hitDamage = 0;
@@ -581,6 +582,7 @@ struct Soldier {
     float   walkPhase = 0;
     float   deadFor = 0;   // seconds since death (V125): corpses sink and stop drawing
     bool    guard = false; // AI shield/blade up between own swings (V125)
+    bool    aimPlayer = false; // this soldier's chosen foe is the hero (V130)
     int     quiver = 24;   // AI shafts (V119) TODO(balance); melee never checks
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
@@ -807,6 +809,7 @@ struct BattleState {
     std::vector<float> dmg;
     SoldierGrid        grid;       // proximity index, rebuilt each tick (G1)
     std::vector<int>   targeted;   // how many foes aim at each soldier (J1)
+    int playerTargeted = 0;        // ...and how many aim at the hero (V130)
 
     // Per-troop fighting gear for this battle (K6): defaults + overrides.
     std::vector<Loadout> troopGear;
@@ -1153,16 +1156,31 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     }
     cmd.newTarget = target;
 
-    // Enemies may prefer the player if closer than their nearest soldier foe.
+    // The hero is scored like any other soldier (V130): distance plus the
+    // same crowd penalty, instead of the old unconditional "closest wins"
+    // rule that sent every nearby enemy herding onto the player at once.
     bool    targetPlayer = false;
     bool    haveFoe = false;
     Vector3 tpos{};
     if (s.team == Team::Enemy && B.pHp > 0) {
-        const float dp = Vector3DistanceSqr(s.pos, B.pPos);
-        if (target < 0 || dp < Vector3DistanceSqr(s.pos, B.soldiers[target].pos)) {
+        // Same scoring as FindTarget: distance + crowd penalty per foe
+        // already on him. A soldier already aiming at the hero keeps the
+        // stickiness every other target enjoys (his own tally excluded).
+        const float dp = Vector3Distance(s.pos, B.pPos);
+        const int   crowd = B.playerTargeted - (s.aimPlayer ? 1 : 0);
+        // Stickiness parity: a man already on the hero stays on him with the
+        // same bonus FindTarget gives a soldier fighting his attacker.
+        const float pScore = dp + TARGET_CROWD_PENALTY * (float)crowd -
+                             (s.aimPlayer ? TARGET_ATTACKER_BONUS : 0.0f);
+        const float sScore = target < 0 ? 1e9f
+            : Vector3Distance(s.pos, B.soldiers[target].pos) +
+              TARGET_CROWD_PENALTY * (float)(target < (int)B.targeted.size()
+                                                 ? B.targeted[target] : 0);
+        if (pScore < sScore) {
             targetPlayer = true; tpos = B.pPos; haveFoe = true;
         }
     }
+    cmd.aimPlayer = targetPlayer;
     if (!targetPlayer && target >= 0) { tpos = B.soldiers[target].pos; haveFoe = true; }
 
     float foeDist = 1e9f;
@@ -2248,8 +2266,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         // me" tallies â€” the read-only inputs of this tick's target scoring.
         B.grid.Build(B.soldiers);
         B.targeted.assign(n, 0);
-        for (const Soldier& s : B.soldiers)
-            if (s.hp > 0 && s.target >= 0 && s.target < n) B.targeted[s.target]++;
+        B.playerTargeted = 0;   // the hero counts like any man (V130)
+        for (const Soldier& s : B.soldiers) {
+            if (s.hp <= 0) continue;
+            if (s.aimPlayer) B.playerTargeted++;
+            else if (s.target >= 0 && s.target < n) B.targeted[s.target]++;
+        }
 
         // Morale (K4): a soldier whose nerve broke runs; the banner rings
         // once per side when half its strength has fled the field.
@@ -2476,6 +2498,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.target       = cmd.newTarget;
             s.activeWeapon = cmd.activeWeapon;
             s.guard        = cmd.guard;
+            s.aimPlayer    = cmd.aimPlayer;
             s.walkPhase   += cmd.walkAdd;
             s.pos = Vector3Add(s.pos, Vector3Add(cmd.step, cmd.separation));
             EnforceWall(s.pos);
@@ -3594,6 +3617,7 @@ BattleView GetBattleView() {
     v.heroKicks   = B.heroKicksLanded;
     v.heroShots   = B.heroArrowsLoosed;
     v.heroQuiver  = B.heroQuiver;
+    v.playerTargeted = B.playerTargeted;
     v.dueling     = B.dueling;
     v.heroShieldHp = B.pShieldHp;
     for (int r : B.reserveOwn)   v.reservesOwn += r;

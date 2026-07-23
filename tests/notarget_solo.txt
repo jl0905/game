@@ -1,0 +1,12 @@
+# Part 2 of the V130 targeting check: a hero with one companion against
+# six marauders MUST still draw the mob - with no better foes on offer
+# the same scoring sends everyone at him (ptargets=6, hp dropping).
+# Proves normal-soldier targeting did not make the hero ignorable.
+load tests/fixtures/herdsolo.owb
+hunt 60
+bmove 1 0 5
+tick 3
+state
+tick 3
+state
+quit

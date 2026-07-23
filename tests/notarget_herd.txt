@@ -1,0 +1,14 @@
+# The hero is a normal soldier to enemy targeting (V130): scored by
+# distance + the same crowd penalty as everyone else (with attacker
+# stickiness), replacing the unconditional closest-wins rule that herded
+# every nearby enemy onto the player.
+# Part 1 - 30 own infantry vs 40 marauders, hero stands at the line:
+# with a whole battle to fight, ptargets= stays near 0 (no dogpile).
+load tests/fixtures/herd.owb
+hunt 60
+bmove 1 0 5
+tick 5
+state
+tick 4
+state
+quit
