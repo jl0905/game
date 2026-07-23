@@ -1,4 +1,4 @@
-#include "battle.h"
+﻿#include "battle.h"
 #include "character.h"
 #include "../gfx.h"
 #include "../sfx.h"
@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 // Real-time 3D battle. You fight alongside your troops in third person.
 //   WASD move, mouse look, SPACE jump.
-//   LMB attack — the swing DIRECTION follows your mouse motion (Mount & Blade
+//   LMB attack â€” the swing DIRECTION follows your mouse motion (Mount & Blade
 //   style): flick up = overhead, down = thrust, left/right = side cuts.
 //   RMB block.
 // The battle ends when one side is wiped out, or you fall. Casualties and the
@@ -59,7 +59,7 @@ bool NearLadder(float x) {
     return false;
 }
 
-// Extra height a climber gains while inside the crossing band near a ladder —
+// Extra height a climber gains while inside the crossing band near a ladder â€”
 // an arc that peaks at the rampart top right over the wall line.
 float LadderClimbBump(float x, float z) {
     if (!NearLadder(x)) return 0.0f;
@@ -403,12 +403,12 @@ void Terrain::Draw() const {
 }
 
 // ===========================================================================
-// Formations — the player commands their own troops from the strategy menu (~).
+// Formations â€” the player commands their own troops from the strategy menu (~).
 // Charge = attack the nearest foe (classic melee). Line/Square/Spread march the
 // troops into shaped slots around an anchor (the player) and hold there, still
 // fighting anything that reaches them. `ranks` sets how many rows a line forms.
 // Add a new shape by extending FormationType + FormationTarget; nothing else
-// needs to change. (An allied party fights on its own — it always charges.)
+// needs to change. (An allied party fights on its own â€” it always charges.)
 // ===========================================================================
 enum class FormationType { Charge, Line, Square, Spread, ShieldWall };
 
@@ -478,7 +478,8 @@ Vector3 FormationTarget(FormationType type, int ranks, Vector3 anchor, float yaw
 // Choose which carried weapon to use at an engagement distance: the shortest
 // weapon that still reaches, otherwise the longest available. A unit with a
 // spear and a sword thus uses the spear at range and the sword up close.
-int PickWeaponForRange(const Content& c, const Loadout& lo, float dist) {
+int PickWeaponForRange(const Content& c, const Loadout& lo, float dist,
+                       bool hasAmmo = true) {
     const int n = lo.weaponCount();
     if (n <= 0) return -1;
     int   shortestSufficient = -1;  float ssReach = 1e9f;
@@ -487,6 +488,9 @@ int PickWeaponForRange(const Content& c, const Loadout& lo, float dist) {
         const int h = lo.weaponAt(i);
         if (!c.weapons.valid(h)) continue;
         const WeaponDef& w = c.weapons[h];
+        // A dry quiver silences the bow (V119): with no shafts left a ranged
+        // weapon is dead weight â€” draw steel instead (unless it's all he has).
+        if (!hasAmmo && w.isRanged() && n > 1) continue;
         // A bow's effective "reach" is its missile range, so an archer keeps the
         // bow up until a foe is inside melee reach of its sidearm.
         const float r = w.isRanged() ? w.missileRange
@@ -516,9 +520,9 @@ struct AICmd {
     int     swingDir = -1;   // 0..3 melee swing direction (G4), -1 none
 };
 
-// A missile in flight. Team says who it can hurt (no friendly fire — allied
+// A missile in flight. Team says who it can hurt (no friendly fire â€” allied
 // archers shooting over a melee would otherwise slaughter their own side).
-// A masterless horse (T6): its rider fell, and it survives him — bolting,
+// A masterless horse (T6): its rider fell, and it survives him â€” bolting,
 // then wandering the field, shying from the press. An entity of its own.
 struct LooseHorse {
     Vector3 pos{};
@@ -542,7 +546,7 @@ struct Arrow {
 // Morale & rout (G3, per-soldier since K4): every soldier carries `nerve`.
 // Watching a friend die nearby drains it, watching a foe fall restores it,
 // the hero falling shakes the whole line, and the hero's rally stiffens it.
-// A soldier whose nerve breaks routs alone — lines crumble from where the
+// A soldier whose nerve breaks routs alone â€” lines crumble from where the
 // dying happens. Wall garrisons hold to the death; arena bouts never rout.
 // TODO(balance): every number below.
 constexpr float NERVE_MAX          = 100.0f;
@@ -554,7 +558,7 @@ constexpr float NERVE_RALLY        = 15.0f;  // the hero's kill-cry
 constexpr float NERVE_REGEN        = 2.0f;   // per second, courage returns
 
 // Shields matter (direction G4): a shield-bearer meets a swing from his
-// guarded side with wood — and the wood wears out. The guard direction is a
+// guarded side with wood â€” and the wood wears out. The guard direction is a
 // deterministic per-soldier habit for now: structure, not a fencing brain.
 // TODO(balance): all three numbers.
 constexpr float SHIELD_HP           = 40.0f;
@@ -573,11 +577,12 @@ struct Soldier {
     float   swing = 0;
     float   flash = 0;         // just-hit white flare, decays fast
     float   walkPhase = 0;
+    int     quiver = 24;   // AI shafts (V119) TODO(balance); melee never checks
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
     float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
     float   stun = 0;          // hit-stun (T): reeling, can't move or swing
-    float   stunImmune = 0;    // post-stun grace — an opening, not a lock
+    float   stunImmune = 0;    // post-stun grace â€” an opening, not a lock
     bool    looted = false;    // his weapon already taken up (V39)
     bool    champion = false;  // the enemy lord in person (V101)
     int     guardDir = -1;     // reactive shield guard (T): covers where last
@@ -585,7 +590,7 @@ struct Soldier {
     float   nerve = NERVE_MAX; // courage left (K4); at 0 the soldier breaks
     bool    routed  = false;   // broke and running for the field edge (G3)
     float   routTime = 0;      // seconds spent fleeing
-    bool    escaped = false;   // off the field alive — not a casualty
+    bool    escaped = false;   // off the field alive â€” not a casualty
     int     activeWeapon = -1; // currently-wielded weapon handle
     bool    onWall = false;    // garrison archer posted on the siege wall
     float   trampleCd = 0;     // mounted: cooldown between trample hits
@@ -594,8 +599,8 @@ struct Soldier {
 };
 
 // Uniform spatial grid over the XZ plane (direction G1), rebuilt once per tick
-// before the parallel AI phase. Every proximity question in the hot path —
-// target search, separation, line-break, trample — asks the grid instead of
+// before the parallel AI phase. Every proximity question in the hot path â€”
+// target search, separation, line-break, trample â€” asks the grid instead of
 // scanning all soldiers, turning the per-tick cost from O(n^2) into ~O(n).
 struct SoldierGrid {
     static constexpr float CELL = 6.0f;   // a bit over two soldier diameters
@@ -645,7 +650,7 @@ struct SoldierGrid {
 
 // Battle pacing (direction J2): soldiers recover their swings slower and close
 // a shade less fast than the hero, so fights read as lines grinding rather
-// than instant blenders — and the player's full-speed hands are a real edge.
+// than instant blenders â€” and the player's full-speed hands are a real edge.
 // TODO(balance): both scales.
 constexpr float PACE_COOLDOWN_SCALE = 1.5f;
 constexpr float PACE_MOVE_SCALE     = 0.85f;
@@ -779,7 +784,7 @@ struct BattleState {
     bool deploying   = false;
 
     // Battlefield orders (M2): what the player's own troops are doing with
-    // the formation shape — charging freely, following the hero's banner, or
+    // the formation shape â€” charging freely, following the hero's banner, or
     // holding ground where the order was barked (F1/F2/F3 mid-fight).
     OrderType order = OrderType::Charge;
     Vector3   holdPos{};            // anchor frozen when Hold was ordered
@@ -821,7 +826,7 @@ AttackDir DirFromMotion(Vector2 m) {
 const Loadout& TroopLoadout(const Content& c, int troop);   // defined after BattleState
 
 // Combat stats come from the wielded weapon (WeaponDef), with bare-hand
-// fallbacks — this is the single place battle numbers are read from content.
+// fallbacks â€” this is the single place battle numbers are read from content.
 float WeaponDamage(const Content& c, int wh) {
     return c.weapons.valid(wh) && c.weapons[wh].damage > 0.0f ? c.weapons[wh].damage : FIST_DAMAGE;
 }
@@ -836,12 +841,12 @@ float WeaponCooldown(const Content& c, int wh) {
 // TODO(balance): the soak curve is placeholder-simple.
 float ApplyArmor(float damage, int armor) {
     // A quarter always gets through (V22): plate blunts peasant swords
-    // without making knights literally unkillable — the flat-1 floor
+    // without making knights literally unkillable â€” the flat-1 floor
     // stalled battles once armour awoke (V15). TODO(balance): the curve.
     return fmaxf(damage - (float)armor, damage * 0.25f);
 }
 
-// Riding someone down with a polearm levelled is a couched lance strike —
+// Riding someone down with a polearm levelled is a couched lance strike â€”
 // weapon damage carried by the horse's momentum. Anything else just tramples.
 // TODO(balance): the couch multiplier.
 float TrampleDamage(const Content& c, int weapon) {
@@ -898,7 +903,7 @@ void SpawnBlood(Vector3 at) {
     }
 }
 
-// Bright sparks off a raised guard — a parry you can SEE.
+// Bright sparks off a raised guard â€” a parry you can SEE.
 void SpawnSparks(Vector3 at) {
     for (int i = 0; i < 6; ++i) {
         const unsigned int h = PuffRand();
@@ -921,9 +926,9 @@ void SpawnDust(Vector3 at) {
 }
 
 // All damage to a soldier routes through here so a mounted target's horse
-// soaks its share of the blow — and can die under the rider.
+// soaks its share of the blow â€” and can die under the rider.
 // Hit-stun (T): a blow that lands (not soaked to a scratch) staggers the
-// victim — no moving, no swinging while reeling. This is what makes blocking
+// victim â€” no moving, no swinging while reeling. This is what makes blocking
 // and swing-direction craft matter. TODO(balance): duration/threshold.
 constexpr float STUN_TIME     = 0.45f;
 constexpr float STUN_MIN_DMG  = 4.0f;   // shield-soaked taps don't stagger
@@ -960,7 +965,7 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
         if (s.horseHp <= 0) s.dehorsed = true;   // horse falls; rider fights on
     }
     // A braced wall turns blades (V48): the player's own foot in Shield Wall
-    // soak a third of everything — arrows and steel alike. TODO(balance).
+    // soak a third of everything â€” arrows and steel alike. TODO(balance).
     if (B.formation == FormationType::ShieldWall &&
         s.team == Team::Player && !s.ally && !IsMounted(c, s))
         dmg *= 0.65f;
@@ -969,7 +974,7 @@ void DamageSoldier(const Content& c, Soldier& s, float dmg) {
     if (s.hp <= 0) StainGround(s.pos);   // the field remembers (V12)
     if (dmg >= STUN_MIN_DMG && s.stunImmune <= 0) {
         s.stun       = STUN_TIME;          // reeling (T)
-        s.stunImmune = STUN_TIME + 0.9f;   // then finds his feet — a crowd
+        s.stunImmune = STUN_TIME + 0.9f;   // then finds his feet â€” a crowd
         s.swing      = 0;                  // can't chain-lock a man forever
     }
     SpawnBlood(s.pos);
@@ -1045,7 +1050,7 @@ bool HasShield(const Content& c, const Soldier& o) {
 }
 
 // The side a soldier guards this moment: where he was last struck (T,
-// reactive — so an attacker who varies his swings gets through), falling
+// reactive â€” so an attacker who varies his swings gets through), falling
 // back to the old positional habit before first blood (G4).
 int GuardDir(int idx, const Soldier& s) {
     if (s.guardDir >= 0) return s.guardDir;
@@ -1085,7 +1090,7 @@ int FindTarget(const Content& c, int self, Team wantTeam, bool imRanged) {
             if (score < bestScore) { bestScore = score; best = j; }
         });
         if (best >= 0) {
-            // Grown past the best hit's shell — a wider sweep can't beat it
+            // Grown past the best hit's shell â€” a wider sweep can't beat it
             // by more than the flat bonuses, so stop.
             if (radius >= bestScore + TARGET_ATTACKER_BONUS +
                               TARGET_UNSHIELDED_BONUS + TARGET_CROWD_PENALTY)
@@ -1114,7 +1119,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     cmd.newTarget   = s.target;
 
     // Single combat (V102): while the duel holds, every man but the
-    // champion stands and watches — no steps, no swings, no arrows.
+    // champion stands and watches â€” no steps, no swings, no arrows.
     if (B.dueling && i != B.championIdx) {
         cmd.newCooldown = s.cooldown;   // cooldowns hold too
         return cmd;
@@ -1159,7 +1164,8 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     if (haveFoe) { Vector3 t = Vector3Subtract(tpos, s.pos); t.y = 0; foeDist = Vector3Length(t); }
 
     // Pick the best carried weapon for this distance (multi-weapon support).
-    cmd.activeWeapon = PickWeaponForRange(c, lo, haveFoe ? foeDist : FIST_REACH);
+    cmd.activeWeapon = PickWeaponForRange(c, lo, haveFoe ? foeDist : FIST_REACH,
+                                          s.quiver > 0);
     const WeaponDef* wd = c.weapons.valid(cmd.activeWeapon) ? &c.weapons[cmd.activeWeapon] : nullptr;
     const bool ranged = wd && wd->isRanged();
     // Archers advance until comfortably inside missile range, then stand and
@@ -1176,7 +1182,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         (s.team == Team::Player && !s.ally && formation != FormationType::Charge);
     // Enemy field armies keep a battle line until the fight comes near.
     // The whole line breaks at once (B.enemyCharged), never soldier by soldier
-    // — but a soldier with a foe already on him always defends himself.
+    // â€” but a soldier with a foe already on him always defends himself.
     const bool enemyInLine =
         s.team == Team::Enemy && B.enemyHoldsLine && !B.enemyCharged &&
         s.slot >= 0 && !(haveFoe && foeDist < 10.0f);
@@ -1233,7 +1239,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         cmd.newCooldown = WeaponCooldown(c, cmd.activeWeapon) * cdScale;
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
-        if (ranged)           { cmd.shoot = true; cmd.shootAt = tpos; }
+        if (ranged && s.quiver > 0) { cmd.shoot = true; cmd.shootAt = tpos; }
         else if (targetPlayer) cmd.hitPlayer = true;
         else {
             cmd.hitSoldier = target;
@@ -1274,7 +1280,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
 }
 
 // The enemy fights in its own colours (V105): Nords look Nord, Sarleon
-// teal — the tint rides the bridge. Friendlies stay blue for readability.
+// teal â€” the tint rides the bridge. Friendlies stay blue for readability.
 Color TeamTint(Team t) { return t == Team::Enemy ? B.setup.enemyTint : BLUE; }
 
 // Per-soldier tint (V106): the enemy in its colours, an allied contingent
@@ -1285,7 +1291,7 @@ Color SoldierTint(const Soldier& s) {
     return s.ally ? B.setup.allyTint : BLUE;
 }
 
-// Soft blob shadow pinned to the terrain — the cheapest depth cue there is.
+// Soft blob shadow pinned to the terrain â€” the cheapest depth cue there is.
 void BlobShadow(const Terrain& t, float x, float z, float r) {
     DrawCylinder({ x, t.HeightAt(x, z) + 0.04f, z }, r, r, 0.02f, 12,
                  Fade(BLACK, 0.28f));
@@ -1320,7 +1326,7 @@ void EnforceWall(Vector3& p) {
 }
 
 // If the straight path to `goal` crosses the wall away from any opening,
-// steer via the nearest crossing — the gate mouth or a siege ladder — on the
+// steer via the nearest crossing â€” the gate mouth or a siege ladder â€” on the
 // mover's own side first.
 Vector3 FunnelThroughGate(Vector3 pos, Vector3 goal) {
     if (!B.hasWall) return goal;
@@ -1344,7 +1350,7 @@ void EndBattle(bool won) {
 
 // Fight it on paper (V41): expected-strength resolution for a battle the
 // player would rather not ride. Steel and armour count, but nobody's
-// swordsmanship does — the auto-resolved field is always bloodier for you
+// swordsmanship does â€” the auto-resolved field is always bloodier for you
 // than a fight you lead. Losses land on real soldiers so the normal
 // outcome bookkeeping (per-troop losses, horses, banners) just works.
 // TODO(balance): every constant.
@@ -1440,7 +1446,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     }
     B.terrain.Generate(tcfg, ARENA);
 
-    // Ground dressing (V7): tufts and stones seeded by the battlefield —
+    // Ground dressing (V7): tufts and stones seeded by the battlefield â€”
     // the same field always wears the same grass. Not in the sanded ring.
     B.props.clear();
     if (!setup.arena) {
@@ -1484,7 +1490,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
 
     // Battle size (V75): field battles cap each contingent at the player's
     // battleSize setting; the overflow waits as RESERVES and streams in as
-    // the field thins — Warband's battlefield cap. Sieges and bouts spawn
+    // the field thins â€” Warband's battlefield cap. Sieges and bouts spawn
     // whole as ever. Loss books add unspawned reserves back as survivors.
     B.reserveOwn.clear(); B.reserveAlly.clear(); B.reserveEnemy.clear();
     auto clampSide = [&](const std::vector<int>& counts, std::vector<int>& reserve) {
@@ -1545,7 +1551,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
             if (s.team == Team::Player && !s.ally) s.nerve *= 0.65f;
 
     // The lord takes the field in person (V101): the toughest enemy on the
-    // grass becomes him — two and a half men's health under one plume.
+    // grass becomes him â€” two and a half men's health under one plume.
     B.championIdx = -1;
     if (!setup.enemyLordName.empty() && !setup.arena) {
         int best = -1;
@@ -1580,7 +1586,7 @@ void BattleInit(const Content& c, const BattleSetup& setup) {
     B.hasLastMouse = false;
 }
 
-// Read the real devices into battle intent. Windowed play only — the headless
+// Read the real devices into battle intent. Windowed play only â€” the headless
 // harness builds BattleInput directly. Mouse-look uses manual position deltas
 // (GetMouseDelta is unreliable under WSL/X11).
 BattleInput GatherBattleInput() {
@@ -1652,7 +1658,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     g_dbgFrame++;
 
     // Deployment pause (R2): the field holds its breath while you set the
-    // lines — shape (1-4), ranks ([/]), the opening order (F1-F3). You may
+    // lines â€” shape (1-4), ranks ([/]), the opening order (F1-F3). You may
     // look around; nothing moves until the horn. Windowed only by
     // construction: headless runs never gather, so B.deploying stays false.
     if (B.deploying) {
@@ -1869,7 +1875,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         }
 
         // ---- the war horn (V66): once its wind is back, the hero's cry
-        //      steadies every friendly heart on the field — and men already
+        //      steadies every friendly heart on the field â€” and men already
         //      running find their feet and turn back. TODO(balance).
         B.hornCd = fmaxf(0.0f, B.hornCd - dt);
         if (in.warCry && B.hornCd <= 0 && B.pHp > 0 && !B.setup.arena) {
@@ -1887,7 +1893,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         }
 
         // ---- the kick (V33): a short shove, Warband's answer to a turtled
-        //      shield — no damage to speak of, but it staggers THROUGH a
+        //      shield â€” no damage to speak of, but it staggers THROUGH a
         //      guard and opens the man for the real blow. On foot only.
         B.kickCd = fmaxf(0.0f, B.kickCd - dt);
         if (in.kick && B.kickCd <= 0 && !B.mounted && B.pHp > 0) {
@@ -1913,10 +1919,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         }
 
         // ---- scavenge (V39): G over a fallen man takes up his weapon in
-        //      place of your active one — the field re-arms the survivor.
+        //      place of your active one â€” the field re-arms the survivor.
         if (in.pickup && B.pHp > 0) {
             // Shafts first (V118): spent arrows near your boots go back in
-            // the quiver — an archer harvests his own volleys mid-fight.
+            // the quiver â€” an archer harvests his own volleys mid-fight.
             int pulled = 0;
             for (size_t i = B.stuckArrows.size(); i-- > 0; ) {
                 Vector3 to = Vector3Subtract(B.stuckArrows[i].pos, B.pPos);
@@ -1957,7 +1963,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             B.readying = true;
             B.windup = 0.0f;
             // Warband rule (U5): the swing direction locks at the moment of
-            // the click, read from the last mouse flick — mouse only, and
+            // the click, read from the last mouse flick â€” mouse only, and
             // holding just holds. Looking around mid-hold changes nothing.
             if (Vector2Length(B.aimAccum) > 1.5f)
                 B.attackDir = DirFromMotion(B.aimAccum);
@@ -1976,11 +1982,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             //      Same Arrow sim as every archer on the field.
             if (c.weapons.valid(wh) && c.weapons[wh].isRanged()) {
                 const WeaponDef& bw = c.weapons[wh];
-                // The quiver runs dry (V118): no shaft, no shot — the field
+                // The quiver runs dry (V118): no shaft, no shot â€” the field
                 // gives them back one at a time under [G].
                 if (B.heroQuiver <= 0) {
                     B.swing = 0.0f;
-                    B.pickupMsg   = "QUIVER EMPTY — pull shafts from the ground [G]";
+                    B.pickupMsg   = "QUIVER EMPTY â€” pull shafts from the ground [G]";
                     B.pickupTimer = 1.8f;
                     SfxPlay(Sfx::Click, 0.7f);
                 } else {
@@ -1994,7 +2000,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 a.vel    = Vector3Scale(look, bw.missileSpeed
                                                   * (0.55f + 0.45f * draw));
                 a.team   = Team::Player;
-                // The hero shoots like a hero too — same factor as melee.
+                // The hero shoots like a hero too â€” same factor as melee.
                 a.damage = WeaponDamage(c, wh) * 2.5f * draw;  // TODO(balance)
                 B.arrows.push_back(a);
                 B.heroArrowsLoosed++;
@@ -2005,12 +2011,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             const float reach = WeaponReach(c, wh);
             B.cooldown = WeaponCooldown(c, wh);
             // The hero hits like a hero: the first user-playtest balance
-            // change (T) — with flat 100/10 numbers a player needed ten
+            // change (T) â€” with flat 100/10 numbers a player needed ten
             // clean hits per man while three men killed him in five
             // seconds, which read as "my attacks do nothing".
             const float HERO_DAMAGE_FACTOR = 2.5f;   // playtest-tuned 2026-07-21
             // Mounted identity (T5): the saddle adds reach, and the gallop
-            // adds weight — up to +50% at full stride. TODO(balance).
+            // adds weight â€” up to +50% at full stride. TODO(balance).
             const float mountReach = B.mounted ? 0.9f : 0.0f;
             const float momentum   = (B.mounted
                 ? 1.0f + 0.5f * fminf(1.0f, B.heroSpeed / 14.0f) : 1.0f)
@@ -2022,7 +2028,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 const float d = Vector3Length(to);
                 if (d < reach + mountReach + 0.6f && d > 0.01f &&
                     Vector3DotProduct(Vector3Normalize(to), fwd) > 0.4f) {
-                    // ~120° frontal arc; armour soaks per hit, and a raised
+                    // ~120Â° frontal arc; armour soaks per hit, and a raised
                     // shield meets the hero's chosen swing direction (G4).
                     const int vi = (int)(&s - &B.soldiers[0]);
                     float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR
@@ -2071,7 +2077,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             // A won field's strays are yours to round up (V22).
             out.horsesTaken = B.won ? (int)B.looseHorses.size() : 0;
             // (V101) The mid-fight check misses a lord who dies on the
-            // battle's final tick — ask the corpse directly as well.
+            // battle's final tick â€” ask the corpse directly as well.
             out.slewLord = B.won &&
                            (B.lordFell ||
                             (B.championIdx >= 0 &&
@@ -2082,7 +2088,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (B.won)
                 for (int t = 0; t < c.troops.size() && t < (int)B.surrendered.size(); ++t)
                     out.enemySurrendered[t] = B.surrendered[t];
-            return false;   // battle over — caller returns to the world map
+            return false;   // battle over â€” caller returns to the world map
         }
     }
 
@@ -2104,7 +2110,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
     if (!B.over && n > 0) {
         B.cmds.resize(n);
         // Rebuild the proximity grid and the per-soldier "how many foes aim at
-        // me" tallies — the read-only inputs of this tick's target scoring.
+        // me" tallies â€” the read-only inputs of this tick's target scoring.
         B.grid.Build(B.soldiers);
         B.targeted.assign(n, 0);
         for (const Soldier& s : B.soldiers)
@@ -2137,7 +2143,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
 
             // Quarter (V42): a side cut below a fifth of its strength with
-            // its colours in the mud stops fighting — the rest throw down
+            // its colours in the mud stops fighting â€” the rest throw down
             // their arms and pass to the victor's train. TODO(balance).
             if (!B.over && B.startEnemySide >= 5) {
                 int aliveE = 0, aliveP = 0;
@@ -2147,7 +2153,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 }
                 // Quarter comes three ways (TODO(balance) all thresholds):
                 // a routed side holds to a fifth, a side with its colours in
-                // the mud to a third — and a bloodied remnant (half down)
+                // the mud to a third â€” and a bloodied remnant (half down)
                 // facing six-to-one odds yields on the spot.
                 const bool broken  = (B.enemySideRouted || B.bannerIdx[1] < 0) &&
                                      aliveE * (B.bannerIdx[1] < 0 ? 3 : 5) <=
@@ -2173,7 +2179,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
             // Reinforcement waves (V75): when a contingent thins below 60%
             // of the cap and reserves remain, the next wave marches on from
-            // the rear — up to 20 men every few seconds.
+            // the rear â€” up to 20 men every few seconds.
             B.reinforceCd -= dt;
             if (B.reinforceCd <= 0 && !B.setup.arena && !B.setup.siege) {
                 B.reinforceCd = 4.0f;   // TODO(balance)
@@ -2234,7 +2240,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
 
             // The lord falls (V101): the whole host feels the heart go out
-            // of the fight — a nerve shock twice a banner's.
+            // of the fight â€” a nerve shock twice a banner's.
             if (!B.lordFell && B.championIdx >= 0 &&
                 B.soldiers[B.championIdx].hp <= 0) {
                 B.lordFell = true;
@@ -2303,13 +2309,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
         }
 
-        // Phase 1 — compute every soldier's intent in parallel from a read-only
+        // Phase 1 â€” compute every soldier's intent in parallel from a read-only
         // snapshot. Nothing is mutated here, so there are no data races.
         ThreadPool::Global().For(0, n, 24, [&](int i) {
             if (B.soldiers[i].hp > 0 && !B.soldiers[i].escaped)
                 B.cmds[i] = ComputeAI(c, i, dt, effFormation, B.ranks, anchor, anchorYaw, B.ownCount);
         });
-        // Phase 2 — apply movement/state serially, accumulate damage, then deal it.
+        // Phase 2 â€” apply movement/state serially, accumulate damage, then deal it.
         B.dmg.assign(n, 0.0f);
         float playerDamage = 0.0f;
         for (int i = 0; i < n; ++i) {
@@ -2320,7 +2326,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 if (s.routTime > ROUT_ESCAPE_TIME) { s.escaped = true; continue; }
             }
             // Reeling from a blow (T): a stunned soldier neither moves nor
-            // swings — the opening that blocking and swing-craft buy you.
+            // swings â€” the opening that blocking and swing-craft buy you.
             s.stunImmune -= dt;
             if (s.stun > 0) {
                 s.stun -= dt;
@@ -2401,12 +2407,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 a.vel = Vector3Scale(Vector3Normalize(delta), speed);
                 a.vel.y += 0.5f * ARROW_GRAVITY * (distTo / speed);
                 B.arrows.push_back(a);
+                s.quiver--;   // (V119) a dry quiver forces the sidearm
                 SfxPlay(Sfx::Loose,
                         Clamp(1.0f - Vector3Distance(s.pos, B.pPos) / 45.0f, 0.05f, 0.8f));
             }
         }
         // The press of bodies (U6): men cannot share ground. One positional
-        // relaxation per frame — grid-accelerated, half-push each — keeps
+        // relaxation per frame â€” grid-accelerated, half-push each â€” keeps
         // crowds honest without a solver. TODO(balance): the gap.
         {
             constexpr float BODY_GAP = 0.9f;
@@ -2457,7 +2464,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.rallyPulse = fmaxf(0.0f, B.rallyPulse - dt);
         if (playerDamage > 0.0f && B.pHp > 0) {
             // A shield on the arm blocks better than steel alone (V71), but
-            // the wood wears — and can splinter mid-fight.
+            // the wood wears â€” and can splinter mid-fight.
             float d = playerDamage;
             if (B.blocking) {
                 if (HeroHasShield(c)) {
@@ -2473,7 +2480,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     d *= BLOCK_MELEE_FACTOR;
                 }
             }
-            if (B.mounted) {   // the horse soaks its share — and can fall
+            if (B.mounted) {   // the horse soaks its share â€” and can fall
                 const float toHorse = d * HORSE_HIT_SHARE;
                 B.pHorseHp -= toHorse;
                 d -= toHorse;
@@ -2488,7 +2495,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         }
 
         // Keep living soldiers sitting on the terrain surface (they moved in
-        // x/z) — except wall posts, whose feet stay on the rampart.
+        // x/z) â€” except wall posts, whose feet stay on the rampart.
         for (Soldier& s : B.soldiers)
             if (s.hp > 0 && !s.onWall)
                 s.pos.y = B.terrain.HeightAt(s.pos.x, s.pos.z) +
@@ -2621,7 +2628,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
     // Tallies for the HUD and win/lose, computed after damage is applied.
     // Only soldiers still willing to fight count toward the HUD and the win
-    // check — the routed are running, the escaped are gone (but alive: they
+    // check â€” the routed are running, the escaped are gone (but alive: they
     // are survivors, not casualties, in the outcome).
     B.aliveAllies = 0;
     B.aliveEnemies = 0;
@@ -2698,7 +2705,7 @@ void BattleDraw(const Content& c) {
     else if (tod >= 0.70f)  sky = { 178, 116, 84, 255 };   // dusk
     else if (tod < 0.10f)   sky = { 148, 120, 104, 255 };  // dawn
     ClearBackground(sky);
-    // A real sky (V4): zenith deepens, horizon pales — drawn flat before
+    // A real sky (V4): zenith deepens, horizon pales â€” drawn flat before
     // the 3D pass, which paints over it with depth. Costs one rectangle.
     {
         Color zen = { (unsigned char)(sky.r * 0.55f),
@@ -2712,7 +2719,7 @@ void BattleDraw(const Content& c) {
         DrawRectangle(0, GetScreenHeight() * 2 / 3, GetScreenWidth(),
                       GetScreenHeight() / 3, hor);
     }
-    // Sky: gradient with a low sun — or a leaden overcast when it rains.
+    // Sky: gradient with a low sun â€” or a leaden overcast when it rains.
     if (B.raining) {
         DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                                Color{ 96, 104, 120, 255 }, Color{ 150, 156, 166, 255 });
@@ -2794,7 +2801,7 @@ void BattleDraw(const Content& c) {
             DrawCube({ gx, gy + (WALL_HEIGHT + 1.5f) * 0.5f, WALL_Z }, 1.6f,
                      WALL_HEIGHT + 1.5f, WALL_BAND * 2 + 0.4f, Color{ 110, 108, 112, 255 });
         }
-        // The hoarding (V53): a timber gallery crowning fortified stone —
+        // The hoarding (V53): a timber gallery crowning fortified stone â€”
         // the wall-work you paid for, visible from the field below.
         if (B.setup.fortified)
             for (float x = -ARENA; x < ARENA; x += 4.0f) {
@@ -2806,7 +2813,7 @@ void BattleDraw(const Content& c) {
             }
     }
 
-    // Beyond this distance a soldier draws as a cheap two-box silhouette —
+    // Beyond this distance a soldier draws as a cheap two-box silhouette â€”
     // full segmented humanoids only where the player can appreciate them.
     const float LOD_DIST    = GetSettings().lodDistance;   // player-tunable (J4)
     const float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
@@ -2817,7 +2824,7 @@ void BattleDraw(const Content& c) {
         if (s.hp <= 0) {
             const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
             // Corpse LOD (V110): past the LOD line the fallen are one dark
-            // slab — pools and faces only where the player can mourn them.
+            // slab â€” pools and faces only where the player can mourn them.
             if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
                 DrawCube({ s.pos.x, gy + 0.12f, s.pos.z }, 1.4f, 0.25f, 0.6f,
                          Fade(DARKGRAY, 0.8f));
@@ -2835,7 +2842,7 @@ void BattleDraw(const Content& c) {
         if (camDistSq > LOD_DIST_SQ) {
             const Color tint = SoldierTint(s);
             // Far-far tier (V110): beyond twice the LOD line a man is one
-            // box in his side's colour — a third of the far-tier vertices,
+            // box in his side's colour â€” a third of the far-tier vertices,
             // unreadable detail nobody was seeing anyway.
             if (camDistSq > LOD_DIST_SQ * 4.0f) {
                 DrawCube({ s.pos.x, s.pos.y + 1.1f, s.pos.z }, 0.7f, 1.9f, 0.45f,
@@ -2872,7 +2879,7 @@ void BattleDraw(const Content& c) {
                          0.25f, 0.27f, 0.07f, 8,
                          Fade(Color{ 255, 210, 80, 255 }, 0.9f));
 
-        // Implicit health (U2): no floating bars — a hurt man reads from his
+        // Implicit health (U2): no floating bars â€” a hurt man reads from his
         // body, darkening and bloodying as the fight wears him down.
         const float hf = Clamp(s.hp / s.maxHp, 0.0f, 1.0f);
         Color tint = SoldierTint(s);
@@ -2883,8 +2890,8 @@ void BattleDraw(const Content& c) {
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
 
-    // Deployment ghosts (V58): while the field holds its breath — or the
-    // ~ strategy menu is open mid-fight — show where the chosen shape will
+    // Deployment ghosts (V58): while the field holds its breath â€” or the
+    // ~ strategy menu is open mid-fight â€” show where the chosen shape will
     // actually stand: one translucent disc per own soldier's formation
     // slot, mirroring the AI's anchor rules exactly.
     if (B.deploying || B.showMenu) {
@@ -2904,7 +2911,7 @@ void BattleDraw(const Content& c) {
     }
 
     // The standards (V32): a tall pole and pennant over each bannerman,
-    // drawn at any distance — the line reads from across the field.
+    // drawn at any distance â€” the line reads from across the field.
     for (int side = 0; side < 3; ++side) {   // own, enemy, ally (V107)
         const int bi = B.bannerIdx[side];
         if (bi < 0 || bi >= (int)B.soldiers.size()) continue;
@@ -2921,7 +2928,7 @@ void BattleDraw(const Content& c) {
     }
 
     // Spent volleys (V61): every landed shaft stands in the dirt at its
-    // arrival angle — after an archery duel the ground reads like a
+    // arrival angle â€” after an archery duel the ground reads like a
     // pincushion. Culled like everything else.
     for (const auto& sa : B.stuckArrows) {
         if (BehindCamera(sa.pos)) continue;
@@ -2941,7 +2948,7 @@ void BattleDraw(const Content& c) {
     }
 
     // Ground dressing (V7): drawn only within the lodDistance setting of
-    // the hero — the far field stays cheap.
+    // the hero â€” the far field stays cheap.
     {
         const float lod = GetSettings().lodDistance;
         for (const Vector4& p : B.props) {
@@ -2960,7 +2967,7 @@ void BattleDraw(const Content& c) {
         }
     }
 
-    // Masterless horses (T6): riderless, wandering, nobody's to command —
+    // Masterless horses (T6): riderless, wandering, nobody's to command â€”
     // except yours (U11), marked so you can find your way back to it.
     for (const LooseHorse& h : B.looseHorses) {
         BlobShadow(B.terrain, h.pos.x, h.pos.z, 0.85f);
@@ -2974,7 +2981,7 @@ void BattleDraw(const Content& c) {
     for (const auto& p : B.puffs)
         DrawCube(p.pos, 0.13f, 0.13f, 0.13f, Fade(p.col, p.life / p.maxLife));
 
-    // arrows in flight — short shafts oriented along their velocity
+    // arrows in flight â€” short shafts oriented along their velocity
     for (const Arrow& a : B.arrows) {
         const Vector3 tail = Vector3Subtract(a.pos, Vector3Scale(Vector3Normalize(a.vel), 0.6f));
         DrawCylinderEx(tail, a.pos, 0.03f, 0.03f, 4, DARKBROWN);
@@ -3030,7 +3037,7 @@ void BattleDraw(const Content& c) {
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
                       Fade(Color{ 200, 120, 60, 255 }, 0.10f));
 
-    // Your swing met his shield (U5): say so, and say what beats it —
+    // Your swing met his shield (U5): say so, and say what beats it â€”
     // those gold sparks finally have a name.
     B.parryFlash = fmaxf(0.0f, B.parryFlash - GetFrameTime());
     if (B.parryFlash > 0) {
@@ -3046,7 +3053,7 @@ void BattleDraw(const Content& c) {
                  Fade(GOLD, fminf(1.0f, B.soakFlash * 2.0f)));
     }
 
-    // The man in your sights (U2): one flat 2D bar, for him alone — the
+    // The man in your sights (U2): one flat 2D bar, for him alone â€” the
     // enemy nearest your crosshair line within striking conversation.
     {
         const Vector3 look = { sinf(B.yaw), 0, cosf(B.yaw) };
@@ -3316,7 +3323,7 @@ void BattleDraw(const Content& c) {
         // Name the foe at the horn (V24): a lord, a crown, or a garrison.
         const char* nums = B.setup.enemyName.empty()
             ? TextFormat("%d men against %d", own, foes)
-            : TextFormat("%s — %d men against your %d", B.setup.enemyName.c_str(), foes, own);
+            : TextFormat("%s â€” %d men against your %d", B.setup.enemyName.c_str(), foes, own);
         const int w1 = ui::MeasureTitle(head, 52);
         const int w2 = ui::Measure(nums, 24);
         const int cy = GetScreenHeight() / 3;

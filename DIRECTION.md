@@ -1451,6 +1451,17 @@ this is the feedback the flat numbers were waiting for.
   harvests his own volleys mid-fight. ARROWS count on the HUD, gold
   while stocked and red at zero; `quiver=` in the battle dump.
   `tests/quiver.txt`.
+- [x] **V119. Iteration one-nineteen — every quiver runs dry.** AI archers
+  carry 24 shafts too (TODO(balance)): each loose spends one, and a dry
+  quiver silences the bow — PickWeaponForRange skips ranged weapons with
+  no ammo, so archers draw their sidearm and close. Long battles now
+  shift naturally from missile exchange to steel. Verified with a temp
+  2-shaft quiver: outriders volleyed (arrows=4), ran dry (arrows=0
+  thereafter), closed to melee and finished the fight.
+- [ ] **U-track (user directive 2026-07-22, priority):** proximity gate on
+  map-click town entry; settlement menu buttons fully wired; all menus
+  centered/responsive to window size; remove leftover text behind the
+  bottom-left control panel; playtest pass on quest-completion UX.
 
 ## Sequencing guidance
 
