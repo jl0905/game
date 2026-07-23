@@ -1476,7 +1476,11 @@ this is the feedback the flat numbers were waiting for.
         targets firing the same intents as their keys; gate menu rows were
         already clickable)
   - [ ] all menus centered / responsive to window size and GUI scale
-        (started V122: campaign key bar shrinks-to-fit; overlays next)
+        (V122: campaign key bar shrinks-to-fit; V123: market screen floats
+        centred at any width — layout::MarketX0()/X1() shared by draw and
+        hit-test — and global lettering bumped 1.4→1.5; party/character/
+        settings/gate menus were already centred; kingdom ledger's fixed
+        left column is the remaining offender)
   - [x] remove leftover text behind the bottom-left control panel (V122 —
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)

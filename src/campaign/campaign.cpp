@@ -140,7 +140,12 @@ constexpr float TOWN_ENTER_RADIUS = 48.0f;
 namespace layout {
 constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 7;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
-constexpr int MARKET_X0  = 120, MARKET_X1      = 700;
+// The market centres itself (V123): ware rows + saddlebag grid span ~1000px,
+// so the whole block floats around the window centre instead of hugging the
+// left edge. Functions, not constants — both draw and hit-test call them in
+// the same frame, so they always agree.
+inline int MarketX0() { const int x = GetScreenWidth() / 2 - 470; return x > 10 ? x : 10; }
+inline int MarketX1() { return MarketX0() + 580; }
 constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 4;
 constexpr int PARTY_Y    = 200, PARTY_ROW_H    = 34, PARTY_SLOTS = 9;
 constexpr int CHAR_Y     = 180, CHAR_ROW_H     = 40;
@@ -1306,7 +1311,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
             const Vector2 m = GetMousePosition();
             const int row = ((int)m.y - layout::MARKET_Y) / layout::MARKET_ROW_H;
-            if (m.x >= layout::MARKET_X0 && m.x < layout::MARKET_X1 &&
+            if (m.x >= layout::MarketX0() && m.x < layout::MarketX1() &&
                 m.y >= layout::MARKET_Y &&
                 row >= 0 && row < gs.content.goods.size()) {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || shift)
@@ -4064,7 +4069,7 @@ void MarketDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
 
     const Town& t = gs.towns[gs.currentSettlement];
-    const int   x = 120;
+    const int   x = layout::MarketX0();   // centred with the rows (V123)
     ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
     ui::Text("1-9 / click: buy one   Shift / right-click: sell one   "
              "[C] caravan (200)   [D] deposit / Shift+D withdraw   "
@@ -4117,7 +4122,7 @@ void MarketDraw(const GameState& gs) {
     y = layout::MARKET_Y;
     for (int g = 0; g < c.goods.size(); ++g) {
         const GoodDef& gd = c.goods[g];
-        DrawHoverRow(layout::MARKET_X0, y, layout::MARKET_X1 - layout::MARKET_X0,
+        DrawHoverRow(layout::MarketX0(), y, layout::MarketX1() - layout::MarketX0(),
                      layout::MARKET_ROW_H);
         DrawRectangle(x, y + 3, 16, 16, gd.tint);
         ui::Text(TextFormat("[%d] %-12s %4d  %4d   %4d    %4d", g + 1,
