@@ -1475,12 +1475,17 @@ this is the feedback the flat numbers were waiting for.
         service chips and tavern recruit/ransom rows are hover-lit click
         targets firing the same intents as their keys; gate menu rows were
         already clickable)
-  - [ ] all menus centered / responsive to window size and GUI scale
-        (V122: campaign key bar shrinks-to-fit; V123: market screen floats
-        centred at any width — layout::MarketX0()/X1() shared by draw and
-        hit-test — and global lettering bumped 1.4→1.5; party/character/
-        settings/gate menus were already centred; kingdom ledger's fixed
-        left column is the remaining offender)
+  - [x] all menus centered / responsive to window size and GUI scale
+        (V122: campaign key bar shrinks-to-fit; V123: market centred with
+        shared draw/hit-test anchors, lettering 1.4→1.5; V131: kingdom
+        ledger columns centred at any width, market row band follows the
+        measured glyph width so Lettering scale never outgrows the hover/
+        click band, dialogue rows clamp to the window edge with the
+        hit-test tracking. Party/character/settings/gate/journal/load
+        screens verified already centred+clamped)
+  - [x] campaign road contrast (V131, user ask — roads repainted as a
+        dark earthen edge under a bright sand fill instead of one faded
+        stroke; they now read clearly against every biome)
   - [x] remove leftover text behind the bottom-left control panel (V122 —
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)

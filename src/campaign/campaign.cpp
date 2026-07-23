@@ -145,7 +145,13 @@ constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 // left edge. Functions, not constants — both draw and hit-test call them in
 // the same frame, so they always agree.
 inline int MarketX0() { const int x = GetScreenWidth() / 2 - 470; return x > 10 ? x : 10; }
-inline int MarketX1() { return MarketX0() + 580; }
+// Row band width follows the actual glyph width (V131): a template row is
+// measured through ui::Measure, so the hover band and hit-test track the
+// text at any Lettering scale instead of clipping past a fixed 580px.
+inline int MarketX1() {
+    const int w = ui::Measure("[9] handwoven wool  9999  9999   9999    9999", 20) + 46;
+    return MarketX0() + (w > 580 ? w : 580);
+}
 constexpr int TITLE_Y    = 380, TITLE_ROW_H    = 52, TITLE_ROWS = 4;
 constexpr int PARTY_Y    = 200, PARTY_ROW_H    = 34, PARTY_SLOTS = 9;
 constexpr int CHAR_Y     = 180, CHAR_ROW_H     = 40;
@@ -2936,12 +2942,17 @@ void PaintMapGround(const MapDef& m) {
 // Roads thread the settlements together. Positions never move, so these are
 // cached with the ground; only ownership (drawn per-frame) changes.
 void PaintMapRoads(const GameState& gs) {
+    // Two passes (V131, user ask): a dark earthen edge under a bright sand
+    // fill — the old single faded stroke vanished into the biome paint.
     for (int a = 0; a < (int)gs.towns.size(); ++a)
         for (int b = a + 1; b < (int)gs.towns.size(); ++b)
             if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) <
-                gs.content.map.roadLinkDist)
-                DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 5,
-                           Fade(Color{ 128, 106, 76, 255 }, 0.45f));
+                gs.content.map.roadLinkDist) {
+                DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 8,
+                           Fade(Color{ 52, 40, 26, 255 }, 0.8f));
+                DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 4,
+                           Fade(Color{ 205, 178, 128, 255 }, 0.9f));
+            }
 }
 
 // The cached map ground (L5): biome paint + roads rendered once into a
@@ -4674,7 +4685,10 @@ void KingdomDraw(const GameState& gs) {
     const Content& c = gs.content;
     BeginDrawing();
     ClearBackground(Color{ 24, 26, 30, 255 });
-    const int lx = 80, rx = GetScreenWidth() / 2 + 60;
+    // Centred at any width (V131): the two columns float around the middle
+    // instead of the left column hugging x=80 on wide screens.
+    const int lx = GetScreenWidth() / 2 - 580 > 40 ? GetScreenWidth() / 2 - 580 : 40;
+    const int rx = GetScreenWidth() / 2 + 60;
     ui::Title("THE LEDGER", lx, 40, 44, GOLD);
 
     // ---- the realm's headline ----

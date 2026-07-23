@@ -906,6 +906,7 @@ namespace {
 // shared state between draw and the gather-side hit-test.
 std::vector<std::pair<int, int>> g_dlgHits;   // {rowY, menuChoice}
 int g_dlgHitX = 0;
+int g_dlgHitW = 660;   // row width recorded by draw (V131)
 
 // Walking-mode service chips (V122): {x, y, w, h, id} recorded by TownDraw.
 struct SvcHit { int x, y, w, h, id; };
@@ -922,7 +923,7 @@ int TownServiceAt(Vector2 mouse) {
 
 int DialogueOptionAt(Vector2 mouse) {
     for (const auto& h : g_dlgHits)
-        if (mouse.x >= g_dlgHitX - 8 && mouse.x < g_dlgHitX + 660 &&
+        if (mouse.x >= g_dlgHitX - 8 && mouse.x < g_dlgHitX + g_dlgHitW &&
             mouse.y >= h.first - 3 && mouse.y < h.first + 27)
             return h.second;
     return 0;
@@ -1114,11 +1115,14 @@ void DialogueDraw(const GameState& gs) {
     g_dlgHits.clear();
     const Vector2 mp = GetMousePosition();
     int optY = y + 30;
+    // Row width tracks the window (V131): never wider than the screen edge.
+    const int dlgW = (w - x - 16) < 660 ? (w - x - 16) : 660;
+    g_dlgHitW = dlgW;
     auto option = [&](int choice, const char* text, Color col) {
-        const bool hover = mp.x >= x - 8 && mp.x < x + 660 &&
+        const bool hover = mp.x >= x - 8 && mp.x < x + dlgW &&
                            mp.y >= optY - 3 && mp.y < optY + 27;
         if (hover)
-            DrawRectangle(x - 8, optY - 3, 660, 30, Fade(GOLD, 0.14f));
+            DrawRectangle(x - 8, optY - 3, dlgW, 30, Fade(GOLD, 0.14f));
         ui::Text(text, x, optY, 22, hover ? RAYWHITE : col);
         g_dlgHits.push_back({ optY, choice });
         optY += 30;
