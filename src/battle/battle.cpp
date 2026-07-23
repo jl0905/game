@@ -512,6 +512,7 @@ struct AICmd {
     float   newSwing = 0;
     int     newTarget = -1;
     int     activeWeapon = -1;
+    bool    guard = false;   // hold the block this frame (V125)
     int     hitSoldier = -1; // soldier index to damage this frame, or -1
     bool    hitPlayer = false;
     float   hitDamage = 0;
@@ -577,6 +578,8 @@ struct Soldier {
     float   swing = 0;
     float   flash = 0;         // just-hit white flare, decays fast
     float   walkPhase = 0;
+    float   deadFor = 0;   // seconds since death (V125): corpses sink and stop drawing
+    bool    guard = false; // AI shield/blade up between own swings (V125)
     int     quiver = 24;   // AI shafts (V119) TODO(balance); melee never checks
     int     target = -1;
     int     slot = -1;         // formation slot (player's own troops only)
@@ -1178,6 +1181,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     const float engage = ranged ? wd->missileRange * 0.9f * rainRange * nightRange
                                 : WeaponReach(c, cmd.activeWeapon) * 0.8f +
                                       (IsMounted(c, s) ? 0.9f : 0.0f);   // T5
+    // Guard discipline (V125): toe-to-toe with a blade and unable to swing
+    // yet, a soldier keeps his guard up. One compare, no neighbour queries —
+    // blocking gets much more common without costing the AI pass anything.
+    cmd.guard = haveFoe && !ranged && foeDist < engage * 1.8f &&
+                s.cooldown > 0.45f;
 
     const bool commanded =
         (s.team == Team::Player && !s.ally && formation != FormationType::Charge);
@@ -2042,6 +2050,11 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                                            LoadoutArmor(c, TroopLoadout(c, s.troop)));
                     const float before = dmg;
                     dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
+                    // The man guards against the hero too (V125).
+                    if (s.guard && Vector3DotProduct(
+                            Vector3Normalize(Vector3Subtract(B.pPos, s.pos)),
+                            Vector3{ sinf(s.yaw), 0, cosf(s.yaw) }) > 0.2f)
+                        dmg *= 0.4f;   // TODO(balance)
                     if (dmg < before) {
                         SpawnSparks(s.pos);
                         SfxPlay(Sfx::Clang, 0.6f);
@@ -2346,6 +2359,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.swing        = cmd.newSwing;
             s.target       = cmd.newTarget;
             s.activeWeapon = cmd.activeWeapon;
+            s.guard        = cmd.guard;
             s.walkPhase   += cmd.walkAdd;
             s.pos = Vector3Add(s.pos, Vector3Add(cmd.step, cmd.separation));
             EnforceWall(s.pos);
@@ -2386,11 +2400,25 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 });
             }
             // Armour soaks per hit, so reduction happens per blow, not per frame.
-            if (cmd.hitSoldier >= 0)
-                B.dmg[cmd.hitSoldier] += ShieldSoak(
-                    c, cmd.hitSoldier, B.soldiers[cmd.hitSoldier], cmd.swingDir,
+            if (cmd.hitSoldier >= 0) {
+                Soldier& v = B.soldiers[cmd.hitSoldier];
+                float hit = ShieldSoak(
+                    c, cmd.hitSoldier, v, cmd.swingDir,
                     ApplyArmor(cmd.hitDamage,
-                               LoadoutArmor(c, TroopLoadout(c, B.soldiers[cmd.hitSoldier].troop))));
+                               LoadoutArmor(c, TroopLoadout(c, v.troop))));
+                // A held guard turns the blow (V125): if the victim keeps his
+                // guard and the attacker stands in his front arc, most of the
+                // blow is caught. TODO(balance): the factor.
+                if (v.guard && hit > 0) {
+                    Vector3 toAtk = Vector3Subtract(B.soldiers[i].pos, v.pos);
+                    toAtk.y = 0;
+                    const Vector3 face = { sinf(v.yaw), 0, cosf(v.yaw) };
+                    if (Vector3LengthSqr(toAtk) > 0.01f &&
+                        Vector3DotProduct(Vector3Normalize(toAtk), face) > 0.2f)
+                        hit *= 0.4f;
+                }
+                B.dmg[cmd.hitSoldier] += hit;
+            }
             if (cmd.hitPlayer) {
                 playerDamage += ApplyArmor(cmd.hitDamage,
                                            LoadoutArmor(c, B.setup.heroLoadout));
@@ -2449,7 +2477,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
         for (int i = 0; i < n; ++i) {
             Soldier& s = B.soldiers[i];
-            if (s.hp <= 0) continue;
+            if (s.hp <= 0) { s.deadFor += dt; continue; }   // the field claims its dead (V125)
             s.flash = fmaxf(0.0f, s.flash - dt * 5.0f);
             s.nerve = fminf(NERVE_MAX, s.nerve + NERVE_REGEN * dt);   // courage returns
             if (B.dmg[i] > 0.0f) {
@@ -2516,7 +2544,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (a.life <= 0 || a.pos.y <= B.terrain.HeightAt(a.pos.x, a.pos.z)) {
                 a.alive = false;   // stuck in the dirt
                 // ...and it STAYS there (V61): the field wears its volleys.
-                if (B.stuckArrows.size() < 240) {
+                if (B.stuckArrows.size() < 80) {   // V125: was 240 — render bill
                     Vector3 d = Vector3Normalize(a.vel);
                     B.stuckArrows.push_back(
                         { { a.pos.x, B.terrain.HeightAt(a.pos.x, a.pos.z), a.pos.z },
@@ -2828,7 +2856,15 @@ void BattleDraw(const Content& c) {
         if (s.escaped) continue;   // off the field, alive
         if (BehindCamera(s.pos)) continue;   // never reaches the GPU (V40)
         if (s.hp <= 0) {
-            const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z);
+            // The field claims its dead (V125): after CORPSE_LINGER seconds a
+            // corpse sinks into the ground over CORPSE_SINK seconds and stops
+            // drawing entirely — long battles no longer accumulate an
+            // ever-growing render bill of the fallen. TODO(balance): timing.
+            constexpr float CORPSE_LINGER = 25.0f, CORPSE_SINK = 5.0f;
+            if (s.deadFor > CORPSE_LINGER + CORPSE_SINK) continue;
+            const float sink = s.deadFor > CORPSE_LINGER
+                ? (s.deadFor - CORPSE_LINGER) / CORPSE_SINK * 0.4f : 0.0f;
+            const float gy = B.terrain.HeightAt(s.pos.x, s.pos.z) - sink;
             // Corpse LOD (V110): past the LOD line the fallen are one dark
             // slab â€” pools and faces only where the player can mourn them.
             if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
@@ -2867,6 +2903,7 @@ void BattleDraw(const Content& c) {
         Pose pose;
         pose.yaw = s.yaw;
         pose.swing = s.swing;
+        pose.blocking = s.guard;   // the raised guard reads on the model (V125)
         pose.flash = s.flash;
         pose.walkPhase = s.walkPhase;
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding

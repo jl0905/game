@@ -1489,10 +1489,16 @@ this is the feedback the flat numbers were waiting for.
         fanfare/knell, richer HUD tracker with have/need + distances, and
         a full quest journal screen [Q]: task, progress, reward, clock,
         plus the saved record of every quest taken/done/failed)
-  - [ ] battle render caps: fewer stuck arrows / corpses drawn (user ask)
-  - [ ] AI blocks more, implemented cheaply (user ask)
+  - [x] battle render caps (V125 — stuck arrows 240→80; corpses sink into
+        the field after 25s and stop drawing, so long battles no longer
+        accumulate an unbounded render bill)
+  - [x] AI blocks more, cheaply (V125 — guard discipline: toe-to-toe and
+        between swings a soldier holds his block, front-arc hits soaked
+        ×0.4 vs AI and hero alike, raised-guard pose on the model; one
+        compare per soldier, bench unchanged at 20.30ms)
   - [ ] perf hunt: close the gap to Warband at like-for-like troop counts
-        (bench, then attack the biggest cost; GPU instancing still queued)
+        (bench 20.30ms/2000 men is sim+draw together; GPU instancing is
+        the big remaining ticket)
 
 ## Sequencing guidance
 
