@@ -154,6 +154,13 @@ int main(int argc, char** argv) {
                 else                              CampaignDraw(gs);
                 break;
             }
+            case Screen::Quests: {                        // the journal (V124)
+                const CampaignInput in = GatherCampaignInput(gs);
+                QuestsUpdate(gs, in);
+                if (gs.screen == Screen::Quests) QuestsDraw(gs);
+                else                             CampaignDraw(gs);
+                break;
+            }
             case Screen::LoadMenu: {                      // pick a save (N3)
                 const CampaignInput in = GatherCampaignInput(gs);
                 LoadMenuUpdate(gs, in);

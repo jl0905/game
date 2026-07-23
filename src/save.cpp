@@ -203,6 +203,9 @@ bool SaveGame(const GameState& gs, const char* path) {
     // The chronicle (V50): free text, one tag per line.
     for (const std::string& ch : gs.chronicle)
         f << "chron " << ch << '\n';
+    // The quest journal (V124): same free-text scheme.
+    for (const std::string& q : gs.questLog)
+        f << "qlog " << q << '\n';
 
     // The storm (V62).
     f << "storm " << gs.stormPos.x << ' ' << gs.stormPos.y << ' '
@@ -539,6 +542,11 @@ bool LoadGame(GameState& gs, const char* path) {
             std::getline(ss, rest);
             if (!rest.empty() && rest[0] == ' ') rest.erase(0, 1);
             if (!rest.empty()) gs.chronicle.push_back(rest);
+        } else if (tag == "qlog") {   // the journal (V124)
+            std::string rest;
+            std::getline(ss, rest);
+            if (!rest.empty() && rest[0] == ' ') rest.erase(0, 1);
+            if (!rest.empty()) gs.questLog.push_back(rest);
         } else if (tag == "hungry") {
             ss >> gs.hungryDays;
         } else if (tag == "merc") {

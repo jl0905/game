@@ -1485,8 +1485,14 @@ this is the feedback the flat numbers were waiting for.
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)
   - [ ] shader / graphics pass (lighting or post effects within raylib)
-  - [ ] playtest pass on quest-completion UX (clearer goals, progress,
-        payoff moments)
+  - [x] playtest pass on quest-completion UX (V124 — payoff banner with
+        fanfare/knell, richer HUD tracker with have/need + distances, and
+        a full quest journal screen [Q]: task, progress, reward, clock,
+        plus the saved record of every quest taken/done/failed)
+  - [ ] battle render caps: fewer stuck arrows / corpses drawn (user ask)
+  - [ ] AI blocks more, implemented cheaply (user ask)
+  - [ ] perf hunt: close the gap to Warband at like-for-like troop counts
+        (bench, then attack the biggest cost; GPU instancing still queued)
 
 ## Sequencing guidance
 

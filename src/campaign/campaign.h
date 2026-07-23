@@ -38,6 +38,11 @@ void CampaignDraw(const GameState& gs);
 void KingdomUpdate(GameState& gs, const CampaignInput& in);
 void KingdomDraw(const GameState& gs);
 
+// Quest journal (V124): the task at hand in full, and the ledger of tasks
+// done and failed. Q on the map.
+void QuestsUpdate(GameState& gs, const CampaignInput& in);
+void QuestsDraw(const GameState& gs);
+
 // Load menu (N3): pick the autosave or a quicksave slot from the title.
 void LoadMenuUpdate(GameState& gs, const CampaignInput& in);
 void LoadMenuDraw(const GameState& gs);

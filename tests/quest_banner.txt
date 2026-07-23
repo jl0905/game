@@ -1,0 +1,14 @@
+# Quest payoff banner (V124): completing or failing a quest raises a big
+# centered banner for 5 seconds (qflash in the dump) with a fanfare or a
+# knell. Same fixture as quest_deadline: hunt quest, 1 day left, clock 59.
+# The deadline expires during the wait; the state right after must show
+# qflash with good=0 (QUEST FAILED), and it must fade out (no qflash line)
+# after a further ~6 seconds of waiting. The journal (also V124) writes the
+# failure: expect a "journal: Day N - FAILED..." line in the later states.
+load tests/fixtures/qclock.owb
+state
+wait 3
+state
+wait 7
+state
+quit

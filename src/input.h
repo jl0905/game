@@ -15,6 +15,7 @@ struct CampaignInput {
     bool    wait            = false;  // let time pass while standing (SPACE)
     int     clickSettlement = -1;     // settlement index to enter, -1 none
     bool    forceEnter      = false;  // harness/arrival bypass of the gate-distance rule (V120)
+    bool    openQuests      = false;  // the quest journal (V124), Q on the map
     int     clickLair       = -1;     // bandit den to storm, -1 none (H2)
     int     joinSide        = 0;      // join nearby skirmish: 1 = side a, 2 = side b
     bool    restart         = false;  // restart after warband destroyed (R)

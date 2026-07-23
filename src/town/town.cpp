@@ -198,6 +198,10 @@ std::string TryQuest(GameState& gs) {
             : TextFormat("%s: %s  (%d gold)", qd.name.c_str(), qd.blurb.c_str(),
                          qd.goldReward);
     gs.resultText = msg;
+    // The journal opens a page (V124).
+    gs.questLog.insert(gs.questLog.begin(),
+                       TextFormat("Day %d — TAKEN: %s", gs.day, qd.name.c_str()));
+    if (gs.questLog.size() > 20) gs.questLog.pop_back();
     return msg;
 }
 

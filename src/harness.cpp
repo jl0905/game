@@ -86,6 +86,9 @@ struct Harness {
             case Screen::Kingdom:
                 KingdomUpdate(gs, cin);
                 break;
+            case Screen::Quests:
+                QuestsUpdate(gs, cin);
+                break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
@@ -161,6 +164,7 @@ struct Harness {
             case Screen::Dialogue:     return "Dialogue";
             case Screen::Settings:     return "Settings";
             case Screen::Kingdom:      return "Kingdom";
+            case Screen::Quests:       return "Quests";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -269,6 +273,11 @@ struct Harness {
             std::printf("quest: %s progress=%d target=%d days=%.0f\n",
                         c.quests[gs.activeQuest].id.c_str(), gs.questProgress,
                         gs.questTown, gs.questDays);
+        for (size_t i = 0; i < gs.questLog.size() && i < 3; ++i)
+            std::printf("journal: %s\n", gs.questLog[i].c_str());
+        if (gs.questFlash > 0)   // the payoff banner (V124)
+            std::printf("qflash: %.1f good=%d text=%s\n", gs.questFlash,
+                        gs.questFlashGood ? 1 : 0, gs.questFlashText.c_str());
         for (int f = 0; f < c.factions.size() && f < (int)gs.relations.size(); ++f)
             if (gs.relations[f] != 0)
                 std::printf("relation: %s=%+d\n", c.factions[f].id.c_str(), gs.relations[f]);

@@ -760,6 +760,16 @@ static void CompleteQuest(GameState& gs) {
     gs.honor  += 1;
     gs.resultText = TextFormat("QUEST COMPLETE: %s  +%d gold", qd.name.c_str(),
                                qd.goldReward);
+    // The payoff moment (V124): a banner you cannot miss, and a fanfare.
+    gs.questFlash     = 5.0f;
+    gs.questFlashGood = true;
+    gs.questFlashText = TextFormat("QUEST COMPLETE — %s   +%d gold  +2 renown",
+                                   qd.name.c_str(), qd.goldReward);
+    SfxPlay(Sfx::Fanfare);
+    gs.questLog.insert(gs.questLog.begin(),
+                       TextFormat("Day %d — COMPLETE: %s  (+%d gold)", gs.day,
+                                  qd.name.c_str(), qd.goldReward));
+    if (gs.questLog.size() > 20) gs.questLog.pop_back();
     gs.activeQuest = -1;
     gs.questFaction = -1;
     gs.questTown = -1;
@@ -1362,6 +1372,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Quests) {   // the journal (V124)
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q))
+            in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::LoadMenu) {
         for (int r = 0; r < 4; ++r)
             if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
@@ -1478,6 +1494,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                 in.clickLair = i;
     }
     in.openLedger = IsKeyPressed(KEY_B);         // the kingdom ledger (O1)
+    in.openQuests = IsKeyPressed(KEY_Q);         // the journal (V124)
     if (IsKeyPressed(KEY_F5)) in.saveSlot = 1;   // quicksave slots (N3)
     if (IsKeyPressed(KEY_F6)) in.saveSlot = 2;
     if (IsKeyPressed(KEY_F7)) in.saveSlot = 3;
@@ -1515,6 +1532,9 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
 
 void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     const Content& c = gs.content;
+    // The quest banner burns on real time (V124) — it must fade even while
+    // the world clock stands still.
+    gs.questFlash = fmaxf(0.0f, gs.questFlash - dt);
 
     if (gs.screen == Screen::BattleResult) {
         ApplyBattleResult(gs);
@@ -1736,6 +1756,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
 
     if (in.openLedger) { gs.screen = Screen::Kingdom; return; }   // O1
+    if (in.openQuests) { gs.screen = Screen::Quests;  return; }   // V124
 
     // Quicksave (N3): three slots on F5-F7, right from the saddle.
     if (in.saveSlot >= 1 && in.saveSlot <= 3) {
@@ -2083,6 +2104,14 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             if (gs.questEscort < 0 || gs.questEscort >= (int)gs.parties.size() ||
                 !gs.parties[gs.questEscort].alive) {
                 gs.resultText = "The convoy is lost on the road. The giver remembers.";
+                gs.questFlash     = 5.0f;   // (V124)
+                gs.questFlashGood = false;
+                gs.questFlashText = "QUEST FAILED — the convoy is lost";
+                SfxPlay(Sfx::Knell);
+                gs.questLog.insert(gs.questLog.begin(),
+                                   TextFormat("Day %d — FAILED: the convoy was lost",
+                                              gs.day));
+                if (gs.questLog.size() > 20) gs.questLog.pop_back();
                 NudgeRelation(gs, gs.questFaction, -2);   // TODO(balance)
                 gs.activeQuest = -1;
                 gs.questTown   = -1;
@@ -2404,6 +2433,14 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 const char* qn = c.quests[gs.activeQuest].name.c_str();
                 gs.resultText = TextFormat(
                     "The time for '%s' has run out. The giver remembers.", qn);
+                gs.questFlash     = 5.0f;   // the failure stings visibly (V124)
+                gs.questFlashGood = false;
+                gs.questFlashText = TextFormat("QUEST FAILED — %s", qn);
+                SfxPlay(Sfx::Knell);
+                gs.questLog.insert(gs.questLog.begin(),
+                                   TextFormat("Day %d — FAILED: %s (time ran out)",
+                                              gs.day, qn));
+                if (gs.questLog.size() > 20) gs.questLog.pop_back();
                 NudgeRelation(gs, gs.questFaction, -2);   // TODO(balance)
                 gs.activeQuest = -1;
                 gs.questTown   = -1;
@@ -3389,7 +3426,7 @@ void CampaignDraw(const GameState& gs) {
     {
         const char* keys = "[WASD] travel (time flows)   [SPACE] wait   "
                            "[Click] town: near enters, far sets course   "
-                           "[Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
+                           "[Q] journal   [Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
                            "[B] ledger   [T] hail a lord   [O]ptions   "
                            "[F5-F7] quicksave   [Esc,Esc] save+quit";
         DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
@@ -3525,17 +3562,46 @@ void CampaignDraw(const GameState& gs) {
     if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size()) {
         const QuestDef& qd = c.quests[gs.activeQuest];
         std::string line = "TASK: " + qd.name;
+        // Progress you can read at a glance (V124): what you hold against
+        // what's asked, and how far the goal still is.
         if (qd.type == QuestType::DeliverGrain && gs.questTown >= 0 &&
-            gs.questTown < (int)gs.towns.size())
-            line += TextFormat(" - %d %s to %s", qd.amount,
-                               qd.goodId.c_str(), gs.towns[gs.questTown].name.c_str());
-        else if (qd.type == QuestType::HuntBandits)
+            gs.questTown < (int)gs.towns.size()) {
+            const int g = c.goods.find(qd.goodId.c_str());
+            const int have = (g >= 0 && g < (int)gs.goods.size()) ? gs.goods[g] : 0;
+            line += TextFormat(" - %s: have %d/%d - %s, %.0f away",
+                               qd.goodId.c_str(),
+                               have < qd.amount ? have : qd.amount, qd.amount,
+                               gs.towns[gs.questTown].name.c_str(),
+                               Vector2Distance(gs.player.pos,
+                                               gs.towns[gs.questTown].pos));
+        } else if (qd.type == QuestType::HuntBandits) {
             line += TextFormat(" - %d/%d bands broken", gs.questProgress, qd.amount);
+        } else if (qd.type == QuestType::Escort && gs.questEscort >= 0 &&
+                   gs.questEscort < (int)gs.parties.size() &&
+                   gs.questTown >= 0 && gs.questTown < (int)gs.towns.size()) {
+            line += TextFormat(" - convoy %.0f from %s",
+                               Vector2Distance(gs.parties[gs.questEscort].pos,
+                                               gs.towns[gs.questTown].pos),
+                               gs.towns[gs.questTown].name.c_str());
+        }
         if (gs.questDays > 0)
             line += TextFormat("   (%.0f day%s left)", gs.questDays,
                                gs.questDays >= 2 ? "s" : "");
         ui::Text(line.c_str(), 10, 146, 19,
                  gs.questDays > 0 && gs.questDays <= 2 ? Fade(RED, 0.95f) : GOLD);
+    }
+
+    // The payoff banner (V124): five seconds of unmissable gold (or red).
+    if (gs.questFlash > 0 && !gs.questFlashText.empty()) {
+        const float a = fminf(1.0f, gs.questFlash / 1.5f);
+        const int   w = GetScreenWidth();
+        int fs = 34;
+        while (fs > 18 &&
+               ui::MeasureTitle(gs.questFlashText.c_str(), fs) > w - 80) fs--;
+        const int tw = ui::MeasureTitle(gs.questFlashText.c_str(), fs);
+        DrawRectangle(0, 200, w, fs + 26, Fade(BLACK, 0.65f * a));
+        ui::Title(gs.questFlashText.c_str(), (w - tw) / 2, 213, fs,
+                  Fade(gs.questFlashGood ? GOLD : RED, a));
     }
 
     // The lender's shadow (V84): debt on the HUD, red as it should be.
@@ -4800,6 +4866,86 @@ void LoadMenuUpdate(GameState& gs, const CampaignInput& in) {
         }
         // A missing file just stays on the menu — the row said "empty".
     }
+}
+
+// ---------------------------------------------------------------------------
+// The quest journal (V124): the task at hand in full — goal, progress,
+// reward, clock — and the record of every task taken, done, or failed.
+// ---------------------------------------------------------------------------
+void QuestsUpdate(GameState& gs, const CampaignInput& in) {
+    if (in.leaveSettlement) gs.screen = Screen::Campaign;
+}
+
+void QuestsDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int w = GetScreenWidth();
+    const int x = w / 2 - 430 > 10 ? w / 2 - 430 : 10;   // centred, clamped
+    ui::Title("THE JOURNAL", x, 60, 44, GOLD);
+    ui::Text("[Esc / Q] back to the map", x, 116, 20, Fade(RAYWHITE, 0.7f));
+
+    int y = 170;
+    ui::Text("THE TASK AT HAND", x, y, 22, GOLD);
+    y += 36;
+    if (gs.activeQuest >= 0 && gs.activeQuest < c.quests.size()) {
+        const QuestDef& qd = c.quests[gs.activeQuest];
+        ui::Text(qd.name.c_str(), x, y, 28, RAYWHITE);
+        y += 38;
+        ui::Text(qd.blurb.c_str(), x, y, 20, Fade(RAYWHITE, 0.85f));
+        y += 30;
+        std::string prog;
+        if (qd.type == QuestType::DeliverGrain && gs.questTown >= 0 &&
+            gs.questTown < (int)gs.towns.size()) {
+            const int g = c.goods.find(qd.goodId.c_str());
+            const int have = (g >= 0 && g < (int)gs.goods.size()) ? gs.goods[g] : 0;
+            prog = TextFormat("Carry %d %s to %s  —  you hold %d, the gate is %.0f away",
+                              qd.amount, qd.goodId.c_str(),
+                              gs.towns[gs.questTown].name.c_str(),
+                              have, Vector2Distance(gs.player.pos,
+                                                    gs.towns[gs.questTown].pos));
+        } else if (qd.type == QuestType::HuntBandits) {
+            prog = TextFormat("Break %d bandit bands  —  %d down", qd.amount,
+                              gs.questProgress);
+        } else if (qd.type == QuestType::Escort && gs.questEscort >= 0 &&
+                   gs.questEscort < (int)gs.parties.size() &&
+                   gs.questTown >= 0 && gs.questTown < (int)gs.towns.size()) {
+            prog = TextFormat("See the convoy safe to %s  —  it is %.0f from the gate",
+                              gs.towns[gs.questTown].name.c_str(),
+                              Vector2Distance(gs.parties[gs.questEscort].pos,
+                                              gs.towns[gs.questTown].pos));
+        }
+        if (!prog.empty()) { ui::Text(prog.c_str(), x, y, 20, RAYWHITE); y += 28; }
+        ui::Text(TextFormat("Reward: %d gold, the giver's regard", qd.goldReward),
+                 x, y, 20, Fade(GOLD, 0.9f));
+        y += 28;
+        if (gs.questDays > 0) {
+            ui::Text(TextFormat("%.0f day%s before the giver's patience ends",
+                                gs.questDays, gs.questDays >= 2 ? "s" : ""),
+                     x, y, 20,
+                     gs.questDays <= 2 ? Fade(RED, 0.95f) : Fade(RAYWHITE, 0.8f));
+            y += 28;
+        }
+    } else {
+        ui::Text("No task carried. Ask for work [G] in a town, or serve a lord's court.",
+                 x, y, 20, Fade(RAYWHITE, 0.6f));
+        y += 28;
+    }
+
+    y += 24;
+    ui::Text("THE RECORD", x, y, 22, GOLD);
+    y += 36;
+    if (gs.questLog.empty())
+        ui::Text("Nothing yet written.", x, y, 19, Fade(RAYWHITE, 0.5f));
+    for (const std::string& e : gs.questLog) {
+        if (y > GetScreenHeight() - 40) break;
+        const Color col = e.find("COMPLETE") != std::string::npos ? LIME
+                        : e.find("FAILED")   != std::string::npos ? Fade(RED, 0.9f)
+                                                                  : Fade(RAYWHITE, 0.8f);
+        ui::Text(e.c_str(), x, y, 19, col);
+        y += 26;
+    }
+    EndDrawing();
 }
 
 void LoadMenuDraw(const GameState& gs) {

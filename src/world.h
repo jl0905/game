@@ -262,6 +262,14 @@ struct GameState {
     // crown's rally: a crowned ruler calls raised lords to the banner.
     int     musterTown = -1;   // besieged town you are summoned to, -1 none
     int     travelTarget = -1; // click-to-travel course toward a town (V120), -1 none
+    // Quest payoff moment (V124): a big banner for a few seconds after a
+    // quest completes or fails. Transient — never saved.
+    float       questFlash = 0;        // seconds left on the banner
+    std::string questFlashText;
+    bool        questFlashGood = true; // gold on success, red on failure
+    // The journal (V124): every quest taken, done, or failed — newest first,
+    // capped, saved with the game (qlog tag).
+    std::vector<std::string> questLog;
     float   musterDays = 0;    // days left to answer
     bool    lordsRally = false;
     Vector2 lordsRallyPos{};
