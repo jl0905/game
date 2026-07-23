@@ -1496,9 +1496,12 @@ this is the feedback the flat numbers were waiting for.
         between swings a soldier holds his block, front-arc hits soaked
         ×0.4 vs AI and hero alike, raised-guard pose on the model; one
         compare per soldier, bench unchanged at 20.30ms)
-  - [ ] perf hunt: close the gap to Warband at like-for-like troop counts
-        (bench 20.30ms/2000 men is sim+draw together; GPU instancing is
-        the big remaining ticket)
+  - [~] perf hunt (V126 — GPU instancing shipped: every far/far-far tier
+        box and far corpse slab batches into one DrawMeshInstanced per
+        colour; bench 20.30→19.69ms, 49→51fps at 2000 men. The near-tier
+        segmented humanoids (DrawCharacter) are now the dominant draw
+        cost — instancing THEM needs per-part transforms and is the next
+        big perf ticket)
 
 ## Sequencing guidance
 

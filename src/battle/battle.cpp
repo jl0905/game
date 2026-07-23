@@ -8,6 +8,7 @@
 #include "raymath.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -1298,6 +1299,70 @@ Color TeamTint(Team t) { return t == Team::Enemy ? B.setup.enemyTint : BLUE; }
 Color SoldierTint(const Soldier& s) {
     if (s.team == Team::Enemy) return B.setup.enemyTint;
     return s.ally ? B.setup.allyTint : BLUE;
+}
+
+// ---------------------------------------------------------------------------
+// GPU instancing for the LOD tiers (V126). Far soldiers are boxes; instead of
+// one DrawCube call per box (each its own draw call), batch every box of the
+// same colour into a transform list and issue ONE DrawMeshInstanced per
+// colour. Windowed-only — headless runs never draw. Falls back to DrawCube
+// if the instancing shader fails to compile (ancient GL).
+// ---------------------------------------------------------------------------
+constexpr const char* INST_VS =
+    "#version 330\n"
+    "in vec3 vertexPosition;\n"
+    "in mat4 instanceTransform;\n"
+    "uniform mat4 mvp;\n"
+    "void main() { gl_Position = mvp * instanceTransform * vec4(vertexPosition, 1.0); }\n";
+constexpr const char* INST_FS =
+    "#version 330\n"
+    "uniform vec4 colDiffuse;\n"
+    "out vec4 finalColor;\n"
+    "void main() { finalColor = colDiffuse; }\n";
+
+bool     g_instTried = false, g_instReady = false;
+Shader   g_instShader{};
+Mesh     g_instCube{};
+Material g_instMat{};
+std::unordered_map<unsigned, std::vector<Matrix>> g_instBatch;
+
+void EnsureInstancing() {
+    if (g_instTried) return;
+    g_instTried  = true;
+    g_instShader = LoadShaderFromMemory(INST_VS, INST_FS);
+    if (g_instShader.id == 0) return;
+    g_instShader.locs[SHADER_LOC_MATRIX_MVP] =
+        GetShaderLocation(g_instShader, "mvp");
+    g_instShader.locs[SHADER_LOC_MATRIX_MODEL] =
+        GetShaderLocationAttrib(g_instShader, "instanceTransform");
+    g_instCube = GenMeshCube(1.0f, 1.0f, 1.0f);
+    g_instMat  = LoadMaterialDefault();
+    g_instMat.shader = g_instShader;
+    g_instReady = true;
+}
+
+// Queue one axis-aligned box; flushed by FlushInstanced() in a handful of
+// draw calls. Colour is the bucket key (alpha included).
+void InstCube(Vector3 center, float sx, float sy, float sz, Color col) {
+    if (!g_instReady) { DrawCube(center, sx, sy, sz, col); return; }
+    const unsigned key = (unsigned)col.r | ((unsigned)col.g << 8) |
+                         ((unsigned)col.b << 16) | ((unsigned)col.a << 24);
+    g_instBatch[key].push_back(
+        MatrixMultiply(MatrixScale(sx, sy, sz),
+                       MatrixTranslate(center.x, center.y, center.z)));
+}
+
+void FlushInstanced() {
+    if (!g_instReady) return;
+    for (auto& [key, mats] : g_instBatch) {
+        if (mats.empty()) continue;
+        g_instMat.maps[MATERIAL_MAP_DIFFUSE].color =
+            Color{ (unsigned char)(key & 0xFF), (unsigned char)((key >> 8) & 0xFF),
+                   (unsigned char)((key >> 16) & 0xFF),
+                   (unsigned char)((key >> 24) & 0xFF) };
+        DrawMeshInstanced(g_instCube, g_instMat, mats.data(), (int)mats.size());
+        mats.clear();
+    }
 }
 
 // Soft blob shadow pinned to the terrain â€” the cheapest depth cue there is.
@@ -2852,6 +2917,7 @@ void BattleDraw(const Content& c) {
     const float LOD_DIST    = GetSettings().lodDistance;   // player-tunable (J4)
     const float LOD_DIST_SQ = LOD_DIST * LOD_DIST;
 
+    EnsureInstancing();   // one-time shader/mesh setup (V126)
     for (const Soldier& s : B.soldiers) {
         if (s.escaped) continue;   // off the field, alive
         if (BehindCamera(s.pos)) continue;   // never reaches the GPU (V40)
@@ -2868,8 +2934,8 @@ void BattleDraw(const Content& c) {
             // Corpse LOD (V110): past the LOD line the fallen are one dark
             // slab â€” pools and faces only where the player can mourn them.
             if (Vector3DistanceSqr(cam.position, s.pos) > LOD_DIST_SQ) {
-                DrawCube({ s.pos.x, gy + 0.12f, s.pos.z }, 1.4f, 0.25f, 0.6f,
-                         Fade(DARKGRAY, 0.8f));
+                InstCube({ s.pos.x, gy + 0.12f, s.pos.z }, 1.4f, 0.25f, 0.6f,
+                         Fade(DARKGRAY, 0.8f));   // batched (V126)
                 continue;
             }
             DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
@@ -2886,17 +2952,18 @@ void BattleDraw(const Content& c) {
             // Far-far tier (V110): beyond twice the LOD line a man is one
             // box in his side's colour â€” a third of the far-tier vertices,
             // unreadable detail nobody was seeing anyway.
+            // Batched into a handful of instanced draw calls (V126).
             if (camDistSq > LOD_DIST_SQ * 4.0f) {
-                DrawCube({ s.pos.x, s.pos.y + 1.1f, s.pos.z }, 0.7f, 1.9f, 0.45f,
+                InstCube({ s.pos.x, s.pos.y + 1.1f, s.pos.z }, 0.7f, 1.9f, 0.45f,
                          tint);
                 continue;
             }
-            DrawCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
-            DrawCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
+            InstCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
+            InstCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
                      Color{ 224, 188, 150, 255 });
             const float fracFar = s.hp / s.maxHp;
             if (fracFar < 0.999f)   // only the wounded show a bar
-                DrawCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * fracFar, 0.08f, 0.08f,
+                InstCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * fracFar, 0.08f, 0.08f,
                          s.team == Team::Enemy ? RED : GREEN);
             continue;
         }
@@ -2932,6 +2999,7 @@ void BattleDraw(const Content& c) {
         tint.b = (unsigned char)(tint.b * dim);
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
+    FlushInstanced();   // the whole far field in a handful of draw calls (V126)
 
     // Deployment ghosts (V58): while the field holds its breath â€” or the
     // ~ strategy menu is open mid-fight â€” show where the chosen shape will
