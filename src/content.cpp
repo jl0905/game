@@ -930,9 +930,15 @@ void LoadMapConfig(Content& c, const char* path) {
                 m.biome = b;
         }
         else if (tag == "road") ss >> m.roadLinkDist >> m.roadWidth;
-        else if (tag == "storm")   // storm RADIUS DRIFTX DRIFTY [STARTX STARTY]
+        else if (tag == "storm") {  // storm RADIUS DRIFTX DRIFTY [STARTX STARTY]
+            // Braces are load-bearing: the braceless version made the
+            // following `else if` chain bind to the INNER if — every tag
+            // after `storm` (lordnames, town) silently never parsed, and
+            // the whole modded town list fell back to the 6-town built-in
+            // world. Found hunting V133's "why are there only 6 towns".
             if (ss >> m.stormRadius >> m.stormDrift.x >> m.stormDrift.y)
                 ss >> m.stormStart.x >> m.stormStart.y;   // optional
+        }
         else if (tag == "lordnames") {
             std::vector<std::string> names;
             std::string n;

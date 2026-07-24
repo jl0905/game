@@ -1497,7 +1497,13 @@ this is the feedback the flat numbers were waiting for.
   "blue square" (box rider on capsule horse) is gone — distant cavalry
   batches whole. Bench 12.19ms/82fps (faster than before the upgrade).
 - [ ] **U-track continued (user asks 2026-07-23):**
-  - [ ] populate the map with more settlements
+  - [x] populate the map with more settlements (V133 — and a big find: a
+        dangling-else in the map.cfg parser had silently disabled every
+        `town`/`lordnames` line since V68, so the game had been running
+        the 6-town built-in world all along. Fixed; the 9 outer-marches
+        settlements finally exist, plus 8 new heartland ones — the world
+        is now genuinely 26 settlements at size 3000, all suite scenarios
+        re-verified on the real map)
   - [ ] troop upgrade economy overhaul: gear gets real prices; upgrade
         cost = programmatic delta of the next tier's equipment + stats;
         the player buying a piece of gear pays the same price as
