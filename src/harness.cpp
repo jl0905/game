@@ -49,9 +49,22 @@ struct Harness {
     bool      blockHeld = false;   // battle guard persists across ticks
     bool      battleLive = false;  // BattleInit has run for the current battle
     bool      townLive   = false;  // TownInit has run for the current settlement
+    bool      parleyHold = false;  // V136: scripts that WANT the parley set
+                                   // this via `parley hold`; otherwise a
+                                   // scripted march into a foe draws steel
+                                   // at once, keeping every older test true.
 
     // One fixed step of the whole game, mirroring main.cpp's screen routing.
     void Step(const CampaignInput& cin, const BattleInput& bin) {
+        if (gs.screen == Screen::Parley && !parleyHold) {
+            CampaignInput fight;
+            fight.menuChoice = 1;
+            ParleyUpdate(gs, fight);
+            if (gs.screen == Screen::Battle && !battleLive) {
+                BattleInit(gs.content, MakeBattleSetup(gs));
+                battleLive = true;
+            }
+        }
         switch (gs.screen) {
             case Screen::Title:   // harness skips the menu; play starts direct
             case Screen::Campaign:
@@ -91,6 +104,13 @@ struct Harness {
                 break;
             case Screen::Estate:
                 EstateUpdate(gs, cin);
+                break;
+            case Screen::Parley:   // words before steel (V136)
+                ParleyUpdate(gs, cin);
+                if (gs.screen == Screen::Battle && !battleLive) {
+                    BattleInit(gs.content, MakeBattleSetup(gs));
+                    battleLive = true;
+                }
                 break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
@@ -169,6 +189,7 @@ struct Harness {
             case Screen::Kingdom:      return "Kingdom";
             case Screen::Quests:       return "Quests";
             case Screen::Estate:       return "Estate";
+            case Screen::Parley:       return "Parley";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -690,6 +711,16 @@ int RunScript(const char* path) {
         } else if (cmd == "hire") {
             CampaignInput cin; cin.hire = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "parleyhold") {   // keep encounters at the parley
+            std::string mode; ss >> mode;   // screen (V136); off = auto-fight
+            h.parleyHold = mode != "off";
+            std::printf("parleyhold=%d\n", h.parleyHold ? 1 : 0);
+        } else if (cmd == "choose") {   // pick a numbered option on the
+            int n = 1; ss >> n;         // current screen (parley, sieges...)
+            CampaignInput cin; cin.menuChoice = n;
+            h.Step(cin, BattleInput{});
+            if (!h.gs.resultText.empty())
+                std::printf("result=\"%s\"\n", h.gs.resultText.c_str());
         } else if (cmd == "estate") {   // found or enter the manor (V135)
             CampaignInput cin; cin.openEstate = true;
             h.Step(cin, BattleInput{});

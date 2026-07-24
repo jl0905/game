@@ -48,6 +48,11 @@ void QuestsDraw(const GameState& gs);
 void EstateUpdate(GameState& gs, const CampaignInput& in);
 void EstateDraw(const GameState& gs);
 
+// Pre-battle parley (V136): words before steel — fight, bribe, demand
+// surrender, or slip away. Shown when a hostile party catches you.
+void ParleyUpdate(GameState& gs, const CampaignInput& in);
+void ParleyDraw(const GameState& gs);
+
 // Load menu (N3): pick the autosave or a quicksave slot from the title.
 void LoadMenuUpdate(GameState& gs, const CampaignInput& in);
 void LoadMenuDraw(const GameState& gs);

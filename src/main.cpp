@@ -154,6 +154,16 @@ int main(int argc, char** argv) {
                 else                              CampaignDraw(gs);
                 break;
             }
+            case Screen::Parley: {                        // words before steel (V136)
+                const CampaignInput in = GatherCampaignInput(gs);
+                ParleyUpdate(gs, in);
+                if (gs.screen == Screen::Battle) {
+                    BattleInit(gs.content, MakeBattleSetup(gs));
+                    BattleDraw(gs.content);
+                } else if (gs.screen == Screen::Parley) ParleyDraw(gs);
+                else                                    CampaignDraw(gs);
+                break;
+            }
             case Screen::Estate: {                        // the manor hall (V135)
                 const CampaignInput in = GatherCampaignInput(gs);
                 EstateUpdate(gs, in);

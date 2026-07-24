@@ -105,6 +105,31 @@ Modding surfaces are in MODDING.md.)
   - **Stone Walls** — field battles fought on estate land are fortified.
 - Buildings are moddable (assets/buildings.cfg) and save with the game.
 
+## Parley — words before steel
+
+When a hostile band catches you (or you it), the encounter opens at the
+parley screen, not the battlefield:
+
+- **[1] Draw steel** — fight as normal (Esc does the same).
+- **[2] Buy the road** — a bribe of 15 gold per man they field (lords
+  charge double). They take the purse and ride wide.
+- **[3] Demand surrender** — at 3:1 odds or better they ground arms and
+  march as your captives, no blood spilled (+renown). Short of that,
+  they laugh and charge.
+- **[4] Slip away** — you give ground and escape, unless their horse
+  outnumbers yours: riders run down men on foot.
+
+## Sieges — more than the ladder
+
+Clicking a hostile walled town offers, besides storming and engineering:
+
+- **[4] Blockade** — throw a cordon around it and stay close: every dawn
+  the garrison starves a little and prosperity bleeds. Thinned to a fifth
+  of its walls' worth, the town opens its gates without a fight
+  (+renown). Ride off and the cordon breaks.
+- **[5] Poison the wells** — a third of the defenders sicken and die at
+  once. A black deed: honor −3 and the owner remembers.
+
 ## Battle
 
 - **Melee:** hold LMB to ready a swing, flick the mouse to aim it (up =

@@ -277,6 +277,7 @@ struct GameState {
     std::vector<unsigned char> estateBuilt;   // parallel to content.buildings
     int   estateWork     = -1;                // building under construction
     float estateWorkDays = 0;                 // dawns left on it
+    int   blockadeTown   = -1;   // siege blockade (V136): town under your cordon
     float   musterDays = 0;    // days left to answer
     bool    lordsRally = false;
     Vector2 lordsRallyPos{};

@@ -1,14 +1,14 @@
-# Any lord's audience (S4): hail a lord party on the open map (T) and get
-# the full court conversation - news, an oath to HIS crown, work. The
-# fixture stands the player beside Lord Aldric's patrol at (2400,750).
-load tests/fixtures/parley.owb
-fame 6 0
-parley
+# Pre-battle parley (V136): a hostile encounter opens with words, not an
+# instant battle. `parleyhold on` keeps the harness at the screen (without
+# it, scripted marches auto-draw steel so older tests stay true).
+# Fixture herd.owb: 30 own infantry vs a 40-marauder band. Demanding
+# surrender at these odds is refused (needs 3:1) and steel follows -
+# expect screen=Parley after the walk, a laugh in the result, then
+# screen=Battle.
+load tests/fixtures/herd.owb
+parleyhold on
+walk 1 0 0.6
 state
-topic 3
-state
-topic 2
-state
-leave
+choose 3
 state
 quit

@@ -1,0 +1,13 @@
+# Parley, the silver road (V136): against the herdsolo band (6 marauders,
+# hero + 1 infantry, 300 gold... the bribe is 6*15=90) choosing 2 pays the
+# toll and returns to Campaign with no battle - expect gold down by 90 and
+# screen=Campaign in the second state. Slip-away (4) would fail here only
+# if they had more horse; marauders walk, so 4 also works - but we pin the
+# bribe since it moves gold.
+load tests/fixtures/herdsolo.owb
+parleyhold on
+walk 1 0 0.6
+state
+choose 2
+state
+quit

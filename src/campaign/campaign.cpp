@@ -1384,6 +1384,19 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Parley) {   // words before steel (V136)
+        for (int r = 0; r < 4; ++r)
+            if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int row = ((int)m.y - layout::SETTINGS_Y) / layout::SETTINGS_ROW_H;
+            if (m.y >= layout::SETTINGS_Y && row >= 0 && row < 4)
+                in.menuChoice = row + 1;
+        }
+        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 1;   // Esc draws steel
+        return in;
+    }
+
     if (gs.screen == Screen::Estate) {   // the estate hall (V135)
         for (int r = 0; r < 9; ++r)
             if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
@@ -1529,11 +1542,13 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (Vector2Length(dir) > 8) in.move = Vector2Normalize(dir);
     }
     in.wait = IsKeyDown(KEY_SPACE);
-    if (gs.siegePrompt >= 0) {   // the assault choice eats 1-3 (N1)
+    if (gs.siegePrompt >= 0) {   // the assault choice eats 1-5 (N1/V136)
         if (IsKeyPressed(KEY_ONE))    in.menuChoice = 1;
         if (IsKeyPressed(KEY_TWO))    in.menuChoice = 2;
         if (IsKeyPressed(KEY_THREE))  in.menuChoice = 3;
-        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 4;
+        if (IsKeyPressed(KEY_FOUR))   in.menuChoice = 4;
+        if (IsKeyPressed(KEY_FIVE))   in.menuChoice = 5;
+        if (IsKeyPressed(KEY_ESCAPE)) in.menuChoice = 9;
     } else {
         if (IsKeyPressed(KEY_ONE)) in.joinSide = 1;
         if (IsKeyPressed(KEY_TWO)) in.joinSide = 2;
@@ -1751,7 +1766,49 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     fromBags, sutler);
                 break;
             }
+            case 4: {   // blockade & starve (V136, user ask) — walls only
+                if (village) break;
+                gs.blockadeTown = target;
+                gs.resultText = TextFormat(
+                    "Your band throws a cordon around %s. Stay close: the "
+                    "garrison starves a little every dawn.",
+                    gs.towns[target].name.c_str());
+                break;
+            }
+            case 5: {   // poison the wells (V136, user ask) — a black deed
+                if (village) break;
+                Town& t = gs.towns[target];
+                int lost = 0;
+                for (int& n : t.garrison) {          // ~a third sicken and die
+                    const int cut = n * 3 / 10;      // TODO(balance)
+                    n -= cut;
+                    lost += cut;
+                }
+                gs.honor -= 3;                        // TODO(balance)
+                NudgeRelation(gs, t.owner, -5);
+                gs.resultText = TextFormat(
+                    "Poison in the wells of %s: %d defenders sicken and die. "
+                    "The deed will be remembered.", t.name.c_str(), lost);
+                Chronicle(gs, TextFormat("Poisoned the wells of %s.",
+                                         t.name.c_str()));
+                break;
+            }
             default: break;   // thought better of it
+        }
+    }
+
+    // The blockade (V136): each dawn handled in the day tick; walking away
+    // (or peace) lifts it here so the state can't dangle.
+    if (gs.blockadeTown >= 0) {
+        if (gs.blockadeTown >= (int)gs.towns.size() ||
+            !AtWar(gs, gs.towns[gs.blockadeTown].owner, c.playerFaction)) {
+            gs.blockadeTown = -1;
+        } else if (Vector2Distance(gs.player.pos,
+                                   gs.towns[gs.blockadeTown].pos) >
+                   SIEGE_REACH * 3.0f) {
+            gs.resultText = TextFormat("The cordon around %s breaks as you ride off.",
+                                       gs.towns[gs.blockadeTown].name.c_str());
+            gs.blockadeTown = -1;
         }
     }
 
@@ -2146,7 +2203,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     Vector2Distance(gs.parties[gs.mercParty].pos, gs.player.pos) <
                         MERC_BATTLE_REACH)
                     gs.battleAllyIndex = gs.mercParty;
-                gs.screen = Screen::Battle;
+                // Words before steel (V136): the encounter opens at parley.
+                gs.screen = Screen::Parley;
                 return;
             }
         }
@@ -2503,6 +2561,34 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 gs.activeQuest = -1;
                 gs.questTown   = -1;
                 gs.questDays   = 0;
+            }
+
+            // The blockade at dawn (V136): the cordon starves the garrison
+            // and the town's trade; a garrison thinned to a fifth of its
+            // walls' worth opens the gates without a fight.
+            if (gs.blockadeTown >= 0 && gs.blockadeTown < (int)gs.towns.size()) {
+                Town& bt = gs.towns[gs.blockadeTown];
+                int starve = 2;   // TODO(balance)
+                for (int& n : bt.garrison) {
+                    while (starve > 0 && n > 0) { n--; starve--; }
+                    if (starve <= 0) break;
+                }
+                bt.prosperity = std::max(30, bt.prosperity - 2);
+                if (bt.garrisonSize() * 5 <= GarrisonCap(bt)) {
+                    bt.owner = c.playerFaction;
+                    gs.resultText = TextFormat(
+                        "Starved and hopeless, %s opens its gates. It is yours.",
+                        bt.name.c_str());
+                    Chronicle(gs, TextFormat("Starved %s into surrender.",
+                                             bt.name.c_str()));
+                    gs.renown += 3;   // TODO(balance)
+                    gs.blockadeTown = -1;
+                    SfxPlay(Sfx::Fanfare);
+                } else {
+                    gs.resultText = TextFormat(
+                        "The cordon holds: %s's garrison starves (%d left).",
+                        bt.name.c_str(), bt.garrisonSize());
+                }
             }
 
             // The estate at dawn (V135): masons lay stone, fields pay rent
@@ -3465,8 +3551,8 @@ void CampaignDraw(const GameState& gs) {
     if (gs.siegePrompt >= 0 && gs.siegePrompt < (int)gs.towns.size()) {
         const Town& t = gs.towns[gs.siegePrompt];
         const int px = GetScreenWidth() / 2 - 260, py = 200;
-        DrawRectangle(px - 16, py - 16, 552, 208, Fade(BLACK, 0.8f));
-        DrawRectangleLines(px - 16, py - 16, 552, 208, GOLD);
+        DrawRectangle(px - 16, py - 16, 552, 264, Fade(BLACK, 0.8f));
+        DrawRectangleLines(px - 16, py - 16, 552, 264, GOLD);
         const bool village = t.type == SettlementType::Village;
         ui::Title(TextFormat(village ? "THE FIELDS OF %s" : "THE WALLS OF %s",
                              t.name.c_str()), px, py, 30, GOLD);
@@ -3480,8 +3566,11 @@ void CampaignDraw(const GameState& gs) {
             ui::Text("[1] Storm now      (the gate and two ladders)", px, py + 78, 20, RAYWHITE);
             ui::Text("[2] Build ladders  (1 day: two more climbing points)", px, py + 106, 20, RAYWHITE);
             ui::Text("[3] Build a tower  (2 days: a wide rolling ramp as well)", px, py + 134, 20, RAYWHITE);
+            ui::Text("[4] Blockade       (starve them out; stay close, dawns decide)", px, py + 162, 20, RAYWHITE);
+            ui::Text("[5] Poison the wells  (a third sicken; a black deed)", px, py + 190, 20,
+                     Fade(RED, 0.9f));
         }
-        ui::Text("[Esc] Think better of it", px, py + 166, 18, Fade(RAYWHITE, 0.6f));
+        ui::Text("[Esc] Think better of it", px, py + 222, 18, Fade(RAYWHITE, 0.6f));
     }
     if (gs.siegeCampTown >= 0)
         ui::Text(TextFormat("Siege camp at %s: %.0f day(s) until the engines are ready. Wait (SPACE).",
@@ -5058,6 +5147,151 @@ void QuestsDraw(const GameState& gs) {
         ui::Text(e.c_str(), x, y, 19, col);
         y += 26;
     }
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Pre-battle parley (V136): the moment a hostile band catches you, words
+// come before steel. Every option is deterministic and priced by the world:
+// bribes scale with their strength (lords cost double), surrender demands
+// 3:1 odds, and slipping away fails against the faster horse.
+// ---------------------------------------------------------------------------
+namespace {
+int PartyMountedCount(const Content& c, const Party& p) {
+    int m = 0;
+    for (int t = 0; t < (int)p.troopCounts.size() && t < c.troops.size(); ++t)
+        if (c.troops[t].mounted) m += p.troopCounts[t];
+    return m;
+}
+int PlayerMountedCount(const GameState& gs) {
+    int m = gs.warhorse ? 1 : 0;
+    for (int t = 0; t < (int)gs.player.troopCounts.size() &&
+                    t < gs.content.troops.size(); ++t)
+        if (gs.content.troops[t].mounted) m += gs.player.troopCounts[t];
+    return m;
+}
+}   // namespace
+
+void ParleyUpdate(GameState& gs, const CampaignInput& in) {
+    const Content& c = gs.content;
+    if (gs.battlePartyIndex < 0 || gs.battlePartyIndex >= (int)gs.parties.size() ||
+        !gs.parties[gs.battlePartyIndex].alive) {
+        gs.screen = Screen::Campaign;   // the foe evaporated: nothing to parley
+        return;
+    }
+    if (in.menuChoice == 0) return;
+    Party& e = gs.parties[gs.battlePartyIndex];
+    const int theirs = e.totalTroops();
+    switch (in.menuChoice) {
+        case 2: {   // buy the road (TODO(balance): the rate)
+            const int cost = theirs * 15 * (e.lord.empty() ? 1 : 2);
+            if (gs.gold < cost) {
+                gs.resultText = TextFormat(
+                    "They want %d gold to let you pass. You don't have it.", cost);
+                return;   // still at parley — pick again
+            }
+            gs.gold -= cost;
+            // They take the purse and ride wide of you.
+            Vector2 away = Vector2Subtract(e.pos, gs.player.pos);
+            const float len = Vector2Length(away);
+            away = len > 0.5f ? Vector2Scale(away, 120.0f / len)
+                              : Vector2{ 120.0f, 0.0f };
+            e.pos          = Vector2Add(e.pos, away);
+            e.wanderTarget = e.pos;
+            e.engaged      = false;
+            gs.resultText = TextFormat("%d gold changes hands. They ride wide of you.",
+                                       cost);
+            gs.screen = Screen::Campaign;
+            return;
+        }
+        case 3: {   // demand their surrender
+            if (gs.player.totalTroops() >= theirs * 3) {
+                if ((int)gs.prisoners.size() < c.troops.size())
+                    gs.prisoners.resize(c.troops.size(), 0);
+                int taken = 0;
+                for (int t = 0; t < (int)e.troopCounts.size() &&
+                                t < c.troops.size(); ++t) {
+                    gs.prisoners[t] += e.troopCounts[t];
+                    taken           += e.troopCounts[t];
+                    e.troopCounts[t] = 0;
+                }
+                e.alive = false;
+                gs.renown += 2;   // TODO(balance)
+                gs.resultText = TextFormat(
+                    "Facing your line, they ground their arms: %d captives.", taken);
+                Chronicle(gs, TextFormat("Took a band's surrender, %d men.", taken));
+                gs.screen = Screen::Campaign;
+                SfxPlay(Sfx::Fanfare, 0.7f);
+            } else {
+                gs.resultText = "They laugh in your face - and draw steel.";
+                gs.screen = Screen::Battle;
+            }
+            return;
+        }
+        case 4: {   // slip away
+            if (PartyMountedCount(c, e) > PlayerMountedCount(gs)) {
+                gs.resultText = "Their riders run you down before the band is clear.";
+                gs.screen = Screen::Battle;
+                return;
+            }
+            Vector2 back = Vector2Subtract(gs.player.pos, e.pos);
+            const float len = Vector2Length(back);
+            back = len > 0.5f ? Vector2Scale(back, 60.0f / len)
+                              : Vector2{ 60.0f, 0.0f };
+            gs.player.pos = Vector2Add(gs.player.pos, back);
+            gs.player.pos.x = Clamp(gs.player.pos.x, 0, MAP_SIZE);
+            gs.player.pos.y = Clamp(gs.player.pos.y, 0, MAP_SIZE);
+            gs.resultText = "You give ground and slip away before they form up.";
+            gs.screen = Screen::Campaign;
+            return;
+        }
+        default:   // steel it is
+            gs.screen = Screen::Battle;
+            return;
+    }
+}
+
+void ParleyDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int x = GetScreenWidth() / 2 - 430 > 10 ? GetScreenWidth() / 2 - 430 : 10;
+    if (gs.battlePartyIndex < 0 || gs.battlePartyIndex >= (int)gs.parties.size()) {
+        EndDrawing();
+        return;
+    }
+    const Party& e = gs.parties[gs.battlePartyIndex];
+    const int theirs = e.totalTroops();
+    const int yours  = gs.player.totalTroops();
+    const char* who = !e.lord.empty()
+        ? TextFormat("Lord %s", e.lord.c_str())
+        : c.factions.valid(e.faction) ? c.factions[e.faction].name.c_str()
+                                      : "the enemy";
+    ui::Title("PARLEY", x, 60, 44, GOLD);
+    ui::Text(TextFormat("%s bars the road: %d men against your %d.",
+                        who, theirs, yours),
+             x, 122, 22, RAYWHITE);
+    const int bribe = theirs * 15 * (e.lord.empty() ? 1 : 2);
+    int y = layout::SETTINGS_Y;
+    auto row = [&](int i, const char* text, Color col) {
+        DrawHoverRow(0, y, GetScreenWidth(), layout::SETTINGS_ROW_H);
+        ui::Text(TextFormat("[%d]  %s", i, text), x, y + 8, 22, col);
+        y += layout::SETTINGS_ROW_H;
+    };
+    row(1, "Draw steel.  (the field decides)", RAYWHITE);
+    row(2, TextFormat("Buy the road - %d gold.%s", bribe,
+                      gs.gold < bribe ? "  (you lack it)" : ""),
+        gs.gold < bribe ? Fade(RAYWHITE, 0.4f) : GOLD);
+    row(3, TextFormat("Demand surrender.  (they yield at 3:1 odds - you have %d:1)",
+                      theirs > 0 ? yours / theirs : 99),
+        yours >= theirs * 3 ? LIME : Fade(RAYWHITE, 0.4f));
+    row(4, TextFormat("Slip away.  (fails if their horse outnumbers yours, %d vs %d)",
+                      PartyMountedCount(c, e), PlayerMountedCount(gs)),
+        PartyMountedCount(c, e) > PlayerMountedCount(gs) ? Fade(RED, 0.7f)
+                                                         : RAYWHITE);
+    ui::Text("[Esc] words fail - fight", x, y + 14, 18, Fade(RAYWHITE, 0.6f));
+    if (!gs.resultText.empty())
+        ui::Text(gs.resultText.c_str(), x, y + 44, 19, GOLD);
     EndDrawing();
 }
 

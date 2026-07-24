@@ -1535,10 +1535,17 @@ this is the feedback the flat numbers were waiting for.
         wall tiers→fortify levels)
   - [ ] estate raids: hostile lords attack your manor; defend it on your
         own fortified ground (walls building pays off in person)
-  - [ ] pre-battle parley screen: talk before steel — bribe your way
-        out, demand surrender at odds, taunt (user ask)
-  - [ ] siege options: blockade & starve (garrison thins by day),
-        poison the wells (risky, honor hit), assault as today (user ask)
+  - [x] pre-battle parley screen (V136 — every hostile encounter opens
+        at PARLEY: fight, buy the road (15g/man, lords double), demand
+        surrender (3:1 odds → captives without a fight, +renown), or
+        slip away (fails against superior horse). Harness auto-fights
+        unless `parleyhold on`, keeping all older tests true;
+        tests/parley.txt + parley_bribe.txt)
+  - [x] siege options (V136 — the assault prompt gains [4] Blockade:
+        stay close and the garrison starves each dawn, prosperity
+        bleeds, at 1/5 walls' worth the gates open without a fight;
+        and [5] Poison the wells: a third of defenders die at once,
+        honor −3, relation −5, chronicled as a black deed)
   - [ ] items/skills feed player stats: worn gear + attributes move
         real numbers (carry cap, party size already via CHA) (user ask)
   - [ ] caravans that ARRIVE enrich the destination's prosperity —
