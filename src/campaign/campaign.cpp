@@ -436,6 +436,17 @@ void ResolveSkirmish(GameState& gs, Skirmish& sk) {
     loser.alive = false;
     if (winner.totalTroops() <= 0) winner.alive = false;  // mutual annihilation
     AddWarScore(gs, a.faction, b.faction, loserStrength);
+
+    // Trampled fields (V139): a real fight near a settlement wrecks its
+    // harvest — war fought ON your land costs the land, so crowns (and
+    // players) have an emergent reason to meet the enemy at the border.
+    if (loserStrength >= 10) {
+        for (Town& t : gs.towns)
+            if (Vector2Distance(t.pos, sk.pos) < 200.0f) {   // TODO(balance)
+                t.prosperity = std::max(30, t.prosperity - 1);
+                break;
+            }
+    }
 }
 
 // Camera centred on the player; used by input gathering and drawing.
@@ -939,6 +950,24 @@ static void ApplyBattleResult(GameState& gs) {
 
     Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
     if (enemy) enemy->engaged = false;
+
+    // Trampled fields (V139): a pitched battle ruins the ground it is
+    // fought on — the nearest settlement's harvest pays for the glory.
+    {
+        int dead = 0;
+        for (int n : gs.playerLosses) dead += n;
+        for (int n : gs.allyLosses)   dead += n;
+        for (int n : gs.enemyLosses)  dead += n;
+        if (dead >= 20) {   // TODO(balance)
+            for (Town& t : gs.towns)
+                if (Vector2Distance(t.pos, gs.player.pos) < 250.0f) {
+                    t.prosperity = std::max(30, t.prosperity - 2);
+                    gs.resultText += TextFormat("  The fields of %s lie trampled.",
+                                                t.name.c_str());
+                    break;
+                }
+        }
+    }
 
     // Named lords remember the day (N4). TODO(balance): the deltas.
     if (gs.battleWon && enemy && !enemy->lord.empty()) {
@@ -2997,6 +3026,74 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                         t.prosperity = std::max(30, t.prosperity - 1);
                     t.tradeVisits = 0;
                 }
+                // Living diplomacy (V139): wars end and begin from the SAME
+                // prosperity number everything else feeds. War grinds the
+                // land down (V53); when both crowns' realms are ground to
+                // exhaustion (avg prosperity < 75) they make peace, and the
+                // land recovers. A crown fat with peace (avg > 130, no
+                // kingdom wars) covets: it declares on the weakest realm.
+                // The world breathes — war, ruin, peace, recovery, war.
+                {
+                    const int n = c.factions.size();
+                    auto avgProsper = [&](int f) {
+                        int sum = 0, cnt = 0;
+                        for (const Town& t : gs.towns)
+                            if (t.owner == f) { sum += t.prosperity; cnt++; }
+                        return cnt > 0 ? sum / cnt : 0;
+                    };
+                    if ((int)gs.hostile.size() == n * n) {
+                        for (int a = 0; a < n; ++a) {
+                            if (!c.factions[a].kingdom || a == c.playerFaction)
+                                continue;
+                            const int pa = avgProsper(a);
+                            for (int b = a + 1; b < n; ++b) {
+                                if (!c.factions[b].kingdom || b == c.playerFaction)
+                                    continue;
+                                if (!AtWar(gs, a, b)) continue;
+                                if (pa < 75 && avgProsper(b) < 75) {   // TODO(balance)
+                                    gs.hostile[(size_t)a * n + b] = 0;
+                                    gs.hostile[(size_t)b * n + a] = 0;
+                                    gs.resultText = TextFormat(
+                                        "Exhausted, %s and %s make peace.",
+                                        c.factions[a].name.c_str(),
+                                        c.factions[b].name.c_str());
+                                    Chronicle(gs, gs.resultText);
+                                }
+                            }
+                            // Covetous crowns (staggered so at most one
+                            // declaration per realm per five days).
+                            if (pa > 130 && gs.day % 5 == a % 5) {
+                                bool anyWar = false;
+                                for (int f = 0; f < n; ++f)
+                                    if (f != a && c.factions[f].kingdom &&
+                                        AtWar(gs, a, f)) anyWar = true;
+                                if (!anyWar) {
+                                    int prey = -1, preyP = 999;
+                                    for (int f = 0; f < n; ++f) {
+                                        if (f == a || !c.factions[f].kingdom)
+                                            continue;
+                                        const int pf = avgProsper(f);
+                                        if (pf > 0 && pf < preyP) {
+                                            preyP = pf; prey = f;
+                                        }
+                                    }
+                                    if (prey >= 0) {
+                                        gs.hostile[(size_t)a * n + prey] = 1;
+                                        gs.hostile[(size_t)prey * n + a] = 1;
+                                        gs.resultText = TextFormat(
+                                            "Fat with peace, %s declares war on %s!",
+                                            c.factions[a].name.c_str(),
+                                            c.factions[prey].name.c_str());
+                                        Chronicle(gs, gs.resultText);
+                                    }
+                                }
+                            }
+                        }
+                        AlignWarsWithLiege(gs);   // vassals follow the banners
+                        RefreshWarMarkups(gs);    // the shelves learn by morning
+                    }
+                }
+
                 // The crowns police their own land (V137): each faction's
                 // patrolling parties steer for their most endangered town —
                 // the existing skirmish system does the rest.
@@ -3173,17 +3270,13 @@ void PaintMapGround(const MapDef& m) {
 // Roads thread the settlements together. Positions never move, so these are
 // cached with the ground; only ownership (drawn per-frame) changes.
 void PaintMapRoads(const GameState& gs) {
-    // Two passes (V131, user ask): a dark earthen edge under a bright sand
-    // fill — the old single faded stroke vanished into the biome paint.
-    for (int a = 0; a < (int)gs.towns.size(); ++a)
-        for (int b = a + 1; b < (int)gs.towns.size(); ++b)
-            if (Vector2Distance(gs.towns[a].pos, gs.towns[b].pos) <
-                gs.content.map.roadLinkDist) {
-                DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 8,
-                           Fade(Color{ 52, 40, 26, 255 }, 0.8f));
-                DrawLineEx(gs.towns[a].pos, gs.towns[b].pos, 4,
-                           Fade(Color{ 205, 178, 128, 255 }, 0.9f));
-            }
+    // Two passes (V131): a dark earthen edge under a bright sand fill.
+    // The segments come from the MST road network (V139) — trunk roads,
+    // not the old all-pairs tangle.
+    for (const RoadSeg& s : RoadNetwork(gs)) {
+        DrawLineEx(s.a, s.b, 8, Fade(Color{ 52, 40, 26, 255 }, 0.8f));
+        DrawLineEx(s.a, s.b, 4, Fade(Color{ 205, 178, 128, 255 }, 0.9f));
+    }
 }
 
 // The cached map ground (L5): biome paint + roads rendered once into a

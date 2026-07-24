@@ -1,0 +1,34 @@
+OWSAVE 1
+gold 500
+day 4
+clock 59
+playerpos 80 80
+ptroop infantry 5
+hero 1 0 0
+carry sword
+prosper 0 100
+prosper 1 140
+prosper 2 100
+prosper 3 140
+prosper 4 60
+prosper 5 60
+prosper 6 60
+prosper 7 60
+prosper 8 141
+prosper 11 145
+prosper 18 145
+prosper 9 60
+prosper 10 60
+prosper 12 60
+prosper 13 60
+prosper 16 140
+prosper 17 60
+prosper 19 60
+prosper 20 60
+prosper 21 60
+prosper 22 140
+prosper 23 60
+diplo patrol sarleon 0 0 0
+diplo patrol vaeling 0 0 0
+diplo patrol nords 0 0 0
+diplo patrol kingdom 0 0 0

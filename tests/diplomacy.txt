@@ -1,8 +1,17 @@
-# Diplomacy: the two crowns (player kingdom vs Sarleon) bleed each other via
-# lord sieges until war weariness forces a truce; the truce then lapses and
-# war rekindles. Outlaw factions must never appear in diplo lines.
-seed 7
-wait 600
+# Living diplomacy (V139): wars end and begin from prosperity itself -
+# the same number trade, war-grind, storms and taxes already move.
+# Fixture: patrol's towns doctored fat (prosper 140+) and at peace with
+# every crown; sarleon and vaeling doctored poor (60) and at war. After
+# a few dawns the chronicle must gain BOTH lines: "Exhausted, ... make
+# peace." (sarleon+vaeling under 75 each) and "Fat with peace, ...
+# declares war" (patrol coveting a weak realm). clock 59 fixture makes
+# dawns land fast; player parked in a quiet corner.
+load tests/fixtures/diplo.owb
+wait 4
+wait 65
+wait 65
+wait 65
+wait 65
+wait 65
 state
-wait 300
-state
+quit

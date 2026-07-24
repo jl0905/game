@@ -405,20 +405,75 @@ inline const char* WorldTerrainName(WorldTerrain t) {
 
 // Roads join settlements closer than MapDef::roadLinkDist (the drawn
 // network); within roadWidth of a link a party travels at full pace.
+// The road network (V139, reworked): a minimum spanning tree over the
+// settlements plus each town's single nearest neighbour — trunk roads that
+// read like a real kingdom's, instead of the old every-pair-within-range
+// hairball that buried the map once the world grew to 26 towns. Cached:
+// town positions never move within a world.
+struct RoadSeg { Vector2 a, b; };
+inline const std::vector<RoadSeg>& RoadNetwork(const GameState& gs) {
+    static std::vector<RoadSeg> segs;
+    static size_t builtFor = (size_t)-1;
+    const size_t n = gs.towns.size();
+    if (builtFor == n) return segs;
+    builtFor = n;
+    segs.clear();
+    if (n < 2) return segs;
+    // Prim's MST over town positions.
+    std::vector<char>  used(n, 0);
+    std::vector<float> best(n, 1e18f);
+    std::vector<int>   from(n, -1);
+    used[0] = 1;
+    for (size_t i = 1; i < n; ++i) {
+        best[i] = Vector2Distance(gs.towns[0].pos, gs.towns[i].pos);
+        from[i] = 0;
+    }
+    for (size_t step = 1; step < n; ++step) {
+        int pick = -1;
+        for (size_t i = 0; i < n; ++i)
+            if (!used[i] && (pick < 0 || best[i] < best[pick])) pick = (int)i;
+        if (pick < 0) break;
+        used[pick] = 1;
+        segs.push_back({ gs.towns[from[pick]].pos, gs.towns[pick].pos });
+        for (size_t i = 0; i < n; ++i)
+            if (!used[i]) {
+                const float d = Vector2Distance(gs.towns[pick].pos,
+                                                gs.towns[i].pos);
+                if (d < best[i]) { best[i] = d; from[i] = pick; }
+            }
+    }
+    // One extra local link per town (its nearest neighbour) adds the loops
+    // real road nets have without recreating the tangle.
+    for (size_t a = 0; a < n; ++a) {
+        int nb = -1; float bd = 1e18f;
+        for (size_t b = 0; b < n; ++b) {
+            if (a == b) continue;
+            const float d = Vector2Distance(gs.towns[a].pos, gs.towns[b].pos);
+            if (d < bd) { bd = d; nb = (int)b; }
+        }
+        if (nb < 0) continue;
+        bool have = false;
+        for (const RoadSeg& s : segs)
+            if ((Vector2Equals(s.a, gs.towns[a].pos) &&
+                 Vector2Equals(s.b, gs.towns[nb].pos)) ||
+                (Vector2Equals(s.b, gs.towns[a].pos) &&
+                 Vector2Equals(s.a, gs.towns[nb].pos))) { have = true; break; }
+        if (!have) segs.push_back({ gs.towns[a].pos, gs.towns[nb].pos });
+    }
+    return segs;
+}
+
 inline bool OnRoad(const GameState& gs, Vector2 p) {
     const MapDef& m = gs.content.map;
-    for (int a = 0; a < (int)gs.towns.size(); ++a)
-        for (int b = a + 1; b < (int)gs.towns.size(); ++b) {
-            const Vector2 ta = gs.towns[a].pos, tb = gs.towns[b].pos;
-            if (Vector2Distance(ta, tb) >= m.roadLinkDist) continue;
-            const Vector2 ab = Vector2Subtract(tb, ta);
-            const float len2 = Vector2LengthSqr(ab);
-            if (len2 <= 1.0f) continue;
-            const float t = Clamp(Vector2DotProduct(Vector2Subtract(p, ta), ab) / len2,
-                                  0.0f, 1.0f);
-            const Vector2 close = Vector2Add(ta, Vector2Scale(ab, t));
-            if (Vector2Distance(p, close) < m.roadWidth) return true;
-        }
+    for (const RoadSeg& s : RoadNetwork(gs)) {
+        const Vector2 ab = Vector2Subtract(s.b, s.a);
+        const float len2 = Vector2LengthSqr(ab);
+        if (len2 <= 1.0f) continue;
+        const float t = Clamp(Vector2DotProduct(Vector2Subtract(p, s.a), ab) / len2,
+                              0.0f, 1.0f);
+        const Vector2 close = Vector2Add(s.a, Vector2Scale(ab, t));
+        if (Vector2Distance(p, close) < m.roadWidth) return true;
+    }
     return false;
 }
 
