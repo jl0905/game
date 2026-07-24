@@ -1,0 +1,17 @@
+# The aim rule (V143, user spec): the LAST direction the mouse moved is
+# the swing direction, dominant axis wins. The harness attack command
+# flicks then presses, exactly the windowed flow. Expect aim=right after
+# a right cut, aim=up after an overhead, aim=down after a thrust - read
+# from the battle dump. Also exercises the slower committed swing cycle
+# (2.2x cooldowns): attacks are spaced 4s apart.
+load tests/fixtures/herobow.owb
+hunt 60
+attack right
+state
+tick 4
+attack up
+state
+tick 4
+attack down
+state
+quit

@@ -15,6 +15,9 @@ struct Pose {
     float     windup    = 0.0f;               // 0 relaxed .. 1 fully cocked (held)
     AttackDir attackDir = AttackDir::Right;   // which way the swing/hold goes
     bool      blocking  = false;
+    int       guardDir  = -1;                 // weapon-guard direction (V143):
+                                              // 0..3 = AttackDir being barred,
+                                              // -1 = shield block / none
     float     walkPhase = 0.0f;               // advances while moving (radians)
     int       weapon    = -1;                 // weapon handle to draw; -1 = use
                                               // the loadout's Weapon slot

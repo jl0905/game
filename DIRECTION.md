@@ -1604,6 +1604,21 @@ this is the feedback the flat numbers were waiting for.
         (wear/splinter unchanged, kick still goes through), and
         directional play now lives in bare-weapon guards + the hero's
         own block. quiver.txt re-timed for the longer bow cycle)
+- [x] **V143. Iteration one-forty-three — skill combat (user direction).**
+  The aim rule is now EXACTLY the spec: swing direction = the mouse's
+  last movement, dominant axis, updated every frame with a hard-decay
+  accumulator (no stale locks), committed a third into the wind-up.
+  Cooldowns ×2.2, swing arcs slowed to 1.8/s, the cocked pose pulls the
+  fist far behind the shoulder (the HAND now travels with the blade
+  through cock, guard and follow-through), trails longer and brighter.
+  Weapon guards are DIRECTIONAL both ways: an AI's bare blade bars one
+  visible line (four distinct stances rendered) — hit into it and it
+  parries at 85%, hit any other line and it lands, after which he
+  covers the side that bled; the hero's bare-weapon RMB block bars the
+  line of the last flick (matched = parry, wrong line = 25% soak),
+  while shields stay omnidirectional wear-based cover (V142). Verified:
+  aim=right/up/down lock exactly from flicks (tests/combatdir.txt);
+  suite re-paced for 4.4s bow cycles.
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve

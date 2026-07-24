@@ -919,11 +919,25 @@ static void ApplyBattleResult(GameState& gs) {
         for (int t = 0; t < (int)gs.player.troopCounts.size(); ++t)
             gs.troopXp[t] += gs.player.troopCounts[t] * XP_PER_SURVIVOR;
 
-        // Renown (M1): word of a victory travels — further when the field
-        // was bloody. TODO(balance): the scale.
+        // Renown is a TALE, not a stipend (V143): it needs a bloody field,
+        // long odds, and someone left alive to tell it. Outnumbered wins
+        // pay double; a victory with no survivors on your side earns only
+        // the enemy's rumor of it; and a witness settlement within earshot
+        // (250u) spreads the story one point further. All emergent inputs:
+        // army sizes, casualties, geography. TODO(balance): the scale.
         int slain = 0;
         for (int v : gs.enemyLosses) slain += v;
-        gs.renown += 1 + std::min(4, slain / 5);
+        int lost = 0;
+        for (int v : gs.playerLosses) lost += v;
+        const int yoursNow  = gs.player.totalTroops();
+        const bool outnumbered =
+            (yoursNow + lost) < slain;   // they fielded more than you kept+lost
+        int tale = 1 + std::min(4, slain / 5);
+        if (outnumbered) tale *= 2;
+        if (yoursNow == 0) tale = 1;     // no one of yours lived to tell it
+        for (const Town& t : gs.towns)
+            if (Vector2Distance(t.pos, gs.player.pos) < 250.0f) { tale += 1; break; }
+        gs.renown += tale;
 
         // First victory (P4): tell a new captain what winning is for.
         if (!(gs.hintsSeen & 1)) {
@@ -2670,8 +2684,20 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     gs.estateWork = -1;
                     SfxPlay(Sfx::Fanfare, 0.6f);
                 }
-                if (EstateHas(gs, "fields"))
-                    gs.gold += gs.towns[gs.estateTown].prosperity / 10;   // TODO(balance)
+                // Fields need hands (V143): rent flows only while the
+                // linked town has folk to work them — the SAME pool the
+                // crown's levies, the walls, and your own recruiting draw
+                // from. A drained or raided town leaves your fields idle;
+                // the barracks' daily muster feeds the pool right back.
+                if (EstateHas(gs, "fields")) {
+                    Town& lt = gs.towns[gs.estateTown];
+                    if (lt.recruitPool > 0)
+                        gs.gold += lt.prosperity / 10;   // TODO(balance)
+                    else if (gs.day % 3 == 0)
+                        gs.resultText = TextFormat(
+                            "Your fields by %s stand idle - no hands to work them.",
+                            lt.name.c_str());
+                }
                 if (EstateHas(gs, "barracks"))
                     gs.towns[gs.estateTown].recruitPool += 1;   // TODO(balance)
             }

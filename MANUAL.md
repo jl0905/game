@@ -151,15 +151,24 @@ Clicking a hostile walled town offers, besides storming and engineering:
 
 ## Battle
 
-- **Melee is deliberate:** hold LMB to ready a swing, flick the mouse to
-  aim it (up = overhead, down = thrust, sides = cuts), release to strike.
-  The blow carries what the wind-up put into it — a panicked flick lands
-  at half weight, a full draw lands whole — and every weapon needs 1.6×
-  the old time between swings. RMB blocks. **Shields are cover**: they
-  soak blows from every direction while the wood lasts (it wears, and
-  splinters); bare-weapon guards are directional and read from the stance.
-  [E] kicks straight through a raised shield; [G] scavenges a fallen
-  man's weapon (and pulls spent arrows).
+- **Melee is deliberate (the whole game in three rules):**
+  1. **Aim = your last flick.** The direction the mouse moved last is the
+     direction your swing comes from — dominant axis wins (more sideways
+     than vertical reads as a cut, more vertical as overhead/thrust). The
+     press locks it; the first third of the wind-up can still re-aim.
+  2. **The wind-up is the weight.** Release early and the blow lands at
+     half force; hold the draw and it lands whole. Swings take ~2.2× the
+     old time — every blow is a commitment, and the arm visibly coils
+     behind the shoulder so everyone can read what's coming.
+  3. **Guards are lines.** A **shield** is cover: it soaks from every
+     direction while the wood lasts (it wears and splinters; the [E] kick
+     goes straight through). A **bare weapon** bars ONE line, shown by the
+     stance — swing into it and steel rings off steel (yours ~85% stopped),
+     swing any other line and it lands... after which the guard shifts to
+     cover the side that bled. Your own RMB block works the same way:
+     with a shield it covers everything; with a weapon alone, flick the
+     mouse to choose which line you bar.
+  [G] scavenges a fallen man's weapon (and pulls spent arrows).
 - **Archery:** a bow draws and looses where the camera looks; a full draw
   hits harder. You carry 24 arrows — harvest landed shafts with [G].
   AI archers run dry too and close with steel.

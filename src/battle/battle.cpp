@@ -772,6 +772,7 @@ struct BattleState {
     Vector2 lastMouse{ 0, 0 };
     bool    hasLastMouse = false;
     Vector2 aimAccum{ 0, 0 };       // recent mouse motion, for attack direction
+    AttackDir lastAim = AttackDir::Right;   // freshest flick's direction (V143)
     float   soakFlash = 0;          // your swing just met wood (U5): teach it
     float   parryFlash = 0;         // you just blocked a hit (U5): say so
 
@@ -845,10 +846,10 @@ float WeaponReach(const Content& c, int wh) {
     return c.weapons.valid(wh) && c.weapons[wh].reach > 0.5f ? c.weapons[wh].reach : FIST_REACH;
 }
 float WeaponCooldown(const Content& c, int wh) {
-    // Deliberate combat (V142, user ask): every swing takes 1.6x its old
-    // time — blows are commitments, not spam. TODO(balance): the factor.
+    // Deliberate combat (V142, deepened V143 per user): every swing takes
+    // 2.2x its old time — blows are commitments. TODO(balance): the factor.
     return (c.weapons.valid(wh) && c.weapons[wh].swingTime > 0.05f
-                ? c.weapons[wh].swingTime : FIST_SWING) * 1.6f;
+                ? c.weapons[wh].swingTime : FIST_SWING) * 2.2f;
 }
 
 // Worn armour soaks a flat amount per hit; a landed blow always tells a little.
@@ -1130,7 +1131,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     AICmd cmd;
     cmd.yaw         = s.yaw;
     cmd.newCooldown = s.cooldown - dt;
-    cmd.newSwing    = s.swing > 0 ? s.swing - dt * 2.4f : 0.0f;   // V142: unhurried arcs
+    cmd.newSwing    = s.swing > 0 ? s.swing - dt * 1.8f : 0.0f;   // V143: unhurried arcs
     cmd.newTarget   = s.target;
 
     // Single combat (V102): while the duel holds, every man but the
@@ -1275,7 +1276,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         cmd.newSwing    = 1.0f;
         cmd.hitDamage   = WeaponDamage(c, cmd.activeWeapon);
         if (ranged && s.quiver > 0) { cmd.shoot = true; cmd.shootAt = tpos; }
-        else if (targetPlayer) cmd.hitPlayer = true;
+        else if (targetPlayer) {
+            cmd.hitPlayer = true;
+            // His swing has a direction the hero can read and parry (V143).
+            cmd.swingDir = (i * 7 + (int)(s.walkPhase * 3.0f)) & 3;
+        }
         else {
             cmd.hitSoldier = target;
             // Each soldier swings by habit, varied by his stride (G4).
@@ -1909,8 +1914,14 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         // Screen-right = cross(fwd, up) in raylib's right-handed frame.
         const Vector3 right = { -fwd.z, 0, fwd.x };
 
-        // Track recent motion (decaying) so an attack reads the latest flick.
-        B.aimAccum = Vector2Add(Vector2Scale(B.aimAccum, 0.6f), md);
+        // Aim rule (V143, user spec): the LAST direction the mouse moved is
+        // the direction the swing comes from — dominant axis wins (more
+        // rightward than vertical = a right cut, and so on). A short, hard
+        // decay keeps only the freshest flick; the direction updates the
+        // instant you move, every frame, so it can never feel stale.
+        B.aimAccum = Vector2Add(Vector2Scale(B.aimAccum, 0.35f), md);
+        if (Vector2Length(md) > 1.2f)
+            B.lastAim = DirFromMotion(B.aimAccum);
 
         Vector3 move = Vector3Add(Vector3Scale(fwd, in.moveForward),
                                   Vector3Scale(right, in.moveRight));
@@ -1997,7 +2008,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
         B.blocking = in.block;
         B.cooldown -= dt;
-        if (B.swing > 0) B.swing -= dt * 2.4f;   // V142: the follow-through reads
+        if (B.swing > 0) B.swing -= dt * 1.8f;   // V143: the follow-through reads
 
         // ---- dismount / remount (U11): Z, and the horse waits for you ----
         if (in.mountToggle) {
@@ -2159,14 +2170,17 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         if (in.attackPress && B.cooldown <= 0 && !B.blocking) {
             B.readying = true;
             B.windup = 0.0f;
-            // Warband rule (U5): the swing direction locks at the moment of
-            // the click, read from the last mouse flick â€” mouse only, and
-            // holding just holds. Looking around mid-hold changes nothing.
-            if (Vector2Length(B.aimAccum) > 1.5f)
-                B.attackDir = DirFromMotion(B.aimAccum);
+            // V143 (user spec): the direction is whatever the mouse moved
+            // LAST — always, no threshold, no stale accumulator.
+            B.attackDir = B.lastAim;
         }
-        if (B.readying)
+        if (B.readying) {
             B.windup = fminf(1.0f, B.windup + dt * 2.5f);   // V142: a full draw takes intent
+            // Early in the wind-up a fresh flick can still re-aim the blow
+            // (V143) — past a third drawn, the direction is committed.
+            if (B.windup < 0.35f && Vector2Length(md) > 1.2f)
+                B.attackDir = B.lastAim;
+        }
         if (in.attackRelease && B.readying) {
             B.readying = false;
             const float draw = B.windup;   // how far the string was drawn
@@ -2237,11 +2251,23 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                                            LoadoutArmor(c, TroopLoadout(c, s.troop)));
                     const float before = dmg;
                     dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
-                    // The man guards against the hero too (V125).
-                    if (s.guard && Vector3DotProduct(
+                    // The man guards against the hero too — directionally
+                    // (V143): swing INTO his barred line and steel rings
+                    // off steel; pick any other line and it lands, and he
+                    // shifts his guard to cover it. Read the stance, vary
+                    // your swings — that's the whole game.
+                    if (s.guard && !(HasShield(c, s) && s.shieldHp > 0) &&
+                        Vector3DotProduct(
                             Vector3Normalize(Vector3Subtract(B.pPos, s.pos)),
-                            Vector3{ sinf(s.yaw), 0, cosf(s.yaw) }) > 0.2f)
-                        dmg *= 0.4f;   // TODO(balance)
+                            Vector3{ sinf(s.yaw), 0, cosf(s.yaw) }) > 0.2f) {
+                        if (GuardDir(vi, s) == (int)B.attackDir) {
+                            dmg *= 0.15f;   // parried TODO(balance)
+                            SpawnSparks(s.pos);
+                            SfxPlay(Sfx::Clang, 0.7f);
+                        } else {
+                            s.guardDir = (int)B.attackDir;   // learns the line
+                        }
+                    }
                     if (dmg < before) {
                         SpawnSparks(s.pos);
                         SfxPlay(Sfx::Clang, 0.6f);
@@ -2602,22 +2628,52 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     c, cmd.hitSoldier, v, cmd.swingDir,
                     ApplyArmor(cmd.hitDamage,
                                LoadoutArmor(c, TroopLoadout(c, v.troop))));
-                // A held guard turns the blow (V125): if the victim keeps his
-                // guard and the attacker stands in his front arc, most of the
-                // blow is caught. TODO(balance): the factor.
-                if (v.guard && hit > 0) {
+                // Directional weapon guards (V143, was V125's flat soak):
+                // a shieldless man holds his blade across ONE line. Meet
+                // his guard and the blow is parried near-whole; come from
+                // any other side and it lands — and he shifts his guard to
+                // the side that just bled. Skill both ways: easy to learn,
+                // hard to master.
+                if (v.guard && hit > 0 &&
+                    !(HasShield(c, v) && v.shieldHp > 0)) {
                     Vector3 toAtk = Vector3Subtract(B.soldiers[i].pos, v.pos);
                     toAtk.y = 0;
                     const Vector3 face = { sinf(v.yaw), 0, cosf(v.yaw) };
                     if (Vector3LengthSqr(toAtk) > 0.01f &&
-                        Vector3DotProduct(Vector3Normalize(toAtk), face) > 0.2f)
-                        hit *= 0.4f;
+                        Vector3DotProduct(Vector3Normalize(toAtk), face) > 0.2f) {
+                        if (GuardDir(cmd.hitSoldier, v) == cmd.swingDir)
+                            hit *= 0.15f;   // parried on the blade TODO(balance)
+                        else
+                            v.guardDir = cmd.swingDir;   // covers it next time
+                    }
                 }
                 B.dmg[cmd.hitSoldier] += hit;
             }
             if (cmd.hitPlayer) {
-                playerDamage += ApplyArmor(cmd.hitDamage,
-                                           LoadoutArmor(c, B.setup.heroLoadout));
+                float d = ApplyArmor(cmd.hitDamage,
+                                     LoadoutArmor(c, B.setup.heroLoadout));
+                // The hero's block is a stance too (V143): a shield covers
+                // every line (V142); a bare weapon parries only the line of
+                // your LAST mouse flick — matched, the blow dies on the
+                // blade; mismatched, it glances through your arms.
+                if (B.blocking && d > 0) {
+                    if (HeroHasShield(c)) {
+                        d *= BLOCK_MELEE_FACTOR * 0.5f;
+                        B.pShieldHp -= SHIELD_WEAR_PER_HIT;
+                        if (B.pShieldHp <= 0) {
+                            B.cryTimer = 2.0f;
+                            B.cryText  = "YOUR SHIELD SPLINTERS!";
+                            Feed("Your shield splinters");
+                            SfxPlay(Sfx::Knell, 0.6f);
+                        }
+                    } else if ((int)B.lastAim == cmd.swingDir) {
+                        d *= BLOCK_MELEE_FACTOR;   // clean parry
+                        B.soakFlash = 1.0f;
+                    } else {
+                        d *= 0.75f;   // wrong line: it glances through
+                    }
+                }
+                playerDamage += d;
                 B.lastHitFrom  = B.soldiers[i].pos;   // where it came from (V108)
                 B.hitFromTimer = 0.9f;
             }
@@ -2709,23 +2765,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         B.pFlash     = fmaxf(0.0f, B.pFlash - dt * 5.0f);
         B.rallyPulse = fmaxf(0.0f, B.rallyPulse - dt);
         if (playerDamage > 0.0f && B.pHp > 0) {
-            // A shield on the arm blocks better than steel alone (V71), but
-            // the wood wears â€” and can splinter mid-fight.
+            // Block factors are applied PER HIT at accumulation now (V143,
+            // directional parries need each blow's direction) — only the
+            // horse share and the feedback remain here.
             float d = playerDamage;
-            if (B.blocking) {
-                if (HeroHasShield(c)) {
-                    d *= BLOCK_MELEE_FACTOR * 0.5f;
-                    B.pShieldHp -= SHIELD_WEAR_PER_HIT;
-                    if (B.pShieldHp <= 0) {
-                        B.cryTimer = 2.0f;
-                        B.cryText  = "YOUR SHIELD SPLINTERS!";
-                        Feed("Your shield splinters");
-                        SfxPlay(Sfx::Knell, 0.6f);
-                    }
-                } else {
-                    d *= BLOCK_MELEE_FACTOR;
-                }
-            }
             if (B.mounted) {   // the horse soaks its share â€” and can fall
                 const float toHorse = d * HORSE_HIT_SHARE;
                 B.pHorseHp -= toHorse;
@@ -3119,6 +3162,7 @@ void BattleDraw(const Content& c) {
         pose.yaw = s.yaw;
         pose.swing = s.swing;
         pose.blocking = s.guard;   // the raised guard reads on the model (V125)
+        pose.guardDir = s.guard && !HasShield(c, s) ? GuardDir((int)(&s - &B.soldiers[0]), s) : -1;   // V143
         pose.flash = s.flash;
         pose.walkPhase = s.walkPhase;
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding
@@ -3261,6 +3305,7 @@ void BattleDraw(const Content& c) {
     ppose.flash = B.pFlash;
     ppose.attackDir = B.attackDir;
     ppose.blocking = B.blocking;
+    ppose.guardDir = B.blocking && !HeroHasShield(c) ? (int)B.lastAim : -1;   // V143
     ppose.walkPhase = B.walkPhase;
     ppose.weapon = B.setup.heroLoadout.get(EquipSlot::Weapon);
     if (!B.heroDown) {
@@ -3695,6 +3740,7 @@ BattleView GetBattleView() {
     v.heroShots   = B.heroArrowsLoosed;
     v.heroQuiver  = B.heroQuiver;
     v.playerTargeted = B.playerTargeted;
+    v.heroAimDir  = (int)B.attackDir;
     v.dueling     = B.dueling;
     v.heroShieldHp = B.pShieldHp;
     for (int r : B.reserveOwn)   v.reservesOwn += r;

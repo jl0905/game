@@ -59,12 +59,14 @@ Color SlotTint(const Content& content, const Loadout& lo, EquipSlot slot, Color 
 // in local (right, up, fwd) space. Overhead comes from high/back and lands low
 // front; a thrust pulls back then extends forward; side cuts sweep across.
 void SwingArc(AttackDir dir, Vector3& cocked, Vector3& follow) {
+    // V143: the cock is DRASTIC — the blade goes far behind the shoulder
+    // line, so which swing is coming reads from across a duel circle.
     switch (dir) {
-        case AttackDir::Up:    cocked = { 0.1f, 2.3f, -0.5f }; follow = { 0.0f, 0.3f, 1.5f }; break; // overhead
-        case AttackDir::Down:  cocked = { 0.2f, 1.2f, -0.4f }; follow = { 0.1f, 1.1f, 2.0f }; break; // thrust
-        case AttackDir::Left:  cocked = { 1.5f, 1.6f, -0.1f }; follow = { -1.4f, 1.1f, 1.0f }; break; // R->L
+        case AttackDir::Up:    cocked = { 0.25f, 2.65f, -0.95f }; follow = { 0.0f, 0.25f, 1.6f }; break; // overhead
+        case AttackDir::Down:  cocked = { 0.30f, 1.05f, -0.95f }; follow = { 0.1f, 1.15f, 2.1f }; break; // thrust
+        case AttackDir::Left:  cocked = { 1.9f, 1.75f, -0.55f };  follow = { -1.5f, 1.05f, 1.1f }; break; // R->L
         case AttackDir::Right: default:
-                               cocked = { -1.5f, 1.6f, -0.1f }; follow = { 1.4f, 1.1f, 1.0f }; break; // L->R
+                               cocked = { -1.9f, 1.75f, -0.55f }; follow = { 1.5f, 1.05f, 1.1f }; break; // L->R
     }
 }
 
@@ -211,41 +213,80 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                        flashed(DARKBROWN));
     }
 
+    // ---- Weapon line first (V143): the hand FOLLOWS the blade, so the
+    //      whole arm cocks, guards and sweeps instead of hanging still ----
+    const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
+    Vector3 wlHand{ 0.42f, 1.15f, 0.15f };
+    Vector3 wlTip { 0.42f, 1.15f, 1.55f };
+    const bool haveWeapon = content.weapons.valid(wh);
+    const bool rangedW = haveWeapon &&
+                         content.weapons[wh].wclass == WeaponClass::Ranged;
+    if (haveWeapon && !rangedW) {
+        const float reach = content.weapons[wh].reach > 0.5f
+                                ? content.weapons[wh].reach : 1.4f;
+        if (pose.blocking && pose.guardDir >= 0) {
+            // Weapon-guard stances (V143): the blade physically bars the
+            // line it guards — readable, and readable is counterable.
+            switch ((AttackDir)pose.guardDir) {
+                case AttackDir::Up:    wlHand = { -0.35f, 1.95f, 0.30f };
+                                       wlTip  = {  0.60f, 2.02f, 0.30f }; break; // roof
+                case AttackDir::Down:  wlHand = { -0.35f, 0.82f, 0.42f };
+                                       wlTip  = {  0.60f, 0.78f, 0.42f }; break; // low bar
+                case AttackDir::Left:  wlHand = { -0.52f, 0.95f, 0.32f };
+                                       wlTip  = { -0.58f, 1.98f, 0.22f }; break; // hanging left
+                case AttackDir::Right:
+                default:               wlHand = {  0.58f, 0.95f, 0.32f };
+                                       wlTip  = {  0.52f, 1.98f, 0.22f }; break; // hanging right
+            }
+        } else {
+            const Vector3 aim = SwingAim(pose);
+            // The hand travels toward the aim point (V143): a cocked
+            // overhead pulls the fist high behind the head, a thrust
+            // coils it back — the arm shows the direction, drastically.
+            wlHand = Vector3Add(wlHand,
+                                Vector3Scale(Vector3Subtract(aim, wlHand), 0.30f));
+            wlTip = Vector3Add(wlHand,
+                               Vector3Scale(Vector3Normalize(
+                                                Vector3Subtract(aim, wlHand)),
+                                            reach));
+        }
+    }
+
     // ---- Right arm (weapon side): shoulder to elbow to the weapon hand ----
     {
         const Vector3 shoulderR = at(0.32f, 1.52f, 0.0f);
-        const Vector3 elbowR    = at(0.40f, 1.30f, 0.02f);
-        const Vector3 handR     = at(0.42f, 1.15f, 0.15f);
+        const Vector3 handR     = at(wlHand.x, wlHand.y, wlHand.z);
+        // Elbow floats between shoulder and hand, biased outward.
+        const Vector3 elbowR = at(0.32f + (wlHand.x - 0.32f) * 0.5f + 0.08f,
+                                  1.52f + (wlHand.y - 1.52f) * 0.5f,
+                                  (wlHand.z) * 0.5f);
         Cap(shoulderR, elbowR, 0.10f, S(7), R(3), bodyC);
         Cap(elbowR, handR, 0.08f, S(6), R(3), handsC);
     }
 
     // ---- Weapon (the active one; a character may carry several) ----
-    const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
     if (content.weapons.valid(wh)) {
         const WeaponDef& w = content.weapons[wh];
         const float reach = w.reach > 0.5f ? w.reach : 1.4f;
 
-        const Vector3 aim = SwingAim(pose);
-        Vector3 lh, lt;
-        BladeLine(aim, lh, lt, reach);
-        const Vector3 hilt = at(lh.x, lh.y, lh.z);
-        const Vector3 tip  = at(lt.x, lt.y, lt.z);
+        const Vector3 hilt = at(wlHand.x, wlHand.y, wlHand.z);
+        const Vector3 tip  = at(wlTip.x, wlTip.y, wlTip.z);
 
         // (V121) The orange wind-up arc dots are gone by user request — the
         // cocked blade pose itself telegraphs the swing plane well enough.
 
-        // Motion trail: faint ghosts of the blade slightly earlier in the arc.
+        // Motion trail (V143: longer and brighter — slow committed arcs
+        // deserve a wake the eye can follow).
         if (pose.swing > 0.0f && w.wclass != WeaponClass::Ranged) {
             const float p = 1.0f - Clamp(pose.swing, 0.0f, 1.0f);
-            for (int g = 1; g <= 3; ++g) {
-                const float gp = Clamp(p - 0.10f * g, 0.0f, 1.0f);
+            for (int g = 1; g <= 5; ++g) {
+                const float gp = Clamp(p - 0.09f * g, 0.0f, 1.0f);
                 Pose gpose = pose;
                 gpose.swing = 1.0f - gp;
                 Vector3 gh, gt;
                 BladeLine(SwingAim(gpose), gh, gt, reach);
                 Cyl(at(gh.x, gh.y, gh.z), at(gt.x, gt.y, gt.z),
-                               0.02f, 0.01f, 6, Fade(w.tint, 0.18f * (4 - g)));
+                               0.028f, 0.014f, 6, Fade(w.tint, 0.14f * (6 - g)));
             }
         }
 

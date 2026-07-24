@@ -128,6 +128,7 @@ struct BattleView {
     int     heroShots = 0;          // shafts loosed by the hero (V117)
     int     heroQuiver = 0;         // shafts remaining on the hip (V118)
     int     playerTargeted = 0;     // enemies whose chosen foe is the hero (V130)
+    int     heroAimDir = 3;         // current swing direction 0-3 (V143)
     float   heroShieldHp = 0;       // wood left on the hero's arm (V71)
     int     reservesOwn   = 0;      // men waiting off-field (V75)
     int     reservesEnemy = 0;
