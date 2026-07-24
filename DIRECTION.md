@@ -1564,13 +1564,19 @@ this is the feedback the flat numbers were waiting for.
   - [ ] battle aftermath on the land: a big battle's corpses depress the
         nearest town (danger lingers, pool dips) — victory feeds renown
         only through witnesses surviving
-  - [ ] garrisons draw from the recruit pool (not thin air) when they
-        muster daily; a drained pool means walls stay thin
+  - [x] garrisons draw from the recruit pool (V138 — the daily muster
+        consumes Town.recruitPool; no more soldiers from thin air. Chain:
+        prosperity fills the pool → danger/blockade/raids starve
+        prosperity → walls thin themselves; player recruiting competes
+        with the crown's own levies for the same sons)
   - [ ] enterprise goods enter the LIVING market: your brewery's ale
         should ship out on caravans and be priced by scarcity where it
         lands
-  - [ ] lord opinion ← battlefield deeds: fighting BESIDE a lord's host
-        in a joined battle moves his heart, not gift gold alone
+  - [x] lord opinion ← battlefield deeds (V138 — an allied lord whose
+        host you fought beside gains +4 opinion on a shared win, +1 in
+        shared defeat, and his crown +1 relation; probed live: joining
+        Aldric's skirmish and winning read lop: Aldric=+14 including
+        the older help bonuses. tests/shieldbrothers.txt)
   - [ ] estate fields hire from the linked town's pool (labour is
         people); barracks recruits SUBTRACT from the pool they drill
   - [x] remove leftover text behind the bottom-left control panel (V122 —

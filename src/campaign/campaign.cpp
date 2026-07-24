@@ -925,6 +925,16 @@ static void ApplyBattleResult(GameState& gs) {
             ally->troopCounts[t] -= gs.allyLosses[t];
             if (ally->troopCounts[t] < 0) ally->troopCounts[t] = 0;
         }
+        // Brotherhood of the shield wall (V138): a lord whose host you
+        // actually FOUGHT BESIDE remembers it — won together +4, and even
+        // a shared defeat counts for something (+1). His crown warms too.
+        // Deeds move hearts; gift gold is no longer the only road.
+        if (!ally->lord.empty()) {
+            LordOpinion(gs, ally->lord) += gs.battleWon ? 4 : 1;   // TODO(balance)
+            if (gs.battleWon) NudgeRelation(gs, ally->faction, +1);
+            gs.resultText += TextFormat("  %s will remember who stood with him.",
+                                        ally->lord.c_str());
+        }
     }
 
     Party* enemy = ValidParty(gs, gs.battlePartyIndex) ? &gs.parties[gs.battlePartyIndex] : nullptr;
@@ -2885,18 +2895,24 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
-            // Every owner musters two soldiers a day toward the garrison cap
-            // (roadmap B3c; U3 doubled the rate and the caps — walls are
-            // worth manning now).
+            // Walls are manned by the sons of the land (V138): the garrison
+            // musters FROM the recruit pool — the same pool prosperity
+            // fills and the player recruits from. No more soldiers from
+            // thin air: a poor, raided, or bandit-strangled town cannot
+            // man its walls, so danger and poverty weaken defences
+            // emergently, and a blockade starves the pool's replenishment
+            // through prosperity too.
             for (Town& t : gs.towns) {
                 if (t.owner < 0 || t.owner >= c.factions.size()) continue;
                 const int cap = GarrisonCap(t);
                 const std::vector<int>& roster = c.factions[t.owner].roster;
                 for (int m = 0; m < 2 && !roster.empty() &&
+                                t.recruitPool > 0 &&
                                 t.garrisonSize() < cap; ++m) {
                     if ((int)t.garrison.size() < c.troops.size())
                         t.garrison.assign(c.troops.size(), 0);
                     t.garrison[roster[t.garrisonSize() % (int)roster.size()]]++;
+                    t.recruitPool--;   // the man came from somewhere
                 }
             }
 

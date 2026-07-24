@@ -1,0 +1,14 @@
+# Brotherhood of the shield wall (V138): fight BESIDE a lord's host and he
+# remembers - won together is +4 opinion (plus any older help bonuses),
+# and his crown warms +1. Fixture: Lord Aldric's patrol brawls raiders
+# next to the player; join his side, resolve on paper, and expect a
+# "lop: Aldric=+N" line with N > 0 after the field clears. Also V138:
+# town garrisons now muster FROM the recruit pool (pool=- lines shrink
+# as garrisons grow after each dawn - no soldiers from thin air).
+load tests/fixtures/shieldbro.owb
+wait 2
+join 1
+autoresolve
+tick 6
+state
+quit

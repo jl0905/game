@@ -45,6 +45,10 @@ Modding surfaces are in MODDING.md.)
   pays prosperity directly; the wagons do.
 - **Fortify** your own walls (gold) to make their sieges bloodier for the
   attacker. AI towns self-fortify when rich.
+- **Garrisons muster from the recruit pool** — the same sons of the land
+  you recruit from. A poor, raided, or bandit-strangled town cannot man
+  its walls; starve the pool (blockade, raids, danger) and the defences
+  thin themselves.
 
 ## Economy
 
@@ -94,7 +98,10 @@ Modding surfaces are in MODDING.md.)
   afield, wars (click to sue for peace or declare), the tax lever (higher
   taxes bite prosperity), and the day's full income/wage books.
 - **Lords** have opinions of you — gifts, feasts, relief of their sieges,
-  freed captives all count; scorned lords of yours can defect at dawn.
+  freed captives all count — and above all, **deeds in the field**:
+  fight beside a lord's host in a joined battle and he remembers (+4 won
+  together, +1 even in shared defeat; his crown warms too). Scorned
+  lords of yours can defect at dawn.
   Captured lords escape if unguarded (a jailer companion helps).
 - **Crowned?** Raise new lords in owned settlements, grant fiefs, host
   feasts, and mind the chronicle — victory and defeat both get a screen,

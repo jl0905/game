@@ -1,0 +1,12 @@
+OWSAVE 1
+gold 300
+day 0
+clock 20
+playerpos 1480 1500
+ptroop infantry 8
+hero 1 0 0
+carry sword
+party patrol 1520 1500 Aldric
+troop infantry 6
+party raiders 1522 1500
+troop marauder 6
