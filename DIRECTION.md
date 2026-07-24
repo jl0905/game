@@ -1635,6 +1635,18 @@ this is the feedback the flat numbers were waiting for.
   via a per-victim last-hitter tally. veterancy.txt re-pinned (two-crown
   neutrality had silently broken its hunt; now a deterministic fixture
   that wins, promotes for the quoted 287g, and round-trips the save).
+- [x] **V145. Iteration one-forty-five — the audio redesign (user ask).**
+  One mastering chain on every synthesized buffer at init (zero runtime
+  cost): one-pole low-pass for the muted body, tanh soft-clip so nothing
+  ever hard-clips, a 25%-mix 7-bit/half-rate bitcrush for grain, peak
+  normalisation to fixed headroom, 2ms edge fades against boundary
+  clicks. Sounds rebuilt semi-realistic: thuds are dull noise-body
+  knocks (no sine whistle), clangs are heavily low-passed beating
+  steel, loose/swing/click are pure shaped noise, fanfare/lute/music
+  gain detuned twin voices, drums felt more than heard. Anti-layering:
+  per-effect cooldowns (MIN_GAP table) plus a 120ms global voice budget
+  that ducks past 6 voices and drops past 14; master volume 0.85.
+  Suite green, bench 10.96ms — no runtime cost.
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve
