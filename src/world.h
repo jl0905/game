@@ -93,6 +93,14 @@ struct Town {
     // holds it. TODO(balance).
     bool fortified = false;
 
+    // The road-danger economy (V137): both transient, recomputed/consumed at
+    // dawn. `danger` counts hostile-to-the-owner parties prowling nearby —
+    // caravans refuse dangerous destinations and frightened markets wither;
+    // `tradeVisits` counts caravan arrivals since the last dawn — TRADE, not
+    // arrival handouts, is what grows prosperity now.
+    int danger      = 0;
+    int tradeVisits = 0;
+
     int garrisonSize() const {
         int n = 0;
         for (int c : garrison) n += c;

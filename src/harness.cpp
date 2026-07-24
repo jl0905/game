@@ -247,11 +247,13 @@ struct Harness {
             std::printf("result=\"%s\"\n", gs.resultText.c_str());
         for (int t = 0; t < (int)gs.towns.size(); ++t) {
             const Town& tw = gs.towns[t];
-            std::printf("town %d: %s owner=%s garrison=%d prosper=%d pool=%d%s%s%s dist=%.0f\n",
+            std::printf("town %d: %s owner=%s garrison=%d prosper=%d pool=%d "
+                        "danger=%d visits=%d%s%s%s dist=%.0f\n",
                         t, tw.name.c_str(),
                         (tw.owner >= 0 && tw.owner < c.factions.size())
                             ? c.factions[tw.owner].id.c_str() : "none",
                         tw.garrisonSize(), tw.prosperity, tw.recruitPool,
+                        tw.danger, tw.tradeVisits,
                         tw.fiefLord.empty() ? "" : " fief=",
                         tw.fiefLord.c_str(),
                         tw.fortified ? " FORT" : "",

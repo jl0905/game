@@ -1548,8 +1548,31 @@ this is the feedback the flat numbers were waiting for.
         honor −3, relation −5, chronicled as a black deed)
   - [ ] items/skills feed player stats: worn gear + attributes move
         real numbers (carry cap, party size already via CHA) (user ask)
-  - [ ] caravans that ARRIVE enrich the destination's prosperity —
-        trade routes you can protect or strangle (user ask)
+  - [x] caravans that ARRIVE enrich the destination — and the whole road
+        web around it (V137, the integration loop's first pass: the
+        road-danger economy. Town.danger counts hostile bands within 300u
+        at dawn; caravans SKIP dangerous destinations while any safe
+        market exists; frightened markets lose prosperity, arriving
+        wagons — tallied as tradeVisits, no more flat +5 — grow it; and
+        patrol crowns steer their parties to their most endangered town,
+        where the existing skirmish system cuts the raiders down. Full
+        emergent chain: lair → raiders → danger → trade flees + patrols
+        converge → raiders die → roads reopen → prosperity returns.
+        danger=/visits= in the town dump; tests/roaddanger.txt)
+- [ ] **Integration loop (2026-07-23, every 6 min): make systems feed
+  each other, not numbers.** Next candidates, in rough order:
+  - [ ] battle aftermath on the land: a big battle's corpses depress the
+        nearest town (danger lingers, pool dips) — victory feeds renown
+        only through witnesses surviving
+  - [ ] garrisons draw from the recruit pool (not thin air) when they
+        muster daily; a drained pool means walls stay thin
+  - [ ] enterprise goods enter the LIVING market: your brewery's ale
+        should ship out on caravans and be priced by scarcity where it
+        lands
+  - [ ] lord opinion ← battlefield deeds: fighting BESIDE a lord's host
+        in a joined battle moves his heart, not gift gold alone
+  - [ ] estate fields hire from the linked town's pool (labour is
+        people); barracks recruits SUBTRACT from the pool they drill
   - [x] remove leftover text behind the bottom-left control panel (V122 —
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)

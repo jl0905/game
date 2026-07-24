@@ -36,6 +36,13 @@ Modding surfaces are in MODDING.md.)
 - **Prosperity** (30–150) is a town's lifeblood: it scales market stock,
   recruit pools, enterprise income, and estate field rent. War, taxes,
   storms, and events push it around; caravans and deposits feed it.
+- **The road-danger economy:** every town tracks *danger* — hostile bands
+  prowling its land. Caravans refuse dangerous destinations, frightened
+  markets wither, and patrol factions converge on their endangered towns.
+  Prosperity grows from caravans that actually *arrive* (tallied each
+  dawn), so burning out a bandit lair genuinely revives a whole region:
+  fewer raiders → danger falls → trade returns → the town blooms. Nothing
+  pays prosperity directly; the wagons do.
 - **Fortify** your own walls (gold) to make their sieges bloodier for the
   attacker. AI towns self-fortify when rich.
 

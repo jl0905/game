@@ -114,14 +114,21 @@ bool TradesAnywhere(const GameState& gs, int faction) {
 int NearestTradeStop(const GameState& gs, int faction, Vector2 pos, int avoid) {
     if (!TradesAnywhere(gs, faction))
         return NearestOwnedTown(gs, faction, pos, avoid);
-    int best = -1;
-    float bestD = 1e9f;
-    for (int t = 0; t < (int)gs.towns.size(); ++t) {
-        if (t == avoid || AtWar(gs, faction, gs.towns[t].owner)) continue;
-        const float d = Vector2Distance(pos, gs.towns[t].pos);
-        if (d < bestD) { bestD = d; best = t; }
+    // Merchants fear the roads (V137): a destination with bandits prowling
+    // its land is skipped while ANY safe market exists — killing the lairs
+    // that breed them is what reopens the routes.
+    for (int pass = 0; pass < 2; ++pass) {
+        int best = -1;
+        float bestD = 1e9f;
+        for (int t = 0; t < (int)gs.towns.size(); ++t) {
+            if (t == avoid || AtWar(gs, faction, gs.towns[t].owner)) continue;
+            if (pass == 0 && gs.towns[t].danger >= 2) continue;   // TODO(balance)
+            const float d = Vector2Distance(pos, gs.towns[t].pos);
+            if (d < bestD) { bestD = d; best = t; }
+        }
+        if (best >= 0) return best;
     }
-    return best;
+    return -1;
 }
 
 Vector2 RandomEdgePos() {
@@ -2020,7 +2027,11 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 if (e.caravanTo >= 0) {
                     Town& dest = gs.towns[e.caravanTo];
                     if (Vector2Distance(e.pos, dest.pos) < 30.0f) {
-                        dest.prosperity = std::min(dest.prosperity + 5, 150);  // TODO(balance)
+                        // Trade counts, coin follows (V137): the arrival is
+                        // TALLIED; prosperity moves at dawn from the sum of
+                        // visits against the fear on the roads — no more
+                        // flat handout per wagon.
+                        dest.tradeVisits++;
                         // Unload the freight into the destination's market —
                         // caravans genuinely move wares between towns. A
                         // player convoy sells its load (M4): each unit fetches
@@ -2942,6 +2953,51 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                         else if (gs.taxRate == 0)
                             t.prosperity = std::min(150, t.prosperity + 1);
                     }
+                }
+            }
+
+            // The road-danger economy (V137): count the wolves near every
+            // town, let trade and fear settle the books, then reset the
+            // tallies. The chain is fully emergent — lairs breed raiders,
+            // raiders raise danger, danger turns caravans away and dents
+            // the market, patrols converge and cut the raiders down, the
+            // roads reopen, and the wagons themselves bring the recovery.
+            {
+                constexpr float DANGER_RADIUS = 300.0f;   // TODO(balance)
+                for (Town& t : gs.towns) {
+                    t.danger = 0;
+                    for (const Party& p : gs.parties)
+                        if (p.alive && !p.caravan &&
+                            AreFactionsHostile(c, p.faction, t.owner) &&
+                            Vector2Distance(p.pos, t.pos) < DANGER_RADIUS)
+                            t.danger++;
+                    // Trade grows the town (up to +2), fear shrinks it (−1);
+                    // both flow through the SAME prosperity number that
+                    // prices shelves, fills levies and pays estates.
+                    const int gain = std::min(t.tradeVisits, 2);   // TODO(balance)
+                    if (gain > 0)
+                        t.prosperity = std::min(150, t.prosperity + gain);
+                    if (t.danger >= 2)
+                        t.prosperity = std::max(30, t.prosperity - 1);
+                    t.tradeVisits = 0;
+                }
+                // The crowns police their own land (V137): each faction's
+                // patrolling parties steer for their most endangered town —
+                // the existing skirmish system does the rest.
+                for (Party& p : gs.parties) {
+                    if (!p.alive || p.engaged || p.caravan || !p.lord.empty())
+                        continue;
+                    if (!c.factions.valid(p.faction) ||
+                        c.factions[p.faction].behavior != PartyBehavior::Patrol)
+                        continue;
+                    int worst = -1, worstDanger = 1;   // only real trouble
+                    for (int t = 0; t < (int)gs.towns.size(); ++t)
+                        if (gs.towns[t].owner == p.faction &&
+                            gs.towns[t].danger > worstDanger) {
+                            worstDanger = gs.towns[t].danger;
+                            worst = t;
+                        }
+                    if (worst >= 0) p.wanderTarget = gs.towns[worst].pos;
                 }
             }
 

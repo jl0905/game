@@ -1,0 +1,11 @@
+# The road-danger economy (V137): danger= counts hostile parties prowling
+# each town's land, recomputed at dawn. Fixture: herd.owb parks a 40-man
+# marauder band right on Jelkala (town 3) - after one dawn, expect
+# danger>0 on town 3 in the dump while remote towns read danger=0, and
+# caravan destinations (NearestTradeStop) skip dangerous markets, so
+# trade visits concentrate on safe roads. Prosperity now moves at dawn
+# from visits and fear, not from flat arrival bonuses.
+load tests/fixtures/roaddng.owb
+wait 4
+state
+quit

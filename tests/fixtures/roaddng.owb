@@ -1,0 +1,12 @@
+OWSAVE 1
+gold 300
+day 0
+clock 59
+playerpos 80 80
+ptroop infantry 5
+hero 1 0 0
+carry sword
+party raiders 2250 2280
+troop marauder 20
+party raiders 2200 2250
+troop brigand 10
