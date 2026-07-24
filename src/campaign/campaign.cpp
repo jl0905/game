@@ -692,14 +692,28 @@ void CampaignInit(GameState& gs) {
     gs.playerLosses.assign(c.troops.size(), 0);
     gs.troopXp.assign(c.troops.size(), 0);
     gs.prisoners.assign(c.troops.size(), 0);
-    const std::vector<int> roamers = RoamingFactions(c);
-    for (int i = 0; i < c.map.startingParties; ++i)
+    // A landless crown fields no hosts (V140): kingdoms only muster parties
+    // and lords while they hold at least one settlement — conquer a crown
+    // out of its last town and its banners vanish from the roads. (Outlaws,
+    // travellers and free companies need no land; they are the weather.)
+    auto fieldsHosts = [&](int f) {
+        if (!c.factions.valid(f) || !c.factions[f].kingdom) return true;
+        for (const Town& t : gs.towns)
+            if (t.owner == f) return true;
+        return false;
+    };
+    std::vector<int> roamers;
+    for (int f : RoamingFactions(c))
+        if (fieldsHosts(f)) roamers.push_back(f);
+    for (int i = 0; i < c.map.startingParties && !roamers.empty(); ++i)
         gs.parties.push_back(MakeParty(c, roamers[i % roamers.size()], RandomEdgePos()));
 
     // Lords muster their hosts at a settlement their faction holds.
-    for (int f = 0; f < c.factions.size(); ++f)
+    for (int f = 0; f < c.factions.size(); ++f) {
+        if (!fieldsHosts(f)) continue;
         for (const std::string& name : c.factions[f].lords)
             gs.parties.push_back(MakeLordParty(c, f, name, FactionHome(gs, f)));
+    }
 
     gs.relations.assign(c.factions.size(), 0);
 
@@ -3190,8 +3204,21 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         for (const auto& e : gs.parties) if (e.alive) aliveCount++;
         if (gs.spawnTimer > 20 && aliveCount < 8) {
             gs.spawnTimer = 0;
-            const std::vector<int> roamers = RoamingFactions(c);
-            gs.parties.push_back(MakeParty(c, roamers[GetRandomValue(0, (int)roamers.size() - 1)], RandomEdgePos()));
+            // Landless crowns stay silent here too (V140).
+            std::vector<int> roamers;
+            for (int f : RoamingFactions(c)) {
+                if (c.factions[f].kingdom) {
+                    bool holds = false;
+                    for (const Town& t : gs.towns)
+                        if (t.owner == f) { holds = true; break; }
+                    if (!holds) continue;
+                }
+                roamers.push_back(f);
+            }
+            if (!roamers.empty())
+                gs.parties.push_back(MakeParty(
+                    c, roamers[GetRandomValue(0, (int)roamers.size() - 1)],
+                    RandomEdgePos()));
         }
     }
 
@@ -3450,17 +3477,20 @@ void CampaignDraw(const GameState& gs) {
         // against the zoom) so the map reads fully zoomed out, in the
         // owner's colour with a banner chip — the crown at a glance.
         {
+            // Names pop (V140, user ask): bigger type, a darker plate, and
+            // WHITE lettering with the owner's colour kept on the chip —
+            // owner tints were too dim to read against the biome paint.
             const float iz  = 1.0f / g_mapZoom;
-            const int   fs  = (int)(17.0f * iz);
-            const float lx  = t.pos.x - 40.0f * iz;
+            const int   fs  = (int)(21.0f * iz);
+            const float lx  = t.pos.x - 44.0f * iz;
             const float ly  = t.pos.y + 24.0f * iz;
-            DrawRectangle((int)(lx - 6 * iz), (int)ly,
-                          (int)((ui::Measure(t.name.c_str(), fs)) + 30 * iz),
-                          (int)(22.0f * iz), Fade(BLACK, 0.45f));
-            DrawRectangle((int)(lx - 2 * iz), (int)(ly + 5 * iz),
-                          (int)(10 * iz), (int)(12 * iz), ownerCol);   // chip
-            ui::Text(t.name.c_str(), (int)(lx + 12 * iz), (int)(ly + 2 * iz),
-                     fs, ownerValid ? ownerCol : RAYWHITE);
+            DrawRectangle((int)(lx - 7 * iz), (int)ly,
+                          (int)((ui::Measure(t.name.c_str(), fs)) + 34 * iz),
+                          (int)(27.0f * iz), Fade(BLACK, 0.7f));
+            DrawRectangle((int)(lx - 3 * iz), (int)(ly + 6 * iz),
+                          (int)(11 * iz), (int)(15 * iz), ownerCol);   // chip
+            ui::Text(t.name.c_str(), (int)(lx + 13 * iz), (int)(ly + 3 * iz),
+                     fs, RAYWHITE);
         }
         DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(ownerCol, 0.45f));
     }

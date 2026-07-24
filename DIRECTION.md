@@ -1561,9 +1561,31 @@ this is the feedback the flat numbers were waiting for.
         danger=/visits= in the town dump; tests/roaddanger.txt)
 - [ ] **Integration loop (2026-07-23, every 6 min): make systems feed
   each other, not numbers.** Next candidates, in rough order:
-  - [ ] battle aftermath on the land: a big battle's corpses depress the
-        nearest town (danger lingers, pool dips) — victory feeds renown
-        only through witnesses surviving
+  - [x] battle aftermath on the land (V139 — trampled fields: 20+ dead
+        within 250u of a settlement costs it 2 prosperity, resolved
+        skirmishes cost 1; fight your wars at the border or pay at home)
+  - [x] living diplomacy (V139 — both crowns under 75 avg prosperity
+        make peace; a crown fat over 130 and at peace declares on the
+        weakest realm; chronicled, markups refresh, vassals realign.
+        tests/diplomacy.txt pins both halves)
+  - [x] trunk roads (V139, user ask — MST + one local link per town
+        replaces the all-pairs hairball; draw and travel-speed share
+        RoadNetwork())
+- [x] **V140. Iteration one-forty — a legible world (user asks).** Two
+  crowns only: Sarleon vs Vaelings, player starts NEUTRAL; patrol/nords
+  retired from the shipped world (still registered for old saves/mods —
+  factions stay data-driven in factions.cfg) via the new rule "a
+  landless crown fields no hosts" (which also means conquering a crown
+  out of its last town silences its banners — emergent elimination).
+  Settlement names pop: bigger white lettering on a darker plate, owner
+  colour on the chip. The mounted player's blue crate is now a saddle
+  pad laid across the barrel. Dialogue gossip caps at the three best
+  stories (rotating daily) and the dialogue screen never draws more
+  than six lines — topic buttons stay reachable.
+  - [ ] horses accelerate into the gallop (speed ramps, not instant)
+        (user ask 2026-07-23)
+  - [ ] armor changes the MODEL: different worn tiers read as visibly
+        different silhouettes on player and NPCs alike (user ask)
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve

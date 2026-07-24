@@ -1,12 +1,13 @@
-# Living diplomacy (V139): wars end and begin from prosperity itself -
-# the same number trade, war-grind, storms and taxes already move.
-# Fixture: patrol's towns doctored fat (prosper 140+) and at peace with
-# every crown; sarleon and vaeling doctored poor (60) and at war. After
-# a few dawns the chronicle must gain BOTH lines: "Exhausted, ... make
-# peace." (sarleon+vaeling under 75 each) and "Fat with peace, ...
-# declares war" (patrol coveting a weak realm). clock 59 fixture makes
-# dawns land fast; player parked in a quiet corner.
+# Living diplomacy (V139, re-pinned for the V140 two-crown world): wars
+# end and begin from prosperity itself. Part A: both crowns' realms
+# doctored to 60 - the next dawns must chronicle "Exhausted, ... make
+# peace." Part B (diplo2): Sarleon fat (145) and at peace covets - the
+# chronicle must gain "Fat with peace, Sarleon declares war on ...".
 load tests/fixtures/diplo.owb
+wait 4
+wait 65
+state
+load tests/fixtures/diplo2.owb
 wait 4
 wait 65
 wait 65

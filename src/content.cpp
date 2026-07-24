@@ -749,13 +749,14 @@ void LoadDefaultContent(Content& c) {
         if (f != f_raiders)   war(f_raiders, f);
         if (f != f_deserters) war(f_deserters, f);
     }
-    war(f_sarleon, c.playerFaction);   // two crowns, one land
-    war(f_sarleon, f_patrol);          // ...and Sarleon presses its claim on the
-                                       // old order too. The patrols stay at
-                                       // peace with your warband only.
-    war(f_vaeling, f_sarleon);         // the sea-kings raid the rival crown
-    war(f_vaeling, f_patrol);          // ...and the old order's coasts alike;
-                                       // they have no quarrel with you (yet).
+    // Two crowns, one war (V140, user ask: a legible world). Sarleon and
+    // the Vaelings fight over the land; your warband starts NEUTRAL with
+    // both — pick a side by oath, by steel, or stay a free captain. The
+    // living diplomacy (V139) can redraw this map later. `patrol` remains
+    // registered (old saves and mods reference it) but holds no towns in
+    // the shipped map, and a landless crown fields no hosts.
+    war(f_vaeling, f_sarleon);
+    (void)f_patrol;
 
     // Wars declared in factions.cfg (V104) join the base table here.
     for (const auto& wp : cfgWars) {

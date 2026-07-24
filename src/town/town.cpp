@@ -76,17 +76,22 @@ std::vector<std::string> GatherLines(const GameState& gs, bool guards) {
         lines.push_back("Mind the well after dark, stranger.");
         lines.push_back("Soldiers drink the tavern dry these days.");
     }
-    // Gossip: the war reaches every ear.
+    // Gossip: the war reaches every ear — but a talker picks his THREE
+    // best stories (V140, user ask): a busy world was flooding the screen
+    // and shoving the topic buttons out of reach. Rotates with the day.
     const Content& c = gs.content;
+    std::vector<std::string> gossip;
     for (const AISiege& sg : gs.aiSieges)
         if (sg.town >= 0 && sg.town < (int)gs.towns.size())
-            lines.push_back(TextFormat("They say %s is under siege!",
-                                       gs.towns[sg.town].name.c_str()));
+            gossip.push_back(TextFormat("They say %s is under siege!",
+                                        gs.towns[sg.town].name.c_str()));
     for (const Town& t : gs.towns)
         if (t.owner >= 0 && t.owner < c.factions.size() &&
             AtWar(gs, t.owner, c.playerFaction))
-            lines.push_back(TextFormat("%s flies the %s banner now. Dark days.",
-                                       t.name.c_str(), c.factions[t.owner].name.c_str()));
+            gossip.push_back(TextFormat("%s flies the %s banner now. Dark days.",
+                                        t.name.c_str(), c.factions[t.owner].name.c_str()));
+    for (int i = 0; i < 3 && !gossip.empty(); ++i)
+        lines.push_back(gossip[(gs.day + i) % (int)gossip.size()]);
     return lines;
 }
 
@@ -1104,9 +1109,14 @@ void DialogueDraw(const GameState& gs) {
                                               : Fade(RAYWHITE, 0.7f));
     }
 
+    // Belt and braces (V140): however the lines got here, never draw more
+    // than six — the topic rows below must stay on screen.
     int y = 270;
-    for (const std::string& line : gs.dialogueLines) {
-        ui::Text(TextFormat("\"%s\"", line.c_str()), x, y, 22, RAYWHITE);
+    const size_t firstLine = gs.dialogueLines.size() > 6
+                                 ? gs.dialogueLines.size() - 6 : 0;
+    for (size_t li = firstLine; li < gs.dialogueLines.size(); ++li) {
+        ui::Text(TextFormat("\"%s\"", gs.dialogueLines[li].c_str()), x, y, 22,
+                 RAYWHITE);
         y += 32;
     }
 

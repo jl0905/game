@@ -6,16 +6,16 @@ playerpos 80 80
 ptroop infantry 5
 hero 1 0 0
 carry sword
-prosper 1 60
-prosper 4 60
-prosper 6 60
-prosper 8 60
-prosper 10 60
-prosper 11 60
-prosper 12 60
-prosper 19 60
-prosper 21 60
-prosper 22 60
+prosper 1 145
+prosper 4 145
+prosper 6 145
+prosper 8 145
+prosper 10 145
+prosper 11 145
+prosper 12 145
+prosper 19 145
+prosper 21 145
+prosper 22 145
 prosper 3 60
 prosper 5 60
 prosper 7 60
@@ -26,3 +26,4 @@ prosper 17 60
 prosper 18 60
 prosper 20 60
 prosper 23 60
+diplo sarleon vaeling 0 0 0
