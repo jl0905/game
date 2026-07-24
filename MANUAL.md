@@ -11,12 +11,17 @@ Modding surfaces are in MODDING.md.)
 - **Click-to-travel.** Click a town from afar and your party sets a course,
   self-steering there with time flowing; any manual input takes the reins
   back. Within 48 units of a gate, a click walks you straight in.
-- **Terrain & roads.** Plains, forest (slower), mountains (slowest). Roads
+- **Terrain & roads.** Plains, forest (slower), mountains (slowest). Trunk
+  roads (a spanning network, not a tangle)
   (bright sand over dark earth) join nearby settlements — full pace on them
   whatever the ground. A **scout** companion marches the band 15% faster.
 - **The storm.** One weather cell drifts the map: travel at 0.75× inside it,
   battles there are fought in rain, and crops suffer where it sits at dawn.
-- **The world.** 26 settlements (towns, castles, villages) across factions,
+- **The world.** Two crowns - Sarleon and the Vaelings - contest 26
+  settlements (towns, castles, villages); you start neutral with both.
+  Wars end and begin on their own: exhausted realms make peace, fat ones
+  covet. A crown conquered out of its last town fields no more hosts.
+  Also present:
   bandit lairs breeding raiders until burned out, lord parties (150 strong),
   caravans, and roaming warbands. Factions war and besiege each other
   without you; two hostile parties that collide fight a **skirmish** you can
