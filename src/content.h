@@ -157,6 +157,23 @@ struct EventDef {
                                   // manpower too
 };
 
+// An estate/town building (V135, the kingdom-management track). One registry
+// serves BOTH the player's personal estate and (later) town projects — the
+// Skyrim-homestead / personal-castle layer, kept rooted in the battle-sim
+// core: every effect hooks an EXISTING system by id, no new parallel logic.
+//   effect ids wired so far: "fields"  (daily gold by linked prosperity),
+//   "barracks" (+party cap, +recruit pool), "smithy" (promotions cheaper),
+//   "granary" (hunger never bites while it stands), "walls" (estate battles
+//   fight fortified). New effects = new string + one hook site.
+struct BuildingDef {
+    std::string id;
+    std::string name;
+    std::string desc;      // one line shown in the estate hall
+    int         cost = 0;  // TODO(balance): gold to start construction
+    int         days = 0;  // TODO(balance): dawns until it stands
+    std::string effect;    // hook id (see above)
+};
+
 // A hero attribute (roadmap D3). Pure structure: `hook` documents what the
 // attribute WILL modify once balancing begins; nothing reads values yet.
 struct AttributeDef {
@@ -244,6 +261,7 @@ struct Content {
     Registry<EnterpriseDef> enterprises;
     Registry<QuestDef>     quests;
     Registry<EventDef>     events;
+    Registry<BuildingDef>  buildings;   // estate & town works (V135)
     MapDef                 map;
 
     int playerFaction = -1;  // resolved after loading

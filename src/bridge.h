@@ -66,6 +66,12 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         const Party& foe = gs.parties[gs.battlePartyIndex];
         s.enemyTroops = foe.troopCounts;
         s.campaignPos = gs.player.pos;
+        // Fighting on your own ground (V135): with Stone Walls raised, a
+        // field battle inside the estate's lands is fought fortified.
+        if (EstateHas(gs, "walls") && gs.estateTown >= 0 &&
+            gs.estateTown < (int)gs.towns.size() &&
+            Vector2Distance(gs.player.pos, gs.towns[gs.estateTown].pos) < 150.0f)
+            s.fortified = true;
         s.enemyLordName = foe.lord;   // he rides in person (V101)
         if (gs.content.factions.valid(foe.faction))    // their colours (V105)
             s.enemyTint = gs.content.factions[foe.faction].color;

@@ -618,6 +618,47 @@ void LoadDefaultContent(Content& c) {
         }
     }
 
+    // ---- Estate & town works (V135, kingdom-management track) -------------
+    // One registry for the personal-estate buildings (and later, town
+    // projects). Effects are hook ids — see BuildingDef in content.h.
+    // TODO(balance): all costs and build times.
+    c.buildings.add({ "hall",     "Manor Hall",   "the roof over your name; raised at founding", 0,   0, "hall" });
+    c.buildings.add({ "fields",   "Tilled Fields","farmhands pay rent by the linked town's prosperity", 400, 3, "fields" });
+    c.buildings.add({ "barracks", "Barracks",     "houses ten more men, and drills the town's pool",    600, 4, "barracks" });
+    c.buildings.add({ "smithy",   "Estate Smithy","your own forge: promotions cost 15% less",           500, 3, "smithy" });
+    c.buildings.add({ "granary",  "Granary",      "a full store: hunger never thins your ranks",        350, 2, "granary" });
+    c.buildings.add({ "walls",    "Stone Walls",  "estate battles are fought from fortifications",      800, 6, "walls" });
+
+    // Moddable buildings: assets/buildings.cfg —
+    //   building <id> <Name_with_underscores> <cost> <days> <effect> <desc_with_underscores>
+    {
+        const std::string candidates[] = {
+            IsWindowReady()
+                ? std::string(GetApplicationDirectory()) + "assets/buildings.cfg"
+                : "assets/buildings.cfg",
+            "assets/buildings.cfg", "../assets/buildings.cfg" };
+        std::string path;
+        for (const std::string& p : candidates)
+            if (FileExists(p.c_str())) { path = p; break; }
+        if (!path.empty()) {
+            std::ifstream f(path);
+            std::string line;
+            while (std::getline(f, line)) {
+                if (const auto hash = line.find('#'); hash != std::string::npos)
+                    line.erase(hash);
+                std::istringstream ss(line);
+                std::string tag, id, name, effect, desc;
+                int cost = 300, days = 3;
+                if (!(ss >> tag) || tag != "building") continue;
+                if (!(ss >> id >> name >> cost >> days >> effect >> desc)) continue;
+                if (c.buildings.find(id.c_str()) >= 0) continue;
+                for (char& ch : name) if (ch == '_') ch = ' ';
+                for (char& ch : desc) if (ch == '_') ch = ' ';
+                c.buildings.add({ id, name, desc, cost, days, effect });
+            }
+        }
+    }
+
     // ---- Quests (direction F4) -------------------------------------------
     // Shapes only; givers rotate through them. TODO(balance): all rewards.
     // Deadlines (V59): every task now carries a clock — miss it and the

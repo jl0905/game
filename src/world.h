@@ -270,6 +270,13 @@ struct GameState {
     // The journal (V124): every quest taken, done, or failed — newest first,
     // capped, saved with the game (qlog tag).
     std::vector<std::string> questLog;
+    // The personal estate (V135, kingdom-management track): founded outside
+    // a friendly town's gate; buildings come from the content registry and
+    // hook existing systems. One work in progress at a time.
+    int estateTown = -1;                      // linked town, -1 = no estate
+    std::vector<unsigned char> estateBuilt;   // parallel to content.buildings
+    int   estateWork     = -1;                // building under construction
+    float estateWorkDays = 0;                 // dawns left on it
     float   musterDays = 0;    // days left to answer
     bool    lordsRally = false;
     Vector2 lordsRallyPos{};
@@ -509,10 +516,22 @@ inline int HeroAttr(const GameState& gs, int i) {
                ? gs.playerHero.attributes[i] : 0;
 }
 
+// Does the estate have a standing building with this effect id? (V135)
+inline bool EstateHas(const GameState& gs, const char* effect) {
+    if (gs.estateTown < 0) return false;
+    for (int b = 0; b < gs.content.buildings.size() &&
+                    b < (int)gs.estateBuilt.size(); ++b)
+        if (gs.estateBuilt[b] && gs.content.buildings[b].effect == effect)
+            return true;
+    return false;
+}
+
 // Party-size cap (M1): a base band plus one man per point of renown — and
 // one per point of Charisma (V14: the attributes awaken). TODO(balance).
+// An estate barracks houses ten more (V135).
 inline int PartyCap(const GameState& gs) {
-    return 20 + gs.renown + HeroAttr(gs, 3);
+    return 20 + gs.renown + HeroAttr(gs, 3) +
+           (EstateHas(gs, "barracks") ? 10 : 0);
 }
 
 // Renown a crown demands before it accepts an oath (M1). TODO(balance).

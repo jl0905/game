@@ -1,0 +1,21 @@
+# The personal estate (V135): E near a friendly town founds the manor for
+# 1000 gold; buildings come from the registry (buildings.cfg-moddable) and
+# hook real systems. This script founds by Jelkala (start position), builds
+# the granary (350g, 2 days), waits two dawns (clock 59 fixture would be
+# faster; plain waits work too), and checks: estate line appears, work
+# completes (built=[hall granary ]), and the barracks raises the party cap
+# by 10 after building it (cap= in the estate dump).
+load tests/fixtures/manor.owb
+estate
+state
+build granary
+state
+leave
+wait 130
+state
+# Part 2 - the barracks effect, deterministic via a doctored save with the
+# building already standing: party cap must read 30 (20 base + 10 barracks)
+# in the estate dump, and the granary must survive the save/load round trip.
+load tests/fixtures/manor2.owb
+state
+quit

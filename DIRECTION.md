@@ -1517,6 +1517,32 @@ this is the feedback the flat numbers were waiting for.
         LoadModel/UpdateModelAnimation — a models.cfg mapping troop ids
         to assets/models/*.glb would let professionally-made models drop
         in without code changes; procedural stays the fallback
+- [x] **V135. Iteration one-thirty-five — the personal estate (kingdom-
+  management track opens).** [E] near a friendly town founds your manor
+  (1000g), linked to that town. BuildingDef registry (+ buildings.cfg
+  modding): Tilled Fields (rent by linked prosperity), Barracks (+10
+  party cap, +1 town pool/day), Estate Smithy (promotions −15%),
+  Granary (hunger never bites), Stone Walls (estate-land battles fight
+  fortified). One work at a time, masons take days, dawn advances it;
+  estate screen with clickable rows; saved (estate/ebuilt/ework tags);
+  `estate`/`build` harness commands + estate: dump. MANUAL.md born the
+  same cycle (user ask): the living how-it-plays reference.
+  `tests/estate.txt`.
+- [ ] **Kingdom-management / grand-strategy track (user direction
+  2026-07-23, take Warband-mod inspiration, stay battle-core):**
+  - [ ] town projects: the same BuildingDef registry building city works
+        in owned towns (training yard→drill, market hall→prosperity,
+        wall tiers→fortify levels)
+  - [ ] estate raids: hostile lords attack your manor; defend it on your
+        own fortified ground (walls building pays off in person)
+  - [ ] pre-battle parley screen: talk before steel — bribe your way
+        out, demand surrender at odds, taunt (user ask)
+  - [ ] siege options: blockade & starve (garrison thins by day),
+        poison the wells (risky, honor hit), assault as today (user ask)
+  - [ ] items/skills feed player stats: worn gear + attributes move
+        real numbers (carry cap, party size already via CHA) (user ask)
+  - [ ] caravans that ARRIVE enrich the destination's prosperity —
+        trade routes you can protect or strangle (user ask)
   - [x] remove leftover text behind the bottom-left control panel (V122 —
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)

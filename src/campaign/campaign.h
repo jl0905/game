@@ -43,6 +43,11 @@ void KingdomDraw(const GameState& gs);
 void QuestsUpdate(GameState& gs, const CampaignInput& in);
 void QuestsDraw(const GameState& gs);
 
+// The personal estate (V135): found it near a friendly town (E on the map),
+// raise buildings from the shared registry, reap the effects daily.
+void EstateUpdate(GameState& gs, const CampaignInput& in);
+void EstateDraw(const GameState& gs);
+
 // Load menu (N3): pick the autosave or a quicksave slot from the title.
 void LoadMenuUpdate(GameState& gs, const CampaignInput& in);
 void LoadMenuDraw(const GameState& gs);

@@ -206,6 +206,17 @@ bool SaveGame(const GameState& gs, const char* path) {
     // The quest journal (V124): same free-text scheme.
     for (const std::string& q : gs.questLog)
         f << "qlog " << q << '\n';
+    // The estate (V135): its town, standing buildings by id, work in hand.
+    if (gs.estateTown >= 0) {
+        f << "estate " << gs.estateTown << '\n';
+        for (int b = 0; b < c.buildings.size() &&
+                        b < (int)gs.estateBuilt.size(); ++b)
+            if (gs.estateBuilt[b])
+                f << "ebuilt " << c.buildings[b].id << '\n';
+        if (gs.estateWork >= 0 && gs.estateWork < c.buildings.size())
+            f << "ework " << c.buildings[gs.estateWork].id << ' '
+              << gs.estateWorkDays << '\n';
+    }
 
     // The storm (V62).
     f << "storm " << gs.stormPos.x << ' ' << gs.stormPos.y << ' '
@@ -542,6 +553,18 @@ bool LoadGame(GameState& gs, const char* path) {
             std::getline(ss, rest);
             if (!rest.empty() && rest[0] == ' ') rest.erase(0, 1);
             if (!rest.empty()) gs.chronicle.push_back(rest);
+        } else if (tag == "estate") {   // the manor (V135)
+            ss >> gs.estateTown;
+            gs.estateBuilt.assign(c.buildings.size(), 0);
+        } else if (tag == "ebuilt") {
+            std::string id;
+            ss >> id;
+            const int b = c.buildings.find(id.c_str());
+            if (b >= 0 && b < (int)gs.estateBuilt.size()) gs.estateBuilt[b] = 1;
+        } else if (tag == "ework") {
+            std::string id;
+            ss >> id >> gs.estateWorkDays;
+            gs.estateWork = c.buildings.find(id.c_str());
         } else if (tag == "qlog") {   // the journal (V124)
             std::string rest;
             std::getline(ss, rest);

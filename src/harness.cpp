@@ -89,6 +89,9 @@ struct Harness {
             case Screen::Quests:
                 QuestsUpdate(gs, cin);
                 break;
+            case Screen::Estate:
+                EstateUpdate(gs, cin);
+                break;
             case Screen::Party:
                 PartyUpdate(gs, cin);
                 break;
@@ -165,6 +168,7 @@ struct Harness {
             case Screen::Settings:     return "Settings";
             case Screen::Kingdom:      return "Kingdom";
             case Screen::Quests:       return "Quests";
+            case Screen::Estate:       return "Estate";
             case Screen::Party:        return "Party";
             case Screen::Inventory:    return "Inventory";
             case Screen::Character:    return "Character";
@@ -275,6 +279,17 @@ struct Harness {
                         gs.questTown, gs.questDays);
         for (size_t i = 0; i < gs.questLog.size() && i < 3; ++i)
             std::printf("journal: %s\n", gs.questLog[i].c_str());
+        if (gs.estateTown >= 0) {   // the manor (V135)
+            std::string built;
+            for (int b = 0; b < c.buildings.size() &&
+                            b < (int)gs.estateBuilt.size(); ++b)
+                if (gs.estateBuilt[b]) built += c.buildings[b].id + " ";
+            std::printf("estate: town=%d built=[%s] work=%s days=%.0f cap=%d\n",
+                        gs.estateTown, built.c_str(),
+                        gs.estateWork >= 0 && gs.estateWork < c.buildings.size()
+                            ? c.buildings[gs.estateWork].id.c_str() : "none",
+                        gs.estateWorkDays, PartyCap(gs));
+        }
         if (gs.questFlash > 0)   // the payoff banner (V124)
             std::printf("qflash: %.1f good=%d text=%s\n", gs.questFlash,
                         gs.questFlashGood ? 1 : 0, gs.questFlashText.c_str());
@@ -675,6 +690,18 @@ int RunScript(const char* path) {
         } else if (cmd == "hire") {
             CampaignInput cin; cin.hire = true;
             h.Step(cin, BattleInput{});
+        } else if (cmd == "estate") {   // found or enter the manor (V135)
+            CampaignInput cin; cin.openEstate = true;
+            h.Step(cin, BattleInput{});
+            if (!h.gs.resultText.empty())
+                std::printf("result=\"%s\"\n", h.gs.resultText.c_str());
+        } else if (cmd == "build") {    // build <id> while on the estate screen
+            std::string id; ss >> id;
+            const int b = h.gs.content.buildings.find(id.c_str());
+            CampaignInput cin; cin.menuChoice = b + 1;
+            h.Step(cin, BattleInput{});
+            if (!h.gs.resultText.empty())
+                std::printf("result=\"%s\"\n", h.gs.resultText.c_str());
         } else if (cmd == "quest") {
             CampaignInput cin; cin.quest = true;
             h.Step(cin, BattleInput{});

@@ -1384,6 +1384,20 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         return in;
     }
 
+    if (gs.screen == Screen::Estate) {   // the estate hall (V135)
+        for (int r = 0; r < 9; ++r)
+            if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            const Vector2 m = GetMousePosition();
+            const int row = ((int)m.y - layout::SETTINGS_Y) / layout::SETTINGS_ROW_H;
+            if (m.y >= layout::SETTINGS_Y && row >= 0 && row < 9)
+                in.menuChoice = row + 1;
+        }
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_E))
+            in.leaveSettlement = true;
+        return in;
+    }
+
     if (gs.screen == Screen::LoadMenu) {
         for (int r = 0; r < 4; ++r)
             if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
@@ -1501,6 +1515,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
     in.openLedger = IsKeyPressed(KEY_B);         // the kingdom ledger (O1)
     in.openQuests = IsKeyPressed(KEY_Q);         // the journal (V124)
+    in.openEstate = IsKeyPressed(KEY_E);         // the estate (V135)
     if (IsKeyPressed(KEY_F5)) in.saveSlot = 1;   // quicksave slots (N3)
     if (IsKeyPressed(KEY_F6)) in.saveSlot = 2;
     if (IsKeyPressed(KEY_F7)) in.saveSlot = 3;
@@ -1763,6 +1778,39 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
     if (in.openLedger) { gs.screen = Screen::Kingdom; return; }   // O1
     if (in.openQuests) { gs.screen = Screen::Quests;  return; }   // V124
+    // The estate (V135): E founds it at a friendly gate, or steps inside.
+    if (in.openEstate) {
+        if (gs.estateTown >= 0) { gs.screen = Screen::Estate; return; }
+        // Founding: within reach of a town not at war with you.
+        int   near = -1;
+        float bd   = 1e9f;
+        for (int t = 0; t < (int)gs.towns.size(); ++t) {
+            const float d = Vector2Distance(gs.player.pos, gs.towns[t].pos);
+            if (d < bd && !AtWar(gs, gs.towns[t].owner, c.playerFaction)) {
+                bd = d; near = t;
+            }
+        }
+        constexpr int ESTATE_COST = 1000;   // TODO(balance)
+        if (near < 0 || bd > 200.0f) {
+            gs.resultText = "An estate needs friendly land - ride nearer a town at peace with you.";
+        } else if (gs.gold < ESTATE_COST) {
+            gs.resultText = TextFormat("Founding an estate by %s takes %d gold.",
+                                       gs.towns[near].name.c_str(), ESTATE_COST);
+        } else {
+            gs.gold -= ESTATE_COST;
+            gs.estateTown = near;
+            gs.estateBuilt.assign(c.buildings.size(), 0);
+            const int hall = c.buildings.find("hall");
+            if (hall >= 0) gs.estateBuilt[hall] = 1;
+            gs.resultText = TextFormat("Your manor rises outside %s.",
+                                       gs.towns[near].name.c_str());
+            Chronicle(gs, TextFormat("Founded an estate by %s.",
+                                     gs.towns[near].name.c_str()));
+            SfxPlay(Sfx::Fanfare);
+            gs.screen = Screen::Estate;
+        }
+        return;
+    }
 
     // Quicksave (N3): three slots on F5-F7, right from the saddle.
     if (in.saveSlot >= 1 && in.saveSlot <= 3) {
@@ -2400,6 +2448,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                     if ((int)gs.goods.size() > gGrain && gs.goods[gGrain] >= need) {
                         gs.goods[gGrain] -= need;
                         gs.hungryDays = 0;
+                    } else if (EstateHas(gs, "granary")) {
+                        // The estate granary carries the band (V135): empty
+                        // saddlebags never starve you while it stands.
+                        gs.hungryDays = 0;
                     } else {
                         gs.hungryDays++;
                         if (gs.hungryDays == 1)
@@ -2451,6 +2503,27 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 gs.activeQuest = -1;
                 gs.questTown   = -1;
                 gs.questDays   = 0;
+            }
+
+            // The estate at dawn (V135): masons lay stone, fields pay rent
+            // by the linked town's prosperity, a barracks feeds its pool.
+            if (gs.estateTown >= 0 && gs.estateTown < (int)gs.towns.size()) {
+                if (gs.estateWork >= 0 && (gs.estateWorkDays -= 1.0f) <= 0) {
+                    if ((int)gs.estateBuilt.size() < c.buildings.size())
+                        gs.estateBuilt.resize(c.buildings.size(), 0);
+                    gs.estateBuilt[gs.estateWork] = 1;
+                    gs.resultText = TextFormat(
+                        "The %s stands finished at your estate.",
+                        c.buildings[gs.estateWork].name.c_str());
+                    Chronicle(gs, TextFormat("Raised the %s at the estate.",
+                                             c.buildings[gs.estateWork].name.c_str()));
+                    gs.estateWork = -1;
+                    SfxPlay(Sfx::Fanfare, 0.6f);
+                }
+                if (EstateHas(gs, "fields"))
+                    gs.gold += gs.towns[gs.estateTown].prosperity / 10;   // TODO(balance)
+                if (EstateHas(gs, "barracks"))
+                    gs.towns[gs.estateTown].recruitPool += 1;   // TODO(balance)
             }
 
             // The sword cuts both ways (V74): a lord of YOURS whose heart
@@ -4365,7 +4438,9 @@ void PartyUpdate(GameState& gs, const CampaignInput& in) {
         // costs a knight's kit; a spearman's costs a spear.
         if (td.upgradesTo >= 0 && gs.player.troopCounts[t] > 0 &&
             gs.troopXp[t] >= td.upgradeXp) {
-            const int price = UpgradeCost(c, t, td.upgradesTo);
+            // Your own forge shaves the bill (V135). TODO(balance).
+            int price = UpgradeCost(c, t, td.upgradesTo);
+            if (EstateHas(gs, "smithy")) price = price * 85 / 100;
             if (gs.gold < price) {
                 gs.resultText = TextFormat(
                     "Promotion to %s needs %d gold - his new gear and training.",
@@ -4484,7 +4559,9 @@ void PartyDraw(const GameState& gs) {
             DrawRectangleLines(panelX + 340, y + 8, 90, 8, Fade(RAYWHITE, 0.3f));
             // The price of the man he becomes (V134), right on the row.
             ui::Text(TextFormat("-> %s (%dg)", c.troops[td.upgradesTo].name.c_str(),
-                                UpgradeCost(c, t, td.upgradesTo)),
+                                EstateHas(gs, "smithy")
+                                    ? UpgradeCost(c, t, td.upgradesTo) * 85 / 100
+                                    : UpgradeCost(c, t, td.upgradesTo)),
                      panelX + 442, y + 3, 18, can ? LIME : Fade(RAYWHITE, 0.45f));
         } else {
             ui::Text("(elite)", panelX + 340, y + 3, 18, Fade(GOLD, 0.6f));
@@ -4981,6 +5058,78 @@ void QuestsDraw(const GameState& gs) {
         ui::Text(e.c_str(), x, y, 19, col);
         y += 26;
     }
+    EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// The estate hall (V135): your personal seat — CK2's castle, Skyrim's
+// homestead, rooted in this game's systems. Rows are the building registry.
+// ---------------------------------------------------------------------------
+void EstateUpdate(GameState& gs, const CampaignInput& in) {
+    const Content& c = gs.content;
+    if (in.leaveSettlement) { gs.screen = Screen::Campaign; return; }
+    if ((int)gs.estateBuilt.size() < c.buildings.size())
+        gs.estateBuilt.resize(c.buildings.size(), 0);
+    if (in.menuChoice >= 1 && in.menuChoice <= c.buildings.size()) {
+        const int b = in.menuChoice - 1;
+        const BuildingDef& bd = c.buildings[b];
+        if (bd.days <= 0 || gs.estateBuilt[b]) {
+            gs.resultText = TextFormat("The %s already stands.", bd.name.c_str());
+        } else if (gs.estateWork >= 0) {
+            gs.resultText = TextFormat(
+                "The masons are still raising the %s.",
+                c.buildings[gs.estateWork].name.c_str());
+        } else if (gs.gold < bd.cost) {
+            gs.resultText = TextFormat("The %s needs %d gold.", bd.name.c_str(),
+                                       bd.cost);
+        } else {
+            gs.gold -= bd.cost;
+            gs.estateWork     = b;
+            gs.estateWorkDays = (float)bd.days;
+            gs.resultText = TextFormat("Work begins on the %s - %d day%s.",
+                                       bd.name.c_str(), bd.days,
+                                       bd.days == 1 ? "" : "s");
+            SfxPlay(Sfx::Click);
+        }
+    }
+}
+
+void EstateDraw(const GameState& gs) {
+    const Content& c = gs.content;
+    BeginDrawing();
+    ClearBackground(Color{ 24, 26, 30, 255 });
+    const int x = GetScreenWidth() / 2 - 430 > 10 ? GetScreenWidth() / 2 - 430 : 10;
+    const char* townName = gs.estateTown >= 0 &&
+                           gs.estateTown < (int)gs.towns.size()
+                               ? gs.towns[gs.estateTown].name.c_str() : "?";
+    ui::Title("YOUR ESTATE", x, 60, 44, GOLD);
+    ui::Text(TextFormat("The manor by %s.   Gold: %d      [1-%d / click] build   [Esc / E] ride on",
+                        townName, gs.gold, c.buildings.size()),
+             x, 120, 20, Fade(RAYWHITE, 0.7f));
+    if (gs.estateWork >= 0 && gs.estateWork < c.buildings.size())
+        ui::Text(TextFormat("Under construction: %s - %.0f day%s of work left",
+                            c.buildings[gs.estateWork].name.c_str(),
+                            gs.estateWorkDays,
+                            gs.estateWorkDays >= 2 ? "s" : ""),
+                 x, 150, 20, GOLD);
+
+    int y = layout::SETTINGS_Y;
+    for (int b = 0; b < c.buildings.size(); ++b) {
+        const BuildingDef& bd = c.buildings[b];
+        const bool built = b < (int)gs.estateBuilt.size() && gs.estateBuilt[b];
+        DrawHoverRow(0, y, GetScreenWidth(), layout::SETTINGS_ROW_H);
+        const char* status =
+            built                 ? "STANDING"
+            : gs.estateWork == b  ? "BUILDING"
+                                  : TextFormat("%d gold, %d days", bd.cost, bd.days);
+        ui::Text(TextFormat("[%d]  %-14s %-22s %s", b + 1, bd.name.c_str(),
+                            status, bd.desc.c_str()),
+                 x, y + 6, 21,
+                 built ? LIME : gs.estateWork == b ? GOLD : RAYWHITE);
+        y += layout::SETTINGS_ROW_H;
+    }
+    if (!gs.resultText.empty())
+        ui::Text(gs.resultText.c_str(), x, y + 16, 19, GOLD);
     EndDrawing();
 }
 

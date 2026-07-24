@@ -154,6 +154,13 @@ int main(int argc, char** argv) {
                 else                              CampaignDraw(gs);
                 break;
             }
+            case Screen::Estate: {                        // the manor hall (V135)
+                const CampaignInput in = GatherCampaignInput(gs);
+                EstateUpdate(gs, in);
+                if (gs.screen == Screen::Estate) EstateDraw(gs);
+                else                             CampaignDraw(gs);
+                break;
+            }
             case Screen::Quests: {                        // the journal (V124)
                 const CampaignInput in = GatherCampaignInput(gs);
                 QuestsUpdate(gs, in);
