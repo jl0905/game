@@ -845,7 +845,10 @@ float WeaponReach(const Content& c, int wh) {
     return c.weapons.valid(wh) && c.weapons[wh].reach > 0.5f ? c.weapons[wh].reach : FIST_REACH;
 }
 float WeaponCooldown(const Content& c, int wh) {
-    return c.weapons.valid(wh) && c.weapons[wh].swingTime > 0.05f ? c.weapons[wh].swingTime : FIST_SWING;
+    // Deliberate combat (V142, user ask): every swing takes 1.6x its old
+    // time — blows are commitments, not spam. TODO(balance): the factor.
+    return (c.weapons.valid(wh) && c.weapons[wh].swingTime > 0.05f
+                ? c.weapons[wh].swingTime : FIST_SWING) * 1.6f;
 }
 
 // Worn armour soaks a flat amount per hit; a landed blow always tells a little.
@@ -1072,11 +1075,12 @@ int GuardDir(int idx, const Soldier& s) {
 // guarded side is mostly wood, and the wood wears. Returns the damage left.
 float ShieldSoak(const Content& c, int victimIdx, Soldier& v, int swingDir,
                  float damage) {
-    if (swingDir < 0 || !HasShield(c, v) || v.shieldHp <= 0) return damage;
-    if (GuardDir(victimIdx, v) != swingDir) {
-        v.guardDir = swingDir;   // he covers the side that just bled (T)
-        return damage;
-    }
+    // A shield is COVER, not a guessing game (V142, user ask): wood soaks
+    // from every direction while it lasts — its cost is the wear, and the
+    // kick still staggers straight through it. Directional play lives in
+    // the bare-weapon guard (V125) and the hero's own block instead.
+    (void)victimIdx; (void)swingDir;
+    if (!HasShield(c, v) || v.shieldHp <= 0) return damage;
     v.shieldHp -= SHIELD_WEAR_PER_HIT;
     return damage * SHIELD_BLOCK_FACTOR;
 }
@@ -1126,7 +1130,7 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     AICmd cmd;
     cmd.yaw         = s.yaw;
     cmd.newCooldown = s.cooldown - dt;
-    cmd.newSwing    = s.swing > 0 ? s.swing - dt * 4.0f : 0.0f;
+    cmd.newSwing    = s.swing > 0 ? s.swing - dt * 2.4f : 0.0f;   // V142: unhurried arcs
     cmd.newTarget   = s.target;
 
     // Single combat (V102): while the duel holds, every man but the
@@ -1993,7 +1997,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
         B.blocking = in.block;
         B.cooldown -= dt;
-        if (B.swing > 0) B.swing -= dt * 4.0f;
+        if (B.swing > 0) B.swing -= dt * 2.4f;   // V142: the follow-through reads
 
         // ---- dismount / remount (U11): Z, and the horse waits for you ----
         if (in.mountToggle) {
@@ -2162,7 +2166,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 B.attackDir = DirFromMotion(B.aimAccum);
         }
         if (B.readying)
-            B.windup = fminf(1.0f, B.windup + dt * 4.0f);
+            B.windup = fminf(1.0f, B.windup + dt * 2.5f);   // V142: a full draw takes intent
         if (in.attackRelease && B.readying) {
             B.readying = false;
             const float draw = B.windup;   // how far the string was drawn
@@ -2224,8 +2228,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     // ~120Â° frontal arc; armour soaks per hit, and a raised
                     // shield meets the hero's chosen swing direction (G4).
                     const int vi = (int)(&s - &B.soldiers[0]);
+                    // Deliberate steel (V142): the blow carries what the
+                    // wind-up put into it — a panicked flick lands at half
+                    // weight, a full-drawn cut lands whole. Same rule the
+                    // bow already lives by (V117).
                     float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR
-                                               * momentum,
+                                               * momentum * (0.5f + 0.5f * draw),
                                            LoadoutArmor(c, TroopLoadout(c, s.troop)));
                     const float before = dmg;
                     dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);

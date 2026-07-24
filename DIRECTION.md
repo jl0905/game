@@ -1596,9 +1596,14 @@ this is the feedback the flat numbers were waiting for.
         player and NPCs with no code change. Bench 11.64ms/86fps —
         faster than before, and note: --bench runs the FULL sim (AI
         targeting, crowd physics, arrows), not render-only)
-  - [ ] deliberate combat (user ask 2026-07-23): swings much slower;
-        SHIELDS block every direction, bare-weapon parries stay
-        directional — next firing (V142)
+  - [x] deliberate combat (V142 — cooldowns ×1.6 across every weapon;
+        swing follow-through and wind-up build slowed to read; hero
+        melee damage scales 0.5–1.0 with the wind-up actually held (the
+        rule bows already lived by), so spam-clicking lands half-weight
+        flicks; shields soak from EVERY direction while the wood lasts
+        (wear/splinter unchanged, kick still goes through), and
+        directional play now lives in bare-weapon guards + the hero's
+        own block. quiver.txt re-timed for the longer bow cycle)
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve

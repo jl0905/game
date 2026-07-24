@@ -151,10 +151,15 @@ Clicking a hostile walled town offers, besides storming and engineering:
 
 ## Battle
 
-- **Melee:** hold LMB to ready a swing, flick the mouse to aim it (up =
-  overhead, down = thrust, sides = cuts), release to strike. RMB blocks —
-  and blocks the *side* the last blow came from. [E] kicks through a raised
-  shield; [G] scavenges a fallen man's weapon (and pulls spent arrows).
+- **Melee is deliberate:** hold LMB to ready a swing, flick the mouse to
+  aim it (up = overhead, down = thrust, sides = cuts), release to strike.
+  The blow carries what the wind-up put into it — a panicked flick lands
+  at half weight, a full draw lands whole — and every weapon needs 1.6×
+  the old time between swings. RMB blocks. **Shields are cover**: they
+  soak blows from every direction while the wood lasts (it wears, and
+  splinters); bare-weapon guards are directional and read from the stance.
+  [E] kicks straight through a raised shield; [G] scavenges a fallen
+  man's weapon (and pulls spent arrows).
 - **Archery:** a bow draws and looses where the camera looks; a full draw
   hits harder. You carry 24 arrows — harvest landed shafts with [G].
   AI archers run dry too and close with steel.

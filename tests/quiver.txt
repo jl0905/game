@@ -9,7 +9,7 @@ swap
 swap
 state
 attack up
-tick 3
+tick 4
 attack up
 state
 quit
