@@ -4,7 +4,7 @@
 # daylight. Before V116 this exact scenario showed arrows=0 (they galloped
 # into melee); now volleys fly - expect arrows>0 in at least one state.
 load tests/fixtures/outfight.owb
-walk 1 0 0.6
+hunt 90
 tick 6
 state
 tick 6

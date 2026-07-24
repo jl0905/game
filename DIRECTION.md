@@ -1582,10 +1582,23 @@ this is the feedback the flat numbers were waiting for.
   pad laid across the barrel. Dialogue gossip caps at the three best
   stories (rotating daily) and the dialogue screen never draws more
   than six lines — topic buttons stay reachable.
-  - [ ] horses accelerate into the gallop (speed ramps, not instant)
-        (user ask 2026-07-23)
-  - [ ] armor changes the MODEL: different worn tiers read as visibly
-        different silhouettes on player and NPCs alike (user ask)
+  - [x] horses accelerate into the gallop (V141 — hero mount builds to
+        full stride over ~2s (7→14.5 u/s) and reins in fast; galloping
+        state (dust, sfx, trample) now needs 60%+ stride, so the T5
+        momentum bonus and trample reward a real run-up. AI riders ramp
+        0.55→1.0 the same way — charges arrive AS charges. parthian.txt
+        re-pinned to hunt since knights no longer teleport-charge)
+  - [x] armor changes the MODEL (V141 — silhouettes derive from the worn
+        piece's armour value: cloth ≤1 lean, mail 2–4 adds pauldrons,
+        plate 5+ broadens the chest and hangs faulds; light caps are
+        bare domes, real helms add brim+nasal, heavy 3+ closes with
+        cheek guards. Pure data: a modded soak-7 cuirass reads heavy on
+        player and NPCs with no code change. Bench 11.64ms/86fps —
+        faster than before, and note: --bench runs the FULL sim (AI
+        targeting, crowd physics, arrows), not render-only)
+  - [ ] deliberate combat (user ask 2026-07-23): swings much slower;
+        SHIELDS block every direction, bare-weapon parries stay
+        directional — next firing (V142)
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve

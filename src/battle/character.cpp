@@ -137,8 +137,25 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
 
     // ---- Torso (V132): hips narrower than the chest, squared shoulders,
     //      a neck under the head, and the team surcoat stripe kept ----
-    Cap(at(0.0f, 0.90f, 0.0f), at(0.0f, 1.15f, 0.0f), 0.22f, S(8), R(4), bodyC);   // hips
-    Cap(at(0.0f, 1.15f, 0.0f), at(0.0f, 1.55f, 0.0f), 0.27f, S(10), R(6), bodyC);  // chest
+    // Armour is a SILHOUETTE, not just a tint (V141, user ask): the worn
+    // body piece's armour value picks the build — cloth (≤1) stays lean,
+    // mail (2–4) adds pauldrons, plate (5+) broadens the chest and hangs
+    // faulds off the hips. Data-driven: a modded cuirass with soak 7 reads
+    // heavy with no code change, on player and every NPC alike.
+    const int bodyAv = content.armor.valid(loadout.get(EquipSlot::Body))
+                           ? content.armor[loadout.get(EquipSlot::Body)].armor : 0;
+    const float bulk = bodyAv >= 5 ? 0.045f : bodyAv >= 2 ? 0.02f : 0.0f;
+    Cap(at(0.0f, 0.90f, 0.0f), at(0.0f, 1.15f, 0.0f), 0.22f + bulk * 0.5f,
+        S(8), R(4), bodyC);   // hips
+    Cap(at(0.0f, 1.15f, 0.0f), at(0.0f, 1.55f, 0.0f), 0.27f + bulk,
+        S(10), R(6), bodyC);  // chest
+    if (bodyAv >= 2) {   // pauldrons — kept even in the batched tier so a
+                         // mailed line reads bulkier from across the field
+        Sph(at(-0.32f, 1.56f, 0.0f), bodyAv >= 5 ? 0.15f : 0.115f, R(8), S(8), bodyC);
+        Sph(at( 0.32f, 1.56f, 0.0f), bodyAv >= 5 ? 0.15f : 0.115f, R(8), S(8), bodyC);
+    }
+    if (bodyAv >= 5 && !Minor())   // faulds: plate skirts the hips
+        Cap(at(0.0f, 0.78f, 0.0f), at(0.0f, 0.95f, 0.0f), 0.26f, S(8), R(3), bodyC);
     if (!Minor())
         Cap(at(-0.26f, 1.56f, 0.0f), at(0.26f, 1.56f, 0.0f), 0.12f, S(7), R(3), bodyC); // shoulders
     if (!Minor())
@@ -146,13 +163,22 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     if (!Minor())
         Cap(at(0.0f, 1.60f, 0.0f), at(0.0f, 1.74f, 0.0f), 0.09f, S(6), R(3), flashed(SKIN)); // neck
 
-    // ---- Head: dome helmet with a nasal bar, or a bare head ----
+    // ---- Head: helm silhouette follows its armour value (V141) — a light
+    //      cap is a skull dome, a real helm adds brim + nasal, and a heavy
+    //      one (3+) closes with cheek guards. ----
     Sph(at(0.0f, 1.87f, 0.0f), 0.19f, R(16), S(16), headC);
     if (hasHelm) {
-        Cyl(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
+        const int helmAv = content.armor.valid(loadout.get(EquipSlot::Head))
+                               ? content.armor[loadout.get(EquipSlot::Head)].armor : 0;
+        if (helmAv >= 2)
+            Cyl(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
         Cyl(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, S(10), headC); // dome
-        if (!Minor())
+        if (helmAv >= 2 && !Minor())
             Cap(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);   // nasal
+        if (helmAv >= 3 && !Minor()) {   // cheek guards close the face
+            Cap(at(-0.17f, 1.86f, 0.10f), at(-0.15f, 1.74f, 0.14f), 0.05f, S(4), R(3), headC);
+            Cap(at( 0.17f, 1.86f, 0.10f), at( 0.15f, 1.74f, 0.14f), 0.05f, S(4), R(3), headC);
+        }
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
     if (pose.accent.a > 0)

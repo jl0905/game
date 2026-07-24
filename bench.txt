@@ -1,1 +1,1 @@
-soldiers=2000 frames=600 avg_ms=12.19 p99_ms=15.21 avg_fps=82
+soldiers=2000 frames=600 avg_ms=11.64 p99_ms=15.23 avg_fps=86

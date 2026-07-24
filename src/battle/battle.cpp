@@ -581,6 +581,7 @@ struct Soldier {
     float   flash = 0;         // just-hit white flare, decays fast
     float   walkPhase = 0;
     float   deadFor = 0;   // seconds since death (V125): corpses sink and stop drawing
+    float   gallop  = 0;   // a mount's built-up speed 0..1 (V141)
     bool    guard = false; // AI shield/blade up between own swings (V125)
     bool    aimPlayer = false; // this soldier's chosen foe is the hero (V130)
     int     quiver = 24;   // AI shafts (V119) TODO(balance); melee never checks
@@ -739,6 +740,7 @@ struct BattleState {
     int   heroArrowsLoosed = 0;   // hero archery (V117)
     int   heroQuiver = 24;        // shafts on the hip (V118) TODO(balance)
     float camDist = 4.5f;         // shoulder distance, wheel-adjustable (V121)
+    float gallop = 0;             // hero mount's built-up speed 0..1 (V141)
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
@@ -1281,7 +1283,11 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
         const bool inWall = B.formation == FormationType::ShieldWall &&
                             s.team == Team::Player && !s.ally && !IsMounted(c, s);
         const float ms = c.troops[s.troop].moveSpeed * PACE_MOVE_SCALE *
-                         (s.dehorsed ? 0.5f : 1.0f) * (inWall ? 0.6f : 1.0f);
+                         (s.dehorsed ? 0.5f : 1.0f) * (inWall ? 0.6f : 1.0f) *
+                         // Horses accelerate (V141): riders build to full
+                         // stride, so charges arrive as charges.
+                         (IsMounted(c, s) && !s.dehorsed
+                              ? 0.55f + 0.45f * s.gallop : 1.0f);
         cmd.step    = Vector3Scale(Vector3Normalize(to), ms * dt);
         cmd.walkAdd = dt * 10.0f;
     }
@@ -1905,14 +1911,24 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         Vector3 move = Vector3Add(Vector3Scale(fwd, in.moveForward),
                                   Vector3Scale(right, in.moveRight));
         bool galloping = false;
+        // A horse ACCELERATES (V141, user ask): the gallop builds over
+        // ~2 seconds from a canter and dies fast when you rein in — so a
+        // standing lance charge must be RIDDEN UP TO, and the existing
+        // momentum bonus (T5) and trample now reward the run-up
+        // emergently instead of the first step.
+        if (B.mounted && Vector3Length(move) > 0 && !B.blocking)
+            B.gallop = fminf(1.0f, B.gallop + dt / 2.0f);
+        else
+            B.gallop = fmaxf(0.0f, B.gallop - dt * 2.5f);
         if (Vector3Length(move) > 0) {
-            // A horse doubles your pace (identity; numbers TODO(balance)).
-            const float speed = (B.mounted ? (B.blocking ? 6.0f : 14.0f)
-                                           : (B.blocking ? 3.0f : 7.0f))
+            const float speed = (B.mounted
+                                     ? (B.blocking ? 6.0f
+                                                   : 7.0f + 7.5f * B.gallop)
+                                     : (B.blocking ? 3.0f : 7.0f))
                 * (1.0f + 0.02f * B.setup.heroAgi);   // Agility (V14)
             B.pPos = Vector3Add(B.pPos, Vector3Scale(Vector3Normalize(move), speed * dt));
-            B.walkPhase += dt * 10.0f;
-            galloping = B.mounted && !B.blocking;
+            B.walkPhase += dt * (B.mounted ? 6.0f + 5.0f * B.gallop : 10.0f);
+            galloping = B.mounted && !B.blocking && B.gallop > 0.6f;
         }
 
         // Hooves kick up dust at the gallop.
@@ -2528,6 +2544,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             s.activeWeapon = cmd.activeWeapon;
             s.guard        = cmd.guard;
             s.aimPlayer    = cmd.aimPlayer;
+            // The stride builds and breaks (V141).
+            s.gallop = Vector3LengthSqr(cmd.step) > 1e-6f
+                           ? fminf(1.0f, s.gallop + dt / 2.0f)
+                           : fmaxf(0.0f, s.gallop - dt * 2.5f);
             s.walkPhase   += cmd.walkAdd;
             s.pos = Vector3Add(s.pos, Vector3Add(cmd.step, cmd.separation));
             EnforceWall(s.pos);
