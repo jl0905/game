@@ -3754,10 +3754,15 @@ void InventoryUpdate(GameState& gs, const CampaignInput& in) {
         const InvItem it = gs.inventory[gs.invCarry];
         gs.inventory.erase(gs.inventory.begin() + gs.invCarry);
         gs.invCarry = -1;
-        gs.gold += 25;   // TODO(balance): half of ARMS_PRICE
-        gs.resultText = TextFormat("Sold: %s (+25 gold).",
+        // Resale rides the codified price too (V134): half the piece's
+        // stat-derived worth, whatever the piece.
+        const int worth =
+            it.isWeapon ? (c.weapons.valid(it.handle) ? WeaponCost(c.weapons[it.handle]) : 20)
+                        : (c.armor.valid(it.handle) ? ArmorCost(c.armor[it.handle]) : 20);
+        gs.gold += worth / 2;
+        gs.resultText = TextFormat("Sold: %s (+%d gold).",
             it.isWeapon ? c.weapons[it.handle].name.c_str()
-                        : c.armor[it.handle].name.c_str());
+                        : c.armor[it.handle].name.c_str(), worth / 2);
     }
 
     if (in.invPick && in.invCellX >= 0) {
@@ -3943,7 +3948,8 @@ void InventoryDraw(const GameState& gs) {
 
 // The forge's counter (O4): two equipment pieces rotate by town and day —
 // what iron becomes once a town has worked it. TODO(balance): the price.
-static constexpr int ARMS_PRICE = 50;
+// (V134) The flat ARMS_PRICE is gone: pieces price themselves via
+// WeaponCost/ArmorCost — the same formulas troop promotions pay.
 
 static void ArmsOnSale(const GameState& gs, InvItem& armorIt, InvItem& weaponIt) {
     const Content& c = gs.content;
@@ -3997,11 +4003,16 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         InvItem armorIt, weaponIt;
         ArmsOnSale(gs, armorIt, weaponIt);
         InvItem pick = in.buyGood == c.goods.size() ? armorIt : weaponIt;
-        if (pick.handle >= 0 && gs.gold >= ARMS_PRICE && AutoPlace(gs, pick)) {
-            gs.gold -= ARMS_PRICE;
+        // The forge charges what the piece is worth (V134): the identical
+        // stat-derived price a troop promotion pays for the same gear.
+        const int price = pick.handle < 0 ? 0
+            : pick.isWeapon ? WeaponCost(c.weapons[pick.handle])
+                            : ArmorCost(c.armor[pick.handle]);
+        if (pick.handle >= 0 && gs.gold >= price && AutoPlace(gs, pick)) {
+            gs.gold -= price;
             gs.resultText = TextFormat("Bought: %s (%d gold).",
                 pick.isWeapon ? c.weapons[pick.handle].name.c_str()
-                              : c.armor[pick.handle].name.c_str(), ARMS_PRICE);
+                              : c.armor[pick.handle].name.c_str(), price);
             SfxPlay(Sfx::Click);
         }
     }
@@ -4237,12 +4248,14 @@ void MarketDraw(const GameState& gs) {
         y += 26;
         if (armorIt.handle >= 0)
             ui::Text(TextFormat("[7] %-16s %d gold",
-                                c.armor[armorIt.handle].name.c_str(), ARMS_PRICE),
+                                c.armor[armorIt.handle].name.c_str(),
+                                ArmorCost(c.armor[armorIt.handle])),
                      x, y, 20, RAYWHITE);
         y += 28;
         if (weaponIt.handle >= 0)
             ui::Text(TextFormat("[8] %-16s %d gold",
-                                c.weapons[weaponIt.handle].name.c_str(), ARMS_PRICE),
+                                c.weapons[weaponIt.handle].name.c_str(),
+                                WeaponCost(c.weapons[weaponIt.handle])),
                      x, y, 20, RAYWHITE);
     }
 
@@ -4346,19 +4359,26 @@ void PartyUpdate(GameState& gs, const CampaignInput& in) {
     if (in.upgradeSlot >= 0 && in.upgradeSlot < (int)rows.size()) {
         const int t  = rows[in.upgradeSlot];
         const TroopDef& td = c.troops[t];
-        // Promotion costs the quartermaster too (V45): better gear isn't
-        // free. TODO(balance): flat 20 for now.
-        constexpr int UPGRADE_GOLD = 20;
+        // Promotion prices the difference (V134): the cost IS the gear delta
+        // between the tiers plus the training — computed from the same
+        // formulas that price items for the player. A knight's promotion
+        // costs a knight's kit; a spearman's costs a spear.
         if (td.upgradesTo >= 0 && gs.player.troopCounts[t] > 0 &&
             gs.troopXp[t] >= td.upgradeXp) {
-            if (gs.gold < UPGRADE_GOLD) {
+            const int price = UpgradeCost(c, t, td.upgradesTo);
+            if (gs.gold < price) {
                 gs.resultText = TextFormat(
-                    "Promotion needs %d gold for the man's new gear.", UPGRADE_GOLD);
+                    "Promotion to %s needs %d gold - his new gear and training.",
+                    c.troops[td.upgradesTo].name.c_str(), price);
             } else {
-                gs.gold -= UPGRADE_GOLD;
+                gs.gold -= price;
                 gs.troopXp[t] -= td.upgradeXp;
                 gs.player.troopCounts[t]--;
                 gs.player.troopCounts[td.upgradesTo]++;
+                gs.resultText = TextFormat("%s promoted to %s for %d gold.",
+                                           td.name.c_str(),
+                                           c.troops[td.upgradesTo].name.c_str(),
+                                           price);
             }
         }
     }
@@ -4462,7 +4482,9 @@ void PartyDraw(const GameState& gs) {
             DrawRectangle(panelX + 340, y + 8, (int)(90 * fill), 8,
                           can ? LIME : Fade(GOLD, 0.8f));
             DrawRectangleLines(panelX + 340, y + 8, 90, 8, Fade(RAYWHITE, 0.3f));
-            ui::Text(TextFormat("-> %s", c.troops[td.upgradesTo].name.c_str()),
+            // The price of the man he becomes (V134), right on the row.
+            ui::Text(TextFormat("-> %s (%dg)", c.troops[td.upgradesTo].name.c_str(),
+                                UpgradeCost(c, t, td.upgradesTo)),
                      panelX + 442, y + 3, 18, can ? LIME : Fade(RAYWHITE, 0.45f));
         } else {
             ui::Text("(elite)", panelX + 340, y + 3, 18, Fade(GOLD, 0.6f));

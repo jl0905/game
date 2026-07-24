@@ -265,6 +265,17 @@ void LoadMapConfig(Content& c, const char* path);
 // Total armour value of everything worn in `lo` (sums ArmorDef::armor).
 int LoadoutArmor(const Content& c, const Loadout& lo);
 
+// ---- the gear economy (V134) ----------------------------------------------
+// Prices are CODIFIED, not tabled: every item's cost derives from its stats
+// through one formula, so adding a stronger sword automatically prices it.
+// Troop promotion charges exactly the gear delta between the two tiers plus
+// the stat training — the same gold a player pays to buy those pieces
+// outright at a market armoury. TODO(balance): every coefficient.
+int WeaponCost(const WeaponDef& w);
+int ArmorCost(const ArmorDef& a);
+int LoadoutCost(const Content& c, const Loadout& lo);   // worn + carried
+int UpgradeCost(const Content& c, int fromTroop, int toTroop);
+
 // Whether two factions will fight. Currently any two *different* factions are
 // hostile and the same faction is friendly — enough for a chaotic warband world
 // where everyone raids everyone. A per-faction relations table can replace this

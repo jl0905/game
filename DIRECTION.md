@@ -1504,10 +1504,15 @@ this is the feedback the flat numbers were waiting for.
         settlements finally exist, plus 8 new heartland ones — the world
         is now genuinely 26 settlements at size 3000, all suite scenarios
         re-verified on the real map)
-  - [ ] troop upgrade economy overhaul: gear gets real prices; upgrade
-        cost = programmatic delta of the next tier's equipment + stats;
-        the player buying a piece of gear pays the same price as
-        upgrading a troop into it (shared price registry)
+  - [x] troop upgrade economy overhaul (V134 — prices are CODIFIED, not
+        tabled: WeaponCost/ArmorCost derive from stats (damage, reach,
+        missile range, armour), LoadoutCost sums a kit, and UpgradeCost =
+        gear delta between tiers + stat training + 200 for a first horse.
+        Promotion quotes its price on the party row and in the result
+        (recruit→infantry now 287g, not flat 20); the forge counter and
+        loot resale use the identical formulas, so buying a piece costs
+        exactly what promoting a troop into it pays. All TODO(balance)
+        coefficients in one place in content.cpp)
   - [ ] (research note) semi-pro model path: raylib loads .glb/.gltf via
         LoadModel/UpdateModelAnimation — a models.cfg mapping troop ids
         to assets/models/*.glb would let professionally-made models drop

@@ -959,6 +959,41 @@ void LoadMapConfig(Content& c, const char* path) {
     if (!m.towns.empty()) c.map = m;   // a map with no settlements is a mistake
 }
 
+// ---- the gear economy (V134): stats ARE the price list --------------------
+int WeaponCost(const WeaponDef& w) {
+    // TODO(balance): coefficients. Damage is the main driver; reach and
+    // missile range are force multipliers and price like it.
+    return 10 + (int)(w.damage * 8.0f + w.reach * 15.0f + w.missileRange * 2.0f);
+}
+
+int ArmorCost(const ArmorDef& a) {
+    return 10 + a.armor * 25;   // TODO(balance)
+}
+
+int LoadoutCost(const Content& c, const Loadout& lo) {
+    int total = 0;
+    for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
+        if (s == static_cast<int>(EquipSlot::Weapon)) continue;
+        if (c.armor.valid(lo.slots[s])) total += ArmorCost(c.armor[lo.slots[s]]);
+    }
+    for (int i = 0; i < lo.weaponCount(); ++i)
+        if (c.weapons.valid(lo.weaponAt(i))) total += WeaponCost(c.weapons[lo.weaponAt(i)]);
+    return total;
+}
+
+int UpgradeCost(const Content& c, int fromTroop, int toTroop) {
+    if (!c.troops.valid(fromTroop) || !c.troops.valid(toTroop)) return 0;
+    const TroopDef& a = c.troops[fromTroop];
+    const TroopDef& b = c.troops[toTroop];
+    const int gear  = LoadoutCost(c, b.loadout) - LoadoutCost(c, a.loadout);
+    const int train = (b.maxHp > a.maxHp ? (b.maxHp - a.maxHp) * 2 : 0) +
+                      (b.moveSpeed > a.moveSpeed
+                           ? (int)((b.moveSpeed - a.moveSpeed) * 10.0f) * 5 : 0);
+    const int mount = (b.mounted && !a.mounted) ? 200 : 0;   // his horse (V82 price)
+    const int total = (gear > 0 ? gear : 0) + train + mount;
+    return total > 5 ? total : 5;   // paperwork floor TODO(balance)
+}
+
 int LoadoutArmor(const Content& c, const Loadout& lo) {
     int total = 0;
     for (int s = 0; s < EQUIP_SLOT_COUNT; ++s) {
