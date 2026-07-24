@@ -1,4 +1,4 @@
-﻿#include "battle.h"
+#include "battle.h"
 #include "character.h"
 #include "../gfx.h"
 #include "../sfx.h"
@@ -809,6 +809,7 @@ struct BattleState {
     std::vector<float> dmg;
     SoldierGrid        grid;       // proximity index, rebuilt each tick (G1)
     std::vector<int>   targeted;   // how many foes aim at each soldier (J1)
+    std::vector<Vector3> pushBuf;  // body-press corrections, applied capped (V132)
     int playerTargeted = 0;        // ...and how many aim at the hero (V130)
 
     // Per-troop fighting gear for this battle (K6): defaults + overrides.
@@ -1442,20 +1443,48 @@ void BlobShadow(const Terrain& t, float x, float z, float r) {
 
 // The horse: barrel, neck + head, four trotting legs. The rider is drawn by
 // the caller, seated 1.25 above `pos`.
-void DrawHorse(Vector3 pos, float yaw, float walkPhase) {
+void LimbBox(Vector3 a, Vector3 b, float r, Color col);   // defined below (V126/V128)
+
+void DrawHorse(Vector3 pos, float yaw, float walkPhase, bool batched = false) {
     const float cy = cosf(yaw), sy = sinf(yaw);
     auto hAt = [&](float r, float u, float f) {
         return Vector3{ pos.x + r * cy + f * sy, pos.y + u, pos.z - r * sy + f * cy };
     };
+    // Batched tier (V132): the whole horse as oriented boxes through the
+    // same sink as its rider — a coherent far silhouette, not a crate on
+    // a capsule horse. Minor parts (mane/muzzle/hooves) are dropped.
+    auto DrawCapsuleOr = [&](Vector3 a, Vector3 b, float r, int sl, int ri,
+                             Color c) {
+        if (batched) LimbBox(a, b, r, c);
+        else         DrawCapsule(a, b, r, sl, ri, c);
+    };
+    // Reworked (V132): legs PIVOT from the hip instead of sliding fore-aft
+    // (the old parallel-slide read as broken), and the horse gains a mane,
+    // tail, darker muzzle and hooves — same primitive budget class.
     const Color coat = Color{ 96, 66, 40, 255 };
-    const float trot = sinf(walkPhase) * 0.25f;
-    DrawCapsule(hAt(0, 1.05f, -0.7f), hAt(0, 1.05f, 0.7f), 0.34f, 8, 5, coat);   // barrel
-    DrawCapsule(hAt(0, 1.15f, 0.7f), hAt(0, 1.65f, 1.15f), 0.14f, 6, 4, coat);   // neck
-    DrawCapsule(hAt(0, 1.65f, 1.15f), hAt(0, 1.55f, 1.5f), 0.11f, 6, 4, coat);   // head
-    DrawCapsule(hAt(-0.2f, 0.05f,  0.55f + trot), hAt(-0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
-    DrawCapsule(hAt( 0.2f, 0.05f,  0.55f - trot), hAt( 0.2f, 0.95f, 0.55f), 0.07f, 5, 3, coat);
-    DrawCapsule(hAt(-0.2f, 0.05f, -0.55f - trot), hAt(-0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
-    DrawCapsule(hAt( 0.2f, 0.05f, -0.55f + trot), hAt( 0.2f, 0.95f, -0.55f), 0.07f, 5, 3, coat);
+    const Color dark = Color{ 58, 40, 26, 255 };
+    const float trot = sinf(walkPhase) * 0.35f;
+    DrawCapsuleOr(hAt(0, 1.05f, -0.7f), hAt(0, 1.05f, 0.7f), 0.36f, 8, 5, coat);   // barrel
+    DrawCapsuleOr(hAt(0, 1.15f, 0.7f), hAt(0, 1.70f, 1.12f), 0.15f, 6, 4, coat);   // neck
+    if (!batched) DrawCapsule(hAt(0, 1.30f, 0.78f), hAt(0, 1.78f, 1.10f), 0.05f, 4, 3, dark);  // mane
+    DrawCapsuleOr(hAt(0, 1.70f, 1.12f), hAt(0, 1.58f, 1.52f), 0.11f, 6, 4, coat);  // head
+    if (!batched) DrawCapsule(hAt(0, 1.56f, 1.52f), hAt(0, 1.52f, 1.64f), 0.07f, 4, 3, dark);  // muzzle
+    if (!batched) DrawCapsule(hAt(0, 1.15f, -0.72f), hAt(0, 0.62f, -1.02f), 0.06f, 4, 3, dark); // tail
+    // Legs pivot around the hip/shoulder: the top stays planted on the
+    // body, the hoof swings through the stride arc.
+    auto leg = [&](float side, float fwd, float phase) {
+        const float sw = sinf(phase) * 0.35f;
+        DrawCapsuleOr(hAt(side, 0.95f, fwd), hAt(side, 0.08f, fwd + sw),
+                      0.07f, 5, 3, coat);
+        if (!batched)
+            DrawCapsule(hAt(side, 0.10f, fwd + sw), hAt(side, 0.02f, fwd + sw),
+                        0.075f, 4, 3, dark);   // hoof
+    };
+    leg(-0.20f,  0.55f, walkPhase);
+    leg( 0.20f,  0.55f, walkPhase + PI);
+    leg(-0.20f, -0.55f, walkPhase + PI);
+    leg( 0.20f, -0.55f, walkPhase);
+    (void)trot;
 }
 
 // Keep a mover out of the wall band unless it's inside the gate opening.
@@ -2585,11 +2614,17 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         Clamp(1.0f - Vector3Distance(s.pos, B.pPos) / 45.0f, 0.05f, 0.8f));
             }
         }
-        // The press of bodies (U6): men cannot share ground. One positional
-        // relaxation per frame â€” grid-accelerated, half-push each â€” keeps
-        // crowds honest without a solver. TODO(balance): the gap.
+        // The press of bodies (U6, reworked V132): men cannot share ground.
+        // Corrections are ACCUMULATED first, then applied with a per-frame
+        // speed cap — the old apply-in-place full push meant a man in a deep
+        // clump got shoved by every neighbour in sequence, teleporting a
+        // body-width in one frame (the visual popping in big scrums). Now
+        // crowds resolve as a shove (bounded u/s), not a snap, and the
+        // result no longer depends on soldier order.
         {
-            constexpr float BODY_GAP = 0.9f;
+            constexpr float BODY_GAP  = 0.9f;
+            constexpr float PRESS_UPS = 3.5f;   // max correction speed, u/s TODO(balance)
+            B.pushBuf.assign(n, Vector3{});
             for (int i = 0; i < n; ++i) {
                 Soldier& s = B.soldiers[i];
                 if (s.hp <= 0 || s.escaped || s.onWall) continue;
@@ -2602,14 +2637,24 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     const float dist = Vector3Length(d);
                     if (dist >= BODY_GAP) return;
                     if (dist < 1e-4f) {   // perfect overlap: pick a direction
-                        o.pos.x += (j & 1) ? 0.06f : -0.06f;
+                        B.pushBuf[j].x += (j & 1) ? 0.06f : -0.06f;
                         return;
                     }
                     const Vector3 pd =
                         Vector3Scale(d, (BODY_GAP - dist) * 0.5f / dist);
-                    s.pos = Vector3Subtract(s.pos, pd);
-                    o.pos = Vector3Add(o.pos, pd);
+                    B.pushBuf[i] = Vector3Subtract(B.pushBuf[i], pd);
+                    B.pushBuf[j] = Vector3Add(B.pushBuf[j], pd);
                 });
+            }
+            const float maxStep = PRESS_UPS * dt;
+            for (int i = 0; i < n; ++i) {
+                Soldier& s = B.soldiers[i];
+                if (s.hp <= 0 || s.escaped || s.onWall) continue;
+                const float len = Vector3Length(B.pushBuf[i]);
+                if (len < 1e-6f) continue;
+                s.pos = Vector3Add(s.pos,
+                                   Vector3Scale(B.pushBuf[i],
+                                                fminf(len, maxStep) / len));
                 EnforceWall(s.pos);
             }
         }
@@ -3051,9 +3096,12 @@ void BattleDraw(const Content& c) {
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding
         pose.accent = c.troops[s.troop].accent;   // rank plume
 
+        const bool farTier = camDistSq > LOD_DIST_SQ * 0.09f;
         Vector3 riderPos = s.pos;
         if (IsMounted(c, s)) {
-            DrawHorse(s.pos, s.yaw, s.walkPhase);
+            // Horse and rider share a tier (V132): both full up close, both
+            // batched boxes at distance — never a crate riding a capsule.
+            DrawHorse(s.pos, s.yaw, s.walkPhase, farTier && g_instReady);
             riderPos.y += 1.25f;
             pose.walkPhase = 0;   // the rider sits; the horse does the running
         }
@@ -3072,9 +3120,9 @@ void BattleDraw(const Content& c) {
         tint.r = (unsigned char)fminf(255.0f, tint.r * dim + 70.0f * (1.0f - hf));
         tint.g = (unsigned char)(tint.g * dim);
         tint.b = (unsigned char)(tint.b * dim);
-        // Half-tessellation past half the LOD line (V127): same silhouette,
-        // a fraction of the vertices, exactly where detail stops reading.
-        SetCharacterDetail(camDistSq > LOD_DIST_SQ * 0.25f ? 1 : 0);
+        // Full detail within 30% of the LOD line (was 50% — V132's richer
+        // model earns its keep close up; the batched tier carries the rest).
+        SetCharacterDetail(farTier ? 1 : 0);
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
     SetCharacterDetail(0);   // the hero and town scenes draw full (V127)

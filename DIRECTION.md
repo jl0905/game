@@ -1486,6 +1486,26 @@ this is the feedback the flat numbers were waiting for.
   - [x] campaign road contrast (V131, user ask — roads repainted as a
         dark earthen edge under a bright sand fill instead of one faded
         stroke; they now read clearly against every biome)
+- [x] **V132. Iteration one-thirty-two — bodies, not billiard balls (user
+  asks).** Three fixes in one: (1) crowd-press corrections accumulate
+  into a buffer and apply with a 3.5 u/s speed cap — deep clumps shove
+  instead of teleport-popping, order-independent; (2) semi-realistic
+  humanoid: two-segment legs with bending knees, hips/chest/shoulders/
+  neck, elbowed arms, boots — minor parts vanish in the batched tier;
+  (3) horses fixed: legs pivot from the hip (no more ski-slide), mane/
+  tail/muzzle/hooves added, and horse+rider share an LOD tier so the
+  "blue square" (box rider on capsule horse) is gone — distant cavalry
+  batches whole. Bench 12.19ms/82fps (faster than before the upgrade).
+- [ ] **U-track continued (user asks 2026-07-23):**
+  - [ ] populate the map with more settlements
+  - [ ] troop upgrade economy overhaul: gear gets real prices; upgrade
+        cost = programmatic delta of the next tier's equipment + stats;
+        the player buying a piece of gear pays the same price as
+        upgrading a troop into it (shared price registry)
+  - [ ] (research note) semi-pro model path: raylib loads .glb/.gltf via
+        LoadModel/UpdateModelAnimation — a models.cfg mapping troop ids
+        to assets/models/*.glb would let professionally-made models drop
+        in without code changes; procedural stays the fallback
   - [x] remove leftover text behind the bottom-left control panel (V122 —
         the stale travel hint that printed under the key bar is gone; its
         content merged into the bar)

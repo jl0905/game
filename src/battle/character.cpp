@@ -23,6 +23,10 @@ int R(int full) { return g_charTier ? 2 : full; }
 // primitives become oriented boxes handed to the caller's batcher.
 LimbSink g_sink = nullptr;
 bool Batched() { return g_sink != nullptr && g_charTier == 1; }
+// Minor parts — boots, neck, stripe, nasal — vanish in the batched tier
+// (V132): at that distance they are sub-pixel, and every skipped part is
+// one fewer instance for the whole army.
+bool Minor() { return Batched(); }
 
 void Cap(Vector3 a, Vector3 b, float r, int sl, int ri, Color c) {
     if (Batched()) { g_sink(a, b, r, c); return; }
@@ -113,23 +117,42 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const bool  hasHelm = loadout.has(EquipSlot::Head);
     const Color headC   = flashed(hasHelm ? SlotTint(content, loadout, EquipSlot::Head, SKIN) : SKIN);
 
-    // Walk cycle: legs swing fore/aft, arms counter-swing.
+    // Walk cycle: legs swing fore/aft, arms counter-swing. Knees bend on
+    // the forward stride (V132) instead of the legs sliding like skis.
     const float legSwing = sinf(pose.walkPhase) * 0.35f;
 
-    // ---- Legs ----
-    Cap(at(-0.16f, 0.05f,  legSwing), at(-0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
-    Cap(at( 0.16f, 0.05f, -legSwing), at( 0.16f, 0.95f, 0.0f), 0.14f, S(8), R(4), feetC);
+    // ---- Legs (V132): thigh to knee to shin, with a bending knee ----
+    auto legPair = [&](float side, float swing) {
+        const float knee = fmaxf(0.0f, swing) * 0.45f + 0.08f;   // forward bow
+        const Vector3 hip  = at(side, 0.92f, 0.0f);
+        const Vector3 kneeP = at(side, 0.48f, swing * 0.55f + knee * 0.3f);
+        const Vector3 foot = at(side, 0.06f, swing);
+        Cap(hip,  kneeP, 0.13f, S(7), R(3), feetC);   // thigh
+        Cap(kneeP, foot, 0.10f, S(6), R(3), feetC);   // shin
+        if (!Minor())
+            Cap(foot, at(side, 0.05f, swing + 0.16f), 0.07f, S(5), R(3), feetC); // boot
+    };
+    legPair(-0.15f,  legSwing);
+    legPair( 0.15f, -legSwing);
 
-    // ---- Torso (+ a team surcoat stripe down the chest so sides read) ----
-    Cap(at(0.0f, 0.95f, 0.0f), at(0.0f, 1.6f, 0.0f), 0.30f, S(10), R(6), bodyC);
-    Cap(at(0.0f, 1.0f, 0.24f), at(0.0f, 1.55f, 0.24f), 0.09f, S(6), R(4), flashed(teamTint));
+    // ---- Torso (V132): hips narrower than the chest, squared shoulders,
+    //      a neck under the head, and the team surcoat stripe kept ----
+    Cap(at(0.0f, 0.90f, 0.0f), at(0.0f, 1.15f, 0.0f), 0.22f, S(8), R(4), bodyC);   // hips
+    Cap(at(0.0f, 1.15f, 0.0f), at(0.0f, 1.55f, 0.0f), 0.27f, S(10), R(6), bodyC);  // chest
+    if (!Minor())
+        Cap(at(-0.26f, 1.56f, 0.0f), at(0.26f, 1.56f, 0.0f), 0.12f, S(7), R(3), bodyC); // shoulders
+    if (!Minor())
+        Cap(at(0.0f, 1.05f, 0.22f), at(0.0f, 1.52f, 0.25f), 0.08f, S(6), R(4), flashed(teamTint));
+    if (!Minor())
+        Cap(at(0.0f, 1.60f, 0.0f), at(0.0f, 1.74f, 0.0f), 0.09f, S(6), R(3), flashed(SKIN)); // neck
 
     // ---- Head: dome helmet with a nasal bar, or a bare head ----
-    Sph(at(0.0f, 1.85f, 0.0f), 0.22f, R(16), S(16), headC);
+    Sph(at(0.0f, 1.87f, 0.0f), 0.19f, R(16), S(16), headC);
     if (hasHelm) {
         Cyl(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
         Cyl(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, S(10), headC); // dome
-        Cap(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);       // nasal
+        if (!Minor())
+            Cap(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);   // nasal
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
     if (pose.accent.a > 0)
@@ -143,7 +166,15 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const bool  oneHanded = content.weapons.valid(whShield) &&
                             content.weapons[whShield].wclass == WeaponClass::OneHanded;
     const float guard = pose.blocking ? 0.6f : 0.0f;
-    Cap(at(-0.34f, 1.5f, 0.0f), at(-0.34f, 1.05f + guard, 0.2f + guard), 0.11f, S(8), R(4), bodyC);
+    // Upper arm to elbow to forearm (V132): a slight natural bend, deeper
+    // when the shield comes up.
+    {
+        const Vector3 shoulderL = at(-0.32f, 1.52f, 0.0f);
+        const Vector3 elbowL    = at(-0.38f, 1.24f + guard * 0.4f, 0.06f + guard * 0.4f);
+        const Vector3 handL     = at(-0.36f, 1.05f + guard, 0.22f + guard);
+        Cap(shoulderL, elbowL, 0.10f, S(7), R(3), bodyC);
+        Cap(elbowL, handL, 0.08f, S(6), R(3), handsC);
+    }
     if (pose.blocking) {
         Cyl(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, S(14),
                        flashed(DARKBROWN));
@@ -154,8 +185,14 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                        flashed(DARKBROWN));
     }
 
-    // ---- Right arm (weapon side) ----
-    Cap(at(0.34f, 1.5f, 0.0f), at(0.42f, 1.15f, 0.15f), 0.11f, S(8), R(4), handsC);
+    // ---- Right arm (weapon side): shoulder to elbow to the weapon hand ----
+    {
+        const Vector3 shoulderR = at(0.32f, 1.52f, 0.0f);
+        const Vector3 elbowR    = at(0.40f, 1.30f, 0.02f);
+        const Vector3 handR     = at(0.42f, 1.15f, 0.15f);
+        Cap(shoulderR, elbowR, 0.10f, S(7), R(3), bodyC);
+        Cap(elbowR, handR, 0.08f, S(6), R(3), handsC);
+    }
 
     // ---- Weapon (the active one; a character may carry several) ----
     const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
