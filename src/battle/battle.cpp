@@ -744,6 +744,12 @@ struct BattleState {
     std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
     float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
+    // Floating combat text (V144, user ask): damage numbers rise off the
+    // struck man; capped and short-lived. Updated in sim, drawn windowed.
+    struct FloatText { Vector3 pos; float t; int amount; bool onHero; };
+    std::vector<FloatText> floats;
+    std::vector<int> lastHitter;   // per soldier: troop handle of the last
+                                   // attacker, -1 hero, -2 an arrow (V144)
     struct StuckArrow { Vector3 pos, dir; };
     std::vector<StuckArrow> stuckArrows;   // shafts in the dirt (V61), capped
     std::vector<std::pair<int, int>> menuHits;   // strategy rows {y,id} (V65)
@@ -879,7 +885,7 @@ void SpawnLine(const Content& c, Team team, const std::vector<int>& counts, floa
             s.troop = troop;
             s.team = team;
             s.ally = ally;
-            s.maxHp = (float)c.troops[troop].maxHp;
+            s.maxHp = (float)c.troops[troop].maxHp * 0.55f;   // V144: mortal men TODO(balance)
             s.hp = s.maxHp;
             s.slot = ally ? -1 : n;   // formation slot (players and enemy lines)
             s.activeWeapon = c.troops[troop].loadout.weaponAt(0);
@@ -1014,7 +1020,7 @@ void SpawnGarrison(const Content& c, const std::vector<int>& counts) {
             Soldier s;
             s.troop = troop;
             s.team = Team::Enemy;
-            s.maxHp = (float)c.troops[troop].maxHp;
+            s.maxHp = (float)c.troops[troop].maxHp * 0.55f;   // V144: mortal men TODO(balance)
             s.hp = s.maxHp;
             s.activeWeapon = c.troops[troop].loadout.weaponAt(0);
             s.horseHp = HORSE_HP;
@@ -2202,7 +2208,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     SfxPlay(Sfx::Click, 0.7f);
                 } else {
                 B.heroQuiver--;
-                B.cooldown = WeaponCooldown(c, wh);
+                B.cooldown = WeaponCooldown(c, wh);   // a bow still takes nocking (V144)
                 const Vector3 look = { sinf(B.yaw) * cosf(B.pitch),
                                        sinf(B.pitch),
                                        cosf(B.yaw) * cosf(B.pitch) };
@@ -2220,7 +2226,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             } else {
             SfxPlay(Sfx::Swing);
             const float reach = WeaponReach(c, wh);
-            B.cooldown = WeaponCooldown(c, wh);
+            B.cooldown = WeaponCooldown(c, wh) * 0.1f;   // V144: near-zero for feints
             // The hero hits like a hero: the first user-playtest balance
             // change (T) â€” with flat 100/10 numbers a player needed ten
             // clean hits per man while three men killed him in five
@@ -2277,6 +2283,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     // taps, a plate-cracking overhead lands like a hammer.
                     if (dmg > 0.5f)
                         SfxPlay(Sfx::Thud, Clamp(0.3f + dmg / 25.0f, 0.3f, 1.0f));
+                    // Your blow, in numbers, off his chest (V144).
+                    if (dmg >= 1.0f && B.floats.size() < 48)
+                        B.floats.push_back({ s.pos, 1.0f, (int)dmg, false });
+                    if (vi < (int)B.lastHitter.size()) B.lastHitter[vi] = -1;
                     DamageSoldier(c, s, dmg);
                     if (s.hp <= 0) FreeHorse(c, s);   // (T6)
                     if (s.hp <= 0) {   // a kill by the hero's own hand rallies
@@ -2553,6 +2563,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
         });
         // Phase 2 â€” apply movement/state serially, accumulate damage, then deal it.
         B.dmg.assign(n, 0.0f);
+        if ((int)B.lastHitter.size() != n) B.lastHitter.assign(n, -3);
         float playerDamage = 0.0f;
         for (int i = 0; i < n; ++i) {
             Soldier& s = B.soldiers[i];
@@ -2648,6 +2659,7 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                 }
                 B.dmg[cmd.hitSoldier] += hit;
+                B.lastHitter[cmd.hitSoldier] = s.troop;   // the tale needs a name (V144)
             }
             if (cmd.hitPlayer) {
                 float d = ApplyArmor(cmd.hitDamage,
@@ -2674,6 +2686,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                 }
                 playerDamage += d;
+                if (d >= 1.0f && B.floats.size() < 48)   // you feel it in numbers (V144)
+                    B.floats.push_back({ B.pPos, 1.0f, (int)d, true });
                 B.lastHitFrom  = B.soldiers[i].pos;   // where it came from (V108)
                 B.hitFromTimer = 0.9f;
             }
@@ -2751,6 +2765,21 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (B.dmg[i] > 0.0f) {
                 DamageSoldier(c, s, B.dmg[i]);   // horse soaks its share
                 if (s.hp <= 0) FreeHorse(c, s);  // the mount outlives him (T6)
+                // The field tells its own story (V144, user ask): every
+                // fall is CALLED, Warband-style, with the killer's name.
+                if (s.hp <= 0 && i < (int)B.lastHitter.size()) {
+                    const int k = B.lastHitter[i];
+                    const char* victim = c.troops[s.troop].name.c_str();
+                    const char* killer = k >= 0 && k < c.troops.size()
+                                             ? c.troops[k].name.c_str()
+                                       : k == -2 ? "an arrow" : "the press";
+                    if (s.team == Team::Player)
+                        Feed(TextFormat(s.ally ? "Allied %s falls to %s"
+                                               : "Your %s falls to %s",
+                                        victim, killer));
+                    else
+                        Feed(TextFormat("%s brings down %s", killer, victim));
+                }
                 // A death every witness feels (K4): friends flinch, foes cheer.
                 if (s.hp <= 0 && !B.setup.arena)
                     B.grid.ForNeighbors(s.pos, NERVE_WITNESS_R, [&](int j) {
@@ -2762,6 +2791,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     });
             }
         }
+        // Damage numbers rise and fade (V144); sim-side so headless stays lean.
+        for (auto& ft : B.floats) { ft.t -= dt; ft.pos.y += dt * 1.4f; }
+        B.floats.erase(std::remove_if(B.floats.begin(), B.floats.end(),
+                                      [](const BattleState::FloatText& f) {
+                                          return f.t <= 0;
+                                      }),
+                       B.floats.end());
         B.pFlash     = fmaxf(0.0f, B.pFlash - dt * 5.0f);
         B.rallyPulse = fmaxf(0.0f, B.rallyPulse - dt);
         if (playerDamage > 0.0f && B.pHp > 0) {
@@ -3339,6 +3375,18 @@ void BattleDraw(const Content& c) {
     EndShaderMode();
 
     EndMode3D();
+
+    // Floating damage numbers (V144): your hits in gold rising off the man,
+    // hits on YOU in red. Projected from world space each frame.
+    for (const auto& ft : B.floats) {
+        const Vector3 wp = { ft.pos.x, ft.pos.y + 2.2f, ft.pos.z };
+        if (BehindCamera(wp)) continue;
+        const Vector2 sp = GetWorldToScreen(wp, cam);
+        const float a = Clamp(ft.t, 0.0f, 1.0f);
+        ui::Text(TextFormat("-%d", ft.amount), (int)sp.x, (int)sp.y,
+                 ft.onHero ? 24 : 20,
+                 Fade(ft.onHero ? RED : GOLD, a));
+    }
 
     // Night presses close on the field (O3): a veil over the scene, under
     // the HUD, so torches-and-steel reads without hiding the interface.

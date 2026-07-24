@@ -36,6 +36,13 @@ void TownGoTavern(GameState& gs);   // stand at the tavern door (harness
 bool TownInMenu();
 namespace townmenu {
 inline constexpr int Y = 168, ROW_H = 34, ROWS = 13, X_HALF = 260;
+// The menu sits to the SIDE now (V144, Viking Conquest style) so the
+// eagle-eye view of the settlement stays visible behind it. Shared by
+// draw and the gather-side hit-test (K7 rule).
+inline int X0() {
+    const int x = GetScreenWidth() - X_HALF * 2 - 48;
+    return x > 10 ? x : 10;
+}
 }
 void DialogueUpdate(GameState& gs, const CampaignInput& in);
 

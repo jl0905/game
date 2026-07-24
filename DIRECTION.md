@@ -1619,6 +1619,22 @@ this is the feedback the flat numbers were waiting for.
   while shields stay omnidirectional wear-based cover (V142). Verified:
   aim=right/up/down lock exactly from flicks (tests/combatdir.txt);
   suite re-paced for 4.4s bow cycles.
+- [x] **V144. Iteration one-forty-four — the gate view and the killing
+  told (user goal).** Settlement entry is Viking Conquest style: an
+  eagle's slow circling camera over the roofs with the gate menu moved
+  to the RIGHT side panel (townmenu::X0() shared by draw + hit-test);
+  boots touch ground only on the walk row. The campaign bottom bar's
+  chips are real hover-lit buttons AND hotkeys (journal/party/character/
+  bag/ledger/estate/hail/options; bar clicks no longer leak into map
+  clicks). Combat: melee recovery cut to near zero (feints live — start
+  a cut, cancel to block, bait the parry; bows still take full nocking),
+  every soldier fields at 55% health so clean blows decide, hero hits
+  rise as gold damage numbers off the struck man (hits on you in red,
+  world-projected), and every fall is CALLED by name in the feed —
+  "Huscarl brings down Recruit", "Your Infantry falls to an arrow" —
+  via a per-victim last-hitter tally. veterancy.txt re-pinned (two-crown
+  neutrality had silently broken its hunt; now a deterministic fixture
+  that wins, promotes for the quoted 287g, and round-trips the save).
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve

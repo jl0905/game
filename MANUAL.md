@@ -26,15 +26,18 @@ Modding surfaces are in MODDING.md.)
   caravans, and roaming warbands. Factions war and besiege each other
   without you; two hostile parties that collide fight a **skirmish** you can
   watch or join ([1]/[2]).
-- **Keys:** the bottom bar lists everything — [Q] journal, [P]arty,
-  [C]haracter, [I] bag, [B] kingdom ledger, [E] estate, [T] hail a lord,
-  [O]ptions, [F5–F7] quicksaves, wheel to zoom.
+- **The bottom bar is buttons:** [Q] journal, [P]arty, [C]haracter,
+  [I] bag, [B] ledger, [E]state, [T] hail, [O]ptions — every chip is
+  hover-lit and clickable, and every hotkey still works. F5–F7
+  quicksave; wheel zooms the map.
 
 ## Settlements
 
-- **The gate menu** greets you: recruit, market, tavern, tournament, work,
-  audience, feast, garrison, fortify, sellswords — every row clickable, dead
-  rows say why. [W] walks the streets in 3D instead.
+- **The gate view** (Viking Conquest style): entering a settlement shows
+  an eagle's slow circling look over the roofs, with the menu on the
+  RIGHT — recruit, market, tavern, tournament, work, audience, feast,
+  garrison, fortify, sellswords — every row clickable, dead rows say why.
+  Boots touch ground only when you pick [W] walk the streets.
 - **Walking mode:** the service strip ([T] tournament, [M] market, [G] work,
   [H] hire, [V] oath, [E] talk, [F] garrison) is clickable; the gold-roofed
   building is the tavern (recruits, ransoming captives, companions).
@@ -151,15 +154,21 @@ Clicking a hostile walled town offers, besides storming and engineering:
 
 ## Battle
 
+- **The field talks:** your hits rise off the struck man as gold damage
+  numbers (hits on you in red), and every fall is called by name in the
+  kill feed, Warband-style — "Huscarl brings down Recruit", "Your
+  Infantry falls to an arrow".
 - **Melee is deliberate (the whole game in three rules):**
   1. **Aim = your last flick.** The direction the mouse moved last is the
      direction your swing comes from — dominant axis wins (more sideways
      than vertical reads as a cut, more vertical as overhead/thrust). The
      press locks it; the first third of the wind-up can still re-aim.
   2. **The wind-up is the weight.** Release early and the blow lands at
-     half force; hold the draw and it lands whole. Swings take ~2.2× the
-     old time — every blow is a commitment, and the arm visibly coils
-     behind the shoulder so everyone can read what's coming.
+     half force; hold the draw and it lands whole. The swing itself is
+     slow and readable — the arm coils behind the shoulder — but the
+     recovery after a blow is NEAR ZERO, so you can feint: start a cut,
+     cancel into block or another line, and bait the parry. Men die
+     fast now (55% of old health): clean blows decide fights.
   3. **Guards are lines.** A **shield** is cover: it soaks from every
      direction while the wood lasts (it wears and splinters; the [E] kick
      goes straight through). A **bare weapon** bars ONE line, shown by the

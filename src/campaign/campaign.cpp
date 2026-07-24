@@ -165,6 +165,12 @@ constexpr int CHAR_Y     = 180, CHAR_ROW_H     = 40;
 constexpr int PANEL_HALF = 360, PANEL_W        = 560;
 }   // namespace layout
 
+// The campaign bottom bar's chips (V144): {x, w, id} recorded by draw,
+// hit-tested by the gatherer. Ids: 1 journal, 2 party, 3 character,
+// 4 bag, 5 ledger, 6 estate, 7 hail, 8 options.
+struct BarHit { int x, w, id; };
+std::vector<BarHit> g_barHits;
+
 // Hover highlight (K7): a soft band behind the clickable row under the
 // cursor. Draw-only affordance — simulation and the harness never see it.
 void DrawHoverRow(int x, int y, int w, int h) {
@@ -1304,7 +1310,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (IsKeyPressed(KEY_F)) in.menuChoice = 13;      // fortify (V51)
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 const Vector2 m = GetMousePosition();
-                const int x0 = GetScreenWidth() / 2 - townmenu::X_HALF;
+                const int x0 = townmenu::X0();   // side panel (V144)
                 const int row = ((int)m.y - townmenu::Y) / townmenu::ROW_H;
                 if (m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
                     m.y >= townmenu::Y && row >= 0 && row < townmenu::ROWS)
@@ -1590,7 +1596,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                           MAP_ZOOM_MIN, MAP_ZOOM_MAX);
 
     const Camera2D cam = CampaignCamera(gs);
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+        GetMousePosition().y < GetScreenHeight() - 36) {   // not the bar (V144)
         const Vector2 world = GetScreenToWorld2D(GetMousePosition(), cam);
         for (int i = 0; i < (int)gs.towns.size(); ++i)
             if (Vector2Distance(world, gs.towns[i].pos) < TOWN_CLICK_RADIUS)
@@ -1603,6 +1610,25 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     in.openLedger = IsKeyPressed(KEY_B);         // the kingdom ledger (O1)
     in.openQuests = IsKeyPressed(KEY_Q);         // the journal (V124)
     in.openEstate = IsKeyPressed(KEY_E);         // the estate (V135)
+    // The bottom bar is buttons too (V144): clicks fire the same intents.
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 m = GetMousePosition();
+        if (m.y >= GetScreenHeight() - 36)
+            for (const BarHit& h : g_barHits)
+                if (m.x >= h.x && m.x < h.x + h.w) {
+                    switch (h.id) {
+                        case 1: in.openQuests    = true; break;
+                        case 2: in.openParty     = true; break;
+                        case 3: in.openCharacter = true; break;
+                        case 4: in.openInventory = true; break;
+                        case 5: in.openLedger    = true; break;
+                        case 6: in.openEstate    = true; break;
+                        case 7: in.parley        = true; break;
+                        case 8: in.openSettings  = true; break;
+                    }
+                    break;
+                }
+    }
     if (IsKeyPressed(KEY_F5)) in.saveSlot = 1;   // quicksave slots (N3)
     if (IsKeyPressed(KEY_F6)) in.saveSlot = 2;
     if (IsKeyPressed(KEY_F7)) in.saveSlot = 3;
@@ -3816,22 +3842,44 @@ void CampaignDraw(const GameState& gs) {
         ui::Text(what, 10, 38, 17, Fade(RAYWHITE, 0.65f));
     }
 
-    // Every door on one line (T7): the keys players kept not finding.
+    // Every door on one line (T7) — and every door is a BUTTON (V144):
+    // each chip below is hover-lit and clickable, firing the same intent
+    // as its hotkey. Rects are recorded for the gather-side hit-test.
     {
-        const char* keys = "[WASD] travel (time flows)   [SPACE] wait   "
-                           "[Click] town: near enters, far sets course   "
-                           "[Q] journal   [Wheel] zoom   [P]arty   [C]haracter   [I] bag   "
-                           "[B] ledger   [T] hail a lord   [O]ptions   "
-                           "[F5-F7] quicksave   [Esc,Esc] save+quit";
         DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
                       Fade(BLACK, 0.88f));
         DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
                       Fade(GOLD, 0.35f));
-        // Fit the bar to the window (V122): step the size down until the
-        // line fits rather than letting it run off a narrow screen.
-        int ks = 20;
-        while (ks > 12 && ui::Measure(keys, ks) > GetScreenWidth() - 24) ks--;
-        ui::Text(keys, 12, GetScreenHeight() - 36 + (36 - ks) / 2, ks, RAYWHITE);
+        struct BarChip { const char* label; int id; };
+        static const BarChip chips[] = {
+            { "[Q] journal", 1 },  { "[P]arty", 2 },     { "[C]haracter", 3 },
+            { "[I] bag", 4 },      { "[B] ledger", 5 },  { "[E]state", 6 },
+            { "[T] hail", 7 },     { "[O]ptions", 8 },
+        };
+        g_barHits.clear();
+        int ks = 19;
+        auto rowWidth = [&](int fs) {
+            int w = 12 + ui::Measure("[WASD/SPACE] move/wait  ", fs);
+            for (const BarChip& ch : chips) w += ui::Measure(ch.label, fs) + 22;
+            return w;
+        };
+        while (ks > 12 && rowWidth(ks) > GetScreenWidth() - 12) ks--;
+        const int by = GetScreenHeight() - 36 + (36 - ks) / 2;
+        int bx = 12;
+        ui::Text("[WASD/SPACE] move/wait  ", bx, by, ks, Fade(RAYWHITE, 0.6f));
+        bx += ui::Measure("[WASD/SPACE] move/wait  ", ks);
+        const Vector2 bm = GetMousePosition();
+        for (const BarChip& ch : chips) {
+            const int cw = ui::Measure(ch.label, ks);
+            const bool hov = bm.x >= bx - 5 && bm.x < bx + cw + 5 &&
+                             bm.y >= GetScreenHeight() - 36;
+            if (hov)
+                DrawRectangle(bx - 5, GetScreenHeight() - 35, cw + 10, 34,
+                              Fade(GOLD, 0.22f));
+            ui::Text(ch.label, bx, by, ks, hov ? GOLD : RAYWHITE);
+            g_barHits.push_back({ bx - 5, cw + 10, ch.id });
+            bx += cw + 22;
+        }
     }
 
     // Time state, top-right: the world is frozen until you move or wait.

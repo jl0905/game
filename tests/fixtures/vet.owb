@@ -1,0 +1,12 @@
+OWSAVE 1
+gold 1000
+day 0
+clock 20
+playerpos 80 80
+ptroop recruit 5
+ptroop infantry 10
+pxp recruit 100
+hero 1 0 0
+carry sword
+party raiders 84 80
+troop marauder 6

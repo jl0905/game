@@ -1267,11 +1267,21 @@ void TownDraw(const GameState& gs) {
     }
 
     Camera3D cam = { 0 };
-    const Vector3 look = { sinf(T.yaw) * cosf(T.pitch), sinf(T.pitch), cosf(T.yaw) * cosf(T.pitch) };
-    const Vector3 eye = { T.pPos.x, T.pPos.y + 2.0f, T.pPos.z };
-    cam.position = Vector3Subtract(eye, Vector3Scale(look, 6.0f));
-    cam.position.y = fmaxf(cam.position.y, 0.6f);
-    cam.target = Vector3Add(eye, Vector3Scale(look, 4.0f));
+    if (T.menu) {
+        // The gate view (V144, user ask — Viking Conquest style): while the
+        // menu is up you SEE the settlement, an eagle's slow circling look
+        // over the roofs, with the choices off to the side. Boots touch
+        // ground only when you pick the walk row.
+        const float a = (float)GetTime() * 0.05f;
+        cam.position = { sinf(a) * 48.0f, 34.0f, cosf(a) * 48.0f };
+        cam.target   = { 0.0f, 3.0f, 0.0f };
+    } else {
+        const Vector3 look = { sinf(T.yaw) * cosf(T.pitch), sinf(T.pitch), cosf(T.yaw) * cosf(T.pitch) };
+        const Vector3 eye = { T.pPos.x, T.pPos.y + 2.0f, T.pPos.z };
+        cam.position = Vector3Subtract(eye, Vector3Scale(look, 6.0f));
+        cam.position.y = fmaxf(cam.position.y, 0.6f);
+        cam.target = Vector3Add(eye, Vector3Scale(look, 4.0f));
+    }
     cam.up = { 0, 1, 0 };
     cam.fovy = 60;
     cam.projection = CAMERA_PERSPECTIVE;
@@ -1427,11 +1437,12 @@ void TownDraw(const GameState& gs) {
     if (T.menu && gs.currentSettlement >= 0) {
         const Town& town = gs.towns[gs.currentSettlement];
         const Content& c = gs.content;
-        const int cx = GetScreenWidth() / 2;
-        const int x0 = cx - townmenu::X_HALF;
+        // Side panel (V144): the town breathes on the left, choices on the
+        // right — the eagle view stays visible through a lighter smoke.
+        const int x0 = townmenu::X0();
         DrawRectangle(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                       townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
-                      Fade(BLACK, 0.92f));
+                      Fade(BLACK, 0.78f));
         DrawRectangleLines(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                            townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
                            GOLD);
