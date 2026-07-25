@@ -1019,6 +1019,25 @@ void DialogueUpdate(GameState& gs, const CampaignInput& in) {
             gs.dialogueLines.push_back(gs.resultText);
             SfxPlay(Sfx::Fanfare);
         }
+    } else if (in.menuChoice == 11 && gs.dialogueLord &&
+               !gs.audienceLord.empty()) {   // lend to a lord (V150)
+        gs.dialogueLines.clear();
+        bool already = false;
+        for (const auto& l : gs.lordLoans)
+            if (l.lord == gs.audienceLord) already = true;
+        if (already)
+            gs.dialogueLines.push_back("He already carries your coin.");
+        else if (gs.gold < 300)
+            gs.dialogueLines.push_back("Your purse cannot cover the loan.");
+        else {
+            gs.gold -= 300;
+            gs.lordLoans.push_back({ gs.audienceLord, 360, 6.0f });
+            gs.dialogueLines.push_back(TextFormat(
+                "%s takes your 300 with a nod: 360 back inside six days - "
+                "if he still rides.", gs.audienceLord.c_str()));
+            Chronicle(gs, TextFormat("Lent 300 gold to %s.",
+                                     gs.audienceLord.c_str()));
+        }
     } else if (in.menuChoice == 9 && gs.dialogueLord) {   // turn his coat (V73)
         gs.dialogueLines.clear();
         const Content& c = gs.content;
@@ -1197,6 +1216,9 @@ void DialogueDraw(const GameState& gs) {
             gs.content.factions.valid(gs.parties[gs.parleyParty].faction) &&
             gs.content.factions[gs.parties[gs.parleyParty].faction].mercenary)
             option(8, "[8] March with me. (300 gold, 3 days)", Fade(GOLD, 0.85f));
+        if (!gs.audienceLord.empty())   // the lender's side of the table (V150)
+            option(11, "[L] Lend 300 gold at interest. (360 in six days)",
+                   Fade(GOLD, 0.85f));
         if (gs.audienceLord == "Graves" && gs.debt > 0)   // pay the man (V87)
             option(10, TextFormat("[0] Pay what you owe. (%d gold)", gs.debt),
                    Fade(RED, 0.9f));
@@ -1530,17 +1552,29 @@ void TownDraw(const GameState& gs) {
                  10, y + 26 + slot * 24, 20, RAYWHITE, SVC_RECRUIT0 + slot);
         }
     } else {
-        // The local services, always on show (K7) — and clickable (V122).
-        struct { const char* label; int id; } svcs[] = {
-            { "[T] tournament", SVC_TOURNEY }, { "[M] market",   SVC_MARKET },
-            { "[G] work",       SVC_WORK },    { "[H] hire",     SVC_HIRE },
-            { "[V] oath",       SVC_OATH },    { "[E] talk",     SVC_TALK },
-            { "[F] garrison (yours)", SVC_GARRISON },
+        // Mouse-first (V150): plain words on the chips; the hotkey rides
+        // above a chip only while the mouse hovers it.
+        struct { const char* label; const char* key; int id; } svcs[] = {
+            { "Tournament", "T", SVC_TOURNEY }, { "Market", "M", SVC_MARKET },
+            { "Work", "G", SVC_WORK },          { "Hire", "H", SVC_HIRE },
+            { "Oath", "V", SVC_OATH },          { "Talk", "E", SVC_TALK },
+            { "Garrison (yours)", "F", SVC_GARRISON },
         };
         int sx = 10;
-        for (const auto& s : svcs)
+        for (const auto& s : svcs) {
+            const int cw2 = ui::Measure(s.label, 18);
+            if (svcMouse.x >= sx - 4 && svcMouse.x < sx + cw2 + 4 &&
+                svcMouse.y >= GetScreenHeight() - 53 &&
+                svcMouse.y < GetScreenHeight() - 27) {
+                const int kw = ui::Measure(s.key, 14) + 10;
+                DrawRectangle(sx + cw2 / 2 - kw / 2, GetScreenHeight() - 74,
+                              kw, 20, Fade(BLACK, 0.85f));
+                ui::Text(s.key, sx + cw2 / 2 - kw / 2 + 5,
+                         GetScreenHeight() - 71, 14, GOLD);
+            }
             sx += Chip(s.label, sx, GetScreenHeight() - 50, 18,
                        Fade(GOLD, 0.85f), s.id) + 26;
+        }
         ui::Text("WASD walk, mouse look. The gold roof is the tavern. Esc: gate menu.",
                  10, GetScreenHeight() - 26, 16, Fade(RAYWHITE, 0.7f));
     }
@@ -1587,7 +1621,7 @@ void TownDraw(const GameState& gs) {
                  x0, 136, 17, Fade(RAYWHITE, 0.7f));
         char tavernRow[96];
         snprintf(tavernRow, sizeof(tavernRow),
-                 "[2]  The tavern            (%d recruits in the pool)",
+                 "The tavern            (%d recruits in the pool)",
                  town.recruitPool);
         // The tavern names its guest (V79): who is drinking here, what
         // they're good for, and whether they've already taken your coin.
@@ -1604,7 +1638,7 @@ void TownDraw(const GameState& gs) {
             }
             if (comp >= 0)
                 snprintf(hireRow, sizeof(hireRow),
-                         "[5]  Hire %-14s (%s, %d gold)%s",
+                         "Hire %-14s (%s, %d gold)%s",
                          c.troops[comp].name.c_str(),
                          c.troops[comp].perk.empty() ? "blade"
                                                      : c.troops[comp].perk.c_str(),
@@ -1612,22 +1646,26 @@ void TownDraw(const GameState& gs) {
                          gs.player.troopCounts[comp] > 0 ? "  - already yours" : "");
             if (comp >= 0) hireLive = gs.player.troopCounts[comp] == 0;
             if (comp < 0)
-                snprintf(hireRow, sizeof(hireRow), "[5]  Hire the companion");
+                snprintf(hireRow, sizeof(hireRow), "Hire the companion");
         }
         const char* rows[townmenu::ROWS] = {
-            "[1]  The market            (buy, sell, arms, the moneylender)",
+            "The market            (buy, sell, arms, the moneylender)",
             tavernRow,
-            "[3]  The tournament        (Shift-click to stake 50)",
-            "[4]  Seek work             (the local quest)",
+            "The tournament        (Shift-click to stake 50)",
+            "Seek work             (the local quest)",
             hireRow,
-            "[6]  Swear to this crown",
-            "[7]  The hall              (court, news, politics)",
-            "[8]  Garrison a soldier    (yours only)",
-            "[9]  Recall a soldier",
-            "[Enter]  Walk the streets in person",
-            "[0]  Host a feast          (200 gold; lords and matches)",
-            "[J]  Sellswords for hire   (a 5-man pack, 150 gold)",
-            "[F]  Fortify the walls     (500 gold; +10 garrison, harder to storm)",
+            "Swear to this crown",
+            "The hall              (court, news, politics)",
+            "Garrison a soldier    (yours only)",
+            "Recall a soldier",
+            "Walk the streets in person",
+            "Host a feast          (200 gold; lords and matches)",
+            "Sellswords for hire   (a 5-man pack, 150 gold)",
+            "Fortify the walls     (500 gold; +10 garrison, harder to storm)",
+        };
+        // Mouse-first (V150): the row's hotkey shows only under the mouse.
+        const char* rowKeys[townmenu::ROWS] = {
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "Enter", "0", "J", "F",
         };
         // Rows that can't act right now grey out with the reason implicit
         // (V4): buttons that look alive ARE alive.
@@ -1660,6 +1698,12 @@ void TownDraw(const GameState& gs) {
                               townmenu::ROW_H, Fade(GOLD, 0.14f));
             ui::Text(rows[r], x0, y + 6, 20,
                      live[r] ? RAYWHITE : Fade(RAYWHITE, 0.35f));
+            if (live[r] && m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
+                m.y >= y && m.y < y + townmenu::ROW_H) {
+                const int kw = ui::Measure(rowKeys[r], 14) + 10;
+                DrawRectangle(x0 - 8 - kw - 6, y + 7, kw, 20, Fade(BLACK, 0.85f));
+                ui::Text(rowKeys[r], x0 - 8 - kw - 1, y + 10, 14, GOLD);
+            }
             if (!live[r] && why[r])
                 ui::Text(why[r],
                          x0 + townmenu::X_HALF * 2 - 10 -
@@ -1667,7 +1711,7 @@ void TownDraw(const GameState& gs) {
                          y + 9, 15, Fade(GOLD, 0.5f));
             y += townmenu::ROW_H;
         }
-        ui::Text("[Esc] ride on", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));
+        ui::Text("Ride on  (Esc)", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));
         // Click feedback (V2): the last thing that happened, right here.
         if (!gs.resultText.empty())
             ui::Text(gs.resultText.c_str(), x0, y + 30, 17, GOLD);

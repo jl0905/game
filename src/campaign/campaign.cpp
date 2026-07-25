@@ -182,9 +182,11 @@ struct MkHit { Rectangle r; int kind, idx; };
 std::vector<MkHit> g_mkHits;
 int g_mkPage = 0, g_mkPerPage = 9;   // page state shared draw <-> gather
 
-// A consistent button (V146): dark plate, gold border, hover fill. Returns
-// its rect so callers can register it as a hit target.
-Rectangle UIButton(float x, float y, const char* label, int fs, bool enabled) {
+// A consistent button (V146; mouse-first V150): dark plate, gold border,
+// hover fill. Labels carry NO hotkey clutter — the key appears as a small
+// tag only while the mouse hovers (user direction: mouse-centric GUI).
+Rectangle UIButton(float x, float y, const char* label, int fs, bool enabled,
+                   const char* hotkey = nullptr) {
     const float w = (float)ui::Measure(label, fs) + 22.0f;
     const float h = fs + 14.0f;
     const Vector2 m = GetMousePosition();
@@ -195,6 +197,15 @@ Rectangle UIButton(float x, float y, const char* label, int fs, bool enabled) {
                               Fade(GOLD, enabled ? (hov ? 0.9f : 0.45f) : 0.15f));
     ui::Text(label, (int)x + 11, (int)y + 7, fs,
              enabled ? (hov ? GOLD : RAYWHITE) : Fade(RAYWHITE, 0.35f));
+    if (hov && hotkey) {   // the key, remembered only when you look
+        const int kfs = fs - 4 > 11 ? fs - 4 : 11;
+        const int kw = ui::Measure(hotkey, kfs) + 10;
+        DrawRectangleRounded({ x + w / 2 - kw / 2.0f, y - kfs - 8.0f,
+                               (float)kw, kfs + 6.0f }, 0.4f, 4,
+                             Fade(BLACK, 0.85f));
+        ui::Text(hotkey, (int)(x + w / 2 - kw / 2 + 5), (int)(y - kfs - 5),
+                 kfs, GOLD);
+    }
     return { x, y, w, h };
 }
 
@@ -837,6 +848,12 @@ DayLedger ComputeLedger(const GameState& gs) {
             L.enterprise += (ti < (int)gs.enterpriseLvl.size() ? gs.enterpriseLvl[ti] : 1) *
                             c.enterprises[gs.enterpriseAt[ti]].dailyIncome *
                             gs.towns[ti].prosperity / 100;
+    // Land deeds (V150): rent per parcel rides the town's prosperity — the
+    // same number trade, danger and war already move. Hostile owners
+    // confiscate the take until peace.
+    for (int ti = 0; ti < (int)gs.towns.size() && ti < (int)gs.landAt.size(); ++ti)
+        if (gs.landAt[ti] > 0 && !AtWar(gs, gs.towns[ti].owner, c.playerFaction))
+            L.enterprise += gs.landAt[ti] * gs.towns[ti].prosperity / 12;
     for (int t = 0; t < (int)gs.player.troopCounts.size() && t < c.troops.size(); ++t)
         L.wages += gs.player.troopCounts[t] * c.troops[t].wage;
     for (const Party& p : gs.parties) {
@@ -1442,6 +1459,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (IsKeyPressed(KEY_EIGHT)) in.menuChoice = 8;   // hire the company (V29)
         if (IsKeyPressed(KEY_NINE))  in.menuChoice = 9;   // turn his coat (V73)
         if (IsKeyPressed(KEY_ZERO))  in.menuChoice = 10;  // pay Graves (V87)
+        if (IsKeyPressed(KEY_L))     in.menuChoice = 11;  // lend to him (V150)
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {    // topics are buttons (V27)
             const int ch = DialogueOptionAt(GetMousePosition());
             if (ch > 0)               in.menuChoice = ch;
@@ -1491,6 +1509,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                             case 7: in.buyGood = gs.content.goods.size();     break;
                             case 8: in.buyGood = gs.content.goods.size() + 1; break;
                             case 9: in.buyEnterprise = true; break;
+                            case 10: in.buyLand      = true; break;
                         }
                         break;
                 }
@@ -1498,6 +1517,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             }
         }
         in.buyEnterprise = in.buyEnterprise || IsKeyPressed(KEY_B);
+        in.buyLand       = in.buyLand || IsKeyPressed(KEY_T);   // deeds (V150)
         in.buyWarhorse   = in.buyWarhorse || IsKeyPressed(KEY_W);   // destrier (V82)
         in.loan          = in.loan || IsKeyPressed(KEY_L);          // loan (V84)
         in.sendCaravan   = in.sendCaravan || IsKeyPressed(KEY_C);   // convoy (M4)
@@ -2777,6 +2797,29 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 }
             }
 
+            // Loans come due (V150): a lord who still rides repays 360 with
+            // his thanks (+3 opinion); a fallen or captive debtor defaults.
+            for (int li = (int)gs.lordLoans.size() - 1; li >= 0; --li) {
+                auto& loan = gs.lordLoans[li];
+                if ((loan.daysLeft -= 1.0f) > 0) continue;
+                bool rides = false;
+                for (const Party& p : gs.parties)
+                    if (p.alive && p.lord == loan.lord) { rides = true; break; }
+                if (rides) {
+                    gs.gold += loan.amount;
+                    LordOpinion(gs, loan.lord) += 3;   // TODO(balance)
+                    gs.resultText = TextFormat(
+                        "%s repays your loan: +%d gold, and he remembers the trust.",
+                        loan.lord.c_str(), loan.amount);
+                    Chronicle(gs, TextFormat("%s repaid the loan.", loan.lord.c_str()));
+                } else {
+                    gs.resultText = TextFormat(
+                        "%s no longer rides. Your %d gold rides nowhere either.",
+                        loan.lord.c_str(), loan.amount);
+                }
+                gs.lordLoans.erase(gs.lordLoans.begin() + li);
+            }
+
             // The estate at dawn (V135): masons lay stone, fields pay rent
             // by the linked town's prosperity, a barracks feeds its pool.
             if (gs.estateTown >= 0 && gs.estateTown < (int)gs.towns.size()) {
@@ -3932,11 +3975,14 @@ void CampaignDraw(const GameState& gs) {
                       Fade(BLACK, 0.88f));
         DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
                       Fade(GOLD, 0.35f));
-        struct BarChip { const char* label; int id; };
+        // Mouse-first (V150): plain words on the chips; the hotkey shows as
+        // a small tag only under the hovering mouse.
+        struct BarChip { const char* label; const char* key; int id; };
         static const BarChip chips[] = {
-            { "[Q] journal", 1 },  { "[P]arty", 2 },     { "[C]haracter", 3 },
-            { "[I] bag", 4 },      { "[B] ledger", 5 },  { "[E]state", 6 },
-            { "[T] hail", 7 },     { "[O]ptions", 8 },
+            { "Journal", "Q", 1 },     { "Party", "P", 2 },
+            { "Character", "C", 3 },   { "Bag", "I", 4 },
+            { "Ledger", "B", 5 },      { "Estate", "E", 6 },
+            { "Hail a lord", "T", 7 }, { "Options", "O", 8 },
         };
         g_barHits.clear();
         int ks = 19;
@@ -3955,9 +4001,18 @@ void CampaignDraw(const GameState& gs) {
             const int cw = ui::Measure(ch.label, ks);
             const bool hov = bm.x >= bx - 5 && bm.x < bx + cw + 5 &&
                              bm.y >= GetScreenHeight() - 36;
-            if (hov)
+            if (hov) {
                 DrawRectangle(bx - 5, GetScreenHeight() - 35, cw + 10, 34,
                               Fade(GOLD, 0.22f));
+                // the hotkey, shown only under the mouse (V150)
+                const int kw = ui::Measure(ch.key, 14) + 10;
+                DrawRectangleRounded({ (float)(bx + cw / 2 - kw / 2),
+                                       (float)(GetScreenHeight() - 58),
+                                       (float)kw, 20.0f }, 0.4f, 4,
+                                     Fade(BLACK, 0.85f));
+                ui::Text(ch.key, bx + cw / 2 - kw / 2 + 5,
+                         GetScreenHeight() - 55, 14, GOLD);
+            }
             ui::Text(ch.label, bx, by, ks, hov ? GOLD : RAYWHITE);
             g_barHits.push_back({ bx - 5, cw + 10, ch.id });
             bx += cw + 22;
@@ -4586,6 +4641,29 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         }
     }
 
+    // Land deeds (V150): up to three parcels per town, each dearer than the
+    // last; rent rides prosperity through the daily ledger, and a hostile
+    // owner confiscates the take until peace.
+    if (in.buyLand) {
+        if ((int)gs.landAt.size() < (int)gs.towns.size())
+            gs.landAt.assign(gs.towns.size(), 0);
+        int& lvl = gs.landAt[gs.currentSettlement];
+        const int cost = 400 * (lvl + 1);   // TODO(balance)
+        if (lvl >= 3)
+            gs.resultText = TextFormat("You already hold every parcel around %s.",
+                                       t.name.c_str());
+        else if (gs.gold < cost)
+            gs.resultText = TextFormat("The next parcel here runs %d gold.", cost);
+        else {
+            gs.gold -= cost;
+            lvl++;
+            gs.resultText = TextFormat(
+                "Deed signed: parcel %d of 3 by %s. Rent follows prosperity.",
+                lvl, t.name.c_str());
+            Chronicle(gs, TextFormat("Bought land by %s.", t.name.c_str()));
+        }
+    }
+
     // Buy a business here (E4): towns only, one per town, deterministic pick
     // of the next unbuilt enterprise kind.
     if (in.buyEnterprise && t.type == SettlementType::Town &&
@@ -4687,6 +4765,12 @@ void MarketDraw(const GameState& gs) {
     ui::Text(TextFormat("Gold %d      Saddlebags %d / %d", gs.gold, carried,
                         GOODS_CAP),
              margin, (int)(H * 0.03f) + 48, 22, RAYWHITE);
+    if (gs.currentSettlement < (int)gs.landAt.size() &&
+        gs.landAt[gs.currentSettlement] > 0)
+        ui::Text(TextFormat("Your land here: %d parcel(s), rent %dg/day",
+                            gs.landAt[gs.currentSettlement],
+                            gs.landAt[gs.currentSettlement] * t.prosperity / 12),
+                 margin + 420, (int)(H * 0.03f) + 48, 18, Fade(GOLD, 0.85f));
     if (t.warMarkup > 100)
         ui::Text(TextFormat("WAR PRICES +%d%%", t.warMarkup - 100),
                  W - margin - ui::Measure("WAR PRICES +00%", 20),
@@ -4841,12 +4925,12 @@ void MarketDraw(const GameState& gs) {
 
     // ---- the button bar (every service is a BUTTON with its hotkey) ----
     {
-        struct Act { const char* label; int id; };
+        struct Act { const char* label; const char* key; int id; };
         const Act acts[] = {
-            { "Caravan 200 [C]", 1 }, { "Deposit 100 [D]", 2 },
-            { "Withdraw [Sh+D]", 3 }, { "Destrier 200 [W]", 4 },
-            { "Loan / repay [L]", 5 }, { "Enterprise [B]", 9 },
-            { "Leave [Esc]", 6 },
+            { "Caravan 200", "C", 1 },  { "Deposit 100", "D", 2 },
+            { "Withdraw", "Shift+D", 3 }, { "Destrier 200", "W", 4 },
+            { "Loan / repay", "L", 5 },   { "Enterprise", "B", 9 },
+            { "Land deed", "T", 10 },     { "Leave", "Esc", 6 },
         };
         int fs = 19;
         auto totalW = [&](int f) {
@@ -4858,7 +4942,7 @@ void MarketDraw(const GameState& gs) {
         float bx2 = (float)margin;
         const float byy = (float)(H - (int)(H * 0.09f));
         for (const Act& a : acts) {
-            const Rectangle r = UIButton(bx2, byy, a.label, fs, true);
+            const Rectangle r = UIButton(bx2, byy, a.label, fs, true, a.key);
             g_mkHits.push_back({ r, MK_ACT, a.id });
             bx2 += r.width + 10;
         }

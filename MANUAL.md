@@ -85,6 +85,14 @@ Modding surfaces are in MODDING.md.)
 - **The bank:** deposit in a town (5%/week, big deposits feed prosperity),
   or **borrow** — debt compounds weekly, and at 700+ the lender sends
   Graves and his collectors after you in person.
+- **Land deeds:** buy up to three parcels per town at the market (each
+  dearer than the last); rent rides the town's prosperity through the
+  daily ledger — and a hostile owner confiscates the take until peace.
+- **Lend to lords:** at a lord's court, stake him 300 gold — 360 back in
+  six days with his gratitude (+3 opinion) if he still rides; a fallen
+  or captured debtor defaults. The lender's risk is the lord's war.
+- **Mouse-first UI:** buttons and chips carry plain words; hover any of
+  them and its hotkey appears as a small tag. Every hotkey still works.
 
 ## Your warband
 

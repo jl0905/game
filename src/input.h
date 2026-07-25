@@ -53,6 +53,7 @@ struct CampaignInput {
     int     buyGood  = -1;            // good row to buy one unit of
     int     sellGood = -1;            // good row to sell one unit of (Shift+key)
     bool    buyEnterprise = false;    // buy a business in this town (B)
+    bool    buyLand       = false;    // buy a land parcel here (V150, T)
 
     bool    crown    = false;         // claim your own crown on the map (K)
     bool    rallyLords = false;       // crowned: call your lords to the banner (J)

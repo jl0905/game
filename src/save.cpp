@@ -203,6 +203,13 @@ bool SaveGame(const GameState& gs, const char* path) {
     // The chronicle (V50): free text, one tag per line.
     for (const std::string& ch : gs.chronicle)
         f << "chron " << ch << '\n';
+    // The ownership economy (V150): land parcels and loans out to lords.
+    for (int ti = 0; ti < (int)gs.landAt.size(); ++ti)
+        if (gs.landAt[ti] > 0)
+            f << "land " << ti << ' ' << gs.landAt[ti] << '\n';
+    for (const auto& l : gs.lordLoans)
+        f << "lloan " << l.lord << ' ' << l.amount << ' ' << l.daysLeft << '\n';
+
     // The quest journal (V124): same free-text scheme.
     for (const std::string& q : gs.questLog)
         f << "qlog " << q << '\n';
@@ -565,6 +572,16 @@ bool LoadGame(GameState& gs, const char* path) {
             std::string id;
             ss >> id >> gs.estateWorkDays;
             gs.estateWork = c.buildings.find(id.c_str());
+        } else if (tag == "land") {   // deeds (V150)
+            int ti = -1, lvl = 0;
+            ss >> ti >> lvl;
+            if ((int)gs.landAt.size() < (int)gs.towns.size())
+                gs.landAt.assign(gs.towns.size(), 0);
+            if (ti >= 0 && ti < (int)gs.landAt.size()) gs.landAt[ti] = lvl;
+        } else if (tag == "lloan") {   // loans out (V150)
+            GameState::LordLoan l;
+            ss >> l.lord >> l.amount >> l.daysLeft;
+            if (!l.lord.empty()) gs.lordLoans.push_back(l);
         } else if (tag == "qlog") {   // the journal (V124)
             std::string rest;
             std::getline(ss, rest);

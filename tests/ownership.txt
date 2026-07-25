@@ -1,0 +1,19 @@
+# The ownership economy (V150): land deeds and lending to lords.
+# Part 1 - land: enter Jelkala's market, buy two parcels (400 + 800 gold),
+# expect "Deed signed" results, land: town=3 parcels=2 in the dump, and
+# the daily ledger paying rent (purse line's enterprise column grows).
+# Part 2 - lord loans: the doctored save carries "lloan Aldemar 360 1"
+# with Lord Aldemar alive on the map; one dawn later the loan repays:
+# gold +360 and an "repaid the loan" chronicle line.
+load tests/fixtures/owner.owb
+enter 3
+# gate row 1 = market
+choose 1
+buyland
+buyland
+state
+leave
+leave
+wait 65
+state
+quit

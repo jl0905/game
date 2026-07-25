@@ -313,6 +313,12 @@ struct Harness {
                             ? c.buildings[gs.estateWork].id.c_str() : "none",
                         gs.estateWorkDays, PartyCap(gs));
         }
+        for (int ti = 0; ti < (int)gs.landAt.size(); ++ti)   // deeds (V150)
+            if (gs.landAt[ti] > 0)
+                std::printf("land: town=%d parcels=%d\n", ti, gs.landAt[ti]);
+        for (const auto& l : gs.lordLoans)
+            std::printf("lloan: %s %d due=%.0f\n", l.lord.c_str(), l.amount,
+                        l.daysLeft);
         if (gs.questFlash > 0)   // the payoff banner (V124)
             std::printf("qflash: %.1f good=%d text=%s\n", gs.questFlash,
                         gs.questFlashGood ? 1 : 0, gs.questFlashText.c_str());
@@ -719,6 +725,11 @@ int RunScript(const char* path) {
             std::string mode; ss >> mode;   // screen (V136); off = auto-fight
             h.parleyHold = mode != "off";
             std::printf("parleyhold=%d\n", h.parleyHold ? 1 : 0);
+        } else if (cmd == "buyland") {   // a land deed here (V150)
+            CampaignInput cin; cin.buyLand = true;
+            h.Step(cin, BattleInput{});
+            if (!h.gs.resultText.empty())
+                std::printf("result=\"%s\"\n", h.gs.resultText.c_str());
         } else if (cmd == "choose") {   // pick a numbered option on the
             int n = 1; ss >> n;         // current screen (parley, sieges...)
             CampaignInput cin; cin.menuChoice = n;

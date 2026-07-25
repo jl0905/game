@@ -286,6 +286,13 @@ struct GameState {
     int   estateWork     = -1;                // building under construction
     float estateWorkDays = 0;                 // dawns left on it
     int   blockadeTown   = -1;   // siege blockade (V136): town under your cordon
+    // The ownership economy, deepened (V150): land deeds per town (0-3
+    // parcels; rent rides prosperity, so the trade/danger web feeds your
+    // purse), and loans YOU extend to lords — repaid with interest at term
+    // if the man still rides, defaulted if he fell.
+    std::vector<int> landAt;
+    struct LordLoan { std::string lord; int amount = 0; float daysLeft = 0; };
+    std::vector<LordLoan> lordLoans;
     float   musterDays = 0;    // days left to answer
     bool    lordsRally = false;
     Vector2 lordsRallyPos{};

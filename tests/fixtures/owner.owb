@@ -1,0 +1,11 @@
+OWSAVE 1
+gold 2000
+day 0
+clock 59
+playerpos 2250 2250
+ptroop infantry 5
+hero 1 0 0
+carry sword
+party sarleon 1000 260 Aldemar
+troop infantry 20
+lloan Aldemar 360 1
