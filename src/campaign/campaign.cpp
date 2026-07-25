@@ -7,6 +7,7 @@
 #include "../town/town.h"   // the gate menu's state + shared layout (U4)
 #include "../ui.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 
 // ---------------------------------------------------------------------------
@@ -170,6 +171,52 @@ constexpr int PANEL_HALF = 360, PANEL_W        = 560;
 // 4 bag, 5 ledger, 6 estate, 7 hail, 8 options.
 struct BarHit { int x, w, id; };
 std::vector<BarHit> g_barHits;
+
+// The market grid (V146): a GUI shop, not a text list. Draw records every
+// interactive rect here; the gatherer hit-tests them (K7/V27 pattern).
+// Kinds: MK_BUY/MK_SELL carry a good index; MK_PAGE flips pages; MK_ACT
+// ids: 1 caravan, 2 deposit, 3 withdraw, 4 destrier, 5 loan, 6 leave,
+// 7 armour piece, 8 weapon piece, 9 enterprise.
+enum MkKind { MK_BUY = 1, MK_SELL, MK_PAGE, MK_ACT };
+struct MkHit { Rectangle r; int kind, idx; };
+std::vector<MkHit> g_mkHits;
+int g_mkPage = 0, g_mkPerPage = 9;   // page state shared draw <-> gather
+
+// A consistent button (V146): dark plate, gold border, hover fill. Returns
+// its rect so callers can register it as a hit target.
+Rectangle UIButton(float x, float y, const char* label, int fs, bool enabled) {
+    const float w = (float)ui::Measure(label, fs) + 22.0f;
+    const float h = fs + 14.0f;
+    const Vector2 m = GetMousePosition();
+    const bool hov = enabled && CheckCollisionPointRec(m, { x, y, w, h });
+    DrawRectangleRounded({ x, y, w, h }, 0.3f, 4,
+                         hov ? Fade(GOLD, 0.30f) : Fade(BLACK, 0.55f));
+    DrawRectangleRoundedLines({ x, y, w, h }, 0.3f, 4,
+                              Fade(GOLD, enabled ? (hov ? 0.9f : 0.45f) : 0.15f));
+    ui::Text(label, (int)x + 11, (int)y + 7, fs,
+             enabled ? (hov ? GOLD : RAYWHITE) : Fade(RAYWHITE, 0.35f));
+    return { x, y, w, h };
+}
+
+// Placeholder ware art (V146): a layered tile that reads as an ITEM — a
+// shaded sack/ingot silhouette in the good's tint with a letter stamp.
+// Swappable for real textures later without touching layout.
+void DrawGoodIcon(Rectangle r, Color tint, const char* name) {
+    DrawRectangleRounded(r, 0.18f, 4, Color{ 38, 34, 30, 255 });
+    DrawRectangleRoundedLines(r, 0.18f, 4, Fade(RAYWHITE, 0.20f));
+    const float inX = r.x + r.width * 0.18f, inW = r.width * 0.64f;
+    const float inY = r.y + r.height * 0.22f, inH = r.height * 0.52f;
+    DrawEllipse((int)(r.x + r.width / 2), (int)(inY + inH * 0.75f),
+                inW * 0.55f, inH * 0.45f, Fade(tint, 0.95f));          // body
+    DrawEllipse((int)(r.x + r.width / 2), (int)(inY + inH * 0.30f),
+                inW * 0.34f, inH * 0.30f, Fade(tint, 0.8f));           // neck
+    DrawEllipse((int)(r.x + r.width * 0.40f), (int)(inY + inH * 0.55f),
+                inW * 0.16f, inH * 0.18f, Fade(WHITE, 0.18f));         // sheen
+    const char letter[2] = { (char)toupper(name[0]), 0 };
+    const int fs = (int)(r.height * 0.30f);
+    ui::Text(letter, (int)(r.x + r.width / 2 - ui::Measure(letter, fs) / 2),
+             (int)(r.y + r.height * 0.38f), fs, Fade(BLACK, 0.55f));
+}
 
 // Hover highlight (K7): a soft band behind the clickable row under the
 // cursor. Draw-only affordance — simulation and the harness never see it.
@@ -1304,7 +1351,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
         if (TownInMenu()) {
             for (int r = 0; r < 9; ++r)
                 if (IsKeyPressed(KEY_ONE + r)) in.menuChoice = r + 1;
-            if (IsKeyPressed(KEY_W)) in.menuChoice = 10;      // visit the settlement
+            if (IsKeyPressed(KEY_ENTER)) in.menuChoice = 10;  // walk the streets
+                                                              // (V146: W freed)
             if (IsKeyPressed(KEY_ZERO)) in.menuChoice = 11;   // host a feast (V34)
             if (IsKeyPressed(KEY_J)) in.menuChoice = 12;      // sellswords (V47)
             if (IsKeyPressed(KEY_F)) in.menuChoice = 13;      // fortify (V51)
@@ -1398,28 +1446,54 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
 
     if (gs.screen == Screen::Market) {
         const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+        // Hotkeys 1-9 address the VISIBLE page (V146) — fifty modded goods
+        // page cleanly instead of outrunning the number row.
         for (int slot = 0; slot < 9; ++slot)
-            if (IsKeyPressed(KEY_ONE + slot))
-                (shift ? in.sellGood : in.buyGood) = slot;
-        // Mouse (H3): click a ware row to buy one, right-click to sell one
-        // (rows quote the shared layout, K7).
+            if (IsKeyPressed(KEY_ONE + slot)) {
+                const int g = g_mkPage * g_mkPerPage + slot;
+                if (g < gs.content.goods.size())
+                    (shift ? in.sellGood : in.buyGood) = g;
+            }
+        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_PAGE_UP))
+            g_mkPage = g_mkPage > 0 ? g_mkPage - 1 : 0;
+        if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_PAGE_DOWN))
+            g_mkPage++;   // draw clamps to the page count
+        // The grid is the interface (V146): draw recorded every tile and
+        // button; clicks resolve here. Left buys, right (or Shift) sells.
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
             IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+            const bool rmb = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
             const Vector2 m = GetMousePosition();
-            const int row = ((int)m.y - layout::MARKET_Y) / layout::MARKET_ROW_H;
-            if (m.x >= layout::MarketX0() && m.x < layout::MarketX1() &&
-                m.y >= layout::MARKET_Y &&
-                row >= 0 && row < gs.content.goods.size()) {
-                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || shift)
-                    in.sellGood = row;
-                else
-                    in.buyGood = row;
+            for (const MkHit& h : g_mkHits) {
+                if (!CheckCollisionPointRec(m, h.r)) continue;
+                switch (h.kind) {
+                    case MK_BUY:  (rmb || shift ? in.sellGood : in.buyGood) = h.idx; break;
+                    case MK_SELL: in.sellGood = h.idx; break;
+                    case MK_PAGE:
+                        g_mkPage = h.idx < 0 ? (g_mkPage > 0 ? g_mkPage - 1 : 0)
+                                             : g_mkPage + 1;
+                        break;
+                    case MK_ACT:
+                        switch (h.idx) {
+                            case 1: in.sendCaravan   = true; break;
+                            case 2: in.bankMove      = 100;  break;
+                            case 3: in.bankMove      = -100; break;
+                            case 4: in.buyWarhorse   = true; break;
+                            case 5: in.loan          = true; break;
+                            case 6: in.leaveSettlement = true; break;
+                            case 7: in.buyGood = gs.content.goods.size();     break;
+                            case 8: in.buyGood = gs.content.goods.size() + 1; break;
+                            case 9: in.buyEnterprise = true; break;
+                        }
+                        break;
+                }
+                break;
             }
         }
-        in.buyEnterprise = IsKeyPressed(KEY_B);
-        in.buyWarhorse   = IsKeyPressed(KEY_W);   // the destrier (V82)
-        in.loan          = IsKeyPressed(KEY_L);   // borrow / repay (V84)
-        in.sendCaravan   = IsKeyPressed(KEY_C);   // outfit a convoy (M4)
+        in.buyEnterprise = in.buyEnterprise || IsKeyPressed(KEY_B);
+        in.buyWarhorse   = in.buyWarhorse || IsKeyPressed(KEY_W);   // destrier (V82)
+        in.loan          = in.loan || IsKeyPressed(KEY_L);          // loan (V84)
+        in.sendCaravan   = in.sendCaravan || IsKeyPressed(KEY_C);   // convoy (M4)
         if (IsKeyPressed(KEY_D))                  // the moneylender (V5)
             in.bankMove = (IsKeyDown(KEY_LEFT_SHIFT) ||
                            IsKeyDown(KEY_RIGHT_SHIFT)) ? -100 : 100;
@@ -4582,112 +4656,204 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
     if (in.leaveSettlement) gs.screen = Screen::Settlement;   // back to the streets
 }
 
+// The market, as a GUI (V146, user goal): a paged grid of ware tiles with
+// placeholder art, the Diablo bag alongside, and real buttons — no more
+// number-key text list. Every dimension derives from the LIVE window size,
+// and paging means fifty modded goods work as well as six.
 void MarketDraw(const GameState& gs) {
     const Content& c = gs.content;
     BeginDrawing();
     ClearBackground(Color{ 24, 26, 30, 255 });
+    g_mkHits.clear();
 
     const Town& t = gs.towns[gs.currentSettlement];
-    const int   x = layout::MarketX0();   // centred with the rows (V123)
-    ui::Title(TextFormat("%s MARKET", t.name.c_str()), x, 60, 44, GOLD);
-    ui::Text("1-9 / click: buy one   Shift / right-click: sell one   "
-             "[C] caravan (200)   [D] deposit / Shift+D withdraw   "
-             "[W] destrier (200)   [L] loan / repay   Esc / M back",
-             x, 116, 20, Fade(RAYWHITE, 0.7f));
-    if (gs.currentSettlement < (int)gs.bankAt.size() &&
-        gs.bankAt[gs.currentSettlement] > 0)
-        ui::Text(TextFormat("On deposit here: %d gold  (5%%/week; 200+ feeds "
-                            "prosperity)", gs.bankAt[gs.currentSettlement]),
-                 x, 210, 18, Fade(GOLD, 0.85f));
+    const int W = GetScreenWidth(), H = GetScreenHeight();
+    const int margin = W / 40 > 16 ? W / 40 : 16;
+    const Vector2 mp = GetMousePosition();
+
+    // ---- header ----
+    ui::Title(TextFormat("%s MARKET", t.name.c_str()), margin, (int)(H * 0.03f),
+              40, GOLD);
     int carried = 0;
     for (int q : gs.goods) carried += q;
-    ui::Text(TextFormat("Gold: %d      Saddlebags: %d / %d", gs.gold, carried,
-                        GOODS_CAP), x, 150, 24, RAYWHITE);
-    if (t.warMarkup > 100)   // war reaches the shelves (V31)
-        ui::Text(TextFormat("WAR PRICES: everything +%d%% while %s fights its wars",
-                            t.warMarkup - 100,
-                            c.factions.valid(t.owner) ? c.factions[t.owner].name.c_str()
-                                                      : "the crown"),
-                 x + 420, 150, 20, Fade(RED, 0.9f));
+    ui::Text(TextFormat("Gold %d      Saddlebags %d / %d", gs.gold, carried,
+                        GOODS_CAP),
+             margin, (int)(H * 0.03f) + 48, 22, RAYWHITE);
+    if (t.warMarkup > 100)
+        ui::Text(TextFormat("WAR PRICES +%d%%", t.warMarkup - 100),
+                 W - margin - ui::Measure("WAR PRICES +00%", 20),
+                 (int)(H * 0.03f) + 8, 20, Fade(RED, 0.9f));
+    ui::Text("Click a ware to buy one - right-click (or Shift) sells one. "
+             "Arrows / PgUp-PgDn turn pages.",
+             margin, (int)(H * 0.03f) + 76, 17, Fade(RAYWHITE, 0.6f));
 
-    // Enterprise line (E4): what you own here, or the offer to buy.
-    if (t.type == SettlementType::Town && gs.currentSettlement < (int)gs.enterpriseAt.size()) {
-        const int owned = gs.enterpriseAt[gs.currentSettlement];
-        if (c.enterprises.valid(owned)) {
-            const int lvl = gs.currentSettlement < (int)gs.enterpriseLvl.size()
-                                ? gs.enterpriseLvl[gs.currentSettlement] : 1;
-            ui::Text(lvl >= 2
-                         ? TextFormat("Your EXPANDED %s pays %d a day (by prosperity).",
-                                      c.enterprises[owned].name.c_str(),
-                                      c.enterprises[owned].dailyIncome * 2)
-                         : TextFormat("Your %s pays %d a day.  [B] expand it (%d) "
-                                      "for twice the take.",
-                                      c.enterprises[owned].name.c_str(),
-                                      c.enterprises[owned].dailyIncome,
-                                      c.enterprises[owned].cost),
-                     x, 180, 20, Fade(GOLD, 0.9f));
-        }
-        else if (c.enterprises.size() > 0) {
-            const EnterpriseDef& e = c.enterprises[gs.currentSettlement % c.enterprises.size()];
-            ui::Text(TextFormat("[B] Buy the %s  -  %d gold, pays %d a day",
-                                e.name.c_str(), e.cost, e.dailyIncome),
-                     x, 180, 20, Fade(RAYWHITE, 0.8f));
-        }
+    // ---- the shop grid (left ~56% of the window) ----
+    const int panelX = margin;
+    const int panelY = (int)(H * 0.20f);
+    const int panelW = (int)(W * 0.56f);
+    const int panelH = H - panelY - (int)(H * 0.15f);
+    DrawRectangleRounded({ (float)panelX - 8, (float)panelY - 34,
+                           (float)panelW + 16, (float)panelH + 42 },
+                         0.04f, 4, Fade(BLACK, 0.35f));
+    const int cell = W / 14 > 110 ? 110 : (W / 14 < 64 ? 64 : W / 14);
+    const int pad = 10, labelH = 40;
+    const int cols = (panelW - pad) / (cell + pad) > 2
+                         ? (panelW - pad) / (cell + pad) : 2;
+    const int rows = (panelH - 8) / (cell + labelH + pad) > 1
+                         ? (panelH - 8) / (cell + labelH + pad) : 1;
+    g_mkPerPage = cols * rows;
+    const int pages = (c.goods.size() + g_mkPerPage - 1) / g_mkPerPage;
+    if (g_mkPage >= pages) g_mkPage = pages > 0 ? pages - 1 : 0;
+    ui::Text(pages > 1 ? TextFormat("WARES   page %d / %d", g_mkPage + 1, pages)
+                       : "WARES",
+             panelX, panelY - 28, 20, Fade(GOLD, 0.85f));
+    if (pages > 1) {   // page buttons live beside the label
+        Rectangle pl = UIButton((float)panelX + 220, (float)panelY - 34, "<", 20, g_mkPage > 0);
+        Rectangle pr = UIButton(pl.x + pl.width + 6, (float)panelY - 34, ">", 20,
+                                g_mkPage < pages - 1);
+        g_mkHits.push_back({ pl, MK_PAGE, -1 });
+        g_mkHits.push_back({ pr, MK_PAGE, +1 });
     }
-
-    int y = layout::MARKET_Y - 30;
-    ui::Text("     ware          buy   sell   stock   yours", x, y, 18,
-             Fade(RAYWHITE, 0.5f));
-    y = layout::MARKET_Y;
-    for (int g = 0; g < c.goods.size(); ++g) {
+    for (int k = 0; k < g_mkPerPage; ++k) {
+        const int g = g_mkPage * g_mkPerPage + k;
+        if (g >= c.goods.size()) break;
         const GoodDef& gd = c.goods[g];
-        DrawHoverRow(layout::MarketX0(), y, layout::MarketX1() - layout::MarketX0(),
-                     layout::MARKET_ROW_H);
-        DrawRectangle(x, y + 3, 16, 16, gd.tint);
-        ui::Text(TextFormat("[%d] %-12s %4d  %4d   %4d    %4d", g + 1,
-                            gd.name.c_str(), MarketBuyPrice(c, t, g),
-                            MarketSellPrice(c, t, g), t.stock[g], gs.goods[g]),
-                 x + 26, y, 20, RAYWHITE);
-        y += layout::MARKET_ROW_H;
+        const Rectangle r = { (float)(panelX + (k % cols) * (cell + pad)),
+                              (float)(panelY + (k / cols) * (cell + labelH + pad)),
+                              (float)cell, (float)cell };
+        DrawGoodIcon(r, gd.tint, gd.name.c_str());
+        const bool hov = CheckCollisionPointRec(mp, r);
+        if (hov) DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+        // stock badge, top-right of the tile
+        ui::Text(TextFormat("%d", t.stock[g]), (int)(r.x + r.width - 22),
+                 (int)(r.y + 5), 15, t.stock[g] > 0 ? RAYWHITE : Fade(RED, 0.8f));
+        // number chip for the first nine on the page (hotkeys still live)
+        if (k < 9)
+            ui::Text(TextFormat("%d", k + 1), (int)r.x + 5, (int)r.y + 4, 14,
+                     Fade(RAYWHITE, 0.45f));
+        const int nfs = cell > 84 ? 17 : 15;
+        ui::Text(gd.name.c_str(), (int)r.x,
+                 (int)(r.y + r.height + 3), nfs, hov ? GOLD : RAYWHITE);
+        ui::Text(TextFormat("%dg / %dg", MarketBuyPrice(c, t, g),
+                            MarketSellPrice(c, t, g)),
+                 (int)r.x, (int)(r.y + r.height + 3 + nfs + 2), 14,
+                 Fade(RAYWHITE, 0.6f));
+        g_mkHits.push_back({ r, MK_BUY, g });
     }
 
-    // Your saddlebags, inventory-style (U9): a cell per good, tinted and
-    // counted, beside the ware list — one visual language across screens.
-    // (Three stores stay three stores: town stock, these counts, and the
-    // tiled bag never mix.)
-    {
-        const int sx = x + 640, sy = layout::MARKET_Y;
-        ui::Text("SADDLEBAGS", sx, sy - 26, 18, Fade(GOLD, 0.8f));
-        for (int g = 0; g < c.goods.size(); ++g) {
-            const int cx2 = sx + (g % 3) * 56, cy2 = sy + (g / 3) * 56;
-            DrawRectangle(cx2, cy2, 50, 50, Fade(BLACK, 0.45f));
-            DrawRectangle(cx2 + 4, cy2 + 4, 42, 30, Fade(c.goods[g].tint, 0.85f));
-            DrawRectangleLines(cx2, cy2, 50, 50, Fade(RAYWHITE, 0.3f));
-            const int have = g < (int)gs.goods.size() ? gs.goods[g] : 0;
-            ui::Text(TextFormat("%d", have), cx2 + 6, cy2 + 33, 15,
-                     have > 0 ? RAYWHITE : Fade(RAYWHITE, 0.35f));
-        }
+    // ---- the right column: saddlebags + the tiled gear bag ----
+    const int bagX = panelX + panelW + margin;
+    const int bagW = W - bagX - margin;
+    int by = panelY;
+    ui::Text("SADDLEBAGS  (click sells one)", bagX, by - 28, 20, Fade(GOLD, 0.85f));
+    const int bcell = bagW / 5 - 8 > 66 ? 66 : (bagW / 5 - 8 < 44 ? 44 : bagW / 5 - 8);
+    for (int g = 0; g < c.goods.size(); ++g) {
+        const Rectangle r = { (float)(bagX + (g % 5) * (bcell + 8)),
+                              (float)(by + (g / 5) * (bcell + 8)),
+                              (float)bcell, (float)bcell };
+        if (r.y + bcell > H * 0.55f) break;   // never spill; bag view is a summary
+        const int have = g < (int)gs.goods.size() ? gs.goods[g] : 0;
+        DrawGoodIcon(r, Fade(c.goods[g].tint, have > 0 ? 1.0f : 0.35f),
+                     c.goods[g].name.c_str());
+        if (have > 0 && CheckCollisionPointRec(mp, r))
+            DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+        ui::Text(TextFormat("%d", have), (int)r.x + 4,
+                 (int)(r.y + r.height - 18), 15,
+                 have > 0 ? RAYWHITE : Fade(RAYWHITE, 0.3f));
+        g_mkHits.push_back({ r, MK_SELL, g });
+        by = (int)r.y > by ? (int)r.y : by;
     }
+    by += bcell + 26;
 
-    // The forge's counter (O4): today's two pieces, towns only.
+    // The Diablo bag, in miniature (V146): the same tiles the [I] screen
+    // manages, read-only here so market and gear share one visual language.
+    ui::Text("GEAR BAG  ([I] to manage)", bagX, by, 20, Fade(GOLD, 0.85f));
+    by += 26;
+    const int tile = bagW / INV_W;
+    for (int yy = 0; yy <= INV_H; ++yy)
+        DrawLine(bagX, by + yy * tile, bagX + tile * INV_W, by + yy * tile,
+                 Fade(RAYWHITE, 0.12f));
+    for (int xx = 0; xx <= INV_W; ++xx)
+        DrawLine(bagX + xx * tile, by, bagX + xx * tile, by + INV_H * tile,
+                 Fade(RAYWHITE, 0.12f));
+    for (const InvItem& it : gs.inventory) {
+        const bool wpn = it.isWeapon;
+        const int tw = wpn ? 1 : 2, th = wpn ? 3 : 2;
+        const Color col = wpn ? (c.weapons.valid(it.handle) ? c.weapons[it.handle].tint : GRAY)
+                              : (c.armor.valid(it.handle) ? c.armor[it.handle].tint : GRAY);
+        DrawRectangle(bagX + it.x * tile + 2, by + it.y * tile + 2,
+                      tw * tile - 4, th * tile - 4, Fade(col, 0.85f));
+        DrawRectangleLines(bagX + it.x * tile + 2, by + it.y * tile + 2,
+                           tw * tile - 4, th * tile - 4, Fade(RAYWHITE, 0.4f));
+    }
+    by += INV_H * tile + 14;
+
+    // Bank + enterprise state, compact, in the right column.
+    if (gs.currentSettlement < (int)gs.bankAt.size() &&
+        gs.bankAt[gs.currentSettlement] > 0)
+        ui::Text(TextFormat("On deposit here: %dg (5%%/week)",
+                            gs.bankAt[gs.currentSettlement]),
+                 bagX, by, 17, Fade(GOLD, 0.85f)), by += 22;
+    if (gs.debt > 0)
+        ui::Text(TextFormat("DEBT: %dg", gs.debt), bagX, by, 17,
+                 Fade(RED, 0.9f)), by += 22;
+
+    // ---- the forge counter: two ITEM tiles, towns only ----
     if (t.type == SettlementType::Town) {
         InvItem armorIt, weaponIt;
         ArmsOnSale(gs, armorIt, weaponIt);
-        y += 14;
-        ui::Text("ARMS  (into your bag; rotates daily)", x, y, 18,
-                 Fade(GOLD, 0.8f));
-        y += 26;
-        if (armorIt.handle >= 0)
-            ui::Text(TextFormat("[7] %-16s %d gold",
-                                c.armor[armorIt.handle].name.c_str(),
+        const int fy = panelY + panelH - cell - 4;
+        ui::Text("THE FORGE  (rotates daily, into your bag)", panelX, fy - 24,
+                 17, Fade(GOLD, 0.8f));
+        int fx = panelX;
+        if (armorIt.handle >= 0) {
+            const Rectangle r = { (float)fx, (float)fy, (float)cell, (float)cell };
+            DrawGoodIcon(r, c.armor[armorIt.handle].tint,
+                         c.armor[armorIt.handle].name.c_str());
+            if (CheckCollisionPointRec(mp, r))
+                DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+            ui::Text(TextFormat("%s %dg", c.armor[armorIt.handle].name.c_str(),
                                 ArmorCost(c.armor[armorIt.handle])),
-                     x, y, 20, RAYWHITE);
-        y += 28;
-        if (weaponIt.handle >= 0)
-            ui::Text(TextFormat("[8] %-16s %d gold",
-                                c.weapons[weaponIt.handle].name.c_str(),
+                     fx, fy + cell + 3, 15, RAYWHITE);
+            g_mkHits.push_back({ r, MK_ACT, 7 });
+            fx += cell + 90;
+        }
+        if (weaponIt.handle >= 0) {
+            const Rectangle r = { (float)fx, (float)fy, (float)cell, (float)cell };
+            DrawGoodIcon(r, c.weapons[weaponIt.handle].tint,
+                         c.weapons[weaponIt.handle].name.c_str());
+            if (CheckCollisionPointRec(mp, r))
+                DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+            ui::Text(TextFormat("%s %dg", c.weapons[weaponIt.handle].name.c_str(),
                                 WeaponCost(c.weapons[weaponIt.handle])),
-                     x, y, 20, RAYWHITE);
+                     fx, fy + cell + 3, 15, RAYWHITE);
+            g_mkHits.push_back({ r, MK_ACT, 8 });
+        }
+    }
+
+    // ---- the button bar (every service is a BUTTON with its hotkey) ----
+    {
+        struct Act { const char* label; int id; };
+        const Act acts[] = {
+            { "Caravan 200 [C]", 1 }, { "Deposit 100 [D]", 2 },
+            { "Withdraw [Sh+D]", 3 }, { "Destrier 200 [W]", 4 },
+            { "Loan / repay [L]", 5 }, { "Enterprise [B]", 9 },
+            { "Leave [Esc]", 6 },
+        };
+        int fs = 19;
+        auto totalW = [&](int f) {
+            int tw2 = 0;
+            for (const Act& a : acts) tw2 += ui::Measure(a.label, f) + 22 + 10;
+            return tw2;
+        };
+        while (fs > 13 && totalW(fs) > W - margin * 2) fs--;
+        float bx2 = (float)margin;
+        const float byy = (float)(H - (int)(H * 0.09f));
+        for (const Act& a : acts) {
+            const Rectangle r = UIButton(bx2, byy, a.label, fs, true);
+            g_mkHits.push_back({ r, MK_ACT, a.id });
+            bx2 += r.width + 10;
+        }
     }
 
     EndDrawing();

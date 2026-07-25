@@ -37,7 +37,7 @@ Modding surfaces are in MODDING.md.)
   an eagle's slow circling look over the roofs, with the menu on the
   RIGHT — recruit, market, tavern, tournament, work, audience, feast,
   garrison, fortify, sellswords — every row clickable, dead rows say why.
-  Boots touch ground only when you pick [W] walk the streets.
+  Boots touch ground only when you pick [Enter] Walk the streets.
 - **Walking mode:** the service strip ([T] tournament, [M] market, [G] work,
   [H] hire, [V] oath, [E] talk, [F] garrison) is clickable; the gold-roofed
   building is the tavern (recruits, ransoming captives, companions).
@@ -60,7 +60,13 @@ Modding surfaces are in MODDING.md.)
 
 ## Economy
 
-- **Goods** trade at living prices: scarce stock costs more, village produce
+- **The market is a shop, not a list:** a paged grid of ware tiles
+  (placeholder art for now) — click a tile to buy one, right-click or
+  Shift-click to sell; number keys 1-9 address the visible page, arrows/
+  PgUp-PgDn turn pages, so any number of modded goods fits. Your
+  saddlebags and the tiled gear bag sit alongside, and every service
+  (caravan, bank, destrier, loan, enterprise) is a proper button with
+  its hotkey. Prices are alive: scarce stock costs more, village produce
   is cheap at the source, war adds a markup everywhere the owning crown
   fights. Buy low, haul, sell high; saddlebags cap what you carry.
 - **The forge counter** sells two rotating pieces a day (towns only) — and

@@ -1511,7 +1511,7 @@ void TownDraw(const GameState& gs) {
             "[7]  The hall              (court, news, politics)",
             "[8]  Garrison a soldier    (yours only)",
             "[9]  Recall a soldier",
-            "[W]  Visit the settlement  (walk the streets)",
+            "[Enter]  Walk the streets in person",
             "[0]  Host a feast          (200 gold; lords and matches)",
             "[J]  Sellswords for hire   (a 5-man pack, 150 gold)",
             "[F]  Fortify the walls     (500 gold; +10 garrison, harder to storm)",

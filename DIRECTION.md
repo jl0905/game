@@ -1647,6 +1647,20 @@ this is the feedback the flat numbers were waiting for.
   per-effect cooldowns (MIN_GAP table) plus a 120ms global voice budget
   that ducks past 6 voices and drops past 14; master volume 0.85.
   Suite green, bench 10.96ms — no runtime cost.
+- [x] **V146. Iteration one-forty-six — the market becomes a GUI (user
+  goal).** The number-key text list is gone: the market is a paged grid
+  of ware TILES with placeholder art (DrawGoodIcon: layered sack
+  silhouette in the good's tint + letter stamp — swappable for real
+  textures without touching layout), click buys / right-click-or-Shift
+  sells, stock badges on the tile, page controls + arrow/PgUp keys, and
+  hotkeys 1-9 address the VISIBLE page — fifty modded goods work as
+  well as six (the user's future-expansion requirement). The Diablo
+  gear bag renders in miniature beside the saddlebag tiles (one visual
+  language; [I] manages it). Every market service is a real UIButton
+  (shared chrome: plate, gold border, hover fill) with its hotkey.
+  Whole screen derives from live window dimensions (user resize ask).
+  Gate-menu walking moved off [W] to [Enter]. Sim untouched: harness
+  buy/sell and all 135 scripts unchanged and green.
   - [x] garrisons draw from the recruit pool (V138 — the daily muster
         consumes Town.recruitPool; no more soldiers from thin air. Chain:
         prosperity fills the pool → danger/blockade/raids starve
