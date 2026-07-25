@@ -40,6 +40,18 @@ void Sph(Vector3 p, float r, int ri, int sl, Color c) {
     if (Batched()) { g_sink(p, p, r, c); return; }
     DrawSphereEx(p, r, ri, sl, c);
 }
+// An axis-agnostic box (V149): the one-box body. Batched it rides the sink
+// (vertical extent as the a→b axis); direct it is a plain DrawCube — the
+// cheapest primitive raylib has.
+void Boxy(Vector3 center, float sx, float sy, float sz, Color c) {
+    if (Batched()) {
+        g_sink({ center.x, center.y - sy * 0.5f, center.z },
+               { center.x, center.y + sy * 0.5f, center.z },
+               sx / 1.8f, c);
+        return;
+    }
+    DrawCube(center, sx, sy, sz, c);
+}
 
 // Local (right, up, fwd) -> world, rotating around Y by yaw about `feet`.
 Vector3 ToWorld(Vector3 feet, float yaw, float right, float up, float fwd) {
@@ -119,67 +131,33 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const bool  hasHelm = loadout.has(EquipSlot::Head);
     const Color headC   = flashed(hasHelm ? SlotTint(content, loadout, EquipSlot::Head, SKIN) : SKIN);
 
-    // Walk cycle: legs swing fore/aft, arms counter-swing. Knees bend on
-    // the forward stride (V132) instead of the legs sliding like skis.
-    const float legSwing = sinf(pose.walkPhase) * 0.35f;
-
-    // ---- Legs (V132): thigh to knee to shin, with a bending knee ----
-    auto legPair = [&](float side, float swing) {
-        const float knee = fmaxf(0.0f, swing) * 0.45f + 0.08f;   // forward bow
-        const Vector3 hip  = at(side, 0.92f, 0.0f);
-        const Vector3 kneeP = at(side, 0.48f, swing * 0.55f + knee * 0.3f);
-        const Vector3 foot = at(side, 0.06f, swing);
-        Cap(hip,  kneeP, 0.13f, S(7), R(3), feetC);   // thigh
-        Cap(kneeP, foot, 0.10f, S(6), R(3), feetC);   // shin
-        if (!Minor())
-            Cap(foot, at(side, 0.05f, swing + 0.16f), 0.07f, S(5), R(3), feetC); // boot
-    };
-    legPair(-0.15f,  legSwing);
-    legPair( 0.15f, -legSwing);
-
-    // ---- Torso (V132): hips narrower than the chest, squared shoulders,
-    //      a neck under the head, and the team surcoat stripe kept ----
-    // Armour is a SILHOUETTE, not just a tint (V141, user ask): the worn
-    // body piece's armour value picks the build — cloth (≤1) stays lean,
-    // mail (2–4) adds pauldrons, plate (5+) broadens the chest and hangs
-    // faulds off the hips. Data-driven: a modded cuirass with soak 7 reads
-    // heavy with no code change, on player and every NPC alike.
+    // ---- The body is ONE BOX (V149, user call): the segmented legs/torso
+    //      looked worse than honest simplicity. A single prism from boots
+    //      to shoulders, width from the armour value (cloth lean, plate
+    //      broad), rocking gently with the stride. Arms, weapons, shields,
+    //      helmets and plumes stay fully articulated on top of it.
+    const float rock = sinf(pose.walkPhase) * 0.06f;   // stride sway
     const int bodyAv = content.armor.valid(loadout.get(EquipSlot::Body))
                            ? content.armor[loadout.get(EquipSlot::Body)].armor : 0;
-    const float bulk = bodyAv >= 5 ? 0.045f : bodyAv >= 2 ? 0.02f : 0.0f;
-    Cap(at(0.0f, 0.90f, 0.0f), at(0.0f, 1.15f, 0.0f), 0.22f + bulk * 0.5f,
-        S(8), R(4), bodyC);   // hips
-    Cap(at(0.0f, 1.15f, 0.0f), at(0.0f, 1.55f, 0.0f), 0.27f + bulk,
-        S(10), R(6), bodyC);  // chest
-    if (bodyAv >= 2) {   // pauldrons — kept even in the batched tier so a
-                         // mailed line reads bulkier from across the field
-        Sph(at(-0.32f, 1.56f, 0.0f), bodyAv >= 5 ? 0.15f : 0.115f, R(8), S(8), bodyC);
-        Sph(at( 0.32f, 1.56f, 0.0f), bodyAv >= 5 ? 0.15f : 0.115f, R(8), S(8), bodyC);
-    }
-    if (bodyAv >= 5 && !Minor())   // faulds: plate skirts the hips
-        Cap(at(0.0f, 0.78f, 0.0f), at(0.0f, 0.95f, 0.0f), 0.26f, S(8), R(3), bodyC);
-    if (!Minor())
-        Cap(at(-0.26f, 1.56f, 0.0f), at(0.26f, 1.56f, 0.0f), 0.12f, S(7), R(3), bodyC); // shoulders
-    if (!Minor())
-        Cap(at(0.0f, 1.05f, 0.22f), at(0.0f, 1.52f, 0.25f), 0.08f, S(6), R(4), flashed(teamTint));
-    if (!Minor())
-        Cap(at(0.0f, 1.60f, 0.0f), at(0.0f, 1.74f, 0.0f), 0.09f, S(6), R(3), flashed(SKIN)); // neck
+    const float bw = 0.56f + (bodyAv >= 5 ? 0.10f : bodyAv >= 2 ? 0.05f : 0.0f);
+    Boxy(at(rock * 0.5f, 0.82f, 0.0f), bw, 1.64f, 0.40f, bodyC);
+    // the team surcoat stripe, a thin front plate
+    Boxy(at(rock * 0.5f, 0.95f, 0.21f), bw * 0.34f, 1.1f, 0.05f, flashed(teamTint));
+    // boots: a darker base band
+    Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
 
-    // ---- Head: helm silhouette follows its armour value (V141) — a light
-    //      cap is a skull dome, a real helm adds brim + nasal, and a heavy
-    //      one (3+) closes with cheek guards. ----
-    Sph(at(0.0f, 1.87f, 0.0f), 0.19f, R(16), S(16), headC);
+    // ---- Head: a box too; the helm silhouette still follows its armour
+    //      value (brim / cheek guards read at a glance) ----
+    Boxy(at(0.0f, 1.87f, 0.0f), 0.34f, 0.36f, 0.34f, headC);
     if (hasHelm) {
         const int helmAv = content.armor.valid(loadout.get(EquipSlot::Head))
                                ? content.armor[loadout.get(EquipSlot::Head)].armor : 0;
         if (helmAv >= 2)
-            Cyl(at(0.0f, 1.72f, 0.0f), at(0.0f, 1.80f, 0.0f), 0.27f, 0.27f, S(10), headC); // brim
-        Cyl(at(0.0f, 1.86f, 0.0f), at(0.0f, 2.08f, 0.0f), 0.22f, 0.05f, S(10), headC); // dome
-        if (helmAv >= 2 && !Minor())
-            Cap(at(0.0f, 1.90f, 0.24f), at(0.0f, 1.74f, 0.26f), 0.03f, S(4), R(3), headC);   // nasal
-        if (helmAv >= 3 && !Minor()) {   // cheek guards close the face
-            Cap(at(-0.17f, 1.86f, 0.10f), at(-0.15f, 1.74f, 0.14f), 0.05f, S(4), R(3), headC);
-            Cap(at( 0.17f, 1.86f, 0.10f), at( 0.15f, 1.74f, 0.14f), 0.05f, S(4), R(3), headC);
+            Boxy(at(0.0f, 1.74f, 0.0f), 0.5f, 0.08f, 0.5f, headC);   // brim
+        Boxy(at(0.0f, 2.06f, 0.0f), 0.3f, 0.14f, 0.3f, headC);       // dome cap
+        if (helmAv >= 3) {   // cheek guards close the face
+            Boxy(at(-0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
+            Boxy(at( 0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
         }
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).

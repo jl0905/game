@@ -3174,26 +3174,10 @@ void BattleDraw(const Content& c) {
         }
         BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
         const float camDistSq = Vector3DistanceSqr(cam.position, s.pos);
-        if (camDistSq > LOD_DIST_SQ) {
-            const Color tint = SoldierTint(s);
-            // Far-far tier (V110): beyond twice the LOD line a man is one
-            // box in his side's colour â€” a third of the far-tier vertices,
-            // unreadable detail nobody was seeing anyway.
-            // Batched into a handful of instanced draw calls (V126).
-            if (camDistSq > LOD_DIST_SQ * 4.0f) {
-                InstCube({ s.pos.x, s.pos.y + 1.1f, s.pos.z }, 0.7f, 1.9f, 0.45f,
-                         tint);
-                continue;
-            }
-            InstCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.5f, 0.45f, tint);
-            InstCube({ s.pos.x, s.pos.y + 1.85f, s.pos.z }, 0.32f, 0.32f, 0.32f,
-                     Color{ 224, 188, 150, 255 });
-            const float fracFar = s.hp / s.maxHp;
-            if (fracFar < 0.999f)   // only the wounded show a bar
-                InstCube({ s.pos.x, s.pos.y + 2.5f, s.pos.z }, 1.2f * fracFar, 0.08f, 0.08f,
-                         s.team == Team::Enemy ? RED : GREEN);
-            continue;
-        }
+        // (V149, user call) The armless far/far-far silhouette tiers are
+        // GONE: every soldier draws the same one-box body with full arms
+        // and weapons at every distance. Beyond the LOD line the identical
+        // shape merely renders through the instanced batcher.
         Pose pose;
         pose.yaw = s.yaw;
         pose.swing = s.swing;
@@ -3204,7 +3188,8 @@ void BattleDraw(const Content& c) {
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding
         pose.accent = c.troops[s.troop].accent;   // rank plume
 
-        const bool farTier = camDistSq > LOD_DIST_SQ * 0.09f;
+        const bool farTier = camDistSq > LOD_DIST_SQ;   // V149: full lodDistance,
+                                                        // and same shape both sides
         Vector3 riderPos = s.pos;
         if (IsMounted(c, s)) {
             // Horse and rider share a tier (V132): both full up close, both
@@ -3228,9 +3213,7 @@ void BattleDraw(const Content& c) {
         tint.r = (unsigned char)fminf(255.0f, tint.r * dim + 70.0f * (1.0f - hf));
         tint.g = (unsigned char)(tint.g * dim);
         tint.b = (unsigned char)(tint.b * dim);
-        // Full detail within 30% of the LOD line (was 50% — V132's richer
-        // model earns its keep close up; the batched tier carries the rest).
-        SetCharacterDetail(farTier ? 1 : 0);
+        SetCharacterDetail(farTier ? 1 : 0);   // batcher on beyond the LOD line
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
     SetCharacterDetail(0);   // the hero and town scenes draw full (V127)
