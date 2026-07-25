@@ -1,0 +1,11 @@
+# No permadeath by default (V147): with ironman OFF a player at zero
+# troops keeps playing - no destroyed overlay, no forced restart, and
+# the lone hero can still give battle. Fixture: hero alone (0 troops)
+# beside a small hostile band. Expect party=0 on Campaign (not a game
+# over), then walking into the band still opens the fight (screen=
+# Parley/Battle rather than nothing happening).
+load tests/fixtures/lone.owb
+state
+walk 1 0 0.6
+state
+quit

@@ -83,6 +83,10 @@ Modding surfaces are in MODDING.md.)
 
 ## Your warband
 
+- **No permadeath by default:** losing every soldier is a setback, not a
+  game over — the lone hero rides on and can still fight, recruit, and
+  rebuild. Turn ON **Ironman** in Settings for Warband-style finality
+  (defeat writes the saga and ends the campaign).
 - **Party cap** = 20 + renown + Charisma (+10 with an estate barracks).
 - **Wages** daily, tiered by troop quality; **grain** feeds the band each
   dawn (a quartermaster stretches sacks; an estate granary never runs out).

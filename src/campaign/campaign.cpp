@@ -146,7 +146,7 @@ constexpr float TOWN_ENTER_RADIUS = 48.0f;
 // row layouts in the draw functions both quote these — never mirrored
 // literals, so they cannot drift apart.
 namespace layout {
-constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 7;
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 8;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 // The market centres itself (V123): ware rows + saddlebag grid span ~1000px,
 // so the whole block floats around the window centre instead of hugging the
@@ -216,6 +216,13 @@ void DrawGoodIcon(Rectangle r, Color tint, const char* name) {
     const int fs = (int)(r.height * 0.30f);
     ui::Text(letter, (int)(r.x + r.width / 2 - ui::Measure(letter, fs) / 2),
              (int)(r.y + r.height * 0.38f), fs, Fade(BLACK, 0.55f));
+}
+
+// Can the player's party give battle? (V147) With ironman OFF (default)
+// the lone hero fights on alone — a destroyed warband is a setback, not a
+// game over. Ironman restores Warband-style finality.
+bool PartyFights(const GameState& gs) {
+    return gs.player.totalTroops() > 0 || !GetSettings().ironman;
 }
 
 // Hover highlight (K7): a soft band behind the clickable row under the
@@ -295,7 +302,7 @@ Foe NearestHostile(const GameState& gs, const Content& c, int ei) {
     };
 
     Foe best;
-    if (AtWar(gs, e.faction, c.playerFaction) && gs.player.totalTroops() > 0 &&
+    if (AtWar(gs, e.faction, c.playerFaction) && PartyFights(gs) &&
         !beneathNotice(gs.player.totalTroops())) {
         const float d = Vector2Distance(e.pos, gs.player.pos);
         if (d < best.dist) best = { -1, gs.player.pos, gs.player.totalTroops(), d };
@@ -1411,7 +1418,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Settings) {
-        for (int row = 0; row < 7; ++row)
+        for (int row = 0; row < 8; ++row)
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
         // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -1755,14 +1762,15 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     gs.battleReportTimer = fmaxf(0.0f, gs.battleReportTimer - dt);
 
     // The saga of a fallen house is written the moment it falls (V100).
-    if (gs.player.totalTroops() == 0 && !gs.sagaWritten &&
+    if (GetSettings().ironman &&
+        gs.player.totalTroops() == 0 && !gs.sagaWritten &&
         gs.screen == Screen::Campaign) {
         WriteSaga(gs, "THE WARBAND WAS DESTROYED - the road ends here.");
         gs.sagaWritten = true;
     }
 
     // ---- restart after the warband is destroyed ----
-    if (gs.player.totalTroops() == 0 && in.restart) {
+    if (GetSettings().ironman && gs.player.totalTroops() == 0 && in.restart) {
         Content saved = std::move(gs.content);
         gs = GameState{};
         gs.content = std::move(saved);
@@ -2078,7 +2086,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 // Nobody mans the walls — it simply changes hands.
                 t.owner = c.playerFaction;
                 gs.resultText = TextFormat("%s is undefended. It is yours.", t.name.c_str());
-            } else if (gs.player.totalTroops() > 0) {
+            } else if (PartyFights(gs)) {
                 // Walls or fields, the same question opens (N1/P1):
                 // conquest, engineering, or — at a village — plunder.
                 gs.siegePrompt = wantEnter;
@@ -2116,7 +2124,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     // The den's defenders muster as a fresh party; burning it out (victory
     // over that party) destroys the den for good.
     if (in.clickLair >= 0 && in.clickLair < (int)gs.lairs.size() &&
-        gs.lairs[in.clickLair].alive && gs.player.totalTroops() > 0) {
+        gs.lairs[in.clickLair].alive && PartyFights(gs)) {
         const Lair& l = gs.lairs[in.clickLair];
         Party den = MakeParty(c, l.faction, l.pos);
         for (int& n : den.troopCounts) n *= 2;   // dens defend hard; TODO(balance)
@@ -2366,7 +2374,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                 if (besiegingIdx < 0) continue;   // locked in a skirmish; join it instead
             }
             if (AtWar(gs, e.faction, c.playerFaction) &&
-                gs.player.totalTroops() > 0 &&
+                PartyFights(gs) &&
                 Vector2Distance(e.pos, gs.player.pos) < PLAYER_COLLIDE_DIST) {
                 if (besiegingIdx >= 0) {           // you fall upon the siege camp
                     gs.aiSieges.erase(gs.aiSieges.begin() + besiegingIdx);
@@ -3350,7 +3358,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
 
     // ---- join a nearby clash on one side (a decision; works even while paused) ----
     const int nearSkirmish = NearestSkirmishIndex(gs);
-    if (nearSkirmish >= 0 && gs.player.totalTroops() > 0 && in.joinSide != 0) {
+    if (nearSkirmish >= 0 && PartyFights(gs) && in.joinSide != 0) {
         const Skirmish& sk = gs.skirmishes[nearSkirmish];
         int allyIdx = -1, enemyIdx = -1;
         if (in.joinSide == 1) { allyIdx = sk.a; enemyIdx = sk.b; }
@@ -3995,7 +4003,7 @@ void CampaignDraw(const GameState& gs) {
     }
 
     // Prompt to join a nearby clash.
-    if (nearSkirmish >= 0 && gs.player.totalTroops() > 0) {
+    if (nearSkirmish >= 0 && PartyFights(gs)) {
         const Skirmish& sk = gs.skirmishes[nearSkirmish];
         const FactionDef& fa = c.factions[gs.parties[sk.a].faction];
         const FactionDef& fb = c.factions[gs.parties[sk.b].faction];
@@ -4011,8 +4019,8 @@ void CampaignDraw(const GameState& gs) {
     // (V122) The old travel hint that printed here overlapped the key bar —
     // its content lives in the bar's line now.
 
-    if (gs.player.totalTroops() == 0)
-    {   // The fall of the house (V97): the mirror of the V96 legacy screen —
+    if (GetSettings().ironman && gs.player.totalTroops() == 0)
+    {   // The fall of the house (V97; ironman-only since V147) —
         // same reign numbers, same chronicle, under a darker headline.
         const int w = GetScreenWidth();
         DrawRectangle(0, 0, w, GetScreenHeight(), Fade(BLACK, 0.78f));
@@ -4897,6 +4905,9 @@ void SettingsUpdate(GameState& gs, const CampaignInput& in) {
                          : s.battleSize >= 200.0f ? 300.0f
                          : s.battleSize >= 150.0f ? 200.0f : 150.0f;
             break;
+        case 7:   // ironman (V147): permadeath is opt-IN
+            s.ironman = !s.ironman;
+            break;
         default: break;
     }
     if (in.leaveSettlement) {
@@ -4912,7 +4923,7 @@ void SettingsDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int x = GetScreenWidth() / 2 - 300;
     ui::Title("SETTINGS", x, 60, 44, GOLD);
-    ui::Text("[1-6 / click] change    [Esc / O] save and back", x, 120, 20,
+    ui::Text("[1-8 / click] change    [Esc / O] save and back", x, 120, 20,
              Fade(RAYWHITE, 0.7f));
 
     int y = layout::SETTINGS_Y;
@@ -4928,6 +4939,8 @@ void SettingsDraw(const GameState& gs) {
     row(4, "Invert look Y", s.invertY ? "on" : "off");
     row(5, "Lettering",     TextFormat("%.0f%%", s.textScale * 100));   // V72
     row(6, "Battle size",   TextFormat("%.0f a side", s.battleSize));   // V75
+    row(7, "Ironman",       s.ironman ? "ON - defeat ends the campaign"
+                                      : "off - the lone hero survives");   // V147
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));
