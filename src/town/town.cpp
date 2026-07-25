@@ -5,6 +5,9 @@
 #include "../ui.h"
 #include "raymath.h"
 #include <cmath>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -29,7 +32,53 @@ struct Building {
     Color   roof;
     bool    tavern = false;
     bool    flatTop = false;   // curtain walls / towers: no pitched roof
+    unsigned seed = 0;         // per-building variation (V148)
 };
+
+// ---------------------------------------------------------------------------
+// Real models, when the player supplies them (V148): assets/models.cfg maps
+// building roles to glTF/OBJ files (CC0 kits like Kenney's castle set drop
+// straight in - see the cfg for links). Missing file or key = the procedural
+// builder below, so the game always looks right with zero assets.
+//   models.cfg lines:  house <file>  tavern <file>  keep <file>
+//                      wall <file>   tower <file>
+// Files resolve relative to assets/. Windowed only; headless never loads.
+// ---------------------------------------------------------------------------
+struct RoleModel { Model model{}; bool ok = false; };
+RoleModel g_roleModels[5];   // house, tavern, keep, wall, tower
+bool      g_modelsTried = false;
+
+int RoleOf(const Building& b, bool castle) {
+    if (b.tavern)  return castle ? 2 : 1;   // keep / tavern
+    if (b.flatTop) return b.size.x > 8.0f && b.size.z > 8.0f ? 4 : 3; // tower / wall
+    return 0;                               // house
+}
+
+void EnsureRoleModels() {
+    if (g_modelsTried || !IsWindowReady()) return;
+    g_modelsTried = true;
+    const char* keys[5] = { "house", "tavern", "keep", "wall", "tower" };
+    const std::string base = std::string(GetApplicationDirectory()) + "assets/";
+    const std::string cfg  = base + "models.cfg";
+    if (!FileExists(cfg.c_str())) return;
+    std::ifstream f(cfg);
+    std::string line;
+    while (std::getline(f, line)) {
+        if (const auto hash = line.find('#'); hash != std::string::npos)
+            line.erase(hash);
+        std::istringstream ss(line);
+        std::string key, file;
+        if (!(ss >> key >> file)) continue;
+        for (int i = 0; i < 5; ++i)
+            if (key == keys[i]) {
+                const std::string path = base + file;
+                if (FileExists(path.c_str())) {
+                    g_roleModels[i].model = LoadModel(path.c_str());
+                    g_roleModels[i].ok = g_roleModels[i].model.meshCount > 0;
+                }
+            }
+    }
+}
 
 struct Npc {
     Vector3     pos;
@@ -308,6 +357,7 @@ void TownInit(const GameState& gs) {
                      : Color{ wallTone, (unsigned char)(wallTone * 0.8f),
                               (unsigned char)(wallTone * 0.55f), 255 };       // timber
         b.roof = Color{ (unsigned char)rng.range(120, 170), 60, 50, 255 };
+        b.seed = rng.next();   // per-building variation (V148)
         T.buildings.push_back(b);
     }
     T.tavern = 0;                      // first building is the tavern
@@ -1310,25 +1360,88 @@ void TownDraw(const GameState& gs) {
     DrawCylinder({ 0, 0.01f, 0 }, 16.0f, 16.0f, 0.02f, 24, Color{ 150, 134, 105, 255 }); // plaza
     DrawCylinder({ 0, 0.02f, 0 }, 1.2f, 1.4f, 0.9f, 12, Color{ 120, 110, 100, 255 });    // well
 
+    // Buildings (V148, user ask): timber-framed halls and dressed stone
+    // instead of single cubes — a plinth, plastered walls with dark beams,
+    // real gable roofs (a horizontal 4-sided prism, ridge along the long
+    // axis), doors, shuttered windows, chimneys; keeps get corner turrets.
+    // If assets/models.cfg supplies real glTF kits, those draw instead.
+    EnsureRoleModels();
+    const bool isCastle = gs.currentSettlement >= 0 &&
+                          gs.towns[gs.currentSettlement].type ==
+                              SettlementType::Castle;
     for (const Building& b : T.buildings) {
-        DrawCube({ b.pos.x, b.size.y * 0.5f, b.pos.z }, b.size.x, b.size.y, b.size.z, b.wall);
-        DrawCubeWires({ b.pos.x, b.size.y * 0.5f, b.pos.z }, b.size.x, b.size.y, b.size.z,
-                      Fade(BLACK, 0.35f));
-        if (townNight)   // a lit window after dark (V64)
-            DrawCube({ b.pos.x, b.size.y * 0.55f, b.pos.z + b.size.z * 0.5f + 0.02f },
-                     0.9f, 0.9f, 0.03f, Color{ 255, 214, 130, 255 });
-        if (b.flatTop) {   // crenellated top instead of a roof
-            for (float cx = -b.size.x / 2; cx < b.size.x / 2; cx += 2.4f)
-                DrawCube({ b.pos.x + cx + 0.6f, b.size.y + 0.4f, b.pos.z },
-                         1.1f, 0.8f, fminf(b.size.z, 1.6f), b.roof);
+        const int role = RoleOf(b, isCastle);
+        if (g_roleModels[role].ok) {   // the drop-in path
+            const float s = b.size.y / 4.0f;   // kits are ~4u tall
+            DrawModelEx(g_roleModels[role].model,
+                        { b.pos.x, 0, b.pos.z }, { 0, 1, 0 },
+                        (float)(b.seed % 4) * 90.0f, { s, s, s }, WHITE);
+            continue;
+        }
+        const float w = b.size.x, h = b.size.y, d = b.size.z;
+        const float longX = w >= d ? 1.0f : 0.0f;   // ridge along long axis
+        const Color plaster = b.wall;
+        const Color beam    = Color{ 74, 54, 38, 255 };
+        const Color stone   = Color{ 128, 124, 120, 255 };
+        // stone plinth + wall body
+        DrawCube({ b.pos.x, h * 0.09f, b.pos.z }, w + 0.3f, h * 0.18f, d + 0.3f, stone);
+        DrawCube({ b.pos.x, h * 0.5f, b.pos.z }, w, h, d, plaster);
+        DrawCubeWires({ b.pos.x, h * 0.5f, b.pos.z }, w, h, d, Fade(BLACK, 0.3f));
+        if (!b.flatTop) {
+            // timber frame: corner posts, a sill beam, and a seeded brace
+            for (const float px : { -w / 2 + 0.15f, w / 2 - 0.15f })
+                for (const float pz : { -d / 2 + 0.15f, d / 2 - 0.15f })
+                    DrawCube({ b.pos.x + px, h * 0.55f, b.pos.z + pz },
+                             0.3f, h * 0.9f, 0.3f, beam);
+            DrawCube({ b.pos.x, h * 0.52f, b.pos.z }, w + 0.1f, 0.25f, d + 0.1f, beam);
+            if (b.seed & 1)   // some houses carry a jetty beam higher up
+                DrawCube({ b.pos.x, h * 0.78f, b.pos.z }, w + 0.2f, 0.25f, d + 0.2f, beam);
+            // door on the plaza side (toward origin)
+            const float doorZ = b.pos.z > 0 ? -d / 2 : d / 2;
+            DrawCube({ b.pos.x + ((b.seed >> 1) % 3 - 1) * w * 0.2f, 1.1f,
+                       b.pos.z + doorZ + (doorZ > 0 ? 0.06f : -0.06f) },
+                     1.3f, 2.2f, 0.15f, Color{ 58, 42, 30, 255 });
+            // shuttered windows, lit after dark (V64)
+            const Color glow = townNight ? Color{ 255, 214, 130, 255 }
+                                         : Color{ 40, 34, 30, 255 };
+            for (int wi = 0; wi < 2; ++wi) {
+                const float wx = (wi == 0 ? -1.0f : 1.0f) * w * 0.24f;
+                DrawCube({ b.pos.x + wx, h * 0.62f,
+                           b.pos.z + doorZ + (doorZ > 0 ? 0.05f : -0.05f) },
+                         0.85f, 0.95f, 0.12f, glow);
+                for (const float sx : { -0.62f, 0.62f })   // shutters
+                    DrawCube({ b.pos.x + wx + sx, h * 0.62f,
+                               b.pos.z + doorZ + (doorZ > 0 ? 0.05f : -0.05f) },
+                             0.28f, 1.0f, 0.10f, beam);
+            }
+            // the gable roof: a horizontal 4-sided prism half-sunk into the
+            // wall top; radius slightly past the footprint = eaves overhang
+            const Vector3 r0 = longX > 0.5f
+                ? Vector3{ b.pos.x - w / 2 - 0.5f, h + 0.1f, b.pos.z }
+                : Vector3{ b.pos.x, h + 0.1f, b.pos.z - d / 2 - 0.5f };
+            const Vector3 r1 = longX > 0.5f
+                ? Vector3{ b.pos.x + w / 2 + 0.5f, h + 0.1f, b.pos.z }
+                : Vector3{ b.pos.x, h + 0.1f, b.pos.z + d / 2 + 0.5f };
+            const float rr = (longX > 0.5f ? d : w) * 0.62f;
+            DrawCylinderEx(r0, r1, rr, rr, 4, b.roof);
+            // chimney on half the houses
+            if (b.seed & 2)
+                DrawCube({ b.pos.x + w * 0.28f, h + rr * 0.8f, b.pos.z - d * 0.2f },
+                         0.6f, rr * 1.4f, 0.6f, stone);
         } else {
-            // pitched roof: a squashed 4-sided cone
-            DrawCylinderEx({ b.pos.x, b.size.y, b.pos.z },
-                           { b.pos.x, b.size.y + 2.4f, b.pos.z },
-                           fmaxf(b.size.x, b.size.z) * 0.72f, 0.0f, 4, b.roof);
+            // battlements + a corner turret on big flat-tops
+            for (float cx = -w / 2; cx < w / 2; cx += 2.4f)
+                DrawCube({ b.pos.x + cx + 0.6f, h + 0.4f, b.pos.z },
+                         1.1f, 0.8f, fminf(d, 1.6f), b.roof);
+            if (w > 6.0f && d > 6.0f) {   // towers wear conical caps
+                DrawCylinderEx({ b.pos.x, h + 0.7f, b.pos.z },
+                               { b.pos.x, h + 3.4f, b.pos.z },
+                               fminf(w, d) * 0.52f, 0.0f, 8,
+                               Color{ 96, 74, 90, 255 });
+            }
         }
         if (b.tavern)   // hanging sign: a keg (or the lord's banner on a keep)
-            DrawSphere({ b.pos.x, b.size.y + 3.4f, b.pos.z }, 0.7f, GOLD);
+            DrawSphere({ b.pos.x, h + 3.4f, b.pos.z }, 0.7f, GOLD);
     }
 
     // Market stalls ring the plaza (N5): posts, a tinted canopy, and a

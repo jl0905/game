@@ -38,6 +38,11 @@ Modding surfaces are in MODDING.md.)
   RIGHT — recruit, market, tavern, tournament, work, audience, feast,
   garrison, fortify, sellswords — every row clickable, dead rows say why.
   Boots touch ground only when you pick [Enter] Walk the streets.
+- **Settlements are built places:** timber-framed houses with beams,
+  shuttered windows (lit after dark), gable roofs and chimneys; castles
+  raise dressed-stone walls, battlements and capped towers. Drop CC0
+  model kits (Kenney, Quaternius) into assets/models/ and list them in
+  models.cfg to replace any building role with real art.
 - **Walking mode:** the service strip ([T] tournament, [M] market, [G] work,
   [H] hire, [V] oath, [E] talk, [F] garrison) is clickable; the gold-roofed
   building is the tavern (recruits, ransoming captives, companions).
