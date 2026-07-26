@@ -97,6 +97,13 @@ struct Tree {
     Color   foliage;
 };
 
+// A grass tuft (V152): baked position + height + tint, drawn as a tiny cone.
+struct GrassTuft {
+    Vector3 pos;
+    float   h;
+    Color   tint;
+};
+
 // Self-contained PRNG so terrain is deterministic per seed and never disturbs
 // raylib's global RNG (which the campaign uses for loot, etc.).
 struct TerrainRng {
@@ -182,6 +189,7 @@ private:
     float   riverHalfWidth_ = 0.0f;
     std::vector<Hill> hills_;
     std::vector<Tree> trees_;
+    std::vector<GrassTuft> grass_;   // V152
 
     int                        gridN_ = 0;
     float                      cell_  = 0.0f;
@@ -258,8 +266,8 @@ void Terrain::Generate(const TerrainConfig& cfg, float arenaHalf) {
 
         Tree t;
         t.pos    = { tx, h, tz };
-        t.height = rng.range(3.0f, 6.0f);
-        t.radius = rng.range(0.6f, 1.2f);
+        t.height = rng.range(3.5f, 7.5f);   // V152: taller, statelier woods
+        t.radius = rng.range(0.7f, 1.5f);
         const float g = rng.range(0.55f, 0.9f);
         t.foliage = Color{ static_cast<unsigned char>(40 * g),
                            static_cast<unsigned char>(110 * g),
@@ -267,8 +275,25 @@ void Terrain::Generate(const TerrainConfig& cfg, float arenaHalf) {
         trees_.push_back(t);
     }
 
+    // Grass (V152): small tufts scattered on gentle ground — the field
+    // stops reading as a green tablecloth. Baked positions, tiny cones.
+    grass_.clear();
+    for (int i = 0; i < 320; ++i) {
+        const float gx = rng.range(-arena_, arena_);
+        const float gz = rng.range(-arena_, arena_);
+        if (IsWaterAt(gx, gz)) continue;
+        const float gh = HeightAt(gx, gz);
+        if (gh > 8.0f) continue;
+        const float g = rng.range(0.6f, 1.0f);
+        grass_.push_back({ { gx, gh, gz },
+                           rng.range(0.35f, 0.8f),
+                           Color{ (unsigned char)(52 * g),
+                                  (unsigned char)(128 * g),
+                                  (unsigned char)(56 * g), 255 } });
+    }
+
     // precompute the render grid by sampling the height function once
-    gridN_ = 48;
+    gridN_ = 128;   // V152: a fine mesh — the old 48 grid read as a quilt
     cell_  = (2.0f * arena_) / gridN_;
     gridH_.resize((gridN_ + 1) * (gridN_ + 1));
     gridWater_.resize(gridH_.size());
@@ -343,9 +368,14 @@ void Terrain::BakeModel() const {
         mesh.colors[v * 4 + 3] = col.a;
         ++v;
     };
-    auto faceNormal = [](Vector3 a, Vector3 b, Vector3 cc) {
-        return Vector3Normalize(Vector3CrossProduct(Vector3Subtract(b, a),
-                                                    Vector3Subtract(cc, a)));
+    // V152: smooth per-vertex normals from the height field's central
+    // differences — the sun now ROLLS across a hillside instead of
+    // snapping per facet, at zero runtime cost (baked once).
+    auto smoothNormal = [&](Vector3 p) {
+        const float e = cell_ * 0.5f;
+        const float dx = HeightAt(p.x + e, p.z) - HeightAt(p.x - e, p.z);
+        const float dz = HeightAt(p.x, p.z + e) - HeightAt(p.x, p.z - e);
+        return Vector3Normalize({ -dx, 2.0f * e, -dz });
     };
     for (int j = 0; j < gridN_; ++j) {
         for (int i = 0; i < gridN_; ++i) {
@@ -360,10 +390,10 @@ void Terrain::BakeModel() const {
             // Winding A,C,B / B,C,D gives an upward-facing (+y) normal.
             const Color c1 = TriangleColor(A, C, Bv);
             const Color c2 = TriangleColor(Bv, C, D);
-            const Vector3 n1 = faceNormal(A, C, Bv);
-            const Vector3 n2 = faceNormal(Bv, C, D);
-            emit(A, c1, n1); emit(C, c1, n1); emit(Bv, c1, n1);
-            emit(Bv, c2, n2); emit(C, c2, n2); emit(D, c2, n2);
+            emit(A, c1, smoothNormal(A)); emit(C, c1, smoothNormal(C));
+            emit(Bv, c1, smoothNormal(Bv));
+            emit(Bv, c2, smoothNormal(Bv)); emit(C, c2, smoothNormal(C));
+            emit(D, c2, smoothNormal(D));
         }
     }
     UploadMesh(&mesh, false);
@@ -376,30 +406,46 @@ void Terrain::Draw() const {
     if (!baked_) BakeModel();
     DrawModel(model_, { 0, 0, 0 }, 1.0f, WHITE);
 
-    // water surface (flat translucent quads over river cells)
+    // Water (V152): one translucent ribbon laid along the river line —
+    // a surface, not a mosaic of little squares.
     if (hasRiver_) {
-        const Color water = Color{ 46, 98, 150, 165 };
-        for (int j = 0; j < gridN_; ++j) {
-            for (int i = 0; i < gridN_; ++i) {
-                const float cx = -arena_ + (i + 0.5f) * cell_;
-                const float cz = -arena_ + (j + 0.5f) * cell_;
-                if (!IsWaterAt(cx, cz)) continue;
-                DrawPlane({ cx, waterLevel_ + 0.06f, cz }, { cell_, cell_ }, water);
-            }
-        }
+        const Vector2 dir = Vector2Normalize(Vector2Subtract(riverB_, riverA_));
+        const Vector2 pp  = { -dir.y, dir.x };
+        const float w = riverHalfWidth_ + 0.8f;
+        const float y = waterLevel_ + 0.06f;
+        const Vector3 q[4] = {
+            { riverA_.x + pp.x * w, y, riverA_.y + pp.y * w },
+            { riverA_.x - pp.x * w, y, riverA_.y - pp.y * w },
+            { riverB_.x + pp.x * w, y, riverB_.y + pp.y * w },
+            { riverB_.x - pp.x * w, y, riverB_.y - pp.y * w },
+        };
+        DrawTriangleStrip3D(const_cast<Vector3*>(q), 4,
+                            Color{ 46, 98, 150, 165 });
     }
+
+    // Grass tufts (V152): three-sided cones, a wheat-brush over the field.
+    for (const GrassTuft& g : grass_)
+        DrawCylinderEx(g.pos, { g.pos.x, g.pos.y + g.h, g.pos.z },
+                       0.10f, 0.0f, 3, g.tint);
 
     // trees
     for (const Tree& t : trees_) {
         DrawCylinder({ t.pos.x, t.pos.y + 0.04f, t.pos.z }, t.radius * 1.1f,
                      t.radius * 1.1f, 0.02f, 10, Fade(BLACK, 0.25f));   // shadow
+        const float lean = ((int)(t.pos.x * 7.3f) % 5 - 2) * 0.06f;   // V152
         const Vector3 base     = t.pos;
-        const Vector3 trunkTop = { base.x, base.y + t.height * 0.4f, base.z };
-        const Vector3 crownMid = { base.x, base.y + t.height * 0.3f, base.z };
-        const Vector3 crownTop = { base.x, base.y + t.height,        base.z };
-        DrawCylinderEx(base, trunkTop, t.radius * 0.25f, t.radius * 0.2f, 6,
+        const Vector3 trunkTop = { base.x + lean, base.y + t.height * 0.42f, base.z };
+        const Vector3 crownMid = { base.x + lean, base.y + t.height * 0.28f, base.z };
+        const Vector3 crownCut = { base.x + lean * 1.6f, base.y + t.height * 0.66f, base.z };
+        const Vector3 crownTop = { base.x + lean * 2.0f, base.y + t.height, base.z };
+        DrawCylinderEx(base, trunkTop, t.radius * 0.22f, t.radius * 0.16f, 6,
                        Color{ 92, 64, 40, 255 });
-        DrawCylinderEx(crownMid, crownTop, t.radius, 0.0f, 8, t.foliage);
+        // two stacked canopy cones: fuller silhouette, deeper skirt tone
+        DrawCylinderEx(crownMid, crownCut, t.radius * 1.15f, t.radius * 0.45f, 8,
+                       Color{ (unsigned char)(t.foliage.r * 0.8f),
+                              (unsigned char)(t.foliage.g * 0.8f),
+                              (unsigned char)(t.foliage.b * 0.8f), 255 });
+        DrawCylinderEx(crownCut, crownTop, t.radius * 0.8f, 0.0f, 8, t.foliage);
     }
 }
 

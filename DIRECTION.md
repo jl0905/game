@@ -1744,3 +1744,17 @@ over two half-features.
   hardware ray tracing is beyond raylib's GL 3.3 — researched
   alternatives reported to the user (SSAO/SSR next, compute-shader
   paths, or engine migration).
+
+- [x] **V152. Iteration one-fifty-two — the ground grows up, and the
+  migration begins (user mandate: disregard cost).** RENDERER.md lays
+  the committed plan: renderer seam → shadow/SSAO/bloom passes → a
+  Vulkan raster backend behind a settings flag → Vulkan RT hybrid
+  (hardware ray tracing; DXR is out — no MSVC on this machine, so the
+  Vulkan SDK is the path, install noted for the user). And the terrain
+  stopped being barebones NOW: render mesh 48→128 (a fine weave, not a
+  quilt), smooth per-vertex normals from the height field so sunlight
+  ROLLS over hillsides, taller two-tier canopy trees with lean and a
+  darker skirt, 320 baked grass tufts, and the river drawn as one
+  translucent ribbon instead of a mosaic of squares. All baked once —
+  bench IMPROVED to 14.23ms/70fps (the ribbon replaced hundreds of
+  per-cell water quads). HeightAt untouched: every sim test identical.
