@@ -3021,6 +3021,7 @@ void BattleDraw(const Content& c) {
 
     // ================= DRAW =================
     BeginDrawing();
+    PostBegin();   // the filmic pass captures the whole 3D frame (V151)
     // The sky follows the campaign clock (O3): blue noon, amber dusk,
     // deep night. Also clears the DEPTH buffer.
     const float tod   = B.setup.timeOfDay;
@@ -3358,6 +3359,7 @@ void BattleDraw(const Content& c) {
     EndShaderMode();
 
     EndMode3D();
+    PostEnd();     // grade the world; HUD stays crisp (V151)
 
     // Floating damage numbers (V144): your hits in gold rising off the man,
     // hits on YOU in red. Projected from world space each frame.

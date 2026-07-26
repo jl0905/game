@@ -1361,6 +1361,7 @@ void TownDraw(const GameState& gs) {
     SfxAmbience(0.10f);   // street murmur stand-in
 
     BeginDrawing();
+    PostBegin();   // the filmic pass over the streets too (V151)
     // The street sky follows the campaign clock (V64): the same hours the
     // battle sky keeps — walk a town at midnight and it is midnight.
     const float townTod = gs.dayTimer / 60.0f;
@@ -1502,6 +1503,7 @@ void TownDraw(const GameState& gs) {
     DrawCharacter(c, T.pPos, gs.playerHero.loadout, hero, Color{ 40, 120, 255, 255 });
     EndShaderMode();
     EndMode3D();
+    PostEnd();   // (V151)
 
     // ---- speech: whoever stands close has a word for you ----
     for (const Npc& n : T.npcs) {

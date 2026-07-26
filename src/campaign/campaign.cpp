@@ -146,7 +146,7 @@ constexpr float TOWN_ENTER_RADIUS = 48.0f;
 // row layouts in the draw functions both quote these — never mirrored
 // literals, so they cannot drift apart.
 namespace layout {
-constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 8;
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 9;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 // The market centres itself (V123): ware rows + saddlebag grid span ~1000px,
 // so the whole block floats around the window centre instead of hugging the
@@ -1435,7 +1435,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Settings) {
-        for (int row = 0; row < 8; ++row)
+        for (int row = 0; row < 9; ++row)
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
         // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -5007,7 +5007,7 @@ void SettingsDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int x = GetScreenWidth() / 2 - 300;
     ui::Title("SETTINGS", x, 60, 44, GOLD);
-    ui::Text("[1-8 / click] change    [Esc / O] save and back", x, 120, 20,
+    ui::Text("[1-9 / click] change    [Esc / O] save and back", x, 120, 20,
              Fade(RAYWHITE, 0.7f));
 
     int y = layout::SETTINGS_Y;
@@ -5025,6 +5025,8 @@ void SettingsDraw(const GameState& gs) {
     row(6, "Battle size",   TextFormat("%.0f a side", s.battleSize));   // V75
     row(7, "Ironman",       s.ironman ? "ON - defeat ends the campaign"
                                       : "off - the lone hero survives");   // V147
+    row(8, "Post FX",       s.postFx ? "on - filmic grade, vignette, grain"
+                                     : "off - raw frame");   // V151
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));

@@ -56,7 +56,8 @@ void SaveSettings() {
       << "\ninverty " << (s.invertY ? "on" : "off")
       << "\ntextscale " << TextFormat("%.2f", s.textScale)
       << "\nbattlesize " << (int)s.battleSize
-      << "\nironman " << (s.ironman ? "on" : "off") << '\n';
+      << "\nironman " << (s.ironman ? "on" : "off")
+      << "\npostfx " << (s.postFx ? "on" : "off") << '\n';
 }
 
 void LoadSettings() {
@@ -81,5 +82,6 @@ void LoadSettings() {
         else if (key == "textscale")  s.textScale    = std::stof(value);
         else if (key == "battlesize") s.battleSize   = std::stof(value);
         else if (key == "ironman")    s.ironman      = TruthValue(value);
+        else if (key == "postfx")     s.postFx       = TruthValue(value);
     }
 }

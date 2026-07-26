@@ -1732,3 +1732,15 @@ unblocks E3/E4/F4-goods quests). F-track after
 E-track exists to pay for it. Prefer finishing a track's structure over
 starting a new one; prefer one shipped, tested, committed feature per session
 over two half-features.
+
+- [x] **V151. Iteration one-fifty-one — the filmic pass (user 'ultra
+  graphics' goal).** One fullscreen post shader between the 3D world
+  and the HUD, in battles AND town streets: ACES filmic tone mapping
+  (with pre-exposure), a warm-highlight/cool-shadow grade, saturation
+  lift, soft vignette, and living film grain against banding. Renders
+  into an offscreen target that follows window resizes; HUD stays
+  crisp above it; Settings row 9 'Post FX' toggles it and postfx
+  saves to settings.cfg. Bench 14.58ms/69fps with the pass on. True
+  hardware ray tracing is beyond raylib's GL 3.3 — researched
+  alternatives reported to the user (SSAO/SSR next, compute-shader
+  paths, or engine migration).

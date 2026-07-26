@@ -18,6 +18,8 @@ struct Settings {
     float textScale    = 1.4f;    // global lettering size (V72), 1.0–1.6
     float battleSize   = 200.0f;  // field-battle cap per contingent (V75);
                                   // the overflow arrives as reinforcements
+    bool  postFx       = true;    // V151: filmic post pass (tone map, grade,
+                                  // vignette, grain) over the 3D scenes
     bool  ironman      = false;   // V147: OFF = the lone hero always survives
                                   // (no game over); ON = a destroyed warband
                                   // ends the campaign, Warband-permadeath.
