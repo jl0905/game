@@ -9,14 +9,17 @@ in vec2 vertexTexCoord;
 in vec3 vertexNormal;
 in vec4 vertexColor;
 uniform mat4 mvp;
+uniform mat4 matModel;
 uniform mat4 matNormal;
 out vec2 fragTexCoord;
 out vec4 fragColor;
 out vec3 fragNormal;
+out vec3 fragWorld;
 void main() {
     fragTexCoord = vertexTexCoord;
     fragColor    = vertexColor;
     fragNormal   = normalize(vec3(matNormal * vec4(vertexNormal, 0.0)));
+    fragWorld    = vec3(matModel * vec4(vertexPosition, 1.0));
     gl_Position  = mvp * vec4(vertexPosition, 1.0);
 }
 )";
@@ -26,14 +29,37 @@ const char* LIT_FS = R"(
 in vec2 fragTexCoord;
 in vec4 fragColor;
 in vec3 fragNormal;
+in vec3 fragWorld;
 uniform sampler2D texture0;
+uniform sampler2D shadowMap;
+uniform mat4 lightVP;
+uniform int shadowsOn;
 uniform vec4 colDiffuse;
 out vec4 finalColor;
+
+float shadowAt(vec3 world, float ndl) {
+    if (shadowsOn == 0) return 1.0;
+    vec4 ls = lightVP * vec4(world, 1.0);
+    vec3 p = ls.xyz / ls.w * 0.5 + 0.5;
+    if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0)
+        return 1.0;
+    float bias = max(0.0022 * (1.0 - ndl), 0.0008);
+    float lit = 0.0;
+    vec2 tx = 1.0 / vec2(textureSize(shadowMap, 0));
+    for (int dx = -1; dx <= 1; dx++)          // 3x3 PCF: soft edges
+        for (int dy = -1; dy <= 1; dy++) {
+            float d = texture(shadowMap, p.xy + vec2(dx, dy) * tx).r;
+            lit += (p.z - bias <= d) ? 1.0 : 0.0;
+        }
+    return lit / 9.0;
+}
+
 void main() {
     vec4 texel = texture(texture0, fragTexCoord);
     vec3 sun   = normalize(vec3(-0.45, 0.85, -0.30));   // matches the sky's sun
     float ndl  = max(dot(normalize(fragNormal), sun), 0.0);
-    float light = 0.62 + 0.38 * ndl;                    // ambient floor keeps it safe
+    float sh   = shadowAt(fragWorld, ndl);
+    float light = 0.52 + 0.48 * ndl * mix(0.35, 1.0, sh);   // shadowed sun (V153)
     finalColor = vec4(texel.rgb * fragColor.rgb * colDiffuse.rgb * light,
                       texel.a * fragColor.a * colDiffuse.a);
 }
@@ -132,4 +158,79 @@ void PostEnd() {
                    { 0, 0 }, WHITE);
     EndShaderMode();
     g_postActive = false;
+}
+
+
+// ---------------------------------------------------------------------------
+// The shadow pass (V153): a depth-only render from the sun. rlgl gives us a
+// depth-texture framebuffer raylib's LoadRenderTexture doesn't expose.
+// ---------------------------------------------------------------------------
+#include "rlgl.h"
+#include "raymath.h"
+
+namespace {
+
+constexpr int SHADOW_RES = 2048;
+RenderTexture2D g_shadowRT = { 0 };
+bool g_shadowLoaded = false, g_shadowActive = false;
+
+RenderTexture2D LoadShadowTarget() {
+    RenderTexture2D rt = { 0 };
+    rt.id = rlLoadFramebuffer();
+    rlEnableFramebuffer(rt.id);
+    rt.depth.id = rlLoadTextureDepth(SHADOW_RES, SHADOW_RES, false);
+    rt.depth.width = rt.depth.height = SHADOW_RES;
+    rt.depth.format = 19;   // DEPTH component
+    rt.depth.mipmaps = 1;
+    rlFramebufferAttach(rt.id, rt.depth.id, RL_ATTACHMENT_DEPTH,
+                        RL_ATTACHMENT_TEXTURE2D, 0);
+    rlDisableFramebuffer();
+    return rt;
+}
+
+}  // namespace
+
+bool ShadowsOn() { return IsWindowReady() && GetSettings().shadows; }
+
+Matrix ShadowBegin(Vector3 sunDir, Vector3 center) {
+    if (!ShadowsOn()) return MatrixIdentity();
+    if (!g_shadowLoaded) { g_shadowRT = LoadShadowTarget(); g_shadowLoaded = true; }
+    if (g_shadowRT.id == 0) return MatrixIdentity();
+
+    const float S = 110.0f;   // ortho half-size covers the battlefield
+    const Vector3 eye = Vector3Add(center, Vector3Scale(sunDir, -160.0f));
+    const Matrix view = MatrixLookAt(eye, center, { 0.0f, 1.0f, 0.0f });
+    const Matrix proj = MatrixOrtho(-S, S, -S, S, 5.0, 400.0);
+
+    rlEnableFramebuffer(g_shadowRT.id);
+    rlViewport(0, 0, SHADOW_RES, SHADOW_RES);
+    rlClearScreenBuffers();
+    rlMatrixMode(RL_PROJECTION);
+    rlPushMatrix();
+    rlLoadIdentity();
+    rlMultMatrixf(MatrixToFloat(proj));
+    rlMatrixMode(RL_MODELVIEW);
+    rlLoadIdentity();
+    rlMultMatrixf(MatrixToFloat(view));
+    rlEnableDepthTest();
+    g_shadowActive = true;
+    return MatrixMultiply(view, proj);
+}
+
+void ShadowEnd() {
+    if (!g_shadowActive) return;
+    rlDrawRenderBatchActive();
+    rlMatrixMode(RL_PROJECTION);
+    rlPopMatrix();
+    rlMatrixMode(RL_MODELVIEW);
+    rlLoadIdentity();
+    rlDisableFramebuffer();
+    rlViewport(0, 0, GetScreenWidth(), GetScreenHeight());
+    g_shadowActive = false;
+}
+
+void ShadowBind(Shader sh, int lightVpLoc, int mapLoc, Matrix lightVP) {
+    if (!g_shadowLoaded || g_shadowRT.id == 0) return;
+    SetShaderValueMatrix(sh, lightVpLoc, lightVP);
+    SetShaderValueTexture(sh, mapLoc, g_shadowRT.depth);
 }

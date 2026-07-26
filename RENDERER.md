@@ -19,7 +19,11 @@ renderer-only transplant.
    (boxes, capsules-as-boxes, cylinders, terrain mesh, text, 2D). The
    raylib backend implements it 1:1. No visual change; the suite proves
    the sim untouched.
-1. **Big-win passes inside raylib** while the seam hardens (these carry
+1. **Big-win passes inside raylib** while the seam hardens — SUN SHADOW
+   MAPPING SHIPPED (V153): 2048 depth target rendered from the sun each
+   battle frame, PCF-sampled by the terrain shader, hard-sampled by the
+   instanced army shader; soldiers cast as boxes, trees as canopies;
+   `shadows on|off` in settings.cfg. SSAO and bloom remain (these carry
    over as they're scene-level, not API-level): sun shadow mapping,
    SSAO, bloom — stacked on the V151 post pipeline.
 2. **Vulkan backend, raster first** — same draws through Vulkan;

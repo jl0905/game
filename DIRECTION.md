@@ -1758,3 +1758,13 @@ over two half-features.
   translucent ribbon instead of a mosaic of squares. All baked once —
   bench IMPROVED to 14.23ms/70fps (the ribbon replaced hundreds of
   per-cell water quads). HeightAt untouched: every sim test identical.
+
+- [x] **V153. Iteration one-fifty-three — the sun casts shadows
+  (renderer migration, phase 1 flagship).** A 2048 depth-only target
+  rendered from the sun every battle frame (rlgl framebuffer + ortho
+  light camera): the terrain samples it with 3x3 PCF, the instanced
+  army samples it hard, soldiers cast as boxes (mounts too), trees as
+  canopies, the hero casts as himself. Hills now shade valleys, every
+  man drops a true directional shadow, night hands the line to the
+  moon. Toggleable (settings.cfg shadows on|off). Bench 16.61ms/60fps
+  at 2000 men with shadows + filmic pass on; suite untouched at 137.

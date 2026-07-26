@@ -83,5 +83,6 @@ void LoadSettings() {
         else if (key == "battlesize") s.battleSize   = std::stof(value);
         else if (key == "ironman")    s.ironman      = TruthValue(value);
         else if (key == "postfx")     s.postFx       = TruthValue(value);
+        else if (key == "shadows")    s.shadows      = TruthValue(value);
     }
 }

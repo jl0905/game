@@ -174,6 +174,7 @@ public:
     float HeightAt(float x, float z) const;      // world ground height
     bool  IsWaterAt(float x, float z) const;      // inside the river channel?
     void  Draw() const;                           // call inside BeginMode3D
+    void  DrawCasters() const;                    // depth-only pass (V153)
 
 private:
     struct Hill { Vector2 center; float radius; float height; };
@@ -400,6 +401,17 @@ void Terrain::BakeModel() const {
     model_ = LoadModelFromMesh(mesh);
     model_.materials[0].shader = GetLitShader();   // sun-lit slopes
     baked_ = true;
+}
+
+// Depth-pass casters (V153): the ground and the tree canopies. Soldiers
+// are cast by the battle loop as single boxes.
+void Terrain::DrawCasters() const {
+    if (!baked_) BakeModel();
+    DrawModel(model_, { 0, 0, 0 }, 1.0f, WHITE);
+    for (const Tree& t : trees_)
+        DrawCylinderEx({ t.pos.x, t.pos.y + t.height * 0.28f, t.pos.z },
+                       { t.pos.x, t.pos.y + t.height, t.pos.z },
+                       t.radius, 0.0f, 6, WHITE);
 }
 
 void Terrain::Draw() const {
@@ -1404,23 +1416,42 @@ constexpr const char* INST_VS =
     "in mat4 instanceTransform;\n"
     "uniform mat4 mvp;\n"
     "out vec3 fragNormal;\n"
+    "out vec3 fragWorld;\n"
     "void main() {\n"
     "    fragNormal  = mat3(instanceTransform) * vertexNormal;\n"
-    "    gl_Position = mvp * instanceTransform * vec4(vertexPosition, 1.0);\n"
+    "    vec4 wp     = instanceTransform * vec4(vertexPosition, 1.0);\n"
+    "    fragWorld   = wp.xyz;\n"
+    "    gl_Position = mvp * wp;\n"
     "}\n";
 constexpr const char* INST_FS =
     "#version 330\n"
     "in vec3 fragNormal;\n"
+    "in vec3 fragWorld;\n"
     "uniform vec4 colDiffuse;\n"
     "uniform vec3 sunDir;\n"
+    "uniform sampler2D shadowMap;\n"
+    "uniform mat4 lightVP;\n"
+    "uniform int shadowsOn;\n"
     "out vec4 finalColor;\n"
     "void main() {\n"
-    "    float shade = 0.6 + 0.4 * max(dot(normalize(fragNormal), -sunDir), 0.0);\n"
+    "    float ndl = max(dot(normalize(fragNormal), -sunDir), 0.0);\n"
+    "    float sh = 1.0;\n"
+    "    if (shadowsOn == 1) {\n"
+    "        vec4 ls = lightVP * vec4(fragWorld, 1.0);\n"
+    "        vec3 pp = ls.xyz / ls.w * 0.5 + 0.5;\n"
+    "        if (pp.x >= 0.0 && pp.x <= 1.0 && pp.y >= 0.0 && pp.y <= 1.0 && pp.z <= 1.0) {\n"
+    "            float bias = max(0.0022 * (1.0 - ndl), 0.0008);\n"
+    "            float d = texture(shadowMap, pp.xy).r;\n"
+    "            sh = (pp.z - bias <= d) ? 1.0 : 0.35;\n"
+    "        }\n"
+    "    }\n"
+    "    float shade = 0.55 + 0.45 * ndl * sh;\n"
     "    finalColor  = vec4(colDiffuse.rgb * shade, colDiffuse.a);\n"
     "}\n";
 
 bool     g_instTried = false, g_instReady = false;
 int      g_instSunLoc = -1;
+int      g_instVpLoc = -1, g_instMapLoc = -1, g_instShadowsLoc = -1;   // V153
 Shader   g_instShader{};
 Mesh     g_instCube{};
 Material g_instMat{};
@@ -1435,7 +1466,10 @@ void EnsureInstancing() {
         GetShaderLocation(g_instShader, "mvp");
     g_instShader.locs[SHADER_LOC_MATRIX_MODEL] =
         GetShaderLocationAttrib(g_instShader, "instanceTransform");
-    g_instSunLoc = GetShaderLocation(g_instShader, "sunDir");
+    g_instSunLoc     = GetShaderLocation(g_instShader, "sunDir");
+    g_instVpLoc      = GetShaderLocation(g_instShader, "lightVP");
+    g_instMapLoc     = GetShaderLocation(g_instShader, "shadowMap");
+    g_instShadowsLoc = GetShaderLocation(g_instShader, "shadowsOn");
     g_instCube = GenMeshCube(1.0f, 1.0f, 1.0f);
     g_instMat  = LoadMaterialDefault();
     g_instMat.shader = g_instShader;
@@ -3067,6 +3101,30 @@ void BattleDraw(const Content& c) {
 
     // ================= DRAW =================
     BeginDrawing();
+
+    // The sun writes its depth first (V153, before the post capture —
+    // framebuffer passes must not nest): terrain and one box per man
+    // rendered from the light; both lit shaders sample the map, so hills
+    // shade valleys and every soldier drops a true directional shadow.
+    Matrix lightVP = MatrixIdentity();
+    const bool shadowsLive = ShadowsOn();
+    if (shadowsLive) {
+        const Vector3 sunD = Vector3Normalize(
+            B.night ? Vector3{ 0.2f, -0.9f, 0.3f }
+                    : Vector3{ -0.45f, -0.75f, -0.35f });
+        lightVP = ShadowBegin(sunD, { B.pPos.x, 0.0f, B.pPos.z });
+        B.terrain.DrawCasters();
+        for (const Soldier& s : B.soldiers) {
+            if (s.hp <= 0 || s.escaped) continue;
+            DrawCube({ s.pos.x, s.pos.y + 0.95f, s.pos.z }, 0.7f, 1.9f, 0.5f, WHITE);
+            if (IsMounted(c, s))
+                DrawCube({ s.pos.x, s.pos.y + 1.0f, s.pos.z }, 0.9f, 1.4f, 2.0f, WHITE);
+        }
+        if (!B.heroDown)
+            DrawCube({ B.pPos.x, B.pPos.y + 0.95f, B.pPos.z }, 0.7f, 1.9f, 0.5f, WHITE);
+        ShadowEnd();
+    }
+
     PostBegin();   // the filmic pass captures the whole 3D frame (V151)
     // The sky follows the campaign clock (O3): blue noon, amber dusk,
     // deep night. Also clears the DEPTH buffer.
@@ -3192,6 +3250,25 @@ void BattleDraw(const Content& c) {
 
     EnsureInstancing();   // one-time shader/mesh setup (V126)
     SetCharacterBatcher(g_instReady ? &LimbBox : nullptr);   // (V128)
+    {   // bind shadow state into both lit shaders (pass ran pre-capture, V153)
+        const Shader lit = GetLitShader();
+        static int litVp = -1, litMap = -1, litOn = -1;
+        if (litVp < 0 && lit.id) {
+            litVp  = GetShaderLocation(lit, "lightVP");
+            litMap = GetShaderLocation(lit, "shadowMap");
+            litOn  = GetShaderLocation(lit, "shadowsOn");
+        }
+        const int on = shadowsLive ? 1 : 0;
+        if (lit.id) {
+            SetShaderValue(lit, litOn, &on, SHADER_UNIFORM_INT);
+            if (shadowsLive) ShadowBind(lit, litVp, litMap, lightVP);
+        }
+        if (g_instReady) {
+            SetShaderValue(g_instShader, g_instShadowsLoc, &on, SHADER_UNIFORM_INT);
+            if (shadowsLive)
+                ShadowBind(g_instShader, g_instVpLoc, g_instMapLoc, lightVP);
+        }
+    }
     for (const Soldier& s : B.soldiers) {
         if (s.escaped) continue;   // off the field, alive
         if (BehindCamera(s.pos)) continue;   // never reaches the GPU (V40)
