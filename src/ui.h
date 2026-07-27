@@ -31,6 +31,11 @@ int  Measure(const char* text, int fontSize);
 void Title(const char* text, int x, int y, int fontSize, Color color);
 int  MeasureTitle(const char* text, int fontSize);
 
+// Screen-space solid panel (V174): records at the renderer seam when the
+// Vulkan backend is live (drawn by the Vulkan text/UI pipeline), otherwise
+// a plain GL DrawRectangle. Use for HUD panels, bars and hover bands.
+void Rect(int x, int y, int w, int h, Color c);
+void RectRec(Rectangle r, Color c);
 // Direct handles for advanced call sites that want DrawTextEx themselves.
 const Font& BodyFont();
 const Font& TitleFont();

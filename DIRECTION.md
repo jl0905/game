@@ -1969,3 +1969,12 @@ over two half-features.
   PIPELINE LIVE in the log, GL 8.0ms / VK 8.8ms. World-space map
   lettering stays GL inside the 2D camera (SetUiRecording guard).
   137 scripts green.
+
+- [x] **V174. Iteration one-seventy-four — the panels join the lettering.**
+  ui:: gains Rect/RectRec — solid screen-space panels that record as
+  untextured quads (UV -1) for the Vulkan UI pipeline, GL rectangles
+  otherwise. All 77 plain DrawRectangle/Rec sites across campaign,
+  town and battle converted; the map-texture bake and the world-space
+  2D camera keep their GL road via the recording guard. HUD bars,
+  hover bands, menu panels and the whole market GUI chrome now render
+  on Vulkan with the text. GL 8.1ms / VK 8.8ms. 137 scripts green.

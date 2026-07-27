@@ -242,7 +242,7 @@ bool PartyFights(const GameState& gs) {
 void DrawHoverRow(int x, int y, int w, int h) {
     const Vector2 m = GetMousePosition();
     if (m.x >= x && m.x < x + w && m.y >= y && m.y < y + h)
-        DrawRectangle(x, y, w, h, Fade(GOLD, 0.13f));
+        ui::Rect(x, y, w, h, Fade(GOLD, 0.13f));
 }
 
 const char* SettlementTypeName(SettlementType t) {
@@ -3439,13 +3439,13 @@ void PaintMapGround(const MapDef& m) {
             const Color ground = { (unsigned char)(66 + 20.0f * n1),
                                    (unsigned char)(98 + 14.0f * n2),
                                    (unsigned char)(48 + 10.0f * n1), 255 };
-            DrawRectangle(gx * CELL, gy * CELL, CELL, CELL, ground);
+            ui::Rect(gx * CELL, gy * CELL, CELL, CELL, ground);
 
             // Rain country (V21): the same positional formula battles use
             // (R1 — wet strings throw short) hatches the map, so archery
             // weather is plannable. Baked into the cached texture: free.
             if (sinf(wp.x * 0.0017f - wp.y * 0.0023f) > 0.45f) {
-                DrawRectangle(gx * CELL, gy * CELL, CELL, CELL,
+                ui::Rect(gx * CELL, gy * CELL, CELL, CELL,
                               Fade(Color{ 40, 55, 90, 255 }, 0.13f));
                 for (int rl = 0; rl < 3; ++rl)
                     DrawLineEx({ (float)(gx * CELL + 12 + rl * 30),
@@ -3506,6 +3506,7 @@ const Texture2D& CachedMapTexture(const GameState& gs) {
                                 (int)(MAP_SIZE * MAP_TEX_SCALE));
         Camera2D shrink{};
         shrink.zoom = MAP_TEX_SCALE;
+        rdr::SetUiRecording(false);   // baking to texture - GL only (V174)
         BeginTextureMode(tex);
         ClearBackground(Color{ 40, 58, 36, 255 });
         BeginMode2D(shrink);
@@ -3596,7 +3597,7 @@ void CampaignDraw(const GameState& gs) {
         if (t.fortified) {
             for (int k = 0; k < 10; ++k) {
                 const float a = k * (2.0f * PI / 10.0f);
-                DrawRectangle((int)(t.pos.x + cosf(a) * 34.0f) - 3,
+                ui::Rect((int)(t.pos.x + cosf(a) * 34.0f) - 3,
                               (int)(t.pos.y + 8 + sinf(a) * 12.0f) - 3, 6, 6,
                               Color{ 120, 118, 124, 255 });
             }
@@ -3608,7 +3609,7 @@ void CampaignDraw(const GameState& gs) {
             case SettlementType::Village:
                 for (const float hx : { -14.0f, 2.0f, -6.0f }) {
                     const float hy = hx == -6.0f ? 2.0f : -8.0f;
-                    DrawRectangle((int)(t.pos.x + hx), (int)(t.pos.y + hy), 13, 10,
+                    ui::Rect((int)(t.pos.x + hx), (int)(t.pos.y + hy), 13, 10,
                                   Color{ 138, 104, 66, 255 });
                     DrawTriangle({ t.pos.x + hx - 2, t.pos.y + hy },
                                  { t.pos.x + hx + 15, t.pos.y + hy },
@@ -3621,32 +3622,32 @@ void CampaignDraw(const GameState& gs) {
                 DrawCircleLinesV(t.pos, 27.5f, Fade(Color{ 120, 116, 110, 255 }, 0.5f));
                 for (const float hx : { -18.0f, 4.0f, -8.0f }) {
                     const float hy = hx == -8.0f ? 4.0f : -12.0f;
-                    DrawRectangle((int)(t.pos.x + hx), (int)(t.pos.y + hy), 14, 12,
+                    ui::Rect((int)(t.pos.x + hx), (int)(t.pos.y + hy), 14, 12,
                                   Color{ 168, 148, 120, 255 });
                     DrawTriangle({ t.pos.x + hx - 2, t.pos.y + hy },
                                  { t.pos.x + hx + 16, t.pos.y + hy },
                                  { t.pos.x + hx + 7, t.pos.y + hy - 10 },
                                  MAROON);   // red town roofs
                 }
-                DrawRectangle((int)t.pos.x - 4, (int)t.pos.y - 8, 9, 14,
+                ui::Rect((int)t.pos.x - 4, (int)t.pos.y - 8, 9, 14,
                               Color{ 190, 170, 120, 255 });
                 DrawTriangle({ t.pos.x - 6, t.pos.y - 8 }, { t.pos.x + 7, t.pos.y - 8 },
                              { t.pos.x + 0.5f, t.pos.y - 20 }, GOLD);   // the hall
                 break;
             case SettlementType::Castle:
                 for (const float txr : { -22.0f, 12.0f }) {   // corner towers
-                    DrawRectangle((int)(t.pos.x + txr), (int)t.pos.y - 24, 10, 34,
+                    ui::Rect((int)(t.pos.x + txr), (int)t.pos.y - 24, 10, 34,
                                   Color{ 128, 126, 132, 255 });
                     for (int b = 0; b < 10; b += 4)
-                        DrawRectangle((int)(t.pos.x + txr) + b, (int)t.pos.y - 29,
+                        ui::Rect((int)(t.pos.x + txr) + b, (int)t.pos.y - 29,
                                       3, 5, Color{ 108, 106, 112, 255 });
                 }
-                DrawRectangle((int)t.pos.x - 12, (int)t.pos.y - 14, 24, 24,
+                ui::Rect((int)t.pos.x - 12, (int)t.pos.y - 14, 24, 24,
                               Color{ 148, 146, 152, 255 });          // curtain
-                DrawRectangle((int)t.pos.x - 7, (int)t.pos.y - 36, 14, 46,
+                ui::Rect((int)t.pos.x - 7, (int)t.pos.y - 36, 14, 46,
                               Color{ 162, 160, 168, 255 });          // the keep
                 for (int b = -7; b < 7; b += 5)
-                    DrawRectangle((int)t.pos.x + b, (int)t.pos.y - 41, 3, 5,
+                    ui::Rect((int)t.pos.x + b, (int)t.pos.y - 41, 3, 5,
                                   Color{ 128, 126, 132, 255 });
                 break;
         }
@@ -3656,7 +3657,7 @@ void CampaignDraw(const GameState& gs) {
         if (ownerValid) {
             const float bx = t.pos.x + 22, by = t.pos.y - 34;
             DrawLineEx({ bx, by + 22 }, { bx, by }, 2.5f, Color{ 92, 70, 48, 255 });
-            DrawRectangle((int)bx, (int)by, 16, 10, ownerCol);
+            ui::Rect((int)bx, (int)by, 16, 10, ownerCol);
             DrawRectangleLines((int)bx, (int)by, 16, 10, Fade(BLACK, 0.5f));
         }
         // Living lettering (U10): names hold constant screen size (scaled
@@ -3670,10 +3671,10 @@ void CampaignDraw(const GameState& gs) {
             const int   fs  = (int)(21.0f * iz);
             const float lx  = t.pos.x - 44.0f * iz;
             const float ly  = t.pos.y + 24.0f * iz;
-            DrawRectangle((int)(lx - 7 * iz), (int)ly,
+            ui::Rect((int)(lx - 7 * iz), (int)ly,
                           (int)((ui::Measure(t.name.c_str(), fs)) + 34 * iz),
                           (int)(27.0f * iz), Fade(BLACK, 0.7f));
-            DrawRectangle((int)(lx - 3 * iz), (int)(ly + 6 * iz),
+            ui::Rect((int)(lx - 3 * iz), (int)(ly + 6 * iz),
                           (int)(11 * iz), (int)(15 * iz), ownerCol);   // chip
             ui::Text(t.name.c_str(), (int)(lx + 13 * iz), (int)(ly + 3 * iz),
                      fs, RAYWHITE);
@@ -3720,7 +3721,7 @@ void CampaignDraw(const GameState& gs) {
         const Town& t = gs.towns[sg.town];
         DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS + 10,
                         c.factions[gs.parties[sg.party].faction].color);
-        DrawRectangle((int)t.pos.x - 48, (int)t.pos.y - 80, 104, 20, Fade(BLACK, 0.55f));
+        ui::Rect((int)t.pos.x - 48, (int)t.pos.y - 80, 104, 20, Fade(BLACK, 0.55f));
         ui::Text("UNDER SIEGE", (int)t.pos.x - 44, (int)t.pos.y - 78, 16, RED);
     }
 
@@ -3749,7 +3750,7 @@ void CampaignDraw(const GameState& gs) {
         // A crown over the banner once you wear one (V94).
         if (gs.crowned) {
             const float cy = p.y - 40;
-            DrawRectangle((int)p.x - 8, (int)cy, 16, 5, GOLD);
+            ui::Rect((int)p.x - 8, (int)cy, 16, 5, GOLD);
             for (int k = -1; k <= 1; ++k)
                 DrawTriangle({ p.x + k * 6.0f - 3, cy },
                              { p.x + k * 6.0f + 3, cy },
@@ -3772,7 +3773,7 @@ void CampaignDraw(const GameState& gs) {
         else             { pcol = Color{ 150, 165, 200, 255 };ptxt = "mountains  -45%"; }
         DrawRing(p, 14, 17, 0, 360, 32, Fade(pcol, 0.85f));
         if (ptxt) {
-            DrawRectangle((int)p.x - 46, (int)p.y + 12, 130, 18, Fade(BLACK, 0.5f));
+            ui::Rect((int)p.x - 46, (int)p.y + 12, 130, 18, Fade(BLACK, 0.5f));
             ui::Text(ptxt, (int)p.x - 42, (int)p.y + 14, 14, pcol);
         }
     }
@@ -3811,7 +3812,7 @@ void CampaignDraw(const GameState& gs) {
                                       ? gs.relations[t.owner] : 0;
             const int px = (int)fminf(mp.x + 18, (float)GetScreenWidth() - 250);
             const int py = (int)fminf(mp.y + 12, (float)GetScreenHeight() - 150);
-            DrawRectangle(px, py, 240, 128, Fade(BLACK, 0.85f));
+            ui::Rect(px, py, 240, 128, Fade(BLACK, 0.85f));
             DrawRectangleLines(px, py, 240, 128, ov ? c.factions[t.owner].color
                                                     : RAYWHITE);
             ui::Text(TextFormat("%s  (%s)", t.name.c_str(),
@@ -3850,7 +3851,7 @@ void CampaignDraw(const GameState& gs) {
             const bool hostile  = AtWar(gs, e.faction, c.playerFaction);
             const int px = (int)fminf(mp.x + 18, (float)GetScreenWidth() - 240);
             const int py = (int)fminf(mp.y + 12, (float)GetScreenHeight() - 120);
-            DrawRectangle(px, py, 230, 104, Fade(BLACK, 0.85f));
+            ui::Rect(px, py, 230, 104, Fade(BLACK, 0.85f));
             DrawRectangleLines(px, py, 230, 104, f.color);
             ui::Text(e.lord.empty()
                          ? (e.caravan ? TextFormat("%s caravan", f.name.c_str())
@@ -3878,15 +3879,15 @@ void CampaignDraw(const GameState& gs) {
         const int sw = GetScreenWidth(), sh = GetScreenHeight();
         if (dayFrac < 0.10f) {           // dawn burns off
             const float k = 1.0f - dayFrac / 0.10f;
-            DrawRectangle(0, 0, sw, sh, Fade(Color{ 255, 170, 90, 255 }, 0.16f * k));
-            DrawRectangle(0, 0, sw, sh, Fade(Color{ 20, 28, 60, 255 }, 0.30f * k));
+            ui::Rect(0, 0, sw, sh, Fade(Color{ 255, 170, 90, 255 }, 0.16f * k));
+            ui::Rect(0, 0, sw, sh, Fade(Color{ 20, 28, 60, 255 }, 0.30f * k));
         } else if (dayFrac >= 0.70f && dayFrac < 0.82f) {   // dusk
             const float k = (dayFrac - 0.70f) / 0.12f;
-            DrawRectangle(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * k));
+            ui::Rect(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * k));
         } else if (dayFrac >= 0.82f) {   // night deepens toward midnight
             const float k = fminf((dayFrac - 0.82f) / 0.06f, 1.0f);
-            DrawRectangle(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * (1.0f - k)));
-            DrawRectangle(0, 0, sw, sh, Fade(Color{ 10, 14, 44, 255 }, 0.58f * k));
+            ui::Rect(0, 0, sw, sh, Fade(Color{ 235, 120, 50, 255 }, 0.30f * (1.0f - k)));
+            ui::Rect(0, 0, sw, sh, Fade(Color{ 10, 14, 44, 255 }, 0.58f * k));
         }
     }
 
@@ -3898,7 +3899,7 @@ void CampaignDraw(const GameState& gs) {
         const int   py = 120;
         const int   pw = 560;
         const int   px = (sw - pw) / 2;
-        DrawRectangle(px, py, pw, ph, Fade(Color{ 16, 14, 12, 255 }, 0.85f * a));
+        ui::Rect(px, py, pw, ph, Fade(Color{ 16, 14, 12, 255 }, 0.85f * a));
         DrawRectangleLines(px, py, pw, ph, Fade(GOLD, 0.7f * a));
         const std::string& head = gs.battleReport.front();
         const bool grim = head.find("DEFEAT") != std::string::npos ||
@@ -3915,7 +3916,7 @@ void CampaignDraw(const GameState& gs) {
                     : dayFrac < 0.45f ? "morning"
                     : dayFrac < 0.70f ? "afternoon"
                     : dayFrac < 0.82f ? "evening" : "night";
-    DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
+    ui::Rect(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
     {
         const WorldTerrain wt = WorldTerrainAt(gs.content.map, gs.player.pos);
         const bool road = OnRoad(gs, gs.player.pos);
@@ -3932,7 +3933,7 @@ void CampaignDraw(const GameState& gs) {
     if (gs.siegePrompt >= 0 && gs.siegePrompt < (int)gs.towns.size()) {
         const Town& t = gs.towns[gs.siegePrompt];
         const int px = GetScreenWidth() / 2 - 260, py = 200;
-        DrawRectangle(px - 16, py - 16, 552, 264, Fade(BLACK, 0.8f));
+        ui::Rect(px - 16, py - 16, 552, 264, Fade(BLACK, 0.8f));
         DrawRectangleLines(px - 16, py - 16, 552, 264, GOLD);
         const bool village = t.type == SettlementType::Village;
         ui::Title(TextFormat(village ? "THE FIELDS OF %s" : "THE WALLS OF %s",
@@ -3980,9 +3981,9 @@ void CampaignDraw(const GameState& gs) {
     // each chip below is hover-lit and clickable, firing the same intent
     // as its hotkey. Rects are recorded for the gather-side hit-test.
     {
-        DrawRectangle(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
+        ui::Rect(0, GetScreenHeight() - 36, GetScreenWidth(), 36,
                       Fade(BLACK, 0.88f));
-        DrawRectangle(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
+        ui::Rect(0, GetScreenHeight() - 37, GetScreenWidth(), 1,
                       Fade(GOLD, 0.35f));
         // Mouse-first (V150): plain words on the chips; the hotkey shows as
         // a small tag only under the hovering mouse.
@@ -4011,7 +4012,7 @@ void CampaignDraw(const GameState& gs) {
             const bool hov = bm.x >= bx - 5 && bm.x < bx + cw + 5 &&
                              bm.y >= GetScreenHeight() - 36;
             if (hov) {
-                DrawRectangle(bx - 5, GetScreenHeight() - 35, cw + 10, 34,
+                ui::Rect(bx - 5, GetScreenHeight() - 35, cw + 10, 34,
                               Fade(GOLD, 0.22f));
                 // the hotkey, shown only under the mouse (V150)
                 const int kw = ui::Measure(ch.key, 14) + 10;
@@ -4035,7 +4036,7 @@ void CampaignDraw(const GameState& gs) {
 
     // News rides its own line (U13): below the what-now line, never on it.
     if (!gs.resultText.empty()) {
-        DrawRectangle(0, 62, ui::Measure(gs.resultText.c_str(), 20) + 20, 30,
+        ui::Rect(0, 62, ui::Measure(gs.resultText.c_str(), 20) + 20, 30,
                       Fade(BLACK, 0.7f));
         ui::Text(gs.resultText.c_str(), 10, 66, 20, GOLD);
     }
@@ -4072,7 +4073,7 @@ void CampaignDraw(const GameState& gs) {
         const FactionDef& fa = c.factions[gs.parties[sk.a].faction];
         const FactionDef& fb = c.factions[gs.parties[sk.b].faction];
         const int by = GetScreenHeight() - 92;
-        DrawRectangle(0, by - 8, GetScreenWidth(), 52, Fade(BLACK, 0.7f));
+        ui::Rect(0, by - 8, GetScreenWidth(), 52, Fade(BLACK, 0.7f));
         ui::Text("Battle nearby! Join a side:", 10, by, 20, GOLD);
         ui::Text(TextFormat("[1] Aid %s (%d)", fa.name.c_str(), gs.parties[sk.a].totalTroops()),
                  260, by, 20, fa.color);
@@ -4087,7 +4088,7 @@ void CampaignDraw(const GameState& gs) {
     {   // The fall of the house (V97; ironman-only since V147) —
         // same reign numbers, same chronicle, under a darker headline.
         const int w = GetScreenWidth();
-        DrawRectangle(0, 0, w, GetScreenHeight(), Fade(BLACK, 0.78f));
+        ui::Rect(0, 0, w, GetScreenHeight(), Fade(BLACK, 0.78f));
         const char* h1 = "THE WARBAND IS DESTROYED";
         ui::Title(h1, (w - ui::MeasureTitle(h1, 56)) / 2, 130, 56, RED);
         int lords = 0;
@@ -4129,7 +4130,7 @@ void CampaignDraw(const GameState& gs) {
     // same patter in your ears.
     SfxRain(InStorm(gs, gs.player.pos) ? 0.30f : 0.0f);
     if (InStorm(gs, gs.player.pos)) {
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+        ui::Rect(0, 0, GetScreenWidth(), GetScreenHeight(),
                       Fade(Color{ 40, 48, 64, 255 }, 0.18f));
         const float rt = (float)GetTime();
         const int w = GetScreenWidth(), h = GetScreenHeight();
@@ -4187,7 +4188,7 @@ void CampaignDraw(const GameState& gs) {
         while (fs > 18 &&
                ui::MeasureTitle(gs.questFlashText.c_str(), fs) > w - 80) fs--;
         const int tw = ui::MeasureTitle(gs.questFlashText.c_str(), fs);
-        DrawRectangle(0, 200, w, fs + 26, Fade(BLACK, 0.65f * a));
+        ui::Rect(0, 200, w, fs + 26, Fade(BLACK, 0.65f * a));
         ui::Title(gs.questFlashText.c_str(), (w - tw) / 2, 213, fs,
                   Fade(gs.questFlashGood ? GOLD : RED, a));
     }
@@ -4432,7 +4433,7 @@ void InventoryDraw(const GameState& gs) {
             fits = carried.isWeapon ? s == (int)EquipSlot::Weapon
                                     : (int)c.armor[carried.handle].slot == s;
         }
-        DrawRectangle(bx, by, EQBOX_W, EQBOX_H,
+        ui::Rect(bx, by, EQBOX_W, EQBOX_H,
                       Fade(fits ? GOLD : BLACK, fits ? 0.25f : 0.45f));
         DrawRectangleLines(bx, by, EQBOX_W, EQBOX_H,
                            hover ? GOLD : Fade(RAYWHITE, 0.35f));
@@ -4467,7 +4468,7 @@ void InventoryDraw(const GameState& gs) {
         Rectangle r = { (float)(ox + it.x * INV_CELL + 3), (float)(oy + it.y * INV_CELL + 3),
                         (float)(w * INV_CELL - 6), (float)(h * INV_CELL - 6) };
         const bool carried = (i == gs.invCarry);
-        DrawRectangleRec(r, Fade(tint, carried ? 0.35f : 0.8f));
+        ui::RectRec(r, Fade(tint, carried ? 0.35f : 0.8f));
         DrawRectangleLinesEx(r, 2, carried ? GOLD : Fade(BLACK, 0.6f));
         ui::Text(TextFormat("%.10s", nm), (int)r.x + 4, (int)r.y + 4, 16, BLACK);
     }
@@ -4508,7 +4509,7 @@ void InventoryDraw(const GameState& gs) {
             const int tw = ui::Measure(line1, 20) > ui::Measure(line2, 18)
                                ? ui::Measure(line1, 20) : ui::Measure(line2, 18);
             const int bx = (int)m.x + 16, by = (int)m.y + 8;
-            DrawRectangle(bx - 8, by - 6, tw + 16, 54, Fade(BLACK, 0.85f));
+            ui::Rect(bx - 8, by - 6, tw + 16, 54, Fade(BLACK, 0.85f));
             DrawRectangleLines(bx - 8, by - 6, tw + 16, 54, Fade(GOLD, 0.6f));
             ui::Text(line1, bx, by, 20, RAYWHITE);
             ui::Text(line2, bx, by + 26, 18, Fade(RAYWHITE, 0.75f));
@@ -4884,7 +4885,7 @@ void MarketDraw(const GameState& gs) {
         const int tw = wpn ? 1 : 2, th = wpn ? 3 : 2;
         const Color col = wpn ? (c.weapons.valid(it.handle) ? c.weapons[it.handle].tint : GRAY)
                               : (c.armor.valid(it.handle) ? c.armor[it.handle].tint : GRAY);
-        DrawRectangle(bagX + it.x * tile + 2, by + it.y * tile + 2,
+        ui::Rect(bagX + it.x * tile + 2, by + it.y * tile + 2,
                       tw * tile - 4, th * tile - 4, Fade(col, 0.85f));
         DrawRectangleLines(bagX + it.x * tile + 2, by + it.y * tile + 2,
                            tw * tile - 4, th * tile - 4, Fade(RAYWHITE, 0.4f));
@@ -5203,8 +5204,8 @@ void PartyDraw(const GameState& gs) {
             // Veterancy pip (R3): seasoning toward the next rank as a bar.
             const float fill = td.upgradeXp > 0
                 ? fminf(1.0f, (float)xp / (float)td.upgradeXp) : 0.0f;
-            DrawRectangle(panelX + 340, y + 8, 90, 8, Fade(BLACK, 0.5f));
-            DrawRectangle(panelX + 340, y + 8, (int)(90 * fill), 8,
+            ui::Rect(panelX + 340, y + 8, 90, 8, Fade(BLACK, 0.5f));
+            ui::Rect(panelX + 340, y + 8, (int)(90 * fill), 8,
                           can ? LIME : Fade(GOLD, 0.8f));
             DrawRectangleLines(panelX + 340, y + 8, 90, 8, Fade(RAYWHITE, 0.3f));
             // The price of the man he becomes (V134), right on the row.
@@ -5976,16 +5977,16 @@ void TitleDraw(const GameState& gs) {
     DrawRectangleGradientV(0, 0, w, hgt, Color{ 30, 26, 44, 255 }, Color{ 158, 74, 44, 255 });
     DrawCircleGradient(w / 5, hgt * 2 / 3, 110, Fade(Color{ 255, 180, 90, 255 }, 0.85f),
                        Fade(WHITE, 0.0f));
-    DrawRectangle(0, hgt - 160, w, 160, Color{ 26, 20, 24, 255 });          // near ridge
+    ui::Rect(0, hgt - 160, w, 160, Color{ 26, 20, 24, 255 });          // near ridge
     for (int x = -40; x < w; x += 120)                                       // far hills
         DrawTriangle({ (float)x, (float)(hgt - 150) }, { (float)(x + 140), (float)(hgt - 150) },
                      { (float)(x + 70), (float)(hgt - 230) }, Color{ 38, 30, 36, 255 });
     // castle on the ridge, black against the dusk
     const int cx = w * 3 / 4;
-    DrawRectangle(cx - 90, hgt - 300, 180, 150, Color{ 16, 12, 16, 255 });
+    ui::Rect(cx - 90, hgt - 300, 180, 150, Color{ 16, 12, 16, 255 });
     for (int b = -90; b < 90; b += 30)
-        DrawRectangle(cx + b, hgt - 316, 16, 16, Color{ 16, 12, 16, 255 });
-    DrawRectangle(cx - 24, hgt - 380, 48, 90, Color{ 16, 12, 16, 255 });     // keep tower
+        ui::Rect(cx + b, hgt - 316, 16, 16, Color{ 16, 12, 16, 255 });
+    ui::Rect(cx - 24, hgt - 380, 48, 90, Color{ 16, 12, 16, 255 });     // keep tower
     DrawLineEx({ (float)cx, (float)(hgt - 380) }, { (float)cx, (float)(hgt - 412) }, 3, Color{ 16, 12, 16, 255 });
     DrawTriangle({ (float)cx, (float)(hgt - 412) }, { (float)cx, (float)(hgt - 396) },
                  { (float)(cx + 26), (float)(hgt - 404) }, Color{ 150, 30, 30, 255 });   // banner

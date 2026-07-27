@@ -246,6 +246,28 @@ void Title(const char* text, int x, int y, int fontSize, Color color) {
              Spacing(fontSize) * gScale, color, true);
 }
 
+// Solid HUD panels (V174): UV (-1,-1) tells the Vulkan UI shader "no
+// texture"; on the GL road it's a plain rectangle.
+void RectRec(Rectangle r, Color c) {
+    if (rdr::VulkanUiActive()) {
+        const float cr = c.r / 255.0f, cg = c.g / 255.0f;
+        const float cb = c.b / 255.0f, ca = c.a / 255.0f;
+        const float x0 = r.x, y0 = r.y, x1 = r.x + r.width, y1 = r.y + r.height;
+        const rdr::UiVert q[6] = {
+            { x0, y0, -1, -1, cr, cg, cb, ca }, { x1, y0, -1, -1, cr, cg, cb, ca },
+            { x1, y1, -1, -1, cr, cg, cb, ca }, { x0, y0, -1, -1, cr, cg, cb, ca },
+            { x1, y1, -1, -1, cr, cg, cb, ca }, { x0, y1, -1, -1, cr, cg, cb, ca },
+        };
+        rdr::PushUiVerts(q, 6);
+        return;
+    }
+    DrawRectangleRec(r, c);
+}
+
+void Rect(int x, int y, int w, int h, Color c) {
+    RectRec(Rectangle{ (float)x, (float)y, (float)w, (float)h }, c);
+}
+
 int MeasureTitle(const char* text, int fontSize) {
     return (int)MeasureTextEx(TitleFont(), text, Sz(fontSize),
                               Spacing(fontSize) * gScale).x;

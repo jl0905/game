@@ -1178,10 +1178,10 @@ void DialogueDraw(const GameState& gs) {
     const int x = w / 2 - 320;
 
     // A painted bust stands in for a portrait until faces exist.
-    DrawRectangle(x, 90, 120, 150, Fade(Color{ 60, 50, 44, 255 }, 0.9f));
+    ui::Rect(x, 90, 120, 150, Fade(Color{ 60, 50, 44, 255 }, 0.9f));
     DrawRectangleLines(x, 90, 120, 150, Fade(GOLD, 0.5f));
     DrawCircle(x + 60, 140, 26, Color{ 214, 176, 142, 255 });          // head
-    DrawRectangle(x + 24, 170, 72, 60, Color{ 96, 84, 60, 255 });      // shoulders
+    ui::Rect(x + 24, 170, 72, 60, Color{ 96, 84, 60, 255 });      // shoulders
     ui::Title(gs.dialogueName.c_str(), x + 140, 110, 40, GOLD);
     if (!gs.audienceLord.empty()) {   // his opinion of you, on his face (V26)
         const int op = EffectiveLordOpinion(const_cast<GameState&>(gs), gs.audienceLord);
@@ -1213,7 +1213,7 @@ void DialogueDraw(const GameState& gs) {
         const bool hover = mp.x >= x - 8 && mp.x < x + dlgW &&
                            mp.y >= optY - 3 && mp.y < optY + 27;
         if (hover)
-            DrawRectangle(x - 8, optY - 3, dlgW, 30, Fade(GOLD, 0.14f));
+            ui::Rect(x - 8, optY - 3, dlgW, 30, Fade(GOLD, 0.14f));
         ui::Text(text, x, optY, 22, hover ? RAYWHITE : col);
         g_dlgHits.push_back({ optY, choice });
         optY += 30;
@@ -1329,14 +1329,14 @@ void TownDraw(const GameState& gs) {
 
         SfxMinstrel(0.3f);   // the minstrel plays by the hearth (N5)
         // HUD: same tavern business, indoors where it belongs.
-        DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
+        ui::Rect(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
         ui::Text(TextFormat("The %s tavern  ·  Gold: %d   Party: %d", town.name.c_str(),
                             gs.gold, gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
         const std::vector<int>& roster = c.factions[c.playerFaction].roster;
         int captives = 0;
         for (int n : gs.prisoners) captives += n;
         const int y = GetScreenHeight() - 60 - (int)roster.size() * 24 - (captives > 0 ? 24 : 0);
-        DrawRectangle(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
+        ui::Rect(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
         ui::Text("Recruits drink in the corner:", 10, y, 20, GOLD);
         for (int slot = 0; slot < (int)roster.size(); ++slot) {
             const TroopDef& td = c.troops[roster[slot]];
@@ -1530,12 +1530,12 @@ void TownDraw(const GameState& gs) {
         const Vector2 sp = GetWorldToScreen({ n.pos.x, n.pos.y + 2.5f, n.pos.z }, cam);
         if (sp.x < 0 || sp.x > GetScreenWidth() || sp.y < 0) continue;
         const int tw = ui::Measure(n.line.c_str(), 17);
-        DrawRectangle((int)sp.x - tw / 2 - 8, (int)sp.y - 12, tw + 16, 26, Fade(BLACK, 0.65f));
+        ui::Rect((int)sp.x - tw / 2 - 8, (int)sp.y - 12, tw + 16, 26, Fade(BLACK, 0.65f));
         ui::Text(n.line.c_str(), (int)sp.x - tw / 2, (int)sp.y - 8, 17, RAYWHITE);
     }
 
     // ---- HUD ----
-    DrawRectangle(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
+    ui::Rect(0, 0, GetScreenWidth(), 34, Fade(BLACK, 0.6f));
     ui::Text(TextFormat("%s  ·  Gold: %d   Party: %d", town.name.c_str(), gs.gold,
                         gs.player.totalTroops()), 10, 8, 20, RAYWHITE);
 
@@ -1548,7 +1548,7 @@ void TownDraw(const GameState& gs) {
         const int w = ui::Measure(label, size);
         const bool hov = svcMouse.x >= x - 4 && svcMouse.x < x + w + 4 &&
                          svcMouse.y >= y - 3 && svcMouse.y < y + size + 5;
-        if (hov) DrawRectangle(x - 4, y - 3, w + 8, size + 8, Fade(GOLD, 0.22f));
+        if (hov) ui::Rect(x - 4, y - 3, w + 8, size + 8, Fade(GOLD, 0.22f));
         ui::Text(label, x, y, size, hov ? RAYWHITE : col);
         g_svcHits.push_back({ x - 4, y - 3, w + 8, size + 8, id });
         return w;
@@ -1558,7 +1558,7 @@ void TownDraw(const GameState& gs) {
         int captives = 0;
         for (int n : gs.prisoners) captives += n;
         const int y = GetScreenHeight() - 60 - (int)roster.size() * 24 - (captives > 0 ? 24 : 0);
-        DrawRectangle(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
+        ui::Rect(0, y - 8, GetScreenWidth(), GetScreenHeight() - y + 8, Fade(BLACK, 0.7f));
         ui::Text(TextFormat("The tavern. Recruits wait for coin (%d in the pool):",
                             gs.towns[gs.currentSettlement].recruitPool),
                  10, y, 20, GOLD);
@@ -1587,7 +1587,7 @@ void TownDraw(const GameState& gs) {
                 svcMouse.y >= GetScreenHeight() - 53 &&
                 svcMouse.y < GetScreenHeight() - 27) {
                 const int kw = ui::Measure(s.key, 14) + 10;
-                DrawRectangle(sx + cw2 / 2 - kw / 2, GetScreenHeight() - 74,
+                ui::Rect(sx + cw2 / 2 - kw / 2, GetScreenHeight() - 74,
                               kw, 20, Fade(BLACK, 0.85f));
                 ui::Text(s.key, sx + cw2 / 2 - kw / 2 + 5,
                          GetScreenHeight() - 71, 14, GOLD);
@@ -1607,7 +1607,7 @@ void TownDraw(const GameState& gs) {
         // Side panel (V144): the town breathes on the left, choices on the
         // right — the eagle view stays visible through a lighter smoke.
         const int x0 = townmenu::X0();
-        DrawRectangle(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
+        ui::Rect(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                       townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
                       Fade(BLACK, 0.78f));
         DrawRectangleLines(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
@@ -1716,14 +1716,14 @@ void TownDraw(const GameState& gs) {
         for (int r = 0; r < townmenu::ROWS; ++r) {
             if (live[r] && m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
                 m.y >= y && m.y < y + townmenu::ROW_H)
-                DrawRectangle(x0 - 8, y, townmenu::X_HALF * 2 + 16,
+                ui::Rect(x0 - 8, y, townmenu::X_HALF * 2 + 16,
                               townmenu::ROW_H, Fade(GOLD, 0.14f));
             ui::Text(rows[r], x0, y + 6, 20,
                      live[r] ? RAYWHITE : Fade(RAYWHITE, 0.35f));
             if (live[r] && m.x >= x0 && m.x < x0 + townmenu::X_HALF * 2 &&
                 m.y >= y && m.y < y + townmenu::ROW_H) {
                 const int kw = ui::Measure(rowKeys[r], 14) + 10;
-                DrawRectangle(x0 - 8 - kw - 6, y + 7, kw, 20, Fade(BLACK, 0.85f));
+                ui::Rect(x0 - 8 - kw - 6, y + 7, kw, 20, Fade(BLACK, 0.85f));
                 ui::Text(rowKeys[r], x0 - 8 - kw - 1, y + 10, 14, GOLD);
             }
             if (!live[r] && why[r])

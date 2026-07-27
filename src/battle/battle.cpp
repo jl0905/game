@@ -3154,7 +3154,7 @@ void BattleDraw(const Content& c) {
                       (unsigned char)fminf(255, sky.b * 1.08f + 8), 255 };
         DrawRectangleGradientV(0, 0, GetScreenWidth(),
                                GetScreenHeight() * 2 / 3, zen, hor);
-        DrawRectangle(0, GetScreenHeight() * 2 / 3, GetScreenWidth(),
+        ui::Rect(0, GetScreenHeight() * 2 / 3, GetScreenWidth(),
                       GetScreenHeight() / 3, hor);
     }
     // Sky: gradient with a low sun â€” or a leaden overcast when it rains.
@@ -3174,7 +3174,7 @@ void BattleDraw(const Content& c) {
             const int sx = (int)(s % (unsigned)w);
             const int sy = (int)((s >> 11) % (unsigned)(h * 2 / 3));
             const float tw = 0.35f + 0.65f * (((s >> 22) & 0xFF) / 255.0f);
-            DrawRectangle(sx, sy, ((s >> 7) & 3) == 0 ? 2 : 1, 1,
+            ui::Rect(sx, sy, ((s >> 7) & 3) == 0 ? 2 : 1, 1,
                           Fade(RAYWHITE, tw));
         }
         DrawCircleGradient(w * 3 / 4, h / 4, 70,
@@ -3508,10 +3508,10 @@ void BattleDraw(const Content& c) {
     // Night presses close on the field (O3): a veil over the scene, under
     // the HUD, so torches-and-steel reads without hiding the interface.
     if (night)
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+        ui::Rect(0, 0, GetScreenWidth(), GetScreenHeight(),
                       Fade(Color{ 10, 16, 40, 255 }, 0.28f));
     else if (tod >= 0.70f && tod < 0.82f)
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+        ui::Rect(0, 0, GetScreenWidth(), GetScreenHeight(),
                       Fade(Color{ 200, 120, 60, 255 }, 0.10f));
 
     // Your swing met his shield (U5): say so, and say what beats it â€”
@@ -3550,8 +3550,8 @@ void BattleDraw(const Content& c) {
             const Soldier& s = B.soldiers[aim];
             const float hf = Clamp(s.hp / s.maxHp, 0.0f, 1.0f);
             const int bw = 240, bx = (GetScreenWidth() - bw) / 2, by = 46;
-            DrawRectangle(bx - 2, by - 2, bw + 4, 14, Fade(BLACK, 0.6f));
-            DrawRectangle(bx, by, (int)(bw * hf), 10,
+            ui::Rect(bx - 2, by - 2, bw + 4, 14, Fade(BLACK, 0.6f));
+            ui::Rect(bx, by, (int)(bw * hf), 10,
                           hf > 0.5f ? Color{ 200, 60, 50, 255 }
                                     : Color{ 130, 30, 25, 255 });
             DrawRectangleLines(bx - 2, by - 2, bw + 4, 14, Fade(RAYWHITE, 0.4f));
@@ -3563,7 +3563,7 @@ void BattleDraw(const Content& c) {
 
     // ---------- HUD ---------- (lifted clear of the V67 key footer)
     const int hpY = GetScreenHeight() - 84;
-    DrawRectangle(16, hpY, 306, 28, Fade(BLACK, 0.55f));
+    ui::Rect(16, hpY, 306, 28, Fade(BLACK, 0.55f));
     DrawRectangleLines(16, hpY, 306, 28, Fade(GOLD, 0.5f));
     DrawRectangleGradientH(20, hpY + 4,
                            (int)(298 * fmaxf(B.pHp, 0) / B.pMaxHp), 20,
@@ -3576,8 +3576,8 @@ void BattleDraw(const Content& c) {
         const int w = B.setup.heroLoadout.get(EquipSlot::Weapon);
         if (c.weapons.valid(w) && c.weapons[w].wclass == WeaponClass::OneHanded) {
             const float f = fmaxf(B.pShieldHp, 0) / SHIELD_HP;
-            DrawRectangle(16, hpY - 12, 306, 8, Fade(BLACK, 0.5f));
-            DrawRectangle(18, hpY - 10, (int)(302 * f), 4,
+            ui::Rect(16, hpY - 12, 306, 8, Fade(BLACK, 0.5f));
+            ui::Rect(18, hpY - 10, (int)(302 * f), 4,
                           f > 0 ? Color{ 150, 110, 60, 255 } : RED);
             ui::Text(f > 0 ? "shield" : "shield SPLINTERED", 330, hpY - 16, 14,
                      f > 0 ? Fade(RAYWHITE, 0.7f) : Fade(RED, 0.9f));
@@ -3611,7 +3611,7 @@ void BattleDraw(const Content& c) {
     if (B.deploying) {   // the planning pause (R2)
         const char* d1 = "DEPLOYMENT";
         const int w1 = ui::MeasureTitle(d1, 48);
-        DrawRectangle(0, GetScreenHeight() / 3 - 14,
+        ui::Rect(0, GetScreenHeight() / 3 - 14,
                       GetScreenWidth(), 110, Fade(BLACK, 0.75f));
         ui::Title(d1, (GetScreenWidth() - w1) / 2, GetScreenHeight() / 3, 48, GOLD);
         const char* d2 = "[1-5] shape   [ / ] ranks   [F1-F3] first order   "
@@ -3658,7 +3658,7 @@ void BattleDraw(const Content& c) {
     // keys players kept not finding, plus live readiness for the two
     // cooldown moves.
     if (!B.over && !B.deploying) {
-        DrawRectangle(0, GetScreenHeight() - 32, GetScreenWidth(), 32,
+        ui::Rect(0, GetScreenHeight() - 32, GetScreenWidth(), 32,
                       Fade(BLACK, 0.75f));
         ui::Text("[V] horn   [E] kick   [G] take weapon   [Q] swap   [Z] mount"
                  "   [F1-F3] orders   [~] strategy",
@@ -3714,7 +3714,7 @@ void BattleDraw(const Content& c) {
         const int   MM = 170;
         const int   mx = GetScreenWidth() - MM - 14;
         const int   my = 96;
-        DrawRectangle(mx - 4, my - 4, MM + 8, MM + 8, Fade(BLACK, 0.55f));
+        ui::Rect(mx - 4, my - 4, MM + 8, MM + 8, Fade(BLACK, 0.55f));
         DrawRectangleLines(mx - 4, my - 4, MM + 8, MM + 8, Fade(RAYWHITE, 0.3f));
         auto toMap = [&](Vector3 p) {
             return Vector2{ mx + (p.x + ARENA) / (2 * ARENA) * MM,
@@ -3744,8 +3744,8 @@ void BattleDraw(const Content& c) {
         const int pw = 300;
         const int px = GetScreenWidth() - pw;
         const int ph = GetScreenHeight();
-        DrawRectangle(px, 0, pw, ph, Fade(Color{ 40, 44, 52, 255 }, 0.85f));
-        DrawRectangle(px, 0, 3, ph, Fade(RAYWHITE, 0.25f));
+        ui::Rect(px, 0, pw, ph, Fade(Color{ 40, 44, 52, 255 }, 0.85f));
+        ui::Rect(px, 0, 3, ph, Fade(RAYWHITE, 0.25f));
         int y = 26;
         ui::Title("STRATEGY", px + 22, y, 30, RAYWHITE);                      y += 48;
         ui::Text("Formations", px + 22, y, 20, Fade(RAYWHITE, 0.75f));        y += 30;
@@ -3758,7 +3758,7 @@ void BattleDraw(const Content& c) {
         const Vector2 mmp = GetMousePosition();
         auto menuRow = [&](int id, const char* text, Color col) {
             const bool hover = mmp.x >= px + 14 && mmp.y >= y - 3 && mmp.y < y + 26;
-            if (hover) DrawRectangle(px + 14, y - 3, pw - 24, 28, Fade(GOLD, 0.15f));
+            if (hover) ui::Rect(px + 14, y - 3, pw - 24, 28, Fade(GOLD, 0.15f));
             ui::Text(text, px + 22, y, 22, hover ? RAYWHITE : col);
             B.menuHits.push_back({ y, id });
             y += 30;
@@ -3804,7 +3804,7 @@ void BattleDraw(const Content& c) {
         const int w1 = ui::MeasureTitle(head, 52);
         const int w2 = ui::Measure(nums, 24);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 16, GetScreenWidth(), 116, Fade(BLACK, 0.75f * a));
+        ui::Rect(0, cy - 16, GetScreenWidth(), 116, Fade(BLACK, 0.75f * a));
         ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 52, Fade(GOLD, a));
         ui::Text(nums, (GetScreenWidth() - w2) / 2, cy + 62, 24, Fade(RAYWHITE, a));
     }
@@ -3853,7 +3853,7 @@ void BattleDraw(const Content& c) {
         const char* head = B.cryText;
         const int w = ui::MeasureTitle(head, 44);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.65f * a));
+        ui::Rect(0, cy - 12, GetScreenWidth(), 74, Fade(BLACK, 0.65f * a));
         ui::Title(head, (GetScreenWidth() - w) / 2, cy, 44, Fade(Color{ 235, 90, 70, 255 }, a));
     }
 
@@ -3864,7 +3864,7 @@ void BattleDraw(const Content& c) {
         const int w1 = ui::MeasureTitle(head, 44);
         const int w2 = ui::Measure(sub, 22);
         const int cy = GetScreenHeight() / 3;
-        DrawRectangle(0, cy - 12, GetScreenWidth(), 96, Fade(BLACK, 0.7f));
+        ui::Rect(0, cy - 12, GetScreenWidth(), 96, Fade(BLACK, 0.7f));
         ui::Title(head, (GetScreenWidth() - w1) / 2, cy, 44, Fade(RED, 0.9f));
         ui::Text(sub, (GetScreenWidth() - w2) / 2, cy + 54, 22, Fade(RAYWHITE, 0.9f));
     }
