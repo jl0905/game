@@ -3275,7 +3275,7 @@ void BattleDraw(const Content& c) {
             }
             DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
                          Fade(Color{ 110, 20, 20, 255 }, 0.5f));   // blood pool
-            DrawCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.8f));
+            InstCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.8f));
             DrawSphere({ s.pos.x + 0.8f, gy + 0.16f, s.pos.z }, 0.2f,
                        Color{ 214, 176, 142, 255 });   // a fallen man, not a crate
             continue;
@@ -3356,11 +3356,11 @@ void BattleDraw(const Content& c) {
         if (s.hp <= 0 || s.escaped) continue;
         const Color col = SoldierTint(s);
         const float bob = sinf(s.walkPhase) * 0.1f;
-        DrawCube({ s.pos.x, s.pos.y + 3.2f + bob, s.pos.z }, 0.10f, 4.4f, 0.10f,
+        InstCube({ s.pos.x, s.pos.y + 3.2f + bob, s.pos.z }, 0.10f, 4.4f, 0.10f,
                  Color{ 90, 70, 50, 255 });
-        DrawCube({ s.pos.x + 0.75f, s.pos.y + 4.9f + bob, s.pos.z }, 1.4f, 0.9f, 0.06f,
+        InstCube({ s.pos.x + 0.75f, s.pos.y + 4.9f + bob, s.pos.z }, 1.4f, 0.9f, 0.06f,
                  col);
-        DrawCube({ s.pos.x + 0.75f, s.pos.y + 4.42f + bob, s.pos.z }, 1.4f, 0.06f, 0.08f,
+        InstCube({ s.pos.x + 0.75f, s.pos.y + 4.42f + bob, s.pos.z }, 1.4f, 0.06f, 0.08f,
                  Fade(BLACK, 0.4f));
     }
 
@@ -3372,8 +3372,8 @@ void BattleDraw(const Content& c) {
         const Vector3 tail = { sa.pos.x - sa.dir.x * 0.9f,
                                sa.pos.y + 0.75f,
                                sa.pos.z - sa.dir.z * 0.9f };
-        DrawLine3D(tail, sa.pos, Color{ 122, 92, 56, 255 });
-        DrawCube({ tail.x, tail.y, tail.z }, 0.08f, 0.08f, 0.08f,
+        rdr::PushOrientedBox(tail, sa.pos, 0.015f, Color{ 122, 92, 56, 255 });
+        InstCube({ tail.x, tail.y, tail.z }, 0.08f, 0.08f, 0.08f,
                  Color{ 210, 205, 195, 255 });   // fletching
     }
 
@@ -3393,12 +3393,12 @@ void BattleDraw(const Content& c) {
             if (dx * dx + dz * dz > lod * lod) continue;
             if (BehindCamera({ p.x, p.y, p.z })) continue;   // (V40)
             if (p.w < 0.5f) {   // a tuft: two crossed blades
-                DrawCube({ p.x, p.y + 0.22f, p.z }, 0.5f, 0.44f, 0.05f,
+                InstCube({ p.x, p.y + 0.22f, p.z }, 0.5f, 0.44f, 0.05f,
                          Color{ 64, 96, 48, 255 });
-                DrawCube({ p.x, p.y + 0.22f, p.z }, 0.05f, 0.44f, 0.5f,
+                InstCube({ p.x, p.y + 0.22f, p.z }, 0.05f, 0.44f, 0.5f,
                          Color{ 72, 104, 52, 255 });
             } else {            // a stone
-                DrawCube({ p.x, p.y + 0.16f, p.z }, 0.5f, 0.34f, 0.4f,
+                InstCube({ p.x, p.y + 0.16f, p.z }, 0.5f, 0.34f, 0.4f,
                          Color{ 122, 118, 112, 255 });
             }
         }
@@ -3416,12 +3416,12 @@ void BattleDraw(const Content& c) {
 
     // particles (blood, dust)
     for (const auto& p : B.puffs)
-        DrawCube(p.pos, 0.13f, 0.13f, 0.13f, Fade(p.col, p.life / p.maxLife));
+        InstCube(p.pos, 0.13f, 0.13f, 0.13f, Fade(p.col, p.life / p.maxLife));
 
     // arrows in flight â€” short shafts oriented along their velocity
     for (const Arrow& a : B.arrows) {
         const Vector3 tail = Vector3Subtract(a.pos, Vector3Scale(Vector3Normalize(a.vel), 0.6f));
-        DrawCylinderEx(tail, a.pos, 0.03f, 0.03f, 4, DARKBROWN);
+        rdr::PushOrientedBox(tail, a.pos, 0.022f, DARKBROWN);
     }
 
     // player avatar

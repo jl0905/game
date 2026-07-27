@@ -1924,3 +1924,12 @@ over two half-features.
   (InstCube/PushOrientedBox) instead of raw DrawCube/DrawCapsule — on
   Vulkan the whole siege scene now renders in the Vulkan layer with
   true depth. 137 scripts green.
+
+- [x] **V169. Iteration one-sixty-nine — banners, arrows, props and particles join the recording.**
+  Bannermen standards, stuck-arrow shafts and fletching (was
+  DrawLine3D), flying arrows (was per-arrow DrawCylinderEx), ground
+  props (tufts/stones), blood/dust particle cubes, and the near-LOD
+  corpse slab all record through the seam. GL 10.2ms / VK 10.5ms at
+  600 men. Raw GL left in-battle: terrain colour, water strip, blood
+  pools/stains (flat cylinders), horse detail capsules, HUD. 137
+  scripts green.
