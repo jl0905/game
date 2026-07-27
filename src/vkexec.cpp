@@ -59,6 +59,13 @@ struct VkExec {
     VkCommandPool pool = VK_NULL_HANDLE;
     VkCommandBuffer cmd = VK_NULL_HANDLE;
     VkFence fence = VK_NULL_HANDLE;
+    // terrain occluder (V164): depth-only static mesh
+    VkPipeline meshPipe = VK_NULL_HANDLE;
+    VkBuffer terrBuf = VK_NULL_HANDLE;
+    VkDeviceMemory terrMem = VK_NULL_HANDLE;
+    int terrCount = 0;
+    float* terrPending = nullptr;      // staged before the device is up
+    int terrPendingCount = 0;
 };
 VkExec g_vk;
 
@@ -388,6 +395,44 @@ bool BuildFrameResources(int w, int h) {
             return false;
         memcpy(cubeMap, cube, sizeof(cube));
 
+        // Terrain pipeline (V164): mesh.vert + the same Lambert fragment,
+        // but colour writes OFF — it exists to give the soldiers correct
+        // hillside occlusion in the composite while GL still paints the
+        // ground. Flipping colorWriteMask on is the whole-terrain switch.
+        size_t mvsSize;
+        void* mvsCode = ReadSpv("assets/spv/mesh.vert.spv", &mvsSize);
+        if (mvsCode) {
+            smci.codeSize = mvsSize;
+            smci.pCode = (const uint32_t*)mvsCode;
+            VkShaderModule mvsMod;
+            vkCreateShaderModule(g_vk.dev, &smci, NULL, &mvsMod);
+            free(mvsCode);
+            VkPipelineShaderStageCreateInfo mst[2] = { stages[0], stages[1] };
+            mst[0].module = mvsMod;
+            VkVertexInputBindingDescription mb = { 0, 10 * sizeof(float),
+                                                   VK_VERTEX_INPUT_RATE_VERTEX };
+            VkVertexInputAttributeDescription ma[3] = {
+                { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 },
+                { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, 12 },
+                { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 24 },
+            };
+            VkPipelineVertexInputStateCreateInfo mvin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+            mvin.vertexBindingDescriptionCount = 1;
+            mvin.pVertexBindingDescriptions = &mb;
+            mvin.vertexAttributeDescriptionCount = 3;
+            mvin.pVertexAttributeDescriptions = ma;
+            VkPipelineColorBlendAttachmentState mcba = {};
+            mcba.colorWriteMask = 0;               // depth-only occluder
+            VkPipelineColorBlendStateCreateInfo mcb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+            mcb.attachmentCount = 1;
+            mcb.pAttachments = &mcba;
+            VkGraphicsPipelineCreateInfo mgp = gpci;
+            mgp.pStages = mst;
+            mgp.pVertexInputState = &mvin;
+            mgp.pColorBlendState = &mcb;
+            vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &mgp, NULL, &g_vk.meshPipe);
+        }
+
         VkCommandPoolCreateInfo cpci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
         cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         cpci.queueFamilyIndex = g_vk.qfam;
@@ -425,6 +470,45 @@ bool EnsureInstCap(int count) {
     return true;
 }
 
+}  // namespace
+
+// V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4). Called
+// at terrain bake time — possibly before the device exists, so the copy is
+// staged and uploaded lazily on the next Vulkan frame.
+void VulkanSetTerrain(const float* verts, int vertCount) {
+    free(g_vk.terrPending);
+    g_vk.terrPending = nullptr;
+    g_vk.terrPendingCount = 0;
+    if (!verts || vertCount <= 0) return;
+    const size_t bytes = (size_t)vertCount * 10 * sizeof(float);
+    g_vk.terrPending = (float*)malloc(bytes);
+    memcpy(g_vk.terrPending, verts, bytes);
+    g_vk.terrPendingCount = vertCount;
+}
+
+namespace {
+void UploadPendingTerrain() {
+    if (!g_vk.terrPending) return;
+    DFN(vkDestroyBuffer); DFN(vkFreeMemory); DFN(vkDeviceWaitIdle); DFN(vkUnmapMemory);
+    if (g_vk.terrBuf) {
+        vkDeviceWaitIdle(g_vk.dev);
+        vkDestroyBuffer(g_vk.dev, g_vk.terrBuf, NULL);
+        vkFreeMemory(g_vk.dev, g_vk.terrMem, NULL);
+        g_vk.terrBuf = VK_NULL_HANDLE;
+    }
+    void* map = nullptr;
+    const size_t bytes = (size_t)g_vk.terrPendingCount * 10 * sizeof(float);
+    if (MakeBuffer(bytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                   &g_vk.terrBuf, &g_vk.terrMem, &map)) {
+        memcpy(map, g_vk.terrPending, bytes);
+        vkUnmapMemory(g_vk.dev, g_vk.terrMem);
+        g_vk.terrCount = g_vk.terrPendingCount;
+    }
+    free(g_vk.terrPending);
+    g_vk.terrPending = nullptr;
+    g_vk.terrPendingCount = 0;
+}
 }  // namespace
 
 // Boots the device once (logged); true once the frame executor is usable.
@@ -466,6 +550,7 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                      g_vk.gpuName);
         }
     }
+    UploadPendingTerrain();
     if (!EnsureInstCap(count)) { g_vk.frameFailed = true; return nullptr; }
     if (count > 0) memcpy(g_vk.instMap, instData, (size_t)count * 80);
 
@@ -489,24 +574,32 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     rbi.clearValueCount = 2;
     rbi.pClearValues = clears;
     vkCmdBeginRenderPass(g_vk.cmd, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    if (count > 0) {
-        vkCmdBindPipeline(g_vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.pipe);
+    {
         // Negative-height viewport (core 1.1) keeps GL clip conventions, so
         // the game's matrices work unmodified and row 0 reads back as top.
         VkViewport vp = { 0, (float)h, (float)w, -(float)h, 0, 1 };
         VkRect2D sc = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
         vkCmdSetViewport(g_vk.cmd, 0, 1, &vp);
         vkCmdSetScissor(g_vk.cmd, 0, 1, &sc);
-        VkBuffer bufs[2] = { g_vk.cubeBuf, g_vk.instBuf };
-        VkDeviceSize offs[2] = { 0, 0 };
-        vkCmdBindVertexBuffers(g_vk.cmd, 0, 2, bufs, offs);
         float pc[20];
         memcpy(pc, viewProj16, 64);
         memcpy(pc + 16, sun4, 16);
         vkCmdPushConstants(g_vk.cmd, g_vk.layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, 80, pc);
-        vkCmdDraw(g_vk.cmd, 36, (uint32_t)count, 0, 0);
+        if (g_vk.terrBuf && g_vk.meshPipe) {   // depth-only hillside occluder
+            vkCmdBindPipeline(g_vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.meshPipe);
+            VkDeviceSize toff = 0;
+            vkCmdBindVertexBuffers(g_vk.cmd, 0, 1, &g_vk.terrBuf, &toff);
+            vkCmdDraw(g_vk.cmd, (uint32_t)g_vk.terrCount, 1, 0, 0);
+        }
+        if (count > 0) {
+            vkCmdBindPipeline(g_vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.pipe);
+            VkBuffer bufs[2] = { g_vk.cubeBuf, g_vk.instBuf };
+            VkDeviceSize offs[2] = { 0, 0 };
+            vkCmdBindVertexBuffers(g_vk.cmd, 0, 2, bufs, offs);
+            vkCmdDraw(g_vk.cmd, 36, (uint32_t)count, 0, 0);
+        }
     }
     vkCmdEndRenderPass(g_vk.cmd);
     VkBufferImageCopy region = {};
@@ -529,6 +622,7 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
 #else
 namespace rdr {
 bool VulkanExecutorReady() { return false; }
+void VulkanSetTerrain(const float*, int) {}
 const unsigned char* VulkanRenderFrame(const float*, const float*, const void*,
                                        int, int, int) { return nullptr; }
 }

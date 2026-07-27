@@ -1883,3 +1883,12 @@ over two half-features.
   frames clean. The readback interop costs fps (32 vs 105 GL) — that
   tax is exactly what the native window swap (next) deletes. 137
   scripts green.
+
+- [x] **V164. Iteration one-sixty-four — the battlefield enters the Vulkan frame.**
+  The baked terrain surface (98k verts, pos/normal/colour) is staged
+  into the Vulkan executor at bake time and drawn every frame through
+  the mesh pipeline as a DEPTH-ONLY occluder before the army — so
+  composited soldiers now hide correctly behind hills while GL still
+  paints the ground. Flipping the pipeline's colorWriteMask on is the
+  whole-terrain switch when the native window lands. Verified live on
+  the 4060 (600 frames, ~1.7ms for the pass). 137 scripts green.

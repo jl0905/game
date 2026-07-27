@@ -398,6 +398,19 @@ void Terrain::BakeModel() const {
             emit(D, c2, smoothNormal(D));
         }
     }
+    // Hand the same surface to the Vulkan executor as its depth occluder
+    // (V164) before UploadMesh hands ownership of the arrays to the GPU.
+    if (GetSettings().renderer == 1) {
+        std::vector<float> vk((size_t)mesh.vertexCount * 10);
+        for (int k = 0; k < mesh.vertexCount; ++k) {
+            float* o = &vk[(size_t)k * 10];
+            memcpy(o, &mesh.vertices[k * 3], 3 * sizeof(float));
+            memcpy(o + 3, &mesh.normals[k * 3], 3 * sizeof(float));
+            for (int c = 0; c < 4; ++c)
+                o[6 + c] = mesh.colors[k * 4 + c] / 255.0f;
+        }
+        rdr::VulkanSetTerrain(vk.data(), mesh.vertexCount);
+    }
     UploadMesh(&mesh, false);
     model_ = LoadModelFromMesh(mesh);
     model_.materials[0].shader = GetLitShader();   // sun-lit slopes

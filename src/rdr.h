@@ -58,6 +58,11 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                                        const void* instData, int count,
                                        int w, int h);
 
+// V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4) for the
+// Vulkan depth-only occluder pass — gives the composited soldiers correct
+// hillside occlusion. Safe to call before the device exists.
+void VulkanSetTerrain(const float* verts, int vertCount);
+
 // V163: composite the Vulkan-rendered layer over the GL frame. Call once
 // per frame after EndMode3D(); no-op unless a Vulkan frame is pending.
 void PresentVulkan();
