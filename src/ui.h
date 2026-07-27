@@ -36,6 +36,21 @@ int  MeasureTitle(const char* text, int fontSize);
 // a plain GL DrawRectangle. Use for HUD panels, bars and hover bands.
 void Rect(int x, int y, int w, int h, Color c);
 void RectRec(Rectangle r, Color c);
+// The rest of the 2D vocabulary (V175) — same contract as Rect: recorded
+// as Vulkan UI geometry when the backend is live, raylib GL otherwise.
+// Signatures mirror the raylib originals they replace.
+void GradientV(int x, int y, int w, int h, Color top, Color bottom);
+void Disc(int cx, int cy, float r, Color c);
+void DiscV(Vector2 c, float r, Color col);
+void DiscGradient(int cx, int cy, float r, Color inner, Color outer);
+void DiscLines(int cx, int cy, float r, Color c);
+void Ring(Vector2 c, float rIn, float rOut, float a0, float a1, int segs, Color col);
+void RectLines(int x, int y, int w, int h, Color c);
+void RectLinesEx(Rectangle r, float thick, Color c);
+void Rounded(Rectangle r, float roundness, int segs, Color c);
+void RoundedLines(Rectangle r, float roundness, int segs, Color c);
+void LineEx(Vector2 a, Vector2 b, float thick, Color c);
+void Tri(Vector2 a, Vector2 b, Vector2 c3, Color c);
 // Direct handles for advanced call sites that want DrawTextEx themselves.
 const Font& BodyFont();
 const Font& TitleFont();

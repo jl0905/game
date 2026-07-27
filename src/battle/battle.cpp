@@ -3152,20 +3152,20 @@ void BattleDraw(const Content& c) {
         Color hor = { (unsigned char)fminf(255, sky.r * 1.25f + 18),
                       (unsigned char)fminf(255, sky.g * 1.18f + 14),
                       (unsigned char)fminf(255, sky.b * 1.08f + 8), 255 };
-        DrawRectangleGradientV(0, 0, GetScreenWidth(),
+        ui::GradientV(0, 0, GetScreenWidth(),
                                GetScreenHeight() * 2 / 3, zen, hor);
         ui::Rect(0, GetScreenHeight() * 2 / 3, GetScreenWidth(),
                       GetScreenHeight() / 3, hor);
     }
     // Sky: gradient with a low sun â€” or a leaden overcast when it rains.
     if (B.raining) {
-        DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+        ui::GradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                                Color{ 96, 104, 120, 255 }, Color{ 150, 156, 166, 255 });
     } else if (night) {
         // A true night sky (V45): the old unconditional day gradient was
         // painting noon over midnight. Stars in fixed hashed places, and a
         // moon where the sun would stand.
-        DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+        ui::GradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                                Color{ 10, 14, 30, 255 }, Color{ 36, 44, 72, 255 });
         const int w = GetScreenWidth(), h = GetScreenHeight();
         for (int i = 0; i < 140; ++i) {
@@ -3177,17 +3177,17 @@ void BattleDraw(const Content& c) {
             ui::Rect(sx, sy, ((s >> 7) & 3) == 0 ? 2 : 1, 1,
                           Fade(RAYWHITE, tw));
         }
-        DrawCircleGradient(w * 3 / 4, h / 4, 70,
+        ui::DiscGradient(w * 3 / 4, h / 4, 70,
                            Fade(Color{ 224, 228, 240, 255 }, 0.95f),
                            Fade(Color{ 224, 228, 240, 255 }, 0.0f));
-        DrawCircle(w * 3 / 4, h / 4, 26, Color{ 226, 230, 240, 255 });
-        DrawCircle(w * 3 / 4 + 9, h / 4 - 4, 22, Color{ 24, 30, 52, 255 });   // crescent
+        ui::Disc(w * 3 / 4, h / 4, 26, Color{ 226, 230, 240, 255 });
+        ui::Disc(w * 3 / 4 + 9, h / 4 - 4, 22, Color{ 24, 30, 52, 255 });   // crescent
     } else {
         Color top = { 92, 148, 214, 255 }, bot = { 208, 224, 238, 255 };
         if (tod >= 0.70f) { top = { 150, 96, 84, 255 };  bot = { 236, 168, 120, 255 }; }
         else if (tod < 0.10f) { top = { 128, 108, 110, 255 }; bot = { 232, 196, 160, 255 }; }
-        DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), top, bot);
-        DrawCircleGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
+        ui::GradientV(0, 0, GetScreenWidth(), GetScreenHeight(), top, bot);
+        ui::DiscGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
                            Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
     }
 
@@ -3554,7 +3554,7 @@ void BattleDraw(const Content& c) {
             ui::Rect(bx, by, (int)(bw * hf), 10,
                           hf > 0.5f ? Color{ 200, 60, 50, 255 }
                                     : Color{ 130, 30, 25, 255 });
-            DrawRectangleLines(bx - 2, by - 2, bw + 4, 14, Fade(RAYWHITE, 0.4f));
+            ui::RectLines(bx - 2, by - 2, bw + 4, 14, Fade(RAYWHITE, 0.4f));
             const char* nm = c.troops.valid(s.troop)
                                  ? c.troops[s.troop].name.c_str() : "?";
             ui::Text(nm, bx, by - 20, 16, Fade(RAYWHITE, 0.85f));
@@ -3564,7 +3564,7 @@ void BattleDraw(const Content& c) {
     // ---------- HUD ---------- (lifted clear of the V67 key footer)
     const int hpY = GetScreenHeight() - 84;
     ui::Rect(16, hpY, 306, 28, Fade(BLACK, 0.55f));
-    DrawRectangleLines(16, hpY, 306, 28, Fade(GOLD, 0.5f));
+    ui::RectLines(16, hpY, 306, 28, Fade(GOLD, 0.5f));
     DrawRectangleGradientH(20, hpY + 4,
                            (int)(298 * fmaxf(B.pHp, 0) / B.pMaxHp), 20,
                            Color{ 150, 24, 24, 255 }, Color{ 220, 60, 40, 255 });
@@ -3635,7 +3635,7 @@ void BattleDraw(const Content& c) {
         const float alpha     = fminf(B.hitFromTimer / 0.4f, 1.0f);
         const Vector2 mid = { GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f };
         const float r = fminf(mid.x, mid.y) * 0.72f;
-        DrawRing(mid, r - 10, r, centerDeg - 26, centerDeg + 26, 24,
+        ui::Ring(mid, r - 10, r, centerDeg - 26, centerDeg + 26, 24,
                  Fade(RED, 0.55f * alpha));
     }
 
@@ -3684,7 +3684,7 @@ void BattleDraw(const Content& c) {
             // Hero archery (V117): the ring tightens as the string comes back.
             ui::Text("Drawing...  (release to loose!)", 18, 82, 16, ORANGE);
             const float r = 26.0f - 14.0f * B.windup;
-            DrawCircleLines(GetScreenWidth() / 2, GetScreenHeight() / 2, r,
+            ui::DiscLines(GetScreenWidth() / 2, GetScreenHeight() / 2, r,
                             B.windup >= 1.0f ? GOLD : Fade(RAYWHITE, 0.7f));
         } else if (B.readying) {
             ui::Text(TextFormat("Readying swing: %s  (release!)", dirName[(int)B.attackDir]),
@@ -3705,7 +3705,7 @@ void BattleDraw(const Content& c) {
             const float x = (float)(hh % (unsigned)w);
             const float speed = 620.0f + (hh & 0xFF);
             const float y = fmodf((float)((hh >> 8) % (unsigned)h) + t * speed, (float)(h + 40)) - 20.0f;
-            DrawLineEx({ x, y }, { x - 4, y + 16 }, 1.2f, Fade(Color{ 190, 205, 225, 255 }, 0.32f));
+            ui::LineEx({ x, y }, { x - 4, y + 16 }, 1.2f, Fade(Color{ 190, 205, 225, 255 }, 0.32f));
         }
     }
 
@@ -3715,7 +3715,7 @@ void BattleDraw(const Content& c) {
         const int   mx = GetScreenWidth() - MM - 14;
         const int   my = 96;
         ui::Rect(mx - 4, my - 4, MM + 8, MM + 8, Fade(BLACK, 0.55f));
-        DrawRectangleLines(mx - 4, my - 4, MM + 8, MM + 8, Fade(RAYWHITE, 0.3f));
+        ui::RectLines(mx - 4, my - 4, MM + 8, MM + 8, Fade(RAYWHITE, 0.3f));
         auto toMap = [&](Vector3 p) {
             return Vector2{ mx + (p.x + ARENA) / (2 * ARENA) * MM,
                             my + (ARENA - p.z) / (2 * ARENA) * MM };   // +z is up
@@ -3724,18 +3724,18 @@ void BattleDraw(const Content& c) {
             const float wy = my + (ARENA - WALL_Z) / (2 * ARENA) * MM;
             const float gl = mx + (-GATE_HALF + ARENA) / (2 * ARENA) * MM;
             const float gr = mx + ( GATE_HALF + ARENA) / (2 * ARENA) * MM;
-            DrawLineEx({ (float)mx, wy }, { gl, wy }, 2, GRAY);
-            DrawLineEx({ gr, wy }, { (float)(mx + MM), wy }, 2, GRAY);
+            ui::LineEx({ (float)mx, wy }, { gl, wy }, 2, GRAY);
+            ui::LineEx({ gr, wy }, { (float)(mx + MM), wy }, 2, GRAY);
         }
         for (const Soldier& s : B.soldiers) {
             if (s.hp <= 0) continue;
             const Color dot = s.team == Team::Enemy ? RED
                               : (s.ally ? Color{ 120, 190, 255, 255 } : GREEN);
-            DrawCircleV(toMap(s.pos), 2, dot);
+            ui::DiscV(toMap(s.pos), 2, dot);
         }
         const Vector2 hp2 = toMap(B.pPos);
-        DrawCircleV(hp2, 4, Color{ 40, 120, 255, 255 });
-        DrawLineEx(hp2, { hp2.x + sinf(B.yaw) * 9, hp2.y - cosf(B.yaw) * 9 }, 2, RAYWHITE);
+        ui::DiscV(hp2, 4, Color{ 40, 120, 255, 255 });
+        ui::LineEx(hp2, { hp2.x + sinf(B.yaw) * 9, hp2.y - cosf(B.yaw) * 9 }, 2, RAYWHITE);
     }
 
     // ---- strategy / formation menu: a slightly grey, transparent side panel;

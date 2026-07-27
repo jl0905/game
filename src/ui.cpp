@@ -2,6 +2,7 @@
 #include "rdr.h"
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -266,6 +267,102 @@ void RectRec(Rectangle r, Color c) {
 
 void Rect(int x, int y, int w, int h, Color c) {
     RectRec(Rectangle{ (float)x, (float)y, (float)w, (float)h }, c);
+}
+
+// ---- the rest of the 2D vocabulary (V175) ----------------------------------
+namespace {
+inline rdr::UiVert UV(float x, float y, Color c) {
+    return { x, y, -1, -1, c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f };
+}
+void PushTri(rdr::UiVert a, rdr::UiVert b, rdr::UiVert c) {
+    const rdr::UiVert t[3] = { a, b, c };
+    rdr::PushUiVerts(t, 3);
+}
+}  // namespace
+
+void GradientV(int x, int y, int w, int h, Color top, Color bottom) {
+    if (!rdr::VulkanUiActive()) { DrawRectangleGradientV(x, y, w, h, top, bottom); return; }
+    const rdr::UiVert tl = UV((float)x, (float)y, top), tr = UV((float)(x + w), (float)y, top);
+    const rdr::UiVert bl = UV((float)x, (float)(y + h), bottom),
+                      br = UV((float)(x + w), (float)(y + h), bottom);
+    PushTri(tl, tr, br);
+    PushTri(tl, br, bl);
+}
+
+void Ring(Vector2 c, float rIn, float rOut, float a0, float a1, int segs, Color col) {
+    if (!rdr::VulkanUiActive()) { DrawRing(c, rIn, rOut, a0, a1, segs, col); return; }
+    if (segs < 3) segs = 3;
+    const float d0 = a0 * DEG2RAD, d1 = a1 * DEG2RAD;
+    for (int i = 0; i < segs; ++i) {
+        const float t0 = d0 + (d1 - d0) * i / segs, t1 = d0 + (d1 - d0) * (i + 1) / segs;
+        const Vector2 i0 = { c.x + sinf(t0) * rIn, c.y - cosf(t0) * rIn };
+        const Vector2 i1 = { c.x + sinf(t1) * rIn, c.y - cosf(t1) * rIn };
+        const Vector2 o0 = { c.x + sinf(t0) * rOut, c.y - cosf(t0) * rOut };
+        const Vector2 o1 = { c.x + sinf(t1) * rOut, c.y - cosf(t1) * rOut };
+        PushTri(UV(i0.x, i0.y, col), UV(o0.x, o0.y, col), UV(o1.x, o1.y, col));
+        PushTri(UV(i0.x, i0.y, col), UV(o1.x, o1.y, col), UV(i1.x, i1.y, col));
+    }
+}
+
+void DiscV(Vector2 c, float r, Color col) {
+    if (!rdr::VulkanUiActive()) { DrawCircleV(c, r, col); return; }
+    Ring(c, 0.0f, r, 0, 360, 24, col);
+}
+
+void Disc(int cx, int cy, float r, Color c) { DiscV({ (float)cx, (float)cy }, r, c); }
+
+void DiscGradient(int cx, int cy, float r, Color inner, Color outer) {
+    if (!rdr::VulkanUiActive()) { DrawCircleGradient(cx, cy, r, inner, outer); return; }
+    const Vector2 c = { (float)cx, (float)cy };
+    for (int i = 0; i < 24; ++i) {
+        const float t0 = 2 * PI * i / 24, t1 = 2 * PI * (i + 1) / 24;
+        PushTri(UV(c.x, c.y, inner),
+                UV(c.x + sinf(t0) * r, c.y - cosf(t0) * r, outer),
+                UV(c.x + sinf(t1) * r, c.y - cosf(t1) * r, outer));
+    }
+}
+
+void DiscLines(int cx, int cy, float r, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawCircleLines(cx, cy, r, c); return; }
+    Ring({ (float)cx, (float)cy }, r - 1.0f, r, 0, 360, 24, c);
+}
+
+void RectLinesEx(Rectangle r, float t, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawRectangleLinesEx(r, t, c); return; }
+    RectRec({ r.x, r.y, r.width, t }, c);
+    RectRec({ r.x, r.y + r.height - t, r.width, t }, c);
+    RectRec({ r.x, r.y + t, t, r.height - 2 * t }, c);
+    RectRec({ r.x + r.width - t, r.y + t, t, r.height - 2 * t }, c);
+}
+
+void RectLines(int x, int y, int w, int h, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawRectangleLines(x, y, w, h, c); return; }
+    RectLinesEx({ (float)x, (float)y, (float)w, (float)h }, 1.0f, c);
+}
+
+void Rounded(Rectangle r, float roundness, int segs, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawRectangleRounded(r, roundness, segs, c); return; }
+    RectRec(r, c);   // the preview squares the corners; native pass restores them
+}
+
+void RoundedLines(Rectangle r, float roundness, int segs, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawRectangleRoundedLines(r, roundness, segs, c); return; }
+    RectLinesEx(r, 1.0f, c);
+}
+
+void LineEx(Vector2 a, Vector2 b, float thick, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawLineEx(a, b, thick, c); return; }
+    const float dx = b.x - a.x, dy = b.y - a.y;
+    const float len = sqrtf(dx * dx + dy * dy);
+    if (len < 0.001f) return;
+    const float nx = -dy / len * thick * 0.5f, ny = dx / len * thick * 0.5f;
+    PushTri(UV(a.x + nx, a.y + ny, c), UV(b.x + nx, b.y + ny, c), UV(b.x - nx, b.y - ny, c));
+    PushTri(UV(a.x + nx, a.y + ny, c), UV(b.x - nx, b.y - ny, c), UV(a.x - nx, a.y - ny, c));
+}
+
+void Tri(Vector2 a, Vector2 b, Vector2 c3, Color c) {
+    if (!rdr::VulkanUiActive()) { DrawTriangle(a, b, c3, c); return; }
+    PushTri(UV(a.x, a.y, c), UV(b.x, b.y, c), UV(c3.x, c3.y, c));
 }
 
 int MeasureTitle(const char* text, int fontSize) {

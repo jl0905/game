@@ -1978,3 +1978,12 @@ over two half-features.
   2D camera keep their GL road via the recording guard. HUD bars,
   hover bands, menu panels and the whole market GUI chrome now render
   on Vulkan with the text. GL 8.1ms / VK 8.8ms. 137 scripts green.
+
+- [x] **V175. Iteration one-seventy-five — the whole 2D vocabulary crosses the seam.**
+  ui:: gains GradientV, Disc/DiscV/DiscGradient/DiscLines, Ring,
+  RectLines/Ex, Rounded/RoundedLines, LineEx and Tri — every 2D shape
+  the game speaks, recorded as Vulkan UI geometry when the backend is
+  live (triangulated discs/rings/lines), raylib GL otherwise. All
+  ~80 call sites across campaign, town and battle converted: sky
+  gradients, skirmish rings, party markers, quest pins, minimap,
+  crosshair, market chrome. GL 8.0ms / VK 8.9ms. 137 scripts green.

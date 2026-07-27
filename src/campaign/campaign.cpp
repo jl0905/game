@@ -192,16 +192,16 @@ Rectangle UIButton(float x, float y, const char* label, int fs, bool enabled,
     const float h = fs + 14.0f;
     const Vector2 m = GetMousePosition();
     const bool hov = enabled && CheckCollisionPointRec(m, { x, y, w, h });
-    DrawRectangleRounded({ x, y, w, h }, 0.3f, 4,
+    ui::Rounded({ x, y, w, h }, 0.3f, 4,
                          hov ? Fade(GOLD, 0.30f) : Fade(BLACK, 0.55f));
-    DrawRectangleRoundedLines({ x, y, w, h }, 0.3f, 4,
+    ui::RoundedLines({ x, y, w, h }, 0.3f, 4,
                               Fade(GOLD, enabled ? (hov ? 0.9f : 0.45f) : 0.15f));
     ui::Text(label, (int)x + 11, (int)y + 7, fs,
              enabled ? (hov ? GOLD : RAYWHITE) : Fade(RAYWHITE, 0.35f));
     if (hov && hotkey) {   // the key, remembered only when you look
         const int kfs = fs - 4 > 11 ? fs - 4 : 11;
         const int kw = ui::Measure(hotkey, kfs) + 10;
-        DrawRectangleRounded({ x + w / 2 - kw / 2.0f, y - kfs - 8.0f,
+        ui::Rounded({ x + w / 2 - kw / 2.0f, y - kfs - 8.0f,
                                (float)kw, kfs + 6.0f }, 0.4f, 4,
                              Fade(BLACK, 0.85f));
         ui::Text(hotkey, (int)(x + w / 2 - kw / 2 + 5), (int)(y - kfs - 5),
@@ -214,8 +214,8 @@ Rectangle UIButton(float x, float y, const char* label, int fs, bool enabled,
 // shaded sack/ingot silhouette in the good's tint with a letter stamp.
 // Swappable for real textures later without touching layout.
 void DrawGoodIcon(Rectangle r, Color tint, const char* name) {
-    DrawRectangleRounded(r, 0.18f, 4, Color{ 38, 34, 30, 255 });
-    DrawRectangleRoundedLines(r, 0.18f, 4, Fade(RAYWHITE, 0.20f));
+    ui::Rounded(r, 0.18f, 4, Color{ 38, 34, 30, 255 });
+    ui::RoundedLines(r, 0.18f, 4, Fade(RAYWHITE, 0.20f));
     const float inX = r.x + r.width * 0.18f, inW = r.width * 0.64f;
     const float inY = r.y + r.height * 0.22f, inH = r.height * 0.52f;
     DrawEllipse((int)(r.x + r.width / 2), (int)(inY + inH * 0.75f),
@@ -3448,7 +3448,7 @@ void PaintMapGround(const MapDef& m) {
                 ui::Rect(gx * CELL, gy * CELL, CELL, CELL,
                               Fade(Color{ 40, 55, 90, 255 }, 0.13f));
                 for (int rl = 0; rl < 3; ++rl)
-                    DrawLineEx({ (float)(gx * CELL + 12 + rl * 30),
+                    ui::LineEx({ (float)(gx * CELL + 12 + rl * 30),
                                  (float)(gy * CELL + 10) },
                                { (float)(gx * CELL + 2 + rl * 30),
                                  (float)(gy * CELL + 34) },
@@ -3462,7 +3462,7 @@ void PaintMapGround(const MapDef& m) {
                     h = h * 1664525u + 1013904223u;
                     const float tx = gx * CELL + (h & 63) + 16;
                     const float ty = gy * CELL + ((h >> 8) & 63) + 16;
-                    DrawTriangle({ tx, ty }, { tx + 10, ty }, { tx + 5, ty - 16 },
+                    ui::Tri({ tx, ty }, { tx + 10, ty }, { tx + 5, ty - 16 },
                                  Color{ 34, 66, 34, 255 });
                 }
             } else if (n1 > m.biome.mountainThreshold) {   // mountain ridges
@@ -3470,9 +3470,9 @@ void PaintMapGround(const MapDef& m) {
                     h = h * 1664525u + 1013904223u;
                     const float tx = gx * CELL + (h & 63) + 12;
                     const float ty = gy * CELL + ((h >> 8) & 63) + 24;
-                    DrawTriangle({ tx, ty }, { tx + 22, ty }, { tx + 11, ty - 20 },
+                    ui::Tri({ tx, ty }, { tx + 22, ty }, { tx + 11, ty - 20 },
                                  Color{ 118, 112, 108, 255 });
-                    DrawTriangle({ tx + 7, ty - 12 }, { tx + 15, ty - 12 },
+                    ui::Tri({ tx + 7, ty - 12 }, { tx + 15, ty - 12 },
                                  { tx + 11, ty - 20 }, Color{ 226, 228, 232, 255 });
                 }
             }
@@ -3487,8 +3487,8 @@ void PaintMapRoads(const GameState& gs) {
     // The segments come from the MST road network (V139) — trunk roads,
     // not the old all-pairs tangle.
     for (const RoadSeg& s : RoadNetwork(gs)) {
-        DrawLineEx(s.a, s.b, 8, Fade(Color{ 52, 40, 26, 255 }, 0.8f));
-        DrawLineEx(s.a, s.b, 4, Fade(Color{ 205, 178, 128, 255 }, 0.9f));
+        ui::LineEx(s.a, s.b, 8, Fade(Color{ 52, 40, 26, 255 }, 0.8f));
+        ui::LineEx(s.a, s.b, 4, Fade(Color{ 205, 178, 128, 255 }, 0.9f));
     }
 }
 
@@ -3540,7 +3540,7 @@ void CampaignDraw(const GameState& gs) {
                    Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, Vector2{ 0, 0 }, 0,
                    WHITE);
 
-    DrawRectangleLinesEx(Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, 6, DARKBROWN);
+    ui::RectLinesEx(Rectangle{ 0, 0, MAP_SIZE, MAP_SIZE }, 6, DARKBROWN);
 
     // The political map, live (V30): every settlement radiates its owner's
     // colour — empires read at a glance and the glow moves with conquest.
@@ -3551,10 +3551,10 @@ void CampaignDraw(const GameState& gs) {
         const float r = t.type == SettlementType::Town   ? 110.0f
                       : t.type == SettlementType::Castle ?  85.0f : 60.0f;
         Color glow = c.factions[t.owner].color;
-        DrawCircleGradient((int)t.pos.x, (int)t.pos.y, r,
+        ui::DiscGradient((int)t.pos.x, (int)t.pos.y, r,
                            Fade(glow, 0.16f), Fade(glow, 0.0f));
         if (AtWar(gs, t.owner, c.playerFaction))   // enemy land, marked
-            DrawCircleLines((int)t.pos.x, (int)t.pos.y, r * 0.55f,
+            ui::DiscLines((int)t.pos.x, (int)t.pos.y, r * 0.55f,
                             Fade(glow, 0.28f));
     }
 
@@ -3562,11 +3562,11 @@ void CampaignDraw(const GameState& gs) {
     // around — or into, if you want your battles wet and your foes slow.
     {
         const float breathe = 1.0f + 0.04f * sinf((float)GetTime() * 1.2f);
-        DrawCircleGradient((int)gs.stormPos.x, (int)gs.stormPos.y,
+        ui::DiscGradient((int)gs.stormPos.x, (int)gs.stormPos.y,
                            c.map.stormRadius * breathe,
                            Fade(Color{ 70, 80, 100, 255 }, 0.4f),
                            Fade(Color{ 70, 80, 100, 255 }, 0.0f));
-        DrawCircleLines((int)gs.stormPos.x, (int)gs.stormPos.y,
+        ui::DiscLines((int)gs.stormPos.x, (int)gs.stormPos.y,
                         c.map.stormRadius, Fade(Color{ 120, 132, 156, 255 }, 0.35f));
     }
 
@@ -3576,7 +3576,7 @@ void CampaignDraw(const GameState& gs) {
         if (sg.town < 0 || sg.town >= (int)gs.towns.size()) continue;
         const Vector2 sp = gs.towns[sg.town].pos;
         const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 5.0f);
-        DrawCircleLines((int)sp.x, (int)sp.y, 48.0f + 6.0f * pulse,
+        ui::DiscLines((int)sp.x, (int)sp.y, 48.0f + 6.0f * pulse,
                         Fade(RED, 0.5f + 0.35f * pulse));
     }
 
@@ -3585,9 +3585,9 @@ void CampaignDraw(const GameState& gs) {
         gs.questTown < (int)gs.towns.size()) {
         const Vector2 qp = gs.towns[gs.questTown].pos;
         const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 3.0f);
-        DrawCircleLines((int)qp.x, (int)qp.y, 44.0f + 8.0f * pulse,
+        ui::DiscLines((int)qp.x, (int)qp.y, 44.0f + 8.0f * pulse,
                         Fade(GOLD, 0.45f + 0.35f * pulse));
-        DrawCircleLines((int)qp.x, (int)qp.y, 40.0f, Fade(GOLD, 0.35f));
+        ui::DiscLines((int)qp.x, (int)qp.y, 40.0f, Fade(GOLD, 0.35f));
     }
 
     for (const Town& t : gs.towns) {
@@ -3611,7 +3611,7 @@ void CampaignDraw(const GameState& gs) {
                     const float hy = hx == -6.0f ? 2.0f : -8.0f;
                     ui::Rect((int)(t.pos.x + hx), (int)(t.pos.y + hy), 13, 10,
                                   Color{ 138, 104, 66, 255 });
-                    DrawTriangle({ t.pos.x + hx - 2, t.pos.y + hy },
+                    ui::Tri({ t.pos.x + hx - 2, t.pos.y + hy },
                                  { t.pos.x + hx + 15, t.pos.y + hy },
                                  { t.pos.x + hx + 6.5f, t.pos.y + hy - 9 },
                                  Color{ 196, 168, 92, 255 });   // thatch
@@ -3624,14 +3624,14 @@ void CampaignDraw(const GameState& gs) {
                     const float hy = hx == -8.0f ? 4.0f : -12.0f;
                     ui::Rect((int)(t.pos.x + hx), (int)(t.pos.y + hy), 14, 12,
                                   Color{ 168, 148, 120, 255 });
-                    DrawTriangle({ t.pos.x + hx - 2, t.pos.y + hy },
+                    ui::Tri({ t.pos.x + hx - 2, t.pos.y + hy },
                                  { t.pos.x + hx + 16, t.pos.y + hy },
                                  { t.pos.x + hx + 7, t.pos.y + hy - 10 },
                                  MAROON);   // red town roofs
                 }
                 ui::Rect((int)t.pos.x - 4, (int)t.pos.y - 8, 9, 14,
                               Color{ 190, 170, 120, 255 });
-                DrawTriangle({ t.pos.x - 6, t.pos.y - 8 }, { t.pos.x + 7, t.pos.y - 8 },
+                ui::Tri({ t.pos.x - 6, t.pos.y - 8 }, { t.pos.x + 7, t.pos.y - 8 },
                              { t.pos.x + 0.5f, t.pos.y - 20 }, GOLD);   // the hall
                 break;
             case SettlementType::Castle:
@@ -3656,9 +3656,9 @@ void CampaignDraw(const GameState& gs) {
         const Color ownerCol  = ownerValid ? c.factions[t.owner].color : RAYWHITE;
         if (ownerValid) {
             const float bx = t.pos.x + 22, by = t.pos.y - 34;
-            DrawLineEx({ bx, by + 22 }, { bx, by }, 2.5f, Color{ 92, 70, 48, 255 });
+            ui::LineEx({ bx, by + 22 }, { bx, by }, 2.5f, Color{ 92, 70, 48, 255 });
             ui::Rect((int)bx, (int)by, 16, 10, ownerCol);
-            DrawRectangleLines((int)bx, (int)by, 16, 10, Fade(BLACK, 0.5f));
+            ui::RectLines((int)bx, (int)by, 16, 10, Fade(BLACK, 0.5f));
         }
         // Living lettering (U10): names hold constant screen size (scaled
         // against the zoom) so the map reads fully zoomed out, in the
@@ -3679,7 +3679,7 @@ void CampaignDraw(const GameState& gs) {
             ui::Text(t.name.c_str(), (int)(lx + 13 * iz), (int)(ly + 3 * iz),
                      fs, RAYWHITE);
         }
-        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(ownerCol, 0.45f));
+        ui::DiscLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS, Fade(ownerCol, 0.45f));
     }
 
     for (const Party& e : gs.parties) {
@@ -3688,17 +3688,17 @@ void CampaignDraw(const GameState& gs) {
         const bool isLord = !e.lord.empty();
         // A pennant: shadow, pole, and a swallow-tailed flag in faction colour.
         DrawEllipse((int)e.pos.x, (int)e.pos.y + 4, 10, 4, Fade(BLACK, 0.3f));
-        DrawLineEx({ e.pos.x, e.pos.y + 4 }, { e.pos.x, e.pos.y - (isLord ? 26.0f : 20.0f) },
+        ui::LineEx({ e.pos.x, e.pos.y + 4 }, { e.pos.x, e.pos.y - (isLord ? 26.0f : 20.0f) },
                    2.5f, Color{ 92, 70, 48, 255 });
         const float fy = e.pos.y - (isLord ? 26.0f : 20.0f);
         const float fw = isLord ? 18.0f : 13.0f;
-        DrawTriangle({ e.pos.x, fy }, { e.pos.x, fy + 10 }, { e.pos.x + fw, fy + 5 }, f.color);
+        ui::Tri({ e.pos.x, fy }, { e.pos.x, fy + 10 }, { e.pos.x + fw, fy + 5 }, f.color);
         DrawTriangleLines({ e.pos.x, fy }, { e.pos.x, fy + 10 }, { e.pos.x + fw, fy + 5 },
                           Fade(BLACK, 0.5f));
         if (isLord)   // a small crown atop the pole
-            DrawTriangle({ e.pos.x - 6, fy - 2 }, { e.pos.x + 6, fy - 2 },
+            ui::Tri({ e.pos.x - 6, fy - 2 }, { e.pos.x + 6, fy - 2 },
                          { e.pos.x, fy - 10 }, GOLD);
-        if (e.engaged) DrawCircleLines((int)e.pos.x, (int)e.pos.y, 15, RAYWHITE);
+        if (e.engaged) ui::DiscLines((int)e.pos.x, (int)e.pos.y, 15, RAYWHITE);
         // Party labels hold constant screen size like the settlements (V3):
         // a lord's banner reads from any height.
         const float piz = 1.0f / g_mapZoom;
@@ -3719,7 +3719,7 @@ void CampaignDraw(const GameState& gs) {
         if (sg.town < 0 || sg.town >= (int)gs.towns.size()) continue;
         if (sg.party < 0 || sg.party >= (int)gs.parties.size()) continue;
         const Town& t = gs.towns[sg.town];
-        DrawCircleLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS + 10,
+        ui::DiscLines((int)t.pos.x, (int)t.pos.y, TOWN_CLICK_RADIUS + 10,
                         c.factions[gs.parties[sg.party].faction].color);
         ui::Rect((int)t.pos.x - 48, (int)t.pos.y - 80, 104, 20, Fade(BLACK, 0.55f));
         ui::Text("UNDER SIEGE", (int)t.pos.x - 44, (int)t.pos.y - 78, 16, RED);
@@ -3730,11 +3730,11 @@ void CampaignDraw(const GameState& gs) {
     for (const Skirmish& sk : gs.skirmishes) {
         const FactionDef& fa = c.factions[gs.parties[sk.a].faction];
         const FactionDef& fb = c.factions[gs.parties[sk.b].faction];
-        DrawCircleV(sk.pos, 22, Fade(BLACK, 0.35f));
-        DrawLineEx({ sk.pos.x - 12, sk.pos.y - 12 }, { sk.pos.x + 12, sk.pos.y + 12 }, 3, fa.color);
-        DrawLineEx({ sk.pos.x + 12, sk.pos.y - 12 }, { sk.pos.x - 12, sk.pos.y + 12 }, 3, fb.color);
+        ui::DiscV(sk.pos, 22, Fade(BLACK, 0.35f));
+        ui::LineEx({ sk.pos.x - 12, sk.pos.y - 12 }, { sk.pos.x + 12, sk.pos.y + 12 }, 3, fa.color);
+        ui::LineEx({ sk.pos.x + 12, sk.pos.y - 12 }, { sk.pos.x - 12, sk.pos.y + 12 }, 3, fb.color);
         const float frac = sk.duration > 0 ? sk.timer / sk.duration : 0;
-        DrawRing(sk.pos, 24, 27, -90, -90 + 360 * frac, 32, Fade(GOLD, 0.9f));
+        ui::Ring(sk.pos, 24, 27, -90, -90 + 360 * frac, 32, Fade(GOLD, 0.9f));
     }
 
     // Your own banner: taller pole, bright flag, gold finial.
@@ -3742,17 +3742,17 @@ void CampaignDraw(const GameState& gs) {
         const Vector2 p = gs.player.pos;
         const Color mine = c.factions[c.playerFaction].color;
         DrawEllipse((int)p.x, (int)p.y + 4, 11, 4, Fade(BLACK, 0.3f));
-        DrawLineEx({ p.x, p.y + 4 }, { p.x, p.y - 30 }, 3.0f, Color{ 92, 70, 48, 255 });
-        DrawTriangle({ p.x, p.y - 30 }, { p.x, p.y - 16 }, { p.x + 22, p.y - 23 }, mine);
+        ui::LineEx({ p.x, p.y + 4 }, { p.x, p.y - 30 }, 3.0f, Color{ 92, 70, 48, 255 });
+        ui::Tri({ p.x, p.y - 30 }, { p.x, p.y - 16 }, { p.x + 22, p.y - 23 }, mine);
         DrawTriangleLines({ p.x, p.y - 30 }, { p.x, p.y - 16 }, { p.x + 22, p.y - 23 },
                           Fade(BLACK, 0.5f));
-        DrawCircleV({ p.x, p.y - 32 }, 3, GOLD);
+        ui::DiscV({ p.x, p.y - 32 }, 3, GOLD);
         // A crown over the banner once you wear one (V94).
         if (gs.crowned) {
             const float cy = p.y - 40;
             ui::Rect((int)p.x - 8, (int)cy, 16, 5, GOLD);
             for (int k = -1; k <= 1; ++k)
-                DrawTriangle({ p.x + k * 6.0f - 3, cy },
+                ui::Tri({ p.x + k * 6.0f - 3, cy },
                              { p.x + k * 6.0f + 3, cy },
                              { p.x + k * 6.0f, cy - 6 }, GOLD);
         }
@@ -3771,7 +3771,7 @@ void CampaignDraw(const GameState& gs) {
         else if (wt == WorldTerrain::Forest)
                          { pcol = Color{ 235, 170, 60, 255 }; ptxt = "forest  -30%"; }
         else             { pcol = Color{ 150, 165, 200, 255 };ptxt = "mountains  -45%"; }
-        DrawRing(p, 14, 17, 0, 360, 32, Fade(pcol, 0.85f));
+        ui::Ring(p, 14, 17, 0, 360, 32, Fade(pcol, 0.85f));
         if (ptxt) {
             ui::Rect((int)p.x - 46, (int)p.y + 12, 130, 18, Fade(BLACK, 0.5f));
             ui::Text(ptxt, (int)p.x - 42, (int)p.y + 14, 14, pcol);
@@ -3782,9 +3782,9 @@ void CampaignDraw(const GameState& gs) {
         if (!l.alive) continue;
         const Color fc = gs.content.factions.valid(l.faction)
                              ? gs.content.factions[l.faction].color : DARKGRAY;
-        DrawCircleV(l.pos, 16, Fade(BLACK, 0.55f));
-        DrawCircleV(l.pos, 10, Fade(fc, 0.8f));
-        DrawCircleV({ l.pos.x + 6, l.pos.y - 14 }, 5, Fade(DARKGRAY, 0.5f));
+        ui::DiscV(l.pos, 16, Fade(BLACK, 0.55f));
+        ui::DiscV(l.pos, 10, Fade(fc, 0.8f));
+        ui::DiscV({ l.pos.x + 6, l.pos.y - 14 }, 5, Fade(DARKGRAY, 0.5f));
         ui::Text("Den", (int)l.pos.x - 12, (int)l.pos.y + 20, 15, Fade(RAYWHITE, 0.75f));
     }
 
@@ -3793,8 +3793,8 @@ void CampaignDraw(const GameState& gs) {
     const bool  isNight = dayFrac >= 0.82f || dayFrac < 0.06f;
     if (isNight) {
         for (const Town& t : gs.towns) {
-            DrawCircleV(t.pos, 26, Fade(Color{ 255, 190, 90, 255 }, 0.18f));
-            DrawCircleV(t.pos, 12, Fade(Color{ 255, 210, 120, 255 }, 0.30f));
+            ui::DiscV(t.pos, 26, Fade(Color{ 255, 190, 90, 255 }, 0.18f));
+            ui::DiscV(t.pos, 12, Fade(Color{ 255, 210, 120, 255 }, 0.30f));
         }
     }
     EndMode2D();
@@ -3813,7 +3813,7 @@ void CampaignDraw(const GameState& gs) {
             const int px = (int)fminf(mp.x + 18, (float)GetScreenWidth() - 250);
             const int py = (int)fminf(mp.y + 12, (float)GetScreenHeight() - 150);
             ui::Rect(px, py, 240, 128, Fade(BLACK, 0.85f));
-            DrawRectangleLines(px, py, 240, 128, ov ? c.factions[t.owner].color
+            ui::RectLines(px, py, 240, 128, ov ? c.factions[t.owner].color
                                                     : RAYWHITE);
             ui::Text(TextFormat("%s  (%s)", t.name.c_str(),
                                 SettlementTypeName(t.type)), px + 10, py + 8,
@@ -3852,7 +3852,7 @@ void CampaignDraw(const GameState& gs) {
             const int px = (int)fminf(mp.x + 18, (float)GetScreenWidth() - 240);
             const int py = (int)fminf(mp.y + 12, (float)GetScreenHeight() - 120);
             ui::Rect(px, py, 230, 104, Fade(BLACK, 0.85f));
-            DrawRectangleLines(px, py, 230, 104, f.color);
+            ui::RectLines(px, py, 230, 104, f.color);
             ui::Text(e.lord.empty()
                          ? (e.caravan ? TextFormat("%s caravan", f.name.c_str())
                                       : f.name.c_str())
@@ -3900,7 +3900,7 @@ void CampaignDraw(const GameState& gs) {
         const int   pw = 560;
         const int   px = (sw - pw) / 2;
         ui::Rect(px, py, pw, ph, Fade(Color{ 16, 14, 12, 255 }, 0.85f * a));
-        DrawRectangleLines(px, py, pw, ph, Fade(GOLD, 0.7f * a));
+        ui::RectLines(px, py, pw, ph, Fade(GOLD, 0.7f * a));
         const std::string& head = gs.battleReport.front();
         const bool grim = head.find("DEFEAT") != std::string::npos ||
                           head.find("REPELLED") != std::string::npos;
@@ -3934,7 +3934,7 @@ void CampaignDraw(const GameState& gs) {
         const Town& t = gs.towns[gs.siegePrompt];
         const int px = GetScreenWidth() / 2 - 260, py = 200;
         ui::Rect(px - 16, py - 16, 552, 264, Fade(BLACK, 0.8f));
-        DrawRectangleLines(px - 16, py - 16, 552, 264, GOLD);
+        ui::RectLines(px - 16, py - 16, 552, 264, GOLD);
         const bool village = t.type == SettlementType::Village;
         ui::Title(TextFormat(village ? "THE FIELDS OF %s" : "THE WALLS OF %s",
                              t.name.c_str()), px, py, 30, GOLD);
@@ -4016,7 +4016,7 @@ void CampaignDraw(const GameState& gs) {
                               Fade(GOLD, 0.22f));
                 // the hotkey, shown only under the mouse (V150)
                 const int kw = ui::Measure(ch.key, 14) + 10;
-                DrawRectangleRounded({ (float)(bx + cw / 2 - kw / 2),
+                ui::Rounded({ (float)(bx + cw / 2 - kw / 2),
                                        (float)(GetScreenHeight() - 58),
                                        (float)kw, 20.0f }, 0.4f, 4,
                                      Fade(BLACK, 0.85f));
@@ -4141,7 +4141,7 @@ void CampaignDraw(const GameState& gs) {
             const float speed = 560.0f + (hh & 0xFF);
             const float ry = fmodf((float)((hh >> 8) % (unsigned)h) + rt * speed,
                                    (float)(h + 40)) - 20.0f;
-            DrawLineEx({ x, ry }, { x - 3, ry + 14 }, 1.1f,
+            ui::LineEx({ x, ry }, { x - 3, ry + 14 }, 1.1f,
                        Fade(Color{ 190, 205, 225, 255 }, 0.30f));
         }
     }
@@ -4435,7 +4435,7 @@ void InventoryDraw(const GameState& gs) {
         }
         ui::Rect(bx, by, EQBOX_W, EQBOX_H,
                       Fade(fits ? GOLD : BLACK, fits ? 0.25f : 0.45f));
-        DrawRectangleLines(bx, by, EQBOX_W, EQBOX_H,
+        ui::RectLines(bx, by, EQBOX_W, EQBOX_H,
                            hover ? GOLD : Fade(RAYWHITE, 0.35f));
         ui::Text(SLOT_NAMES[s], bx + 8, by + 4, 15, Fade(RAYWHITE, 0.55f));
         const int h = s == (int)EquipSlot::Weapon ? lo.get(EquipSlot::Weapon)
@@ -4469,7 +4469,7 @@ void InventoryDraw(const GameState& gs) {
                         (float)(w * INV_CELL - 6), (float)(h * INV_CELL - 6) };
         const bool carried = (i == gs.invCarry);
         ui::RectRec(r, Fade(tint, carried ? 0.35f : 0.8f));
-        DrawRectangleLinesEx(r, 2, carried ? GOLD : Fade(BLACK, 0.6f));
+        ui::RectLinesEx(r, 2, carried ? GOLD : Fade(BLACK, 0.6f));
         ui::Text(TextFormat("%.10s", nm), (int)r.x + 4, (int)r.y + 4, 16, BLACK);
     }
     if (gs.inventory.empty())
@@ -4510,7 +4510,7 @@ void InventoryDraw(const GameState& gs) {
                                ? ui::Measure(line1, 20) : ui::Measure(line2, 18);
             const int bx = (int)m.x + 16, by = (int)m.y + 8;
             ui::Rect(bx - 8, by - 6, tw + 16, 54, Fade(BLACK, 0.85f));
-            DrawRectangleLines(bx - 8, by - 6, tw + 16, 54, Fade(GOLD, 0.6f));
+            ui::RectLines(bx - 8, by - 6, tw + 16, 54, Fade(GOLD, 0.6f));
             ui::Text(line1, bx, by, 20, RAYWHITE);
             ui::Text(line2, bx, by + 26, 18, Fade(RAYWHITE, 0.75f));
         }
@@ -4796,7 +4796,7 @@ void MarketDraw(const GameState& gs) {
     const int panelY = (int)(H * 0.20f);
     const int panelW = (int)(W * 0.56f);
     const int panelH = H - panelY - (int)(H * 0.15f);
-    DrawRectangleRounded({ (float)panelX - 8, (float)panelY - 34,
+    ui::Rounded({ (float)panelX - 8, (float)panelY - 34,
                            (float)panelW + 16, (float)panelH + 42 },
                          0.04f, 4, Fade(BLACK, 0.35f));
     const int cell = W / 14 > 110 ? 110 : (W / 14 < 64 ? 64 : W / 14);
@@ -4827,7 +4827,7 @@ void MarketDraw(const GameState& gs) {
                               (float)cell, (float)cell };
         DrawGoodIcon(r, gd.tint, gd.name.c_str());
         const bool hov = CheckCollisionPointRec(mp, r);
-        if (hov) DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+        if (hov) ui::RoundedLines(r, 0.18f, 4, GOLD);
         // stock badge, top-right of the tile
         ui::Text(TextFormat("%d", t.stock[g]), (int)(r.x + r.width - 22),
                  (int)(r.y + 5), 15, t.stock[g] > 0 ? RAYWHITE : Fade(RED, 0.8f));
@@ -4860,7 +4860,7 @@ void MarketDraw(const GameState& gs) {
         DrawGoodIcon(r, Fade(c.goods[g].tint, have > 0 ? 1.0f : 0.35f),
                      c.goods[g].name.c_str());
         if (have > 0 && CheckCollisionPointRec(mp, r))
-            DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+            ui::RoundedLines(r, 0.18f, 4, GOLD);
         ui::Text(TextFormat("%d", have), (int)r.x + 4,
                  (int)(r.y + r.height - 18), 15,
                  have > 0 ? RAYWHITE : Fade(RAYWHITE, 0.3f));
@@ -4887,7 +4887,7 @@ void MarketDraw(const GameState& gs) {
                               : (c.armor.valid(it.handle) ? c.armor[it.handle].tint : GRAY);
         ui::Rect(bagX + it.x * tile + 2, by + it.y * tile + 2,
                       tw * tile - 4, th * tile - 4, Fade(col, 0.85f));
-        DrawRectangleLines(bagX + it.x * tile + 2, by + it.y * tile + 2,
+        ui::RectLines(bagX + it.x * tile + 2, by + it.y * tile + 2,
                            tw * tile - 4, th * tile - 4, Fade(RAYWHITE, 0.4f));
     }
     by += INV_H * tile + 14;
@@ -4915,7 +4915,7 @@ void MarketDraw(const GameState& gs) {
             DrawGoodIcon(r, c.armor[armorIt.handle].tint,
                          c.armor[armorIt.handle].name.c_str());
             if (CheckCollisionPointRec(mp, r))
-                DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+                ui::RoundedLines(r, 0.18f, 4, GOLD);
             ui::Text(TextFormat("%s %dg", c.armor[armorIt.handle].name.c_str(),
                                 ArmorCost(c.armor[armorIt.handle])),
                      fx, fy + cell + 3, 15, RAYWHITE);
@@ -4927,7 +4927,7 @@ void MarketDraw(const GameState& gs) {
             DrawGoodIcon(r, c.weapons[weaponIt.handle].tint,
                          c.weapons[weaponIt.handle].name.c_str());
             if (CheckCollisionPointRec(mp, r))
-                DrawRectangleRoundedLines(r, 0.18f, 4, GOLD);
+                ui::RoundedLines(r, 0.18f, 4, GOLD);
             ui::Text(TextFormat("%s %dg", c.weapons[weaponIt.handle].name.c_str(),
                                 WeaponCost(c.weapons[weaponIt.handle])),
                      fx, fy + cell + 3, 15, RAYWHITE);
@@ -5207,7 +5207,7 @@ void PartyDraw(const GameState& gs) {
             ui::Rect(panelX + 340, y + 8, 90, 8, Fade(BLACK, 0.5f));
             ui::Rect(panelX + 340, y + 8, (int)(90 * fill), 8,
                           can ? LIME : Fade(GOLD, 0.8f));
-            DrawRectangleLines(panelX + 340, y + 8, 90, 8, Fade(RAYWHITE, 0.3f));
+            ui::RectLines(panelX + 340, y + 8, 90, 8, Fade(RAYWHITE, 0.3f));
             // The price of the man he becomes (V134), right on the row.
             ui::Text(TextFormat("-> %s (%dg)", c.troops[td.upgradesTo].name.c_str(),
                                 EstateHas(gs, "smithy")
@@ -5226,7 +5226,7 @@ void PartyDraw(const GameState& gs) {
     // The parade panel, framed on the right.
     const int paneX = GetScreenWidth() - 452;
     DrawTextureRec(parade.texture, { 0, 0, 420, -420 }, { (float)paneX, 180 }, WHITE);
-    DrawRectangleLines(paneX, 180, 420, 420, Fade(GOLD, 0.5f));
+    ui::RectLines(paneX, 180, 420, 420, Fade(GOLD, 0.5f));
     ui::Text("Your ranks on parade", paneX + 8, 186, 18, Fade(RAYWHITE, 0.7f));
 
     // Captives in the train (V36): manpower at the price of your name.
@@ -5974,12 +5974,12 @@ void TitleDraw(const GameState& gs) {
     const int hgt = GetScreenHeight();
 
     // A dusk field of war: gradient sky, low sun, hill lines, castle silhouette.
-    DrawRectangleGradientV(0, 0, w, hgt, Color{ 30, 26, 44, 255 }, Color{ 158, 74, 44, 255 });
-    DrawCircleGradient(w / 5, hgt * 2 / 3, 110, Fade(Color{ 255, 180, 90, 255 }, 0.85f),
+    ui::GradientV(0, 0, w, hgt, Color{ 30, 26, 44, 255 }, Color{ 158, 74, 44, 255 });
+    ui::DiscGradient(w / 5, hgt * 2 / 3, 110, Fade(Color{ 255, 180, 90, 255 }, 0.85f),
                        Fade(WHITE, 0.0f));
     ui::Rect(0, hgt - 160, w, 160, Color{ 26, 20, 24, 255 });          // near ridge
     for (int x = -40; x < w; x += 120)                                       // far hills
-        DrawTriangle({ (float)x, (float)(hgt - 150) }, { (float)(x + 140), (float)(hgt - 150) },
+        ui::Tri({ (float)x, (float)(hgt - 150) }, { (float)(x + 140), (float)(hgt - 150) },
                      { (float)(x + 70), (float)(hgt - 230) }, Color{ 38, 30, 36, 255 });
     // castle on the ridge, black against the dusk
     const int cx = w * 3 / 4;
@@ -5987,10 +5987,10 @@ void TitleDraw(const GameState& gs) {
     for (int b = -90; b < 90; b += 30)
         ui::Rect(cx + b, hgt - 316, 16, 16, Color{ 16, 12, 16, 255 });
     ui::Rect(cx - 24, hgt - 380, 48, 90, Color{ 16, 12, 16, 255 });     // keep tower
-    DrawLineEx({ (float)cx, (float)(hgt - 380) }, { (float)cx, (float)(hgt - 412) }, 3, Color{ 16, 12, 16, 255 });
-    DrawTriangle({ (float)cx, (float)(hgt - 412) }, { (float)cx, (float)(hgt - 396) },
+    ui::LineEx({ (float)cx, (float)(hgt - 380) }, { (float)cx, (float)(hgt - 412) }, 3, Color{ 16, 12, 16, 255 });
+    ui::Tri({ (float)cx, (float)(hgt - 412) }, { (float)cx, (float)(hgt - 396) },
                  { (float)(cx + 26), (float)(hgt - 404) }, Color{ 150, 30, 30, 255 });   // banner
-    DrawRectangleGradientV(0, 0, w, hgt / 2, Fade(BLACK, 0.35f), Fade(BLACK, 0.0f));     // vignette for text
+    ui::GradientV(0, 0, w, hgt / 2, Fade(BLACK, 0.35f), Fade(BLACK, 0.0f));     // vignette for text
     const char* title = "OPENWARBAND";
     ui::Title(title, (w - ui::MeasureTitle(title, 84)) / 2, 150, 84, GOLD);
     const char* sub = "raise a warband - take the land - hold it - "

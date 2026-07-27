@@ -1179,8 +1179,8 @@ void DialogueDraw(const GameState& gs) {
 
     // A painted bust stands in for a portrait until faces exist.
     ui::Rect(x, 90, 120, 150, Fade(Color{ 60, 50, 44, 255 }, 0.9f));
-    DrawRectangleLines(x, 90, 120, 150, Fade(GOLD, 0.5f));
-    DrawCircle(x + 60, 140, 26, Color{ 214, 176, 142, 255 });          // head
+    ui::RectLines(x, 90, 120, 150, Fade(GOLD, 0.5f));
+    ui::Disc(x + 60, 140, 26, Color{ 214, 176, 142, 255 });          // head
     ui::Rect(x + 24, 170, 72, 60, Color{ 96, 84, 60, 255 });      // shoulders
     ui::Title(gs.dialogueName.c_str(), x + 140, 110, 40, GOLD);
     if (!gs.audienceLord.empty()) {   // his opinion of you, on his face (V26)
@@ -1387,7 +1387,7 @@ void TownDraw(const GameState& gs) {
     else if (townTod >= 0.70f){ skyTop = { 168, 106, 88, 255 }; skyBot = { 238, 176, 128, 255 }; }
     else if (townTod < 0.10f) { skyTop = { 140, 118, 116, 255 }; skyBot = { 234, 200, 166, 255 }; }
     ClearBackground(skyTop);   // clears depth too
-    DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
+    ui::GradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                            skyTop, skyBot);
 
     // Faint lute from the gold-roofed door when you stand near it (N5).
@@ -1610,7 +1610,7 @@ void TownDraw(const GameState& gs) {
         ui::Rect(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                       townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
                       Fade(BLACK, 0.78f));
-        DrawRectangleLines(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
+        ui::RectLines(x0 - 30, 40, townmenu::X_HALF * 2 + 60,
                            townmenu::Y + townmenu::ROWS * townmenu::ROW_H - 10,
                            GOLD);
         ui::Title(town.name.c_str(), x0, 56, 40, GOLD);
