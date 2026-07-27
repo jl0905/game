@@ -73,7 +73,13 @@ void PresentVulkanUi();           // render + composite; call before EndDrawing
 // Backend side (vkexec.cpp): upload the combined R8 glyph atlas, then render
 // recorded quads offscreen and return RGBA pixels (row 0 = top) or null.
 void VulkanSetUiAtlas(const unsigned char* r8, int w, int h);
-const unsigned char* VulkanRenderUi(const void* verts, int vcount, int w, int h);
+int  VulkanRegisterUiTexture(const unsigned char* rgba, int w, int h);   // V177
+const unsigned char* VulkanRenderUi(const void* verts, int vcount,
+                                    const int* segTex, const int* segCount,
+                                    int nSegs, int w, int h);
+// V177: textured quad at the seam — registers the raylib texture on first
+// use (id-keyed) and records a textured segment; false = caller draws GL.
+bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint);
 
 // V162: boots a live Vulkan device inside the game process the first time
 // renderer=vulkan flushes a frame; true once the frame executor is usable.

@@ -89,6 +89,11 @@ struct VkExec {
     int uiCap = 0, uiReadSize = 0;
     VkCommandBuffer uiCmd = VK_NULL_HANDLE;
     VkFence uiFence = VK_NULL_HANDLE;
+    // textured UI quads (V177)
+    VkPipeline imgPipe = VK_NULL_HANDLE;
+    VkDescriptorPool texPool = VK_NULL_HANDLE;
+    int texCount = 0;
+    VkDescriptorSet texSet[16] = {};
 };
 VkExec g_vk;
 
@@ -636,6 +641,77 @@ void VulkanSetUiAtlas(const unsigned char* r8, int w, int h) {
     TraceLog(RL_LOG_INFO, "rdr: VULKAN TEXT ATLAS uploaded (%dx%d R8)", w, h);
 }
 
+// V177: register an RGBA texture for textured UI quads; returns an id for
+// the segment stream, or -1. Linear-tiled host-visible, like the atlas.
+int VulkanRegisterUiTexture(const unsigned char* rgba, int w, int h) {
+    if (!g_vk.live || !g_vk.atlasSet || g_vk.texCount >= 16) return -1;
+    DFN(vkCreateImage); DFN(vkGetImageMemoryRequirements); DFN(vkAllocateMemory);
+    DFN(vkBindImageMemory); DFN(vkMapMemory); DFN(vkCreateImageView);
+    DFN(vkGetImageSubresourceLayout); DFN(vkCreateDescriptorPool);
+    DFN(vkAllocateDescriptorSets); DFN(vkUpdateDescriptorSets);
+    if (!g_vk.texPool) {
+        VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16 };
+        VkDescriptorPoolCreateInfo dpci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+        dpci.maxSets = 16;
+        dpci.poolSizeCount = 1;
+        dpci.pPoolSizes = &ps;
+        vkCreateDescriptorPool(g_vk.dev, &dpci, NULL, &g_vk.texPool);
+    }
+    VkImageCreateInfo ici = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+    ici.extent = { (uint32_t)w, (uint32_t)h, 1 };
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_LINEAR;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+    VkImage img;
+    if (vkCreateImage(g_vk.dev, &ici, NULL, &img) != VK_SUCCESS) return -1;
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(g_vk.dev, img, &req);
+    VkMemoryAllocateInfo mai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    mai.allocationSize = req.size;
+    mai.memoryTypeIndex = MemType(req.memoryTypeBits,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkDeviceMemory mem;
+    if (vkAllocateMemory(g_vk.dev, &mai, NULL, &mem) != VK_SUCCESS) return -1;
+    vkBindImageMemory(g_vk.dev, img, mem, 0);
+    VkImageSubresource sub = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+    VkSubresourceLayout lay;
+    vkGetImageSubresourceLayout(g_vk.dev, img, &sub, &lay);
+    void* map = nullptr;
+    vkMapMemory(g_vk.dev, mem, 0, req.size, 0, &map);
+    for (int y = 0; y < h; ++y)
+        memcpy((unsigned char*)map + lay.offset + (size_t)y * lay.rowPitch,
+               rgba + (size_t)y * w * 4, (size_t)w * 4);
+    VkImageViewCreateInfo vci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    vci.image = img;
+    vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    VkImageView view;
+    vkCreateImageView(g_vk.dev, &vci, NULL, &view);
+    VkDescriptorSetAllocateInfo dsai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    dsai.descriptorPool = g_vk.texPool;
+    dsai.descriptorSetCount = 1;
+    dsai.pSetLayouts = &g_vk.uiDsl;
+    VkDescriptorSet set;
+    if (vkAllocateDescriptorSets(g_vk.dev, &dsai, &set) != VK_SUCCESS) return -1;
+    VkDescriptorImageInfo dii = { g_vk.atlasSamp, view, VK_IMAGE_LAYOUT_GENERAL };
+    VkWriteDescriptorSet wds = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    wds.dstSet = set;
+    wds.dstBinding = 0;
+    wds.descriptorCount = 1;
+    wds.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    wds.pImageInfo = &dii;
+    vkUpdateDescriptorSets(g_vk.dev, 1, &wds, 0, NULL);
+    g_vk.texSet[g_vk.texCount] = set;
+    return g_vk.texCount++;
+}
+
 namespace {
 // Build the UI pipeline against the shared render pass (needs rp to exist).
 bool EnsureUiPipeline() {
@@ -728,6 +804,21 @@ bool EnsureUiPipeline() {
     gp.renderPass = g_vk.rp;
     if (vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL, &g_vk.uiPipe) != VK_SUCCESS)
         return false;
+    // Textured-quad sibling (V177): same layout, image.frag samples RGBA.
+    size_t ifs;
+    void* ifsc = ReadSpv("assets/spv/image.frag.spv", &ifs);
+    if (ifsc) {
+        mci.codeSize = ifs;
+        mci.pCode = (const uint32_t*)ifsc;
+        VkShaderModule imf;
+        vkCreateShaderModule(g_vk.dev, &mci, NULL, &imf);
+        free(ifsc);
+        VkPipelineShaderStageCreateInfo ist[2] = { st[0], st[1] };
+        ist[1].module = imf;
+        VkGraphicsPipelineCreateInfo igp = gp;
+        igp.pStages = ist;
+        vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &igp, NULL, &g_vk.imgPipe);
+    }
     VkCommandBufferAllocateInfo cbai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     cbai.commandPool = g_vk.pool;
     cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -743,7 +834,10 @@ bool EnsureUiPipeline() {
 
 // V173: render the recorded HUD quads through the Vulkan text pipeline into
 // the shared offscreen target (transparent clear) and read back RGBA.
-const unsigned char* VulkanRenderUi(const void* verts, int vcount, int w, int h) {
+// V177: the segment arrays interleave atlas/solid runs with textured runs.
+const unsigned char* VulkanRenderUi(const void* verts, int vcount,
+                                    const int* segTex, const int* segCount,
+                                    int nSegs, int w, int h) {
     if (!g_vk.live || g_vk.frameFailed || g_vk.uiFailed || !g_vk.atlasSet ||
         vcount <= 0 || w <= 0 || h <= 0)
         return nullptr;
@@ -815,13 +909,33 @@ const unsigned char* VulkanRenderUi(const void* verts, int vcount, int w, int h)
     VkRect2D sc = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
     vkCmdSetViewport(g_vk.uiCmd, 0, 1, &vp);
     vkCmdSetScissor(g_vk.uiCmd, 0, 1, &sc);
-    vkCmdBindDescriptorSets(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            g_vk.uiLayout, 0, 1, &g_vk.uiDset, 0, NULL);
     const float scr[4] = { (float)w, (float)h, 0, 0 };
     vkCmdPushConstants(g_vk.uiCmd, g_vk.uiLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 16, scr);
     VkDeviceSize off = 0;
     vkCmdBindVertexBuffers(g_vk.uiCmd, 0, 1, &g_vk.uiBuf, &off);
-    vkCmdDraw(g_vk.uiCmd, (uint32_t)vcount, 1, 0, 0);
+    // Segment stream (V177): -1 = atlas/solid via the text pipeline; >=0 = a
+    // registered RGBA texture via the image pipeline. Order preserved.
+    if (!segTex || nSegs <= 0) {
+        vkCmdBindPipeline(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.uiPipe);
+        vkCmdBindDescriptorSets(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                g_vk.uiLayout, 0, 1, &g_vk.uiDset, 0, NULL);
+        vkCmdDraw(g_vk.uiCmd, (uint32_t)vcount, 1, 0, 0);
+    } else {
+        int first = 0;
+        for (int s = 0; s < nSegs; ++s) {
+            const int tex = segTex[s], n = segCount[s];
+            if (n <= 0) continue;
+            const bool textured = tex >= 0 && tex < g_vk.texCount && g_vk.imgPipe;
+            vkCmdBindPipeline(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              textured ? g_vk.imgPipe : g_vk.uiPipe);
+            vkCmdBindDescriptorSets(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    g_vk.uiLayout, 0, 1,
+                                    textured ? &g_vk.texSet[tex] : &g_vk.uiDset,
+                                    0, NULL);
+            vkCmdDraw(g_vk.uiCmd, (uint32_t)n, 1, (uint32_t)first, 0);
+            first += n;
+        }
+    }
     vkCmdEndRenderPass(g_vk.uiCmd);
     VkBufferImageCopy region = {};
     region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
@@ -966,7 +1080,9 @@ namespace rdr {
 bool VulkanExecutorReady() { return false; }
 void VulkanSetTerrain(const float*, int) {}
 void VulkanSetUiAtlas(const unsigned char*, int, int) {}
-const unsigned char* VulkanRenderUi(const void*, int, int, int) { return nullptr; }
+int VulkanRegisterUiTexture(const unsigned char*, int, int) { return -1; }
+const unsigned char* VulkanRenderUi(const void*, int, const int*, const int*,
+                                    int, int, int) { return nullptr; }
 const unsigned char* VulkanRenderFrame(const float*, const float*, const void*,
                                        int, int, int) { return nullptr; }
 }

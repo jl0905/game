@@ -118,6 +118,19 @@ namespace {
 std::vector<UiVert> g_uiVerts;
 bool g_uiRecord = true;
 Texture2D g_uiTex = { 0 };
+// Segment stream (V177): runs of verts sharing one pipeline binding.
+// tex -1 = atlas/solid (text pipeline); >=0 = registered RGBA texture.
+std::vector<int> g_segTex, g_segCount;
+std::unordered_map<unsigned, int> g_texIds;   // raylib texture id -> vk id
+
+void SegAppend(int tex, int n) {
+    if (!g_segTex.empty() && g_segTex.back() == tex)
+        g_segCount.back() += n;
+    else {
+        g_segTex.push_back(tex);
+        g_segCount.push_back(n);
+    }
+}
 }  // namespace
 
 bool VulkanUiActive() {
@@ -146,14 +159,56 @@ void PushUiVerts(const UiVert* v, int n) {
             g_uiVerts[i].x = s.x;
             g_uiVerts[i].y = s.y;
         }
+    SegAppend(-1, n);
+}
+
+bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint) {
+    if (!VulkanUiActive() || tex.id == 0) return false;
+    int vkId;
+    auto it = g_texIds.find(tex.id);
+    if (it != g_texIds.end()) {
+        vkId = it->second;
+    } else {
+        Image im = LoadImageFromTexture(tex);
+        ImageFormat(&im, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+        vkId = VulkanRegisterUiTexture((const unsigned char*)im.data,
+                                       im.width, im.height);
+        UnloadImage(im);
+        g_texIds[tex.id] = vkId;   // cache even on failure: don't retry hot
+    }
+    if (vkId < 0) return false;
+    const float u0 = src.x / tex.width, v0 = src.y / tex.height;
+    const float u1 = (src.x + src.width) / tex.width;
+    const float v1 = (src.y + src.height) / tex.height;
+    const float cr = tint.r / 255.0f, cg = tint.g / 255.0f;
+    const float cb = tint.b / 255.0f, ca = tint.a / 255.0f;
+    const float x0 = dst.x, y0 = dst.y, x1 = dst.x + dst.width, y1 = dst.y + dst.height;
+    UiVert q[6] = {
+        { x0, y0, u0, v0, cr, cg, cb, ca }, { x1, y0, u1, v0, cr, cg, cb, ca },
+        { x1, y1, u1, v1, cr, cg, cb, ca }, { x0, y0, u0, v0, cr, cg, cb, ca },
+        { x1, y1, u1, v1, cr, cg, cb, ca }, { x0, y1, u0, v1, cr, cg, cb, ca },
+    };
+    if (g_uiCamOn)
+        for (UiVert& u : q) {
+            const Vector2 s = GetWorldToScreen2D({ u.x, u.y }, g_uiCam);
+            u.x = s.x;
+            u.y = s.y;
+        }
+    g_uiVerts.insert(g_uiVerts.end(), q, q + 6);
+    SegAppend(vkId, 6);
+    return true;
 }
 
 void PresentVulkanUi() {
     if (g_uiVerts.empty()) return;
     const int w = GetScreenWidth(), h = GetScreenHeight();
     const unsigned char* px =
-        VulkanRenderUi(g_uiVerts.data(), (int)g_uiVerts.size(), w, h);
+        VulkanRenderUi(g_uiVerts.data(), (int)g_uiVerts.size(),
+                       g_segTex.data(), g_segCount.data(),
+                       (int)g_segTex.size(), w, h);
     g_uiVerts.clear();
+    g_segTex.clear();
+    g_segCount.clear();
     if (!px) return;
     if (g_uiTex.id == 0 || g_uiTex.width != w || g_uiTex.height != h) {
         if (g_uiTex.id) UnloadTexture(g_uiTex);

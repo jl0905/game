@@ -1997,3 +1997,12 @@ over two half-features.
   GL remainder game-wide: the baked map ground texture blit, icon
   textures, the post/shadow GL passes, and the window itself.
   137 scripts green.
+
+- [x] **V177. Iteration one-seventy-seven — textures cross the seam; the map ground renders on Vulkan.**
+  The UI layer gains a textured-quad road: image.frag (new SPIR-V),
+  a 16-slot RGBA texture registry with per-texture descriptors, and
+  a segment stream that interleaves atlas/solid runs with textured
+  runs in draw order. The campaign's baked map-ground texture now
+  renders through it — with renderer=vulkan the ENTIRE campaign
+  screen (ground, markers, labels, HUD) is Vulkan output composited
+  once. 137 scripts green.
