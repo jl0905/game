@@ -1871,3 +1871,15 @@ over two half-features.
   frame; GL renders until the frame executor takes the recording (next:
   offscreen render of the buckets + present interop per RENDERER.md).
   137 scripts green.
+
+- [x] **V163. Iteration one-sixty-three — the army renders on Vulkan, in the game.**
+  src/vkexec.cpp grows the frame executor: offscreen R8G8B8A8+D32
+  target, the proven box pipeline (assets/spv), one instanced draw of
+  the frame's recorded buckets with the live game camera (negative
+  viewport for GL clip parity, z-range fix-up), synchronous readback.
+  rdr::Flush() takes the Vulkan road when renderer=vulkan and the
+  composite lands after EndMode3D (rdr::PresentVulkan). Verified from
+  a real --bench: VULKAN FRAME EXECUTOR LIVE on the RTX 4060, 600
+  frames clean. The readback interop costs fps (32 vs 105 GL) — that
+  tax is exactly what the native window swap (next) deletes. 137
+  scripts green.

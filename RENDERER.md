@@ -76,3 +76,8 @@ renderer-only transplant.
 - V162: in-game Vulkan device boot (src/vkexec.cpp) — instance/device/queue
   live inside openwarband.exe when renderer=vulkan; VulkanExecutorReady()
   is the gate the frame executor will flip.
+
+- V163: in-game Vulkan FRAME EXECUTOR — the battle's recorded buckets render
+  on the Vulkan device every frame (offscreen + readback composite over GL).
+  Remaining: native Vulkan window/swapchain (removes the readback tax),
+  terrain/text through the seam, campaign/town screens, raylib retires.

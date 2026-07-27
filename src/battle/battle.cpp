@@ -3451,6 +3451,7 @@ void BattleDraw(const Content& c) {
     EndShaderMode();
 
     EndMode3D();
+    rdr::PresentVulkan();   // composite the Vulkan-rendered army (V163)
     PostEnd();     // grade the world; HUD stays crisp (V151)
 
     // Floating damage numbers (V144): your hits in gold rising off the man,

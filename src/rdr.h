@@ -48,8 +48,18 @@ void FlushRaylib(const RaylibInstancedState& st);
 void Flush(const RaylibInstancedState& st);
 
 // V162: boots a live Vulkan device inside the game process the first time
-// renderer=vulkan flushes a frame; returns true once the Vulkan frame
-// executor can take the recording (false today -> GL runs the frame).
+// renderer=vulkan flushes a frame; true once the frame executor is usable.
 bool VulkanExecutorReady();
+
+// V163: the Vulkan frame executor. Renders `count` 80-byte instances
+// (column-major mat4 + rgba floats) offscreen with the game's camera and
+// returns RGBA pixels (row 0 = top), or null on failure.
+const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
+                                       const void* instData, int count,
+                                       int w, int h);
+
+// V163: composite the Vulkan-rendered layer over the GL frame. Call once
+// per frame after EndMode3D(); no-op unless a Vulkan frame is pending.
+void PresentVulkan();
 
 }  // namespace rdr

@@ -1,6 +1,8 @@
 #include "rdr.h"
 #include "settings.h"
 #include "raymath.h"
+#include "rlgl.h"
+#include <vector>
 
 // The seam's recording + raylib executor (V160). The recording types are
 // shared verbatim with the Vulkan backend (tools/vkarmy.c consumes the same
@@ -59,10 +61,62 @@ void FlushRaylib(const RaylibInstancedState& st) {
     }
 }
 
+namespace {
+Texture2D g_vkTex = { 0 };
+bool g_vkPending = false;
+
+// The Vulkan road (V163): flatten the buckets into the vkarmy instance
+// shape, render them offscreen on the Vulkan device with the live camera,
+// and stage the result for PresentVulkan() after EndMode3D().
+bool FlushVulkan(const RaylibInstancedState& st) {
+    static std::vector<float> inst;
+    inst.clear();
+    int count = 0;
+    for (auto& [key, mats] : g_buckets) {
+        const float r = (key & 0xFF) / 255.0f, g = ((key >> 8) & 0xFF) / 255.0f;
+        const float b = ((key >> 16) & 0xFF) / 255.0f, a = ((key >> 24) & 0xFF) / 255.0f;
+        for (const Matrix& m : mats) {
+            const float16 f = MatrixToFloatV(m);   // column-major, as GLSL wants
+            inst.insert(inst.end(), f.v, f.v + 16);
+            inst.push_back(r); inst.push_back(g); inst.push_back(b); inst.push_back(a);
+            ++count;
+        }
+    }
+    // GL clip z is [-1,1], Vulkan wants [0,1]: append the classic fix-up.
+    Matrix fix = MatrixIdentity();
+    fix.m10 = 0.5f;
+    fix.m14 = 0.5f;
+    const Matrix vp = MatrixMultiply(
+        MatrixMultiply(rlGetMatrixModelview(), rlGetMatrixProjection()), fix);
+    const float16 vpf = MatrixToFloatV(vp);
+    const float sun[4] = { st.sun.x, st.sun.y, st.sun.z, 0.0f };
+    const int w = GetScreenWidth(), h = GetScreenHeight();
+    const unsigned char* px =
+        VulkanRenderFrame(vpf.v, sun, inst.data(), count, w, h);
+    if (!px) return false;
+    if (g_vkTex.id == 0 || g_vkTex.width != w || g_vkTex.height != h) {
+        if (g_vkTex.id) UnloadTexture(g_vkTex);
+        Image im = { (void*)px, w, h, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+        g_vkTex = LoadTextureFromImage(im);
+    } else {
+        UpdateTexture(g_vkTex, px);
+    }
+    g_vkPending = true;
+    for (auto& [key, mats] : g_buckets) mats.clear();
+    return true;
+}
+}  // namespace
+
+void PresentVulkan() {
+    if (!g_vkPending) return;
+    g_vkPending = false;
+    DrawTexture(g_vkTex, 0, 0, WHITE);   // alpha over the GL scene
+}
+
 void Flush(const RaylibInstancedState& st) {
-    if (GetSettings().renderer == 1 && VulkanExecutorReady())
-        return;        // Vulkan took the recording (executor lands here)
-    FlushRaylib(st);   // both roads run through the same recording
+    if (GetSettings().renderer == 1 && VulkanExecutorReady() && FlushVulkan(st))
+        return;        // Vulkan rendered the recording this frame
+    FlushRaylib(st);   // the GL road, unchanged
 }
 
 }  // namespace rdr
