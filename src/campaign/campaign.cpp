@@ -146,7 +146,7 @@ constexpr float TOWN_ENTER_RADIUS = 48.0f;
 // row layouts in the draw functions both quote these — never mirrored
 // literals, so they cannot drift apart.
 namespace layout {
-constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 9;
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 11;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 // The market centres itself (V123): ware rows + saddlebag grid span ~1000px,
 // so the whole block floats around the window centre instead of hugging the
@@ -1443,6 +1443,8 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     if (gs.screen == Screen::Settings) {
         for (int row = 0; row < 9; ++row)
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
+        if (IsKeyPressed(KEY_ZERO))  in.settingsRow = 9;    // shadows (V165)
+        if (IsKeyPressed(KEY_MINUS)) in.settingsRow = 10;   // renderer (V165)
         // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 m = GetMousePosition();
@@ -4998,6 +5000,15 @@ void SettingsUpdate(GameState& gs, const CampaignInput& in) {
         case 7:   // ironman (V147): permadeath is opt-IN
             s.ironman = !s.ironman;
             break;
+        case 8:   // post fx (V151) — was draw-only until V165
+            s.postFx = !s.postFx;
+            break;
+        case 9:   // shadows (V153)
+            s.shadows = !s.shadows;
+            break;
+        case 10:  // renderer backend (V161/V165): the migration switch
+            s.renderer = s.renderer == 1 ? 0 : 1;
+            break;
         default: break;
     }
     if (in.leaveSettlement) {
@@ -5019,7 +5030,8 @@ void SettingsDraw(const GameState& gs) {
     int y = layout::SETTINGS_Y;
     auto row = [&](int i, const char* label, const char* value) {
         DrawHoverRow(0, y, GetScreenWidth(), layout::SETTINGS_ROW_H);
-        ui::Text(TextFormat("[%d]  %-18s %s", i + 1, label, value), x, y, 24, RAYWHITE);
+        const char* cap = i == 9 ? "0" : i == 10 ? "-" : TextFormat("%d", i + 1);
+        ui::Text(TextFormat("[%s]  %-18s %s", cap, label, value), x, y, 24, RAYWHITE);
         y += layout::SETTINGS_ROW_H;
     };
     row(0, "Fullscreen",    s.fullscreen ? "on" : "off");
@@ -5033,6 +5045,10 @@ void SettingsDraw(const GameState& gs) {
                                       : "off - the lone hero survives");   // V147
     row(8, "Post FX",       s.postFx ? "on - filmic grade, vignette, grain"
                                      : "off - raw frame");   // V151
+    row(9, "Shadows",       s.shadows ? "on" : "off");       // V153
+    row(10, "Renderer",     s.renderer == 1
+                                ? "VULKAN - migration preview (battle army)"
+                                : "raylib GL - default");    // V161
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));

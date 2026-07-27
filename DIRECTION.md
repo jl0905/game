@@ -1892,3 +1892,10 @@ over two half-features.
   paints the ground. Flipping the pipeline's colorWriteMask on is the
   whole-terrain switch when the native window lands. Verified live on
   the 4060 (600 frames, ~1.7ms for the pass). 137 scripts green.
+
+- [x] **V165. Iteration one-sixty-five — every graphics switch is in the GUI.**
+  The settings screen grows rows [9] Post FX (its V151 toggle case was
+  never wired — draw-only until now), [0] Shadows, and [-] Renderer
+  (raylib GL | VULKAN migration preview), all click- or key-driven and
+  saved on exit. The Vulkan migration is now switchable entirely from
+  inside the game. 137 scripts green.

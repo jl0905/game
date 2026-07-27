@@ -243,3 +243,10 @@ Clicking a hostile walled town offers, besides storming and engineering:
   the whole map (assets/*.cfg) — see MODDING.md.
 - The headless harness (`--script`) drives real gameplay for testing; see
   tests/README.md and src/harness.cpp.
+
+## Renderer setting (V161-V165)
+Settings screen (O) row [-] Renderer switches between raylib GL (default)
+and VULKAN. Vulkan mode is a migration preview: the battle army and the
+terrain depth pass render on a real Vulkan device (offscreen, composited);
+the native Vulkan window is the remaining step (RENDERER.md). Rows [9]
+Post FX and [0] Shadows toggle the GL effects.
