@@ -1899,3 +1899,13 @@ over two half-features.
   (raylib GL | VULKAN migration preview), all click- or key-driven and
   saved on exit. The Vulkan migration is now switchable entirely from
   inside the game. 137 scripts green.
+
+- [x] **V166. Iteration one-sixty-six — the interop tax is repealed.**
+  Two fixes make renderer=vulkan cost NOTHING over GL (9.56ms vs
+  9.49ms at 600 men, from 32.7ms): the executor is pipelined (two
+  in-flight slots — fill and submit N, present N-1, so the fence wait
+  lands on finished work), and the readback buffer now demands
+  HOST_CACHED memory — the composite was re-reading 3.6MB of
+  write-combined memory per frame, which alone cost ~20ms. One frame
+  of latency on the Vulkan layer, imperceptible at 100+fps. 137
+  scripts green.

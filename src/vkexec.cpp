@@ -13,7 +13,7 @@ enum { RL_LOG_INFO = 3, RL_LOG_WARNING = 4 };
 // device up at first flush, then renders the frame's recorded instance
 // buckets on it: offscreen R8G8B8A8+D32 target, the proven vkarmy box
 // pipeline (assets/spv/box.*.spv), one instanced draw per frame, readback
-// to host memory. rdr.cpp composites the result over the GL scene — the
+// to host memory. rdr.cpp composites the result over the GL scene â€” the
 // present-interop stage of RENDERER.md; the native window swap retires the
 // composite. Headless runs and `renderer raylib` never touch any of this.
 // ---------------------------------------------------------------------------
@@ -51,14 +51,21 @@ struct VkExec {
     VkFramebuffer fb = VK_NULL_HANDLE;
     VkPipelineLayout layout = VK_NULL_HANDLE;
     VkPipeline pipe = VK_NULL_HANDLE;
-    VkBuffer cubeBuf = VK_NULL_HANDLE, instBuf = VK_NULL_HANDLE, readBuf = VK_NULL_HANDLE;
-    VkDeviceMemory cubeMem = VK_NULL_HANDLE, instMem = VK_NULL_HANDLE, readMem = VK_NULL_HANDLE;
-    void* instMap = nullptr;
-    void* readMap = nullptr;
-    int instCap = 0;
+    VkBuffer cubeBuf = VK_NULL_HANDLE;
+    VkDeviceMemory cubeMem = VK_NULL_HANDLE;
+    // Pipelined executor (V166): two in-flight slots. The CPU fills slot N
+    // and presents slot N-1, so the fence wait lands on work the GPU
+    // finished a frame ago instead of stalling on the frame just submitted.
+    VkBuffer instBuf[2] = {}, readBuf[2] = {};
+    VkDeviceMemory instMem[2] = {}, readMem[2] = {};
+    void* instMap[2] = {};
+    void* readMap[2] = {};
+    int instCap[2] = {};
+    VkCommandBuffer cmd[2] = {};
+    VkFence fence[2] = {};
+    bool submitted[2] = {};
+    int frame = 0;
     VkCommandPool pool = VK_NULL_HANDLE;
-    VkCommandBuffer cmd = VK_NULL_HANDLE;
-    VkFence fence = VK_NULL_HANDLE;
     // terrain occluder (V164): depth-only static mesh
     VkPipeline meshPipe = VK_NULL_HANDLE;
     VkBuffer terrBuf = VK_NULL_HANDLE;
@@ -236,9 +243,12 @@ bool BuildFrameResources(int w, int h) {
         vkDestroyImage(g_vk.dev, g_vk.depth, NULL);
         vkFreeMemory(g_vk.dev, g_vk.colorMem, NULL);
         vkFreeMemory(g_vk.dev, g_vk.depthMem, NULL);
-        vkUnmapMemory(g_vk.dev, g_vk.readMem);
-        vkDestroyBuffer(g_vk.dev, g_vk.readBuf, NULL);
-        vkFreeMemory(g_vk.dev, g_vk.readMem, NULL);
+        for (int i = 0; i < 2; ++i) {
+            vkUnmapMemory(g_vk.dev, g_vk.readMem[i]);
+            vkDestroyBuffer(g_vk.dev, g_vk.readBuf[i], NULL);
+            vkFreeMemory(g_vk.dev, g_vk.readMem[i], NULL);
+            g_vk.submitted[i] = false;
+        }
         g_vk.fb = VK_NULL_HANDLE;
     }
 
@@ -249,10 +259,22 @@ bool BuildFrameResources(int w, int h) {
     if (!MakeImage(w, h, VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                    VK_IMAGE_ASPECT_DEPTH_BIT, &g_vk.depth, &g_vk.depthMem, &g_vk.depthView))
         return false;
-    if (!MakeBuffer((VkDeviceSize)w * h * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    &g_vk.readBuf, &g_vk.readMem, &g_vk.readMap))
-        return false;
+    // Readback memory MUST be host-cached: the GL upload reads every byte
+    // back on the CPU, and uncached (write-combined) reads of a 3.6MB frame
+    // cost tens of ms. Fall back to plain coherent if no cached type exists.
+    VkMemoryPropertyFlags readFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                                      VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    bool haveCached = false;
+    for (uint32_t i = 0; i < g_vk.memProps.memoryTypeCount; ++i)
+        if ((g_vk.memProps.memoryTypes[i].propertyFlags & readFlags) == readFlags)
+            haveCached = true;
+    if (!haveCached)
+        readFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    for (int i = 0; i < 2; ++i)
+        if (!MakeBuffer((VkDeviceSize)w * h * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, readFlags,
+                        &g_vk.readBuf[i], &g_vk.readMem[i], &g_vk.readMap[i]))
+            return false;
 
     if (!g_vk.rp) {
         VkAttachmentDescription at[2] = {};
@@ -396,7 +418,7 @@ bool BuildFrameResources(int w, int h) {
         memcpy(cubeMap, cube, sizeof(cube));
 
         // Terrain pipeline (V164): mesh.vert + the same Lambert fragment,
-        // but colour writes OFF — it exists to give the soldiers correct
+        // but colour writes OFF â€” it exists to give the soldiers correct
         // hillside occlusion in the composite while GL still paints the
         // ground. Flipping colorWriteMask on is the whole-terrain switch.
         size_t mvsSize;
@@ -440,10 +462,11 @@ bool BuildFrameResources(int w, int h) {
         VkCommandBufferAllocateInfo cbai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
         cbai.commandPool = g_vk.pool;
         cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cbai.commandBufferCount = 1;
-        vkAllocateCommandBuffers(g_vk.dev, &cbai, &g_vk.cmd);
+        cbai.commandBufferCount = 2;
+        vkAllocateCommandBuffers(g_vk.dev, &cbai, g_vk.cmd);
         VkFenceCreateInfo fenci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        vkCreateFence(g_vk.dev, &fenci, NULL, &g_vk.fence);
+        vkCreateFence(g_vk.dev, &fenci, NULL, &g_vk.fence[0]);
+        vkCreateFence(g_vk.dev, &fenci, NULL, &g_vk.fence[1]);
     }
 
     g_vk.width = w;
@@ -451,29 +474,29 @@ bool BuildFrameResources(int w, int h) {
     return true;
 }
 
-bool EnsureInstCap(int count) {
-    if (count <= g_vk.instCap) return true;
+bool EnsureInstCap(int slot, int count) {
+    if (count <= g_vk.instCap[slot]) return true;
     DFN(vkDestroyBuffer); DFN(vkUnmapMemory); DFN(vkFreeMemory); DFN(vkDeviceWaitIdle);
-    if (g_vk.instBuf) {
+    if (g_vk.instBuf[slot]) {
         vkDeviceWaitIdle(g_vk.dev);
-        vkUnmapMemory(g_vk.dev, g_vk.instMem);
-        vkDestroyBuffer(g_vk.dev, g_vk.instBuf, NULL);
-        vkFreeMemory(g_vk.dev, g_vk.instMem, NULL);
-        g_vk.instBuf = VK_NULL_HANDLE;
+        vkUnmapMemory(g_vk.dev, g_vk.instMem[slot]);
+        vkDestroyBuffer(g_vk.dev, g_vk.instBuf[slot], NULL);
+        vkFreeMemory(g_vk.dev, g_vk.instMem[slot], NULL);
+        g_vk.instBuf[slot] = VK_NULL_HANDLE;
     }
     const int cap = count < 4096 ? 4096 : count * 2;
     if (!MakeBuffer((VkDeviceSize)cap * 80, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    &g_vk.instBuf, &g_vk.instMem, &g_vk.instMap))
+                    &g_vk.instBuf[slot], &g_vk.instMem[slot], &g_vk.instMap[slot]))
         return false;
-    g_vk.instCap = cap;
+    g_vk.instCap[slot] = cap;
     return true;
 }
 
 }  // namespace
 
 // V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4). Called
-// at terrain bake time — possibly before the device exists, so the copy is
+// at terrain bake time â€” possibly before the device exists, so the copy is
 // staged and uploaded lazily on the next Vulkan frame.
 void VulkanSetTerrain(const float* verts, int vertCount) {
     free(g_vk.terrPending);
@@ -528,8 +551,9 @@ bool VulkanExecutorReady() {
 
 // Renders `count` instances (80 bytes each: column-major mat4 + rgba floats)
 // through the Vulkan box pipeline into an offscreen target and returns the
-// RGBA pixels (w*h*4, row 0 = top), or null on failure (caller falls back
-// to GL). Synchronous readback — the present-interop stage; the native
+// RGBA pixels (w*h*4, row 0 = top), or null on failure or warm-up (caller falls back
+// to GL). Pipelined readback (V166): the returned pixels are LAST frame's
+// render - one frame of latency buys back the sync-wait stall â€” the present-interop stage; the native
 // swapchain replaces it when the window itself moves to Vulkan.
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
                                        const void* instData, int count,
@@ -551,8 +575,6 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
         }
     }
     UploadPendingTerrain();
-    if (!EnsureInstCap(count)) { g_vk.frameFailed = true; return nullptr; }
-    if (count > 0) memcpy(g_vk.instMap, instData, (size_t)count * 80);
 
     DFN(vkBeginCommandBuffer); DFN(vkCmdBeginRenderPass); DFN(vkCmdBindPipeline);
     DFN(vkCmdSetViewport); DFN(vkCmdSetScissor); DFN(vkCmdBindVertexBuffers);
@@ -560,10 +582,22 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     DFN(vkCmdCopyImageToBuffer); DFN(vkEndCommandBuffer); DFN(vkQueueSubmit);
     DFN(vkWaitForFences); DFN(vkResetFences); DFN(vkResetCommandBuffer);
 
-    vkResetCommandBuffer(g_vk.cmd, 0);
+    // Slot rotation (V166): reclaim this slot (two frames old â€” the GPU is
+    // long done), fill and submit it, then present the OTHER slot, whose
+    // work was submitted last frame and has had a whole frame to finish.
+    const int cur = g_vk.frame & 1;
+    g_vk.frame++;
+    if (g_vk.submitted[cur])
+        vkWaitForFences(g_vk.dev, 1, &g_vk.fence[cur], VK_TRUE, UINT64_MAX);
+    vkResetFences(g_vk.dev, 1, &g_vk.fence[cur]);
+    g_vk.submitted[cur] = false;
+    if (!EnsureInstCap(cur, count)) { g_vk.frameFailed = true; return nullptr; }
+    if (count > 0) memcpy(g_vk.instMap[cur], instData, (size_t)count * 80);
+
+    vkResetCommandBuffer(g_vk.cmd[cur], 0);
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(g_vk.cmd, &bi);
+    vkBeginCommandBuffer(g_vk.cmd[cur],&bi);
     VkClearValue clears[2];
     clears[0].color = { { 0, 0, 0, 0 } };            // transparent: GL composites
     clears[1].depthStencil = { 1.0f, 0 };
@@ -573,48 +607,52 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     rbi.renderArea = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
     rbi.clearValueCount = 2;
     rbi.pClearValues = clears;
-    vkCmdBeginRenderPass(g_vk.cmd, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(g_vk.cmd[cur],&rbi, VK_SUBPASS_CONTENTS_INLINE);
     {
         // Negative-height viewport (core 1.1) keeps GL clip conventions, so
         // the game's matrices work unmodified and row 0 reads back as top.
         VkViewport vp = { 0, (float)h, (float)w, -(float)h, 0, 1 };
         VkRect2D sc = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
-        vkCmdSetViewport(g_vk.cmd, 0, 1, &vp);
-        vkCmdSetScissor(g_vk.cmd, 0, 1, &sc);
+        vkCmdSetViewport(g_vk.cmd[cur],0, 1, &vp);
+        vkCmdSetScissor(g_vk.cmd[cur],0, 1, &sc);
         float pc[20];
         memcpy(pc, viewProj16, 64);
         memcpy(pc + 16, sun4, 16);
-        vkCmdPushConstants(g_vk.cmd, g_vk.layout,
+        vkCmdPushConstants(g_vk.cmd[cur],g_vk.layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, 80, pc);
         if (g_vk.terrBuf && g_vk.meshPipe) {   // depth-only hillside occluder
-            vkCmdBindPipeline(g_vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.meshPipe);
+            vkCmdBindPipeline(g_vk.cmd[cur],VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.meshPipe);
             VkDeviceSize toff = 0;
-            vkCmdBindVertexBuffers(g_vk.cmd, 0, 1, &g_vk.terrBuf, &toff);
-            vkCmdDraw(g_vk.cmd, (uint32_t)g_vk.terrCount, 1, 0, 0);
+            vkCmdBindVertexBuffers(g_vk.cmd[cur],0, 1, &g_vk.terrBuf, &toff);
+            vkCmdDraw(g_vk.cmd[cur],(uint32_t)g_vk.terrCount, 1, 0, 0);
         }
         if (count > 0) {
-            vkCmdBindPipeline(g_vk.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.pipe);
-            VkBuffer bufs[2] = { g_vk.cubeBuf, g_vk.instBuf };
+            vkCmdBindPipeline(g_vk.cmd[cur],VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.pipe);
+            VkBuffer bufs[2] = { g_vk.cubeBuf, g_vk.instBuf[cur] };
             VkDeviceSize offs[2] = { 0, 0 };
-            vkCmdBindVertexBuffers(g_vk.cmd, 0, 2, bufs, offs);
-            vkCmdDraw(g_vk.cmd, 36, (uint32_t)count, 0, 0);
+            vkCmdBindVertexBuffers(g_vk.cmd[cur],0, 2, bufs, offs);
+            vkCmdDraw(g_vk.cmd[cur],36, (uint32_t)count, 0, 0);
         }
     }
-    vkCmdEndRenderPass(g_vk.cmd);
+    vkCmdEndRenderPass(g_vk.cmd[cur]);
     VkBufferImageCopy region = {};
     region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
     region.imageExtent = { (uint32_t)w, (uint32_t)h, 1 };
-    vkCmdCopyImageToBuffer(g_vk.cmd, g_vk.color, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           g_vk.readBuf, 1, &region);
-    vkEndCommandBuffer(g_vk.cmd);
+    vkCmdCopyImageToBuffer(g_vk.cmd[cur], g_vk.color, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           g_vk.readBuf[cur], 1, &region);
+    vkEndCommandBuffer(g_vk.cmd[cur]);
     VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     si.commandBufferCount = 1;
-    si.pCommandBuffers = &g_vk.cmd;
-    vkQueueSubmit(g_vk.queue, 1, &si, g_vk.fence);
-    vkWaitForFences(g_vk.dev, 1, &g_vk.fence, VK_TRUE, UINT64_MAX);
-    vkResetFences(g_vk.dev, 1, &g_vk.fence);
-    return (const unsigned char*)g_vk.readMap;
+    si.pCommandBuffers = &g_vk.cmd[cur];
+    vkQueueSubmit(g_vk.queue, 1, &si, g_vk.fence[cur]);
+    g_vk.submitted[cur] = true;
+    // Present the other slot: its GPU work has had a full frame to land,
+    // so this wait is normally instant â€” the pipelining win (V166).
+    const int prev = cur ^ 1;
+    if (!g_vk.submitted[prev]) return nullptr;   // very first frame: GL covers it
+    vkWaitForFences(g_vk.dev, 1, &g_vk.fence[prev], VK_TRUE, UINT64_MAX);
+    return (const unsigned char*)g_vk.readMap[prev];
 }
 
 }  // namespace rdr
