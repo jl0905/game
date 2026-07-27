@@ -47,4 +47,9 @@ void FlushRaylib(const RaylibInstancedState& st);
 // Flush() and the seam decides.
 void Flush(const RaylibInstancedState& st);
 
+// V162: boots a live Vulkan device inside the game process the first time
+// renderer=vulkan flushes a frame; returns true once the Vulkan frame
+// executor can take the recording (false today -> GL runs the frame).
+bool VulkanExecutorReady();
+
 }  // namespace rdr

@@ -1861,3 +1861,13 @@ over two half-features.
   the native window swap — RENDERER.md tail) reaches parity. The flip
   point the whole migration converges on is now a shipped, saved,
   user-visible switch. 137 scripts green.
+
+- [x] **V162. Iteration one-sixty-two — a live Vulkan device inside the game.**
+  src/vkexec.cpp: when settings say renderer vulkan, the game process
+  itself now boots Vulkan on first flush — dynamic vulkan-1.dll load,
+  instance, discrete-GPU pick, device + graphics queue — verified live
+  on the RTX 4060 from a real --bench run (which now honours
+  settings.cfg too). rdr::Flush() asks VulkanExecutorReady() each
+  frame; GL renders until the frame executor takes the recording (next:
+  offscreen render of the buckets + present interop per RENDERER.md).
+  137 scripts green.

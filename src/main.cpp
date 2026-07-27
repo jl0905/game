@@ -89,6 +89,7 @@ int main(int argc, char** argv) {
     if (argc >= 3 && std::strcmp(argv[1], "--bench") == 0) {
         Vector2 where = { 500, 500 };
         if (argc >= 5) where = { (float)std::atof(argv[3]), (float)std::atof(argv[4]) };
+        LoadSettings();   // honour renderer/shadows/postfx in the measurement
         return RunBench(std::atoi(argv[2]), where);
     }
 

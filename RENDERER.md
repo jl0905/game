@@ -72,3 +72,7 @@ renderer-only transplant.
 ## Meanwhile: the named pain points get fixed in-engine
 - V149 removed the pop-in LOD tiers (one model at all distances).
 - V152 rebuilds the terrain (see DIRECTION.md).
+
+- V162: in-game Vulkan device boot (src/vkexec.cpp) — instance/device/queue
+  live inside openwarband.exe when renderer=vulkan; VulkanExecutorReady()
+  is the gate the frame executor will flip.

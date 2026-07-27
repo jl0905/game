@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 project(openwarband LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -24,6 +24,7 @@ add_executable(openwarband
     src/ui.cpp
     src/gfx.cpp
     src/rdr.cpp
+    src/vkexec.cpp
     src/sfx.cpp
     src/content.cpp
     src/campaign/campaign.cpp
@@ -33,6 +34,7 @@ add_executable(openwarband
 )
 find_package(Threads REQUIRED)
 target_link_libraries(openwarband PRIVATE raylib Threads::Threads)
+target_include_directories(openwarband PRIVATE third_party/vulkan-headers)
 
 # Ship the runtime assets (fonts, config) next to the executable so the game
 # finds them via GetApplicationDirectory() regardless of the working directory.

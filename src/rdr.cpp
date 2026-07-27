@@ -60,13 +60,8 @@ void FlushRaylib(const RaylibInstancedState& st) {
 }
 
 void Flush(const RaylibInstancedState& st) {
-    static bool noted = false;
-    if (GetSettings().renderer == 1 && !noted) {
-        noted = true;
-        TraceLog(LOG_INFO,
-                 "rdr: renderer=vulkan requested; executor in progress "
-                 "(RENDERER.md) - executing via GL until parity");
-    }
+    if (GetSettings().renderer == 1 && VulkanExecutorReady())
+        return;        // Vulkan took the recording (executor lands here)
     FlushRaylib(st);   // both roads run through the same recording
 }
 
