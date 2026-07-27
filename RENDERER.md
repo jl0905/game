@@ -36,8 +36,14 @@ renderer-only transplant.
    tools/vkdemo.c opens a Win32 window, builds a real swapchain and
    PRESENTS vsynced frames on the RTX 4060 from MinGW with no SDK
    ("vkdemo: PRESENTED 180 frames on NVIDIA GeForce RTX 4060 Laptop
-   GPU"). Next milestones: SPIR-V pipeline (vendor glslang or embed
-   precompiled shaders) → triangle → instanced boxes → the army. — same draws through Vulkan;
+   GPU"). MILESTONES 2+3 SHIPPED (V157): glslang vendored
+   (third_party/glslang-bin, no installer), GLSL→SPIR-V shaders in
+   assets/spv, and tools/vkarmy.c runs a full graphics pipeline —
+   depth buffer, per-instance transforms+colour, push-constant camera,
+   Lambert sun — drawing 2000 marching soldiers + ground in ONE draw:
+   "avg 0.62 ms (1618 fps) on NVIDIA GeForce RTX 4060 Laptop GPU".
+   Next: terrain mesh + trees in the vk scene, then text/HUD, then the
+   game seam swaps backends. — same draws through Vulkan;
    instanced army path ports directly (it is already transform-lists).
    Feature-flag `renderer vulkan|raylib` in settings.cfg; raylib remains
    the fallback until parity.

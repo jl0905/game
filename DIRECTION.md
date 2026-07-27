@@ -1809,3 +1809,14 @@ over two half-features.
   	ourney [stake]; tests/tournament.txt fights all three rounds for
   real (autoresolve is barred from the ring by design) and pins the
   chain: stake charged, Round 2, Round 3, terminal champion/cast-out.
+
+- [x] **V157. Iteration one-fifty-seven — the army marches on Vulkan
+  (phase 2, milestones 2+3).** glslang vendored (no installer),
+  box.vert/box.frag compiled to SPIR-V in assets/spv, and vkarmy runs
+  the real thing: depth-buffered graphics pipeline, per-instance
+  mat4+colour vertex stream (the exact V126/V128 transform-list
+  shape), push-constant camera, Lambert sun — 2000 marching soldiers
+  plus ground in ONE vkCmdDraw at 0.62ms/1618fps uncapped on the RTX
+  4060. The old raylib full-frame is 15.6ms; the Vulkan render core
+  is ~25x cheaper. Also noted from the tournament fork: user wants
+  pill-shaped soldier bodies with wrapped 2D armour textures (queued).

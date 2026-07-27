@@ -62,3 +62,10 @@ if (WIN32)
     target_include_directories(vkdemo PRIVATE third_party/vulkan-headers)
     target_link_libraries(vkdemo PRIVATE user32 gdi32)
 endif()
+
+# vkarmy (V157): SPIR-V pipeline + instanced army on Vulkan.
+if (WIN32)
+    add_executable(vkarmy tools/vkarmy.c)
+    target_include_directories(vkarmy PRIVATE third_party/vulkan-headers)
+    target_link_libraries(vkarmy PRIVATE user32 gdi32)
+endif()
