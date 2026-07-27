@@ -1958,3 +1958,14 @@ over two half-features.
   seam (SeamCube) and flushes per frame. With renderer=vulkan the
   settlement's solids render on the Vulkan device exactly like the
   battlefield's. 137 scripts green.
+
+- [x] **V173. Iteration one-seventy-three — the lettering renders on Vulkan.**
+  The HUD/text layer crosses the seam: ui::Text/Title record glyph
+  quads (rdr::UiVert) when the Vulkan backend is live; both font
+  atlases stack into one R8 texture uploaded to the device; the
+  proven text pipeline (text.vert/frag, alpha-blended, sampler
+  descriptor) renders them offscreen and PresentVulkanUi composites
+  before EndDrawing in every screen. Confirmed live: VULKAN TEXT
+  PIPELINE LIVE in the log, GL 8.0ms / VK 8.8ms. World-space map
+  lettering stays GL inside the 2D camera (SetUiRecording guard).
+  137 scripts green.

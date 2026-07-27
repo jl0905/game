@@ -1253,6 +1253,7 @@ void DialogueDraw(const GameState& gs) {
     }
     option(DLG_LEAVE, "[Esc / E] Take your leave", Fade(RAYWHITE, 0.6f));
     g_dlgHitX = x;
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -1348,7 +1349,8 @@ void TownDraw(const GameState& gs) {
                      10, GetScreenHeight() - 54, 20, LIME);
         ui::Text("[E] back to the street", 10, GetScreenHeight() - 26, 16,
                  Fade(RAYWHITE, 0.7f));
-        EndDrawing();
+        rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
+    EndDrawing();
         return;
     }
 
@@ -1736,5 +1738,6 @@ void TownDraw(const GameState& gs) {
         if (!gs.resultText.empty())
             ui::Text(gs.resultText.c_str(), x0, y + 30, 17, GOLD);
     }
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }

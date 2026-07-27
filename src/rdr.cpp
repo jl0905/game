@@ -113,6 +113,40 @@ void PresentVulkan() {
     DrawTexture(g_vkTex, 0, 0, WHITE);   // alpha over the GL scene
 }
 
+// ---- HUD/text recording (V173) --------------------------------------------
+namespace {
+std::vector<UiVert> g_uiVerts;
+bool g_uiRecord = true;
+Texture2D g_uiTex = { 0 };
+}  // namespace
+
+bool VulkanUiActive() {
+    return g_uiRecord && GetSettings().renderer == 1 && VulkanExecutorReady();
+}
+
+void SetUiRecording(bool on) { g_uiRecord = on; }
+
+void PushUiVerts(const UiVert* v, int n) {
+    g_uiVerts.insert(g_uiVerts.end(), v, v + n);
+}
+
+void PresentVulkanUi() {
+    if (g_uiVerts.empty()) return;
+    const int w = GetScreenWidth(), h = GetScreenHeight();
+    const unsigned char* px =
+        VulkanRenderUi(g_uiVerts.data(), (int)g_uiVerts.size(), w, h);
+    g_uiVerts.clear();
+    if (!px) return;
+    if (g_uiTex.id == 0 || g_uiTex.width != w || g_uiTex.height != h) {
+        if (g_uiTex.id) UnloadTexture(g_uiTex);
+        Image im = { (void*)px, w, h, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+        g_uiTex = LoadTextureFromImage(im);
+    } else {
+        UpdateTexture(g_uiTex, px);
+    }
+    DrawTexture(g_uiTex, 0, 0, WHITE);
+}
+
 void Flush(const RaylibInstancedState& st) {
     if (GetSettings().renderer == 1 && VulkanExecutorReady() && FlushVulkan(st))
         return;        // Vulkan rendered the recording this frame

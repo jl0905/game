@@ -56,6 +56,21 @@ void Flush(const RaylibInstancedState& st);
 void EnsureBackendGL();
 void FlushScene(Vector3 sunDir);
 
+// ---- The HUD/text layer (V173) -------------------------------------------
+// ui.cpp records glyph quads here when the Vulkan backend is active;
+// PresentVulkanUi() renders them through the Vulkan text pipeline and
+// composites the result just before EndDrawing. Coordinates are screen
+// pixels; UV (-1,-1) draws a solid untextured panel.
+struct UiVert { float x, y, u, v, r, g, b, a; };
+bool VulkanUiActive();            // record text instead of GL-drawing it?
+void SetUiRecording(bool on);     // pause inside world-space 2D cameras
+void PushUiVerts(const UiVert* v, int n);
+void PresentVulkanUi();           // render + composite; call before EndDrawing
+// Backend side (vkexec.cpp): upload the combined R8 glyph atlas, then render
+// recorded quads offscreen and return RGBA pixels (row 0 = top) or null.
+void VulkanSetUiAtlas(const unsigned char* r8, int w, int h);
+const unsigned char* VulkanRenderUi(const void* verts, int vcount, int w, int h);
+
 // V162: boots a live Vulkan device inside the game process the first time
 // renderer=vulkan flushes a frame; true once the frame executor is usable.
 bool VulkanExecutorReady();

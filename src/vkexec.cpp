@@ -73,6 +73,22 @@ struct VkExec {
     int terrCount = 0;
     float* terrPending = nullptr;      // staged before the device is up
     int terrPendingCount = 0;
+    // HUD/text layer (V173)
+    VkPipeline uiPipe = VK_NULL_HANDLE;
+    VkPipelineLayout uiLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout uiDsl = VK_NULL_HANDLE;
+    VkDescriptorSet uiDset = VK_NULL_HANDLE;
+    VkImage atlasImg = VK_NULL_HANDLE;
+    VkImageView atlasView = VK_NULL_HANDLE;
+    VkSampler atlasSamp = VK_NULL_HANDLE;
+    bool atlasSet = false, uiFailed = false;
+    VkBuffer uiBuf = VK_NULL_HANDLE, uiRead = VK_NULL_HANDLE;
+    VkDeviceMemory uiMem = VK_NULL_HANDLE, uiReadMem = VK_NULL_HANDLE;
+    void* uiMap = nullptr;
+    void* uiReadMap = nullptr;
+    int uiCap = 0, uiReadSize = 0;
+    VkCommandBuffer uiCmd = VK_NULL_HANDLE;
+    VkFence uiFence = VK_NULL_HANDLE;
 };
 VkExec g_vk;
 
@@ -534,6 +550,294 @@ void UploadPendingTerrain() {
 }
 }  // namespace
 
+// V173: upload the combined R8 glyph atlas (linear-tiled, host-visible,
+// row-pitch honoured) and point a combined-image-sampler descriptor at it.
+void VulkanSetUiAtlas(const unsigned char* r8, int w, int h) {
+    if (!g_vk.live || g_vk.atlasSet) return;
+    DFN(vkCreateImage); DFN(vkGetImageMemoryRequirements); DFN(vkAllocateMemory);
+    DFN(vkBindImageMemory); DFN(vkMapMemory); DFN(vkCreateImageView);
+    DFN(vkCreateSampler); DFN(vkGetImageSubresourceLayout);
+    DFN(vkCreateDescriptorSetLayout); DFN(vkCreateDescriptorPool);
+    DFN(vkAllocateDescriptorSets); DFN(vkUpdateDescriptorSets);
+
+    VkImageCreateInfo aci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    aci.imageType = VK_IMAGE_TYPE_2D;
+    aci.format = VK_FORMAT_R8_UNORM;
+    aci.extent = { (uint32_t)w, (uint32_t)h, 1 };
+    aci.mipLevels = 1;
+    aci.arrayLayers = 1;
+    aci.samples = VK_SAMPLE_COUNT_1_BIT;
+    aci.tiling = VK_IMAGE_TILING_LINEAR;
+    aci.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    aci.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+    if (vkCreateImage(g_vk.dev, &aci, NULL, &g_vk.atlasImg) != VK_SUCCESS) return;
+    VkMemoryRequirements areq;
+    vkGetImageMemoryRequirements(g_vk.dev, g_vk.atlasImg, &areq);
+    VkMemoryAllocateInfo aai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    aai.allocationSize = areq.size;
+    aai.memoryTypeIndex = MemType(areq.memoryTypeBits,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkDeviceMemory amem;
+    if (vkAllocateMemory(g_vk.dev, &aai, NULL, &amem) != VK_SUCCESS) return;
+    vkBindImageMemory(g_vk.dev, g_vk.atlasImg, amem, 0);
+    VkImageSubresource sub = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+    VkSubresourceLayout lay;
+    vkGetImageSubresourceLayout(g_vk.dev, g_vk.atlasImg, &sub, &lay);
+    void* amap = nullptr;
+    vkMapMemory(g_vk.dev, amem, 0, areq.size, 0, &amap);
+    for (int y = 0; y < h; ++y)
+        memcpy((unsigned char*)amap + lay.offset + (size_t)y * lay.rowPitch,
+               r8 + (size_t)y * w, (size_t)w);
+    VkImageViewCreateInfo avci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    avci.image = g_vk.atlasImg;
+    avci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    avci.format = VK_FORMAT_R8_UNORM;
+    avci.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    vkCreateImageView(g_vk.dev, &avci, NULL, &g_vk.atlasView);
+    VkSamplerCreateInfo smp = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    smp.magFilter = VK_FILTER_LINEAR;
+    smp.minFilter = VK_FILTER_LINEAR;
+    smp.addressModeU = smp.addressModeV = smp.addressModeW =
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    vkCreateSampler(g_vk.dev, &smp, NULL, &g_vk.atlasSamp);
+
+    VkDescriptorSetLayoutBinding b = {};
+    b.binding = 0;
+    b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    b.descriptorCount = 1;
+    b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutCreateInfo dlci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    dlci.bindingCount = 1;
+    dlci.pBindings = &b;
+    vkCreateDescriptorSetLayout(g_vk.dev, &dlci, NULL, &g_vk.uiDsl);
+    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 };
+    VkDescriptorPoolCreateInfo dpci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+    dpci.maxSets = 1;
+    dpci.poolSizeCount = 1;
+    dpci.pPoolSizes = &ps;
+    VkDescriptorPool dpool;
+    vkCreateDescriptorPool(g_vk.dev, &dpci, NULL, &dpool);
+    VkDescriptorSetAllocateInfo dsai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    dsai.descriptorPool = dpool;
+    dsai.descriptorSetCount = 1;
+    dsai.pSetLayouts = &g_vk.uiDsl;
+    vkAllocateDescriptorSets(g_vk.dev, &dsai, &g_vk.uiDset);
+    VkDescriptorImageInfo dii = { g_vk.atlasSamp, g_vk.atlasView,
+                                  VK_IMAGE_LAYOUT_GENERAL };
+    VkWriteDescriptorSet wds = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    wds.dstSet = g_vk.uiDset;
+    wds.dstBinding = 0;
+    wds.descriptorCount = 1;
+    wds.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    wds.pImageInfo = &dii;
+    vkUpdateDescriptorSets(g_vk.dev, 1, &wds, 0, NULL);
+    g_vk.atlasSet = true;
+    TraceLog(RL_LOG_INFO, "rdr: VULKAN TEXT ATLAS uploaded (%dx%d R8)", w, h);
+}
+
+namespace {
+// Build the UI pipeline against the shared render pass (needs rp to exist).
+bool EnsureUiPipeline() {
+    if (g_vk.uiPipe) return true;
+    if (!g_vk.rp || !g_vk.atlasSet) return false;
+    DFN(vkCreateShaderModule); DFN(vkCreatePipelineLayout);
+    DFN(vkCreateGraphicsPipelines); DFN(vkAllocateCommandBuffers); DFN(vkCreateFence);
+    size_t tvs, tfs;
+    void* tvsc = ReadSpv("assets/spv/text.vert.spv", &tvs);
+    void* tfsc = ReadSpv("assets/spv/text.frag.spv", &tfs);
+    if (!tvsc || !tfsc) return false;
+    VkShaderModuleCreateInfo mci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    mci.codeSize = tvs;
+    mci.pCode = (const uint32_t*)tvsc;
+    VkShaderModule tv, tf;
+    vkCreateShaderModule(g_vk.dev, &mci, NULL, &tv);
+    mci.codeSize = tfs;
+    mci.pCode = (const uint32_t*)tfsc;
+    vkCreateShaderModule(g_vk.dev, &mci, NULL, &tf);
+    free(tvsc); free(tfsc);
+
+    VkPushConstantRange upcr = { VK_SHADER_STAGE_VERTEX_BIT, 0, 16 };
+    VkPipelineLayoutCreateInfo uplci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    uplci.setLayoutCount = 1;
+    uplci.pSetLayouts = &g_vk.uiDsl;
+    uplci.pushConstantRangeCount = 1;
+    uplci.pPushConstantRanges = &upcr;
+    vkCreatePipelineLayout(g_vk.dev, &uplci, NULL, &g_vk.uiLayout);
+
+    VkPipelineShaderStageCreateInfo st[2] = {};
+    st[0].sType = st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    st[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    st[0].module = tv;
+    st[0].pName = "main";
+    st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    st[1].module = tf;
+    st[1].pName = "main";
+    VkVertexInputBindingDescription ub = { 0, 8 * sizeof(float),
+                                           VK_VERTEX_INPUT_RATE_VERTEX };
+    VkVertexInputAttributeDescription ua[3] = {
+        { 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 },
+        { 1, 0, VK_FORMAT_R32G32_SFLOAT, 8 },
+        { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 16 },
+    };
+    VkPipelineVertexInputStateCreateInfo uvin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    uvin.vertexBindingDescriptionCount = 1;
+    uvin.pVertexBindingDescriptions = &ub;
+    uvin.vertexAttributeDescriptionCount = 3;
+    uvin.pVertexAttributeDescriptions = ua;
+    VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vps = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    vps.viewportCount = 1;
+    vps.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE;
+    rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineDepthStencilStateCreateInfo ds = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    VkPipelineColorBlendAttachmentState cba = {};
+    cba.blendEnable = VK_TRUE;
+    cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cba.colorBlendOp = VK_BLEND_OP_ADD;
+    cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cba.alphaBlendOp = VK_BLEND_OP_ADD;
+    cba.colorWriteMask = 0xF;
+    VkPipelineColorBlendStateCreateInfo cb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cb.attachmentCount = 1;
+    cb.pAttachments = &cba;
+    VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dsci = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dsci.dynamicStateCount = 2;
+    dsci.pDynamicStates = dyn;
+    VkGraphicsPipelineCreateInfo gp = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    gp.stageCount = 2;
+    gp.pStages = st;
+    gp.pVertexInputState = &uvin;
+    gp.pInputAssemblyState = &ia;
+    gp.pViewportState = &vps;
+    gp.pRasterizationState = &rs;
+    gp.pMultisampleState = &ms;
+    gp.pDepthStencilState = &ds;
+    gp.pColorBlendState = &cb;
+    gp.pDynamicState = &dsci;
+    gp.layout = g_vk.uiLayout;
+    gp.renderPass = g_vk.rp;
+    if (vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL, &g_vk.uiPipe) != VK_SUCCESS)
+        return false;
+    VkCommandBufferAllocateInfo cbai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    cbai.commandPool = g_vk.pool;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.commandBufferCount = 1;
+    vkAllocateCommandBuffers(g_vk.dev, &cbai, &g_vk.uiCmd);
+    VkFenceCreateInfo fci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+    vkCreateFence(g_vk.dev, &fci, NULL, &g_vk.uiFence);
+    TraceLog(RL_LOG_INFO, "rdr: VULKAN TEXT PIPELINE LIVE - HUD renders on %s",
+             g_vk.gpuName);
+    return true;
+}
+}  // namespace
+
+// V173: render the recorded HUD quads through the Vulkan text pipeline into
+// the shared offscreen target (transparent clear) and read back RGBA.
+const unsigned char* VulkanRenderUi(const void* verts, int vcount, int w, int h) {
+    if (!g_vk.live || g_vk.frameFailed || g_vk.uiFailed || !g_vk.atlasSet ||
+        vcount <= 0 || w <= 0 || h <= 0)
+        return nullptr;
+    if (w != g_vk.width || h != g_vk.height) {
+        DFN(vkDeviceWaitIdle);
+        if (g_vk.fb) vkDeviceWaitIdle(g_vk.dev);
+        if (!BuildFrameResources(w, h)) { g_vk.frameFailed = true; return nullptr; }
+    }
+    if (!EnsureUiPipeline()) { g_vk.uiFailed = true; return nullptr; }
+    DFN(vkDestroyBuffer); DFN(vkUnmapMemory); DFN(vkFreeMemory); DFN(vkDeviceWaitIdle);
+    if (vcount > g_vk.uiCap) {
+        if (g_vk.uiBuf) {
+            vkDeviceWaitIdle(g_vk.dev);
+            vkUnmapMemory(g_vk.dev, g_vk.uiMem);
+            vkDestroyBuffer(g_vk.dev, g_vk.uiBuf, NULL);
+            vkFreeMemory(g_vk.dev, g_vk.uiMem, NULL);
+        }
+        const int cap = vcount < 16384 ? 16384 : vcount * 2;
+        if (!MakeBuffer((VkDeviceSize)cap * 32, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        &g_vk.uiBuf, &g_vk.uiMem, &g_vk.uiMap))
+            return nullptr;
+        g_vk.uiCap = cap;
+    }
+    if (g_vk.uiReadSize < w * h * 4) {
+        if (g_vk.uiRead) {
+            vkDeviceWaitIdle(g_vk.dev);
+            vkUnmapMemory(g_vk.dev, g_vk.uiReadMem);
+            vkDestroyBuffer(g_vk.dev, g_vk.uiRead, NULL);
+            vkFreeMemory(g_vk.dev, g_vk.uiReadMem, NULL);
+        }
+        VkMemoryPropertyFlags rf = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                                   VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        bool cached = false;
+        for (uint32_t i = 0; i < g_vk.memProps.memoryTypeCount; ++i)
+            if ((g_vk.memProps.memoryTypes[i].propertyFlags & rf) == rf) cached = true;
+        if (!cached) rf = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        if (!MakeBuffer((VkDeviceSize)w * h * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT, rf,
+                        &g_vk.uiRead, &g_vk.uiReadMem, &g_vk.uiReadMap))
+            return nullptr;
+        g_vk.uiReadSize = w * h * 4;
+    }
+    memcpy(g_vk.uiMap, verts, (size_t)vcount * 32);
+
+    DFN(vkBeginCommandBuffer); DFN(vkCmdBeginRenderPass); DFN(vkCmdBindPipeline);
+    DFN(vkCmdSetViewport); DFN(vkCmdSetScissor); DFN(vkCmdBindVertexBuffers);
+    DFN(vkCmdPushConstants); DFN(vkCmdDraw); DFN(vkCmdEndRenderPass);
+    DFN(vkCmdCopyImageToBuffer); DFN(vkEndCommandBuffer); DFN(vkQueueSubmit);
+    DFN(vkWaitForFences); DFN(vkResetFences); DFN(vkResetCommandBuffer);
+    DFN(vkCmdBindDescriptorSets);
+
+    vkResetCommandBuffer(g_vk.uiCmd, 0);
+    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(g_vk.uiCmd, &bi);
+    VkClearValue clears[2];
+    clears[0].color = { { 0, 0, 0, 0 } };
+    clears[1].depthStencil = { 1.0f, 0 };
+    VkRenderPassBeginInfo rbi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+    rbi.renderPass = g_vk.rp;
+    rbi.framebuffer = g_vk.fb;
+    rbi.renderArea = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
+    rbi.clearValueCount = 2;
+    rbi.pClearValues = clears;
+    vkCmdBeginRenderPass(g_vk.uiCmd, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.uiPipe);
+    VkViewport vp = { 0, 0, (float)w, (float)h, 0, 1 };   // y-down = pixel space
+    VkRect2D sc = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
+    vkCmdSetViewport(g_vk.uiCmd, 0, 1, &vp);
+    vkCmdSetScissor(g_vk.uiCmd, 0, 1, &sc);
+    vkCmdBindDescriptorSets(g_vk.uiCmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            g_vk.uiLayout, 0, 1, &g_vk.uiDset, 0, NULL);
+    const float scr[4] = { (float)w, (float)h, 0, 0 };
+    vkCmdPushConstants(g_vk.uiCmd, g_vk.uiLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 16, scr);
+    VkDeviceSize off = 0;
+    vkCmdBindVertexBuffers(g_vk.uiCmd, 0, 1, &g_vk.uiBuf, &off);
+    vkCmdDraw(g_vk.uiCmd, (uint32_t)vcount, 1, 0, 0);
+    vkCmdEndRenderPass(g_vk.uiCmd);
+    VkBufferImageCopy region = {};
+    region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.imageExtent = { (uint32_t)w, (uint32_t)h, 1 };
+    vkCmdCopyImageToBuffer(g_vk.uiCmd, g_vk.color, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           g_vk.uiRead, 1, &region);
+    vkEndCommandBuffer(g_vk.uiCmd);
+    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &g_vk.uiCmd;
+    vkQueueSubmit(g_vk.queue, 1, &si, g_vk.uiFence);
+    vkWaitForFences(g_vk.dev, 1, &g_vk.uiFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(g_vk.dev, 1, &g_vk.uiFence);
+    return (const unsigned char*)g_vk.uiReadMap;
+}
+
 // Boots the device once (logged); true once the frame executor is usable.
 bool VulkanExecutorReady() {
     if (!g_vk.tried && IsWindowReady()) {
@@ -661,6 +965,8 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
 namespace rdr {
 bool VulkanExecutorReady() { return false; }
 void VulkanSetTerrain(const float*, int) {}
+void VulkanSetUiAtlas(const unsigned char*, int, int) {}
+const unsigned char* VulkanRenderUi(const void*, int, int, int) { return nullptr; }
 const unsigned char* VulkanRenderFrame(const float*, const float*, const void*,
                                        int, int, int) { return nullptr; }
 }

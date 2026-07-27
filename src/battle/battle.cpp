@@ -3875,6 +3875,7 @@ void BattleDraw(const Content& c) {
         ui::Title(msg, (GetScreenWidth() - w) / 2, GetScreenHeight() / 2 - 60, 60, B.won ? GOLD : RED);
     }
 
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 

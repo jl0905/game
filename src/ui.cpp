@@ -1,7 +1,9 @@
 #include "ui.h"
+#include "rdr.h"
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // Font loading + text drawing. See ui.h for the contract and assets/fonts.cfg
@@ -135,13 +137,95 @@ static float Sz(int fontSize) {
     return (fontSize >= 14 && s < 19.0f) ? 19.0f : s;
 }
 
+// ---- Vulkan text road (V173) ----------------------------------------------
+// When the Vulkan backend is live, glyphs are recorded as screen-space quads
+// (rdr::PushUiVerts) and rendered by the Vulkan text pipeline instead of GL.
+// The two font atlases are stacked into one R8 texture, uploaded once.
+static int gAtlasW = 0, gAtlasH = 0, gTitleYOff = 0;
+static bool gAtlasSent = false, gAtlasTried = false;
+
+static bool EnsureVkAtlas() {
+    if (gAtlasSent) return true;
+    if (gAtlasTried) return false;
+    gAtlasTried = true;
+    Image ib = LoadImageFromTexture(BodyFont().texture);
+    ImageFormat(&ib, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    const bool same = TitleFont().texture.id == BodyFont().texture.id;
+    Image it{};
+    if (!same) {
+        it = LoadImageFromTexture(TitleFont().texture);
+        ImageFormat(&it, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    }
+    int W = ib.width;
+    if (!same && it.width > W) W = it.width;
+    const int H = ib.height + (same ? 0 : it.height);
+    std::vector<unsigned char> r8((size_t)W * H, 0);
+    auto blit = [&](const Image& im, int yo) {
+        const unsigned char* p = (const unsigned char*)im.data;
+        for (int y = 0; y < im.height; ++y)
+            for (int x = 0; x < im.width; ++x)
+                r8[(size_t)(y + yo) * W + x] = p[((size_t)y * im.width + x) * 4 + 3];
+    };
+    blit(ib, 0);
+    if (!same) blit(it, ib.height);
+    gTitleYOff = same ? 0 : ib.height;
+    gAtlasW = W;
+    gAtlasH = H;
+    rdr::VulkanSetUiAtlas(r8.data(), W, H);
+    UnloadImage(ib);
+    if (!same) UnloadImage(it);
+    gAtlasSent = true;
+    return true;
+}
+
+// Mirror DrawTextEx's layout, but emit quads at the seam.
+static void RecordText(const Font& f, bool title, const char* text, float x,
+                       float y, float size, float spacing, Color color) {
+    const float scale = size / (float)f.baseSize;
+    const float cr = color.r / 255.0f, cg = color.g / 255.0f;
+    const float cb = color.b / 255.0f, ca = color.a / 255.0f;
+    const float yo = title ? (float)gTitleYOff : 0.0f;
+    float xp = x, yp = y;
+    int i = 0;
+    const int len = (int)std::strlen(text);
+    while (i < len) {
+        int cpLen = 0;
+        const int cp = GetCodepointNext(&text[i], &cpLen);
+        i += cpLen;
+        if (cp == '\n') { yp += size; xp = x; continue; }
+        const int gi = GetGlyphIndex(f, cp);
+        const Rectangle rec = f.recs[gi];
+        const GlyphInfo& g = f.glyphs[gi];
+        if (cp != ' ' && cp != '\t' && rec.width > 0) {
+            const float x0 = xp + g.offsetX * scale, y0 = yp + g.offsetY * scale;
+            const float x1 = x0 + rec.width * scale, y1 = y0 + rec.height * scale;
+            const float u0 = rec.x / gAtlasW, v0 = (rec.y + yo) / gAtlasH;
+            const float u1 = (rec.x + rec.width) / gAtlasW;
+            const float v1 = (rec.y + rec.height + yo) / gAtlasH;
+            const rdr::UiVert q[6] = {
+                { x0, y0, u0, v0, cr, cg, cb, ca }, { x1, y0, u1, v0, cr, cg, cb, ca },
+                { x1, y1, u1, v1, cr, cg, cb, ca }, { x0, y0, u0, v0, cr, cg, cb, ca },
+                { x1, y1, u1, v1, cr, cg, cb, ca }, { x0, y1, u0, v1, cr, cg, cb, ca },
+            };
+            rdr::PushUiVerts(q, 6);
+        }
+        xp += (g.advanceX == 0 ? rec.width * scale : g.advanceX * scale) + spacing;
+    }
+}
+
 // Drop shadow under every glyph (V35, playtest: "more contrast against the
 // background"): a dark offset copy keeps lettering legible over any ground —
 // map greens, snowfields, the battle sky. Offset scales with the size; the
 // shadow inherits the text's own alpha so faded text fades whole.
 static void Shadowed(const Font& f, const char* text, float x, float y,
-                     float size, float spacing, Color color) {
+                     float size, float spacing, Color color, bool title = false) {
     const float off = size >= 30.0f ? 2.0f : 1.0f;
+    if (rdr::VulkanUiActive() && EnsureVkAtlas()) {   // the Vulkan road (V173)
+        RecordText(f, title, text, x + off, y + off, size, spacing,
+                   Fade(BLACK, 0.55f * (color.a / 255.0f)));
+        RecordText(f, title, text, x, y, size, spacing, color);
+        return;
+    }
     DrawTextEx(f, text, { x + off, y + off }, size, spacing,
                Fade(BLACK, 0.55f * (color.a / 255.0f)));
     DrawTextEx(f, text, { x, y }, size, spacing, color);
@@ -159,7 +243,7 @@ int Measure(const char* text, int fontSize) {
 
 void Title(const char* text, int x, int y, int fontSize, Color color) {
     Shadowed(TitleFont(), text, (float)x, (float)y, Sz(fontSize),
-             Spacing(fontSize) * gScale, color);
+             Spacing(fontSize) * gScale, color, true);
 }
 
 int MeasureTitle(const char* text, int fontSize) {

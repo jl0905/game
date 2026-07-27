@@ -1,6 +1,7 @@
 #include "campaign.h"
 #include "../settings.h"
 #include "../gfx.h"
+#include "../rdr.h"
 #include "../battle/character.h"   // roster parade preview (read-only reuse)
 #include "../save.h"
 #include "../sfx.h"
@@ -4207,6 +4208,7 @@ void CampaignDraw(const GameState& gs) {
                             gs.mercDays, gs.parties[gs.mercParty].totalTroops()),
                  10, 94, 19, GOLD);
 
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -4513,6 +4515,7 @@ void InventoryDraw(const GameState& gs) {
         }
     }
 
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -4956,6 +4959,7 @@ void MarketDraw(const GameState& gs) {
         }
     }
 
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5052,6 +5056,7 @@ void SettingsDraw(const GameState& gs) {
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5245,6 +5250,7 @@ void PartyDraw(const GameState& gs) {
     }
     ui::Text("[1-9 / click] promote one (20 gold)    [Shift / right-click] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5306,6 +5312,7 @@ void VictoryDraw(const GameState& gs) {
     const char* t3 = "[Esc]  Return to the title";
     ui::Text(t3, (w - ui::Measure(t3, 24)) / 2, GetScreenHeight() - 60, 24,
              Fade(RAYWHITE, 0.8f));
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5605,6 +5612,7 @@ void KingdomDraw(const GameState& gs) {
 
     ui::Text("[Esc / B] close the book", lx, GetScreenHeight() - 44, 20,
              Fade(RAYWHITE, 0.7f));
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5703,6 +5711,7 @@ void QuestsDraw(const GameState& gs) {
         ui::Text(e.c_str(), x, y, 19, col);
         y += 26;
     }
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5813,7 +5822,8 @@ void ParleyDraw(const GameState& gs) {
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int x = GetScreenWidth() / 2 - 430 > 10 ? GetScreenWidth() / 2 - 430 : 10;
     if (gs.battlePartyIndex < 0 || gs.battlePartyIndex >= (int)gs.parties.size()) {
-        EndDrawing();
+        rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
+    EndDrawing();
         return;
     }
     const Party& e = gs.parties[gs.battlePartyIndex];
@@ -5848,6 +5858,7 @@ void ParleyDraw(const GameState& gs) {
     ui::Text("[Esc] words fail - fight", x, y + 14, 18, Fade(RAYWHITE, 0.6f));
     if (!gs.resultText.empty())
         ui::Text(gs.resultText.c_str(), x, y + 44, 19, GOLD);
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5920,6 +5931,7 @@ void EstateDraw(const GameState& gs) {
     }
     if (!gs.resultText.empty())
         ui::Text(gs.resultText.c_str(), x, y + 16, 19, GOLD);
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5948,6 +5960,7 @@ void LoadMenuDraw(const GameState& gs) {
     row(4, "Slot 3", SaveSlotPath(3));
     ui::Text("[Esc] back      (save on the map with F5 / F6 / F7)",
              w / 2 - 250, y + 16, 18, Fade(RAYWHITE, 0.6f));
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -5995,6 +6008,7 @@ void TitleDraw(const GameState& gs) {
     option("[L]  Load Game", RAYWHITE);
     option("[Esc]  Quit", Fade(RAYWHITE, 0.8f));
 
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -6070,6 +6084,7 @@ void BackgroundDraw(const GameState& gs) {
            "+400 gold, 10 sacks of grain, +1 honor");
     option("[3]  A deserter",
            "3 brigands at your back, -150 gold, the patrols' suspicion");
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
@@ -6152,6 +6167,7 @@ void CharacterDraw(const GameState& gs) {
 
     ui::Text("[1-4 / click a row] spend a point    [Esc / C] back to the map",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
 
