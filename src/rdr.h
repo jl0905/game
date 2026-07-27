@@ -30,6 +30,15 @@ void PushOrientedBox(Vector3 a, Vector3 b, float r, Color c);   // limb form
 // V179: a pill/capsule primitive for the rounded body style. Records into
 // its own bucket set; executed as an instanced ellipsoid on both backends.
 void PushPill(Vector3 a, Vector3 b, float r, Color c);
+// V180: skinned variants - armour as TEXTURE, not geometry. `skin` picks a
+// row of the procedural armour atlas (0 cloth, 1 leather, 2 mail, 3 plate;
+// src/skins.h); the pattern is grayscale and modulates the instance colour,
+// so team and armour tints keep reading. Skinned instances live in their
+// own uint64-keyed buckets (low 32 bits colour, high 32 skin id).
+using SkinBuckets = std::unordered_map<unsigned long long, std::vector<Matrix>>;
+void PushBoxSkinned(const Matrix& m, Color c, int skin);
+void PushOrientedBoxSkinned(Vector3 a, Vector3 b, float r, Color c, int skin);
+void PushPillSkinned(Vector3 a, Vector3 b, float r, Color c, int skin);
 
 // Execute + clear through the active backend. The raylib backend needs the
 // instanced cube mesh/material/shader prepared by the caller (battle.cpp
@@ -42,6 +51,10 @@ struct RaylibInstancedState {
     int       sunLoc;
     Vector3   sun;
     Mesh*     sphere = nullptr;   // V179: unit sphere for the pill buckets
+    // V180: armour skin atlas support. The atlas texture itself rides the
+    // material's SPECULAR map slot (bound by raylib as `texture1`); this is
+    // the location of the `skinRect` vec4 uniform (-1 = shader lacks it).
+    int       skinRectLoc = -1;
 };
 void FlushRaylib(const RaylibInstancedState& st);
 
@@ -98,11 +111,23 @@ bool VulkanExecutorReady();
 // V178: lightVP16 = sun view-proj (z fixed to [0,1]); flags bit0 = shadows.
 // V179: pillData/pillCount = ellipsoid instances (same 80-byte layout),
 // drawn with the unit-sphere mesh through the same lit + shadow pipelines.
+// V180: skinBox*/skinPill* = armour-textured instances; the seg arrays give
+// (skin id, instance count) runs in bucket order over the packed data.
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,
                                        const void* pillData, int pillCount,
+                                       const void* skinBoxData,
+                                       const int* skinBoxSegSkin,
+                                       const int* skinBoxSegCount, int nSkinBoxSegs,
+                                       const void* skinPillData,
+                                       const int* skinPillSegSkin,
+                                       const int* skinPillSegCount, int nSkinPillSegs,
                                        int w, int h);
+
+// V180: upload the procedural armour skin atlas (skins.h pixels) to the
+// Vulkan device. Safe to call before the device exists (staged like terrain).
+void VulkanSetSkinAtlas(const unsigned char* rgba, int w, int h);
 
 // V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4) for the
 // Vulkan depth-only occluder pass — gives the composited soldiers correct

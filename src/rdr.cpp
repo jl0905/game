@@ -14,10 +14,33 @@ namespace rdr {
 namespace {
 BoxBuckets g_buckets;
 BoxBuckets g_pills;   // V179: pill/ellipsoid instances, same transform shape
+SkinBuckets g_skinBoxes;   // V180: armour-textured instances, colour|skin keyed
+SkinBuckets g_skinPills;
 
 unsigned Key(Color c) {
     return (unsigned)c.r | ((unsigned)c.g << 8) | ((unsigned)c.b << 16) |
            ((unsigned)c.a << 24);
+}
+
+unsigned long long Key64(Color c, int skin) {
+    return (unsigned long long)Key(c) |
+           ((unsigned long long)(unsigned)skin << 32);
+}
+
+// The oriented a->b frame both box and pill pushes share. `w` is the full
+// cross-section scale, `sy` the along-axis scale.
+Matrix OrientedFrame(Vector3 a, Vector3 b, float w, float sy) {
+    const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
+    const Vector3 d = Vector3Subtract(b, a);
+    const float len = Vector3Length(d);
+    const Vector3 y  = Vector3Scale(d, 1.0f / len);
+    const Vector3 up = fabsf(y.y) < 0.99f ? Vector3{ 0, 1, 0 } : Vector3{ 1, 0, 0 };
+    const Vector3 x  = Vector3Normalize(Vector3CrossProduct(up, y));
+    const Vector3 z  = Vector3CrossProduct(x, y);
+    return { x.x * w, y.x * sy, z.x * w, mid.x,
+             x.y * w, y.y * sy, z.y * w, mid.y,
+             x.z * w, y.z * sy, z.z * w, mid.z,
+             0.0f,    0.0f,     0.0f,    1.0f };
 }
 }  // namespace
 
@@ -75,6 +98,37 @@ void PushPill(Vector3 a, Vector3 b, float r, Color c) {
     g_pills[Key(c)].push_back(m);
 }
 
+// V180: skinned pushes — same transforms, uint64 colour|skin buckets. The
+// executors sample the armour atlas row `skin` and modulate the colour.
+void PushBoxSkinned(const Matrix& m, Color c, int skin) {
+    g_skinBoxes[Key64(c, skin)].push_back(m);
+}
+
+void PushOrientedBoxSkinned(Vector3 a, Vector3 b, float r, Color c, int skin) {
+    const float len = Vector3Length(Vector3Subtract(b, a));
+    if (len < 0.001f) {
+        const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
+        g_skinBoxes[Key64(c, skin)].push_back(
+            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
+                           MatrixTranslate(mid.x, mid.y, mid.z)));
+        return;
+    }
+    g_skinBoxes[Key64(c, skin)].push_back(OrientedFrame(a, b, r * 1.8f, len + r));
+}
+
+void PushPillSkinned(Vector3 a, Vector3 b, float r, Color c, int skin) {
+    const float len = Vector3Length(Vector3Subtract(b, a));
+    if (len < 0.001f) {
+        const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
+        g_skinPills[Key64(c, skin)].push_back(
+            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
+                           MatrixTranslate(mid.x, mid.y, mid.z)));
+        return;
+    }
+    g_skinPills[Key64(c, skin)].push_back(
+        OrientedFrame(a, b, r * 2.2f, len + r * 2.0f));
+}
+
 void FlushRaylib(const RaylibInstancedState& st) {
     if (st.sunLoc >= 0)
         SetShaderValue(st.shader, st.sunLoc, &st.sun, SHADER_UNIFORM_VEC3);
@@ -101,6 +155,37 @@ void FlushRaylib(const RaylibInstancedState& st) {
             mats.clear();
         }
     for (auto& [key, mats] : g_pills) mats.clear();   // sphere-less caller
+
+    // Armour skins (V180): one draw per (colour, skin) bucket, the atlas row
+    // selected by the skinRect uniform. The atlas rides the material's
+    // SPECULAR slot, bound by raylib automatically; shaders without the
+    // uniform (skinRectLoc -1) just drop the skinned buckets to plain draws.
+    const bool skinned = st.skinRectLoc >= 0;
+    auto drawSkinned = [&](SkinBuckets& src, Mesh* mesh) {
+        for (auto& [key, mats] : src) {
+            if (mats.empty() || !mesh) { mats.clear(); continue; }
+            const unsigned col = (unsigned)(key & 0xFFFFFFFFu);
+            const int skin = (int)(key >> 32);
+            st.mat->maps[MATERIAL_MAP_DIFFUSE].color =
+                Color{ (unsigned char)(col & 0xFF),
+                       (unsigned char)((col >> 8) & 0xFF),
+                       (unsigned char)((col >> 16) & 0xFF),
+                       (unsigned char)((col >> 24) & 0xFF) };
+            if (skinned) {
+                const float rect[4] = { 0.0f, skin * 0.25f, 1.0f,
+                                        (skin + 1) * 0.25f };
+                SetShaderValue(st.shader, st.skinRectLoc, rect, SHADER_UNIFORM_VEC4);
+            }
+            DrawMeshInstanced(*mesh, *st.mat, mats.data(), (int)mats.size());
+            mats.clear();
+        }
+    };
+    drawSkinned(g_skinBoxes, st.cube);
+    drawSkinned(g_skinPills, st.sphere);
+    if (skinned) {   // restore the plain path for the next frame's boxes
+        const float none[4] = { 0, 0, 0, 0 };
+        SetShaderValue(st.shader, st.skinRectLoc, none, SHADER_UNIFORM_VEC4);
+    }
 }
 
 namespace {
@@ -129,6 +214,30 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     };
     const int count = flatten(g_buckets, inst);
     const int pillCount = flatten(g_pills, pills);   // V179
+    // Skinned streams (V180): packed the same way, plus (skin, count) runs.
+    static std::vector<float> skinBoxes, skinPills;
+    static std::vector<int> sbSkin, sbCount, spSkin, spCount;
+    auto flattenSkinned = [](SkinBuckets& src, std::vector<float>& out,
+                             std::vector<int>& segSkin, std::vector<int>& segCount) {
+        out.clear();
+        segSkin.clear();
+        segCount.clear();
+        for (auto& [key, mats] : src) {
+            if (mats.empty()) continue;
+            const unsigned col = (unsigned)(key & 0xFFFFFFFFu);
+            const float r = (col & 0xFF) / 255.0f, g = ((col >> 8) & 0xFF) / 255.0f;
+            const float b = ((col >> 16) & 0xFF) / 255.0f, a = ((col >> 24) & 0xFF) / 255.0f;
+            for (const Matrix& m : mats) {
+                const float16 f = MatrixToFloatV(m);
+                out.insert(out.end(), f.v, f.v + 16);
+                out.push_back(r); out.push_back(g); out.push_back(b); out.push_back(a);
+            }
+            segSkin.push_back((int)(key >> 32));
+            segCount.push_back((int)mats.size());
+        }
+    };
+    flattenSkinned(g_skinBoxes, skinBoxes, sbSkin, sbCount);
+    flattenSkinned(g_skinPills, skinPills, spSkin, spCount);
     // GL clip z is [-1,1], Vulkan wants [0,1]: append the classic fix-up.
     Matrix fix = MatrixIdentity();
     fix.m10 = 0.5f;
@@ -154,7 +263,11 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     const int flags = GetSettings().shadows ? 1 : 0;
     const unsigned char* px =
         VulkanRenderFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count,
-                          pills.data(), pillCount, w, h);
+                          pills.data(), pillCount,
+                          skinBoxes.data(), sbSkin.data(), sbCount.data(),
+                          (int)sbSkin.size(),
+                          skinPills.data(), spSkin.data(), spCount.data(),
+                          (int)spSkin.size(), w, h);
     if (!px) return false;
     if (g_vkTex.id == 0 || g_vkTex.width != w || g_vkTex.height != h) {
         if (g_vkTex.id) UnloadTexture(g_vkTex);
@@ -166,6 +279,8 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     g_vkPending = true;
     for (auto& [key, mats] : g_buckets) mats.clear();
     for (auto& [key, mats] : g_pills) mats.clear();
+    for (auto& [key, mats] : g_skinBoxes) mats.clear();
+    for (auto& [key, mats] : g_skinPills) mats.clear();
     return true;
 }
 }  // namespace

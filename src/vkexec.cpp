@@ -124,6 +124,26 @@ struct VkExec {
     VkDescriptorSet shSet = VK_NULL_HANDLE;
     VkPipelineLayout litLayout = VK_NULL_HANDLE;   // 144B push + shadow map
     VkPipeline litPipe = VK_NULL_HANDLE;
+    // Armour-as-texture (V180): the 256x1024 skin atlas (4 rows: cloth,
+    // leather, mail, plate), a 160B-push pipeline sampling shadow map +
+    // atlas, and 2-slot instance buffers for the skinned box/pill streams.
+    // skinReady gates it all; on any failure the skinned streams draw
+    // through the plain lit pipeline (untextured) rather than vanishing.
+    unsigned char* skinPending = nullptr;          // staged before device up
+    int skinPendW = 0, skinPendH = 0;
+    bool skinTried = false, skinReady = false;
+    VkImage skinImg = VK_NULL_HANDLE;
+    VkDeviceMemory skinMem = VK_NULL_HANDLE;
+    VkImageView skinView = VK_NULL_HANDLE;
+    VkDescriptorSetLayout skinDsl = VK_NULL_HANDLE;
+    VkDescriptorSet skinSet = VK_NULL_HANDLE;
+    VkPipelineLayout skinLayout = VK_NULL_HANDLE;  // 160B push
+    VkPipeline skinPipe = VK_NULL_HANDLE;
+    VkBuffer skinBoxBuf[2] = {}, skinPillBuf[2] = {};
+    VkDeviceMemory skinBoxMem[2] = {}, skinPillMem[2] = {};
+    void* skinBoxMap[2] = {};
+    void* skinPillMap[2] = {};
+    int skinBoxCap[2] = {}, skinPillCap[2] = {};
 };
 VkExec g_vk;
 
@@ -857,7 +877,235 @@ bool BuildShadowResources() {
     return true;
 }
 
+// Generic 2-slot instance-buffer grower shared by the V180 skinned streams.
+bool EnsureStreamCap(VkBuffer buf[2], VkDeviceMemory mem[2], void* map[2],
+                     int cap[2], int slot, int count) {
+    if (count <= cap[slot]) return true;
+    DFN(vkDestroyBuffer); DFN(vkUnmapMemory); DFN(vkFreeMemory); DFN(vkDeviceWaitIdle);
+    if (buf[slot]) {
+        vkDeviceWaitIdle(g_vk.dev);
+        vkUnmapMemory(g_vk.dev, mem[slot]);
+        vkDestroyBuffer(g_vk.dev, buf[slot], NULL);
+        vkFreeMemory(g_vk.dev, mem[slot], NULL);
+        buf[slot] = VK_NULL_HANDLE;
+    }
+    const int cap2 = count < 2048 ? 2048 : count * 2;
+    if (!MakeBuffer((VkDeviceSize)cap2 * 80, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    &buf[slot], &mem[slot], &map[slot]))
+        return false;
+    cap[slot] = cap2;
+    return true;
+}
+
+// V180: build the skin atlas image + the two-binding descriptor (shadow map
+// + atlas) + the 160B skinned lit pipeline. Requires the shadow stack (for
+// the shadow view/sampler and the main render pass) and staged atlas pixels.
+bool BuildSkinResources() {
+    if (g_vk.skinReady) return true;
+    if (g_vk.skinTried || !g_vk.skinPending || !g_vk.shReady || !g_vk.rp)
+        return false;
+    g_vk.skinTried = true;
+    DFN(vkCreateImage); DFN(vkGetImageMemoryRequirements); DFN(vkAllocateMemory);
+    DFN(vkBindImageMemory); DFN(vkMapMemory); DFN(vkCreateImageView);
+    DFN(vkGetImageSubresourceLayout); DFN(vkCreateDescriptorSetLayout);
+    DFN(vkCreateDescriptorPool); DFN(vkAllocateDescriptorSets);
+    DFN(vkUpdateDescriptorSets); DFN(vkCreateShaderModule);
+    DFN(vkCreatePipelineLayout); DFN(vkCreateGraphicsPipelines);
+
+    const int w = g_vk.skinPendW, h = g_vk.skinPendH;
+    VkImageCreateInfo ici = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+    ici.extent = { (uint32_t)w, (uint32_t)h, 1 };
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+    ici.tiling = VK_IMAGE_TILING_LINEAR;
+    ici.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    ici.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+    if (vkCreateImage(g_vk.dev, &ici, NULL, &g_vk.skinImg) != VK_SUCCESS) return false;
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(g_vk.dev, g_vk.skinImg, &req);
+    VkMemoryAllocateInfo mai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    mai.allocationSize = req.size;
+    mai.memoryTypeIndex = MemType(req.memoryTypeBits,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(g_vk.dev, &mai, NULL, &g_vk.skinMem) != VK_SUCCESS) return false;
+    vkBindImageMemory(g_vk.dev, g_vk.skinImg, g_vk.skinMem, 0);
+    VkImageSubresource sub = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+    VkSubresourceLayout lay;
+    vkGetImageSubresourceLayout(g_vk.dev, g_vk.skinImg, &sub, &lay);
+    void* amap = nullptr;
+    vkMapMemory(g_vk.dev, g_vk.skinMem, 0, req.size, 0, &amap);
+    for (int y = 0; y < h; ++y)
+        memcpy((unsigned char*)amap + lay.offset + (size_t)y * lay.rowPitch,
+               g_vk.skinPending + (size_t)y * w * 4, (size_t)w * 4);
+    free(g_vk.skinPending);
+    g_vk.skinPending = nullptr;
+    VkImageViewCreateInfo vci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    vci.image = g_vk.skinImg;
+    vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    vci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    vci.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    if (vkCreateImageView(g_vk.dev, &vci, NULL, &g_vk.skinView) != VK_SUCCESS)
+        return false;
+
+    {   // set 0: binding 0 shadow map, binding 1 skin atlas
+        VkDescriptorSetLayoutBinding b[2] = {};
+        for (int i = 0; i < 2; ++i) {
+            b[i].binding = (uint32_t)i;
+            b[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            b[i].descriptorCount = 1;
+            b[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
+        VkDescriptorSetLayoutCreateInfo dlci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+        dlci.bindingCount = 2;
+        dlci.pBindings = b;
+        vkCreateDescriptorSetLayout(g_vk.dev, &dlci, NULL, &g_vk.skinDsl);
+        VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 };
+        VkDescriptorPoolCreateInfo dpci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+        dpci.maxSets = 1;
+        dpci.poolSizeCount = 1;
+        dpci.pPoolSizes = &ps;
+        VkDescriptorPool pool;
+        vkCreateDescriptorPool(g_vk.dev, &dpci, NULL, &pool);
+        VkDescriptorSetAllocateInfo dsai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+        dsai.descriptorPool = pool;
+        dsai.descriptorSetCount = 1;
+        dsai.pSetLayouts = &g_vk.skinDsl;
+        if (vkAllocateDescriptorSets(g_vk.dev, &dsai, &g_vk.skinSet) != VK_SUCCESS)
+            return false;
+        VkDescriptorImageInfo dii[2] = {
+            { g_vk.shSamp, g_vk.shView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+            { g_vk.atlasSamp ? g_vk.atlasSamp : g_vk.shSamp, g_vk.skinView,
+              VK_IMAGE_LAYOUT_GENERAL },
+        };
+        VkWriteDescriptorSet wds[2] = {};
+        for (int i = 0; i < 2; ++i) {
+            wds[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            wds[i].dstSet = g_vk.skinSet;
+            wds[i].dstBinding = (uint32_t)i;
+            wds[i].descriptorCount = 1;
+            wds[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            wds[i].pImageInfo = &dii[i];
+        }
+        vkUpdateDescriptorSets(g_vk.dev, 2, wds, 0, NULL);
+    }
+
+    size_t vs, fs;
+    void* vsC = ReadSpv("assets/spv/boxskin.vert.spv", &vs);
+    void* fsC = ReadSpv("assets/spv/boxskin.frag.spv", &fs);
+    if (!vsC || !fsC) {
+        TraceLog(RL_LOG_WARNING, "rdr: boxskin shaders missing; skinned bodies untextured");
+        free(vsC); free(fsC);
+        return false;
+    }
+    VkShaderModuleCreateInfo smci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    VkShaderModule vsM, fsM;
+    smci.codeSize = vs;  smci.pCode = (const uint32_t*)vsC;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &vsM);
+    smci.codeSize = fs;  smci.pCode = (const uint32_t*)fsC;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &fsM);
+    free(vsC); free(fsC);
+
+    VkPushConstantRange pcr = { VK_SHADER_STAGE_VERTEX_BIT |
+                                VK_SHADER_STAGE_FRAGMENT_BIT, 0, 160 };
+    VkPipelineLayoutCreateInfo plci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    plci.pushConstantRangeCount = 1;
+    plci.pPushConstantRanges = &pcr;
+    plci.setLayoutCount = 1;
+    plci.pSetLayouts = &g_vk.skinDsl;
+    vkCreatePipelineLayout(g_vk.dev, &plci, NULL, &g_vk.skinLayout);
+
+    VkPipelineShaderStageCreateInfo st2[2] = {};
+    st2[0].sType = st2[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    st2[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    st2[0].module = vsM;
+    st2[0].pName = "main";
+    st2[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    st2[1].module = fsM;
+    st2[1].pName = "main";
+    VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vps = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    vps.viewportCount = 1;
+    vps.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rsr = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rsr.polygonMode = VK_POLYGON_MODE_FILL;
+    rsr.cullMode = VK_CULL_MODE_NONE;
+    rsr.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rsr.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineDepthStencilStateCreateInfo dst = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    dst.depthTestEnable = VK_TRUE;
+    dst.depthWriteEnable = VK_TRUE;
+    dst.depthCompareOp = VK_COMPARE_OP_LESS;
+    VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dsci = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dsci.dynamicStateCount = 2;
+    dsci.pDynamicStates = dyn;
+    VkVertexInputBindingDescription binds[2] = {
+        { 0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX },
+        { 1, 80,                VK_VERTEX_INPUT_RATE_INSTANCE },
+    };
+    VkVertexInputAttributeDescription attrs[7] = {
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 },
+        { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, 12 },
+        { 2, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 0 },
+        { 3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 16 },
+        { 4, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 32 },
+        { 5, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 48 },
+        { 6, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 64 },
+    };
+    VkPipelineVertexInputStateCreateInfo vin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    vin.vertexBindingDescriptionCount = 2;
+    vin.pVertexBindingDescriptions = binds;
+    vin.vertexAttributeDescriptionCount = 7;
+    vin.pVertexAttributeDescriptions = attrs;
+    VkPipelineColorBlendAttachmentState cba = {};
+    cba.colorWriteMask = 0xF;
+    VkPipelineColorBlendStateCreateInfo cb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cb.attachmentCount = 1;
+    cb.pAttachments = &cba;
+    VkGraphicsPipelineCreateInfo gp = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    gp.stageCount = 2;
+    gp.pStages = st2;
+    gp.pVertexInputState = &vin;
+    gp.pInputAssemblyState = &ia;
+    gp.pViewportState = &vps;
+    gp.pRasterizationState = &rsr;
+    gp.pMultisampleState = &ms;
+    gp.pDepthStencilState = &dst;
+    gp.pColorBlendState = &cb;
+    gp.pDynamicState = &dsci;
+    gp.layout = g_vk.skinLayout;
+    gp.renderPass = g_vk.rp;
+    if (vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL, &g_vk.skinPipe) != VK_SUCCESS)
+        return false;
+    g_vk.skinReady = true;
+    TraceLog(RL_LOG_INFO,
+             "rdr: VULKAN SKIN PIPELINE LIVE - armour renders as texture on %s",
+             g_vk.gpuName);
+    return true;
+}
+
 }  // namespace
+
+// V180: stage the armour atlas (RGBA, 256x1024, 4 rows). Safe before the
+// device exists; uploaded and wired on the next Vulkan frame.
+void VulkanSetSkinAtlas(const unsigned char* rgba, int w, int h) {
+    if (g_vk.skinReady || g_vk.skinPending) return;
+    if (!rgba || w <= 0 || h <= 0) return;
+    const size_t bytes = (size_t)w * h * 4;
+    g_vk.skinPending = (unsigned char*)malloc(bytes);
+    memcpy(g_vk.skinPending, rgba, bytes);
+    g_vk.skinPendW = w;
+    g_vk.skinPendH = h;
+    g_vk.skinTried = false;   // allow a build attempt with the new pixels
+}
 
 // V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4). Called
 // at terrain bake time â€” possibly before the device exists, so the copy is
@@ -1342,6 +1590,10 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,
                                        const void* pillData, int pillCount,
+                                       const void* skinBoxData, const int* skinBoxSegSkin,
+                                       const int* skinBoxSegCount, int nSkinBoxSegs,
+                                       const void* skinPillData, const int* skinPillSegSkin,
+                                       const int* skinPillSegCount, int nSkinPillSegs,
                                        int w, int h) {
     if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return nullptr;
     if (w != g_vk.width || h != g_vk.height) {
@@ -1361,6 +1613,14 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     }
     UploadPendingTerrain();
     BuildShadowResources();   // self-gating; one attempt, logged
+    BuildSkinResources();     // V180: needs shadow stack + staged atlas
+
+    // Total skinned instances per stream (the seg arrays partition them).
+    int skinBoxCount = 0, skinPillCount = 0;
+    for (int s = 0; s < nSkinBoxSegs; ++s) skinBoxCount += skinBoxSegCount[s];
+    for (int s = 0; s < nSkinPillSegs; ++s) skinPillCount += skinPillSegCount[s];
+    if (!skinBoxData) skinBoxCount = 0;
+    if (!skinPillData || !g_vk.sphereBuf) skinPillCount = 0;
 
     DFN(vkBeginCommandBuffer); DFN(vkCmdBeginRenderPass); DFN(vkCmdBindPipeline);
     DFN(vkCmdSetViewport); DFN(vkCmdSetScissor); DFN(vkCmdBindVertexBuffers);
@@ -1382,6 +1642,18 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     if (!g_vk.sphereBuf) pillCount = 0;   // sphere upload failed: skip pills
     if (pillCount > 0 && !EnsurePillCap(cur, pillCount)) pillCount = 0;
     if (pillCount > 0) memcpy(g_vk.pillMap[cur], pillData, (size_t)pillCount * 80);
+    if (skinBoxCount > 0 &&
+        !EnsureStreamCap(g_vk.skinBoxBuf, g_vk.skinBoxMem, g_vk.skinBoxMap,
+                         g_vk.skinBoxCap, cur, skinBoxCount))
+        skinBoxCount = 0;
+    if (skinBoxCount > 0)
+        memcpy(g_vk.skinBoxMap[cur], skinBoxData, (size_t)skinBoxCount * 80);
+    if (skinPillCount > 0 &&
+        !EnsureStreamCap(g_vk.skinPillBuf, g_vk.skinPillMem, g_vk.skinPillMap,
+                         g_vk.skinPillCap, cur, skinPillCount))
+        skinPillCount = 0;
+    if (skinPillCount > 0)
+        memcpy(g_vk.skinPillMap[cur], skinPillData, (size_t)skinPillCount * 80);
 
     vkResetCommandBuffer(g_vk.cmd[cur], 0);
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -1433,6 +1705,23 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                 vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, pbufs, poffs);
                 vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
                           (uint32_t)pillCount, 0, 0);
+            }
+            if (skinBoxCount > 0) {   // skinned bodies cast (V180): depth
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shBoxPipe);   // needs no texture
+                VkBuffer kbufs[2] = { g_vk.cubeBuf, g_vk.skinBoxBuf[cur] };
+                VkDeviceSize koffs[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, kbufs, koffs);
+                vkCmdDraw(g_vk.cmd[cur], 36, (uint32_t)skinBoxCount, 0, 0);
+            }
+            if (skinPillCount > 0) {
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shBoxPipe);
+                VkBuffer kbufs[2] = { g_vk.sphereBuf, g_vk.skinPillBuf[cur] };
+                VkDeviceSize koffs[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, kbufs, koffs);
+                vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
+                          (uint32_t)skinPillCount, 0, 0);
             }
         }
         vkCmdEndRenderPass(g_vk.cmd[cur]);
@@ -1522,6 +1811,79 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
             vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
                       (uint32_t)pillCount, 0, 0);
         }
+        // Skinned streams (V180): per-segment draws with the atlas row in
+        // the push constant. Fail-soft: without the skin pipeline they run
+        // through the plain lit/no-shadow pipeline, untextured but present.
+        if (skinBoxCount > 0 || skinPillCount > 0) {
+            DFN(vkCmdBindDescriptorSets);
+            const bool skinned = g_vk.skinReady && lightVP16;
+            float kpc[40];
+            memcpy(kpc, viewProj16, 64);
+            if (lightVP16) memcpy(kpc + 16, lightVP16, 64);
+            kpc[32] = sun4[0];
+            kpc[33] = sun4[1];
+            kpc[34] = sun4[2];
+            kpc[35] = (flags & 1) ? 1.0f : 0.0f;
+            auto bindSkinned = [&]() {
+                if (skinned) {
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.skinPipe);
+                    vkCmdBindDescriptorSets(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            g_vk.skinLayout, 0, 1, &g_vk.skinSet, 0, NULL);
+                } else if (g_vk.shReady && lightVP16) {
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.litPipe);
+                    vkCmdBindDescriptorSets(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            g_vk.litLayout, 0, 1, &g_vk.shSet, 0, NULL);
+                    vkCmdPushConstants(g_vk.cmd[cur], g_vk.litLayout,
+                                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                       0, 144, kpc);
+                } else {
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.pipe);
+                    float ppc[20];
+                    memcpy(ppc, viewProj16, 64);
+                    memcpy(ppc + 16, sun4, 16);
+                    vkCmdPushConstants(g_vk.cmd[cur], g_vk.layout,
+                                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                       0, 80, ppc);
+                }
+            };
+            auto drawSegs = [&](VkBuffer meshVB, uint32_t meshVerts, VkBuffer instVB,
+                                const int* segSkin, const int* segCount, int nSegs) {
+                VkBuffer bufs2[2] = { meshVB, instVB };
+                VkDeviceSize offs2[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, bufs2, offs2);
+                int first = 0;
+                for (int s = 0; s < nSegs; ++s) {
+                    const int n = segCount[s];
+                    if (n <= 0) continue;
+                    if (skinned) {
+                        const int row = segSkin[s] < 0 ? 0 : segSkin[s] > 3 ? 3 : segSkin[s];
+                        kpc[36] = 0.0f;                 // skinRect.x
+                        kpc[37] = row * 0.25f;          // skinRect.y
+                        kpc[38] = 1.0f;                 // skinRect.z
+                        kpc[39] = 0.25f;                // skinRect.w
+                        vkCmdPushConstants(g_vk.cmd[cur], g_vk.skinLayout,
+                                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                           0, 160, kpc);
+                    }
+                    vkCmdDraw(g_vk.cmd[cur], meshVerts, (uint32_t)n, 0, (uint32_t)first);
+                    first += n;
+                }
+            };
+            if (skinBoxCount > 0) {
+                bindSkinned();
+                drawSegs(g_vk.cubeBuf, 36, g_vk.skinBoxBuf[cur],
+                         skinBoxSegSkin, skinBoxSegCount, nSkinBoxSegs);
+            }
+            if (skinPillCount > 0) {
+                bindSkinned();
+                drawSegs(g_vk.sphereBuf, (uint32_t)g_vk.sphereVerts,
+                         g_vk.skinPillBuf[cur],
+                         skinPillSegSkin, skinPillSegCount, nSkinPillSegs);
+            }
+        }
     }
     vkCmdEndRenderPass(g_vk.cmd[cur]);
     VkBufferImageCopy region = {};
@@ -1553,8 +1915,11 @@ void VulkanSetUiAtlas(const unsigned char*, int, int) {}
 int VulkanRegisterUiTexture(const unsigned char*, int, int) { return -1; }
 const unsigned char* VulkanRenderUi(const void*, int, const int*, const int*,
                                     int, int, int) { return nullptr; }
+void VulkanSetSkinAtlas(const unsigned char*, int, int) {}
 const unsigned char* VulkanRenderFrame(const float*, const float*, const float*,
-                                       int, const void*, int,
-                                       const void*, int, int, int) { return nullptr; }
+                                       int, const void*, int, const void*, int,
+                                       const void*, const int*, const int*, int,
+                                       const void*, const int*, const int*, int,
+                                       int, int) { return nullptr; }
 }
 #endif

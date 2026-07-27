@@ -2033,3 +2033,17 @@ over two half-features.
   137-runner, 10s) and tests/run_render.ps1 (two-backend smoke that
   asserts the executor log lines + a VK<=1.6x GL parity guard).
   Suite 137/137; render smoke green on both backends.
+
+- [x] **V180. Iteration one-eighty — armour is a texture, not geometry (parallel-agent build).**
+  A procedural 256x1024 armour atlas (cloth weave / leather / mail /
+  plate bands, deterministic pixel math) rides both backends: GL
+  samples it in the instancing shader via a per-bucket skinRect
+  uniform; Vulkan gets a dedicated skinned pipeline (boxskin.vert/
+  frag, triplanar-lite UVs, 160B push constants, shadow-sampling)
+  with its own pipelined instance streams that also cast in the sun
+  depth pass — VULKAN SKIN PIPELINE LIVE in the log. The body of all
+  three styles picks its tier from armour value (0 cloth, 1-2
+  leather, 3-4 mail, 5+ plate) and the armour WIDTH BUMP IS GONE -
+  protection reads from surface, not silhouette. Helm geometry kept
+  (user to decide). GL 8.9ms / VK 9.0ms; suite 137/137; render smoke
+  green.

@@ -140,7 +140,10 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const float rock = sinf(pose.walkPhase) * 0.06f;   // stride sway
     const int bodyAv = content.armor.valid(loadout.get(EquipSlot::Body))
                            ? content.armor[loadout.get(EquipSlot::Body)].armor : 0;
-    const float bw = 0.56f + (bodyAv >= 5 ? 0.10f : bodyAv >= 2 ? 0.05f : 0.0f);
+    // V180: armour is TEXTURE, not geometry — the width bump is gone; the
+    // body reads its protection from the skin atlas tier instead.
+    const float bw = 0.56f;
+    const int bodySkin = bodyAv >= 5 ? 3 : bodyAv >= 3 ? 2 : bodyAv >= 1 ? 1 : 0;
     const int style = GetSettings().bodyStyle;   // 0 boxy | 1 blocky | 2 pill
     const int helmAv = hasHelm && content.armor.valid(loadout.get(EquipSlot::Head))
                            ? content.armor[loadout.get(EquipSlot::Head)].armor : 0;
@@ -156,7 +159,9 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
             Boxy(at(lx + rock * 0.3f, 0.50f, lz), bw * 0.42f, 0.90f, 0.34f, bodyC);
             Boxy(at(lx + rock * 0.3f, 0.08f, lz), bw * 0.44f, 0.16f, 0.40f, feetC);
         }
-        Boxy(at(rock * 0.5f, 1.30f, 0.0f), bw * 1.05f, 0.78f, 0.42f, bodyC);
+        rdr::PushOrientedBoxSkinned(at(rock * 0.5f, 1.30f - 0.39f, 0.0f),
+                                    at(rock * 0.5f, 1.30f + 0.39f, 0.0f),
+                                    bw * 1.05f / 1.8f, bodyC, bodySkin);
         Boxy(at(rock * 0.5f, 1.30f, 0.22f), bw * 0.40f, 0.60f, 0.05f,
              flashed(teamTint));                          // surcoat plate
         Boxy(at(0.0f, 1.95f, 0.0f), 0.50f, 0.50f, 0.50f, headC);   // the cube head
@@ -173,8 +178,9 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
         // ---- PILL (V179): a capsule body hips→shoulders and a rounded
         //      head through rdr::PushPill (instanced ellipsoids at the
         //      seam; both backends). Boots and surcoat stay thin boxes.
-        rdr::PushPill(at(rock * 0.5f, 0.30f, 0.0f), at(rock * 0.5f, 1.45f, 0.0f),
-                      bw * 0.42f, bodyC);
+        rdr::PushPillSkinned(at(rock * 0.5f, 0.30f, 0.0f),
+                             at(rock * 0.5f, 1.45f, 0.0f),
+                             bw * 0.42f, bodyC, bodySkin);
         Boxy(at(rock * 0.5f, 0.95f, 0.24f), bw * 0.30f, 1.0f, 0.04f,
              flashed(teamTint));                          // surcoat stripe
         Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
@@ -191,7 +197,9 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     } else {
         // ---- BOXY (V149, the default): ONE honest prism from boots to
         //      shoulders — byte-identical to the pre-V179 body.
-        Boxy(at(rock * 0.5f, 0.82f, 0.0f), bw, 1.64f, 0.40f, bodyC);
+        rdr::PushOrientedBoxSkinned(at(rock * 0.5f, 0.0f, 0.0f),
+                                    at(rock * 0.5f, 1.64f, 0.0f),
+                                    bw / 1.8f, bodyC, bodySkin);
         // the team surcoat stripe, a thin front plate
         Boxy(at(rock * 0.5f, 0.95f, 0.21f), bw * 0.34f, 1.1f, 0.05f, flashed(teamTint));
         // boots: a darker base band

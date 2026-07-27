@@ -2,6 +2,7 @@
 #include "character.h"
 #include "../gfx.h"
 #include "../rdr.h"
+#include "../skins.h"
 #include "../sfx.h"
 #include "../ui.h"
 #include "../parallel.h"
@@ -1432,23 +1433,29 @@ constexpr const char* INST_VS =
     "#version 330\n"
     "in vec3 vertexPosition;\n"
     "in vec3 vertexNormal;\n"
+    "in vec2 vertexTexCoord;\n"
     "in mat4 instanceTransform;\n"
     "uniform mat4 mvp;\n"
     "out vec3 fragNormal;\n"
     "out vec3 fragWorld;\n"
+    "out vec2 fragUV;\n"
     "void main() {\n"
     "    fragNormal  = mat3(instanceTransform) * vertexNormal;\n"
     "    vec4 wp     = instanceTransform * vec4(vertexPosition, 1.0);\n"
     "    fragWorld   = wp.xyz;\n"
+    "    fragUV      = vertexTexCoord;\n"
     "    gl_Position = mvp * wp;\n"
     "}\n";
 constexpr const char* INST_FS =
     "#version 330\n"
     "in vec3 fragNormal;\n"
     "in vec3 fragWorld;\n"
+    "in vec2 fragUV;\n"
     "uniform vec4 colDiffuse;\n"
     "uniform vec3 sunDir;\n"
     "uniform sampler2D shadowMap;\n"
+    "uniform sampler2D texture1;\n"   // armour skin atlas (V180)
+    "uniform vec4 skinRect;\n"        // (u0,v0,u1,v1); w==0 -> untextured
     "uniform mat4 lightVP;\n"
     "uniform int shadowsOn;\n"
     "out vec4 finalColor;\n"
@@ -1464,13 +1471,18 @@ constexpr const char* INST_FS =
     "            sh = (pp.z - bias <= d) ? 1.0 : 0.35;\n"
     "        }\n"
     "    }\n"
+    "    float skinB = 1.0;\n"        // armour-as-texture (V180)
+    "    if (skinRect.w > 0.0)\n"
+    "        skinB = texture(texture1, vec2(mix(skinRect.x, skinRect.z, fragUV.x),\n"
+    "                                       mix(skinRect.y, skinRect.w, fragUV.y))).r;\n"
     "    float shade = 0.55 + 0.45 * ndl * sh;\n"
-    "    finalColor  = vec4(colDiffuse.rgb * shade, colDiffuse.a);\n"
+    "    finalColor  = vec4(colDiffuse.rgb * skinB * shade, colDiffuse.a);\n"
     "}\n";
 
 bool     g_instTried = false, g_instReady = false;
 int      g_instSunLoc = -1;
 int      g_instVpLoc = -1, g_instMapLoc = -1, g_instShadowsLoc = -1;   // V153
+int      g_instSkinRectLoc = -1;   // V180: armour skin atlas row selector
 Shader   g_instShader{};
 Mesh     g_instCube{};
 Mesh     g_instSphere{};   // V179: the pill primitive's unit sphere
@@ -1491,10 +1503,21 @@ void EnsureInstancing() {
     g_instVpLoc      = GetShaderLocation(g_instShader, "lightVP");
     g_instMapLoc     = GetShaderLocation(g_instShader, "shadowMap");
     g_instShadowsLoc = GetShaderLocation(g_instShader, "shadowsOn");
+    g_instSkinRectLoc = GetShaderLocation(g_instShader, "skinRect");
     g_instCube = GenMeshCube(1.0f, 1.0f, 1.0f);
     g_instSphere = GenMeshSphere(0.5f, 10, 12);   // unit diameter (V179)
     g_instMat  = LoadMaterialDefault();
     g_instMat.shader = g_instShader;
+    {   // Armour skin atlas (V180): procedural, shared verbatim with Vulkan.
+        int aw = 0, ah = 0;
+        const unsigned char* px = SkinAtlasPixels(&aw, &ah);
+        const Image im = { (void*)px, aw, ah, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+        Texture2D atlas = LoadTextureFromImage(im);
+        SetTextureFilter(atlas, TEXTURE_FILTER_BILINEAR);
+        // Rides the SPECULAR slot -> raylib binds it as `texture1`.
+        g_instMat.maps[MATERIAL_MAP_SPECULAR].texture = atlas;
+        rdr::VulkanSetSkinAtlas(px, aw, ah);
+    }
     g_instReady = true;
 }
 
@@ -1521,7 +1544,8 @@ void FlushInstanced() {
     const Vector3 sun = Vector3Normalize(
         B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
     rdr::RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
-                                  g_instSunLoc, sun, &g_instSphere };
+                                  g_instSunLoc, sun, &g_instSphere,
+                                  g_instSkinRectLoc };
     rdr::Flush(st);   // the seam picks the backend (V161)
 }
 
@@ -1535,7 +1559,8 @@ void EnsureBackendGL() { EnsureInstancing(); }
 void FlushScene(Vector3 sunDir) {
     if (!g_instReady) return;
     RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
-                             g_instSunLoc, sunDir, &g_instSphere };
+                             g_instSunLoc, sunDir, &g_instSphere,
+                             g_instSkinRectLoc };
     Flush(st);
 }
 }  // namespace rdr
