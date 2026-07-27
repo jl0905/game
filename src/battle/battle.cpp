@@ -1502,7 +1502,7 @@ void FlushInstanced() {
         B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
     rdr::RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
                                   g_instSunLoc, sun };
-    rdr::FlushRaylib(st);   // the seam executes the frame (V160)
+    rdr::Flush(st);   // the seam picks the backend (V161)
 }
 
 // Soft blob shadow pinned to the terrain â€” the cheapest depth cue there is.

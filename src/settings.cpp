@@ -57,7 +57,9 @@ void SaveSettings() {
       << "\ntextscale " << TextFormat("%.2f", s.textScale)
       << "\nbattlesize " << (int)s.battleSize
       << "\nironman " << (s.ironman ? "on" : "off")
-      << "\npostfx " << (s.postFx ? "on" : "off") << '\n';
+      << "\npostfx " << (s.postFx ? "on" : "off")
+      << "\nshadows " << (s.shadows ? "on" : "off")
+      << "\nrenderer " << (s.renderer == 1 ? "vulkan" : "raylib") << '\n';
 }
 
 void LoadSettings() {
@@ -84,5 +86,6 @@ void LoadSettings() {
         else if (key == "ironman")    s.ironman      = TruthValue(value);
         else if (key == "postfx")     s.postFx       = TruthValue(value);
         else if (key == "shadows")    s.shadows      = TruthValue(value);
+        else if (key == "renderer")   s.renderer     = (value == "vulkan") ? 1 : 0;
     }
 }

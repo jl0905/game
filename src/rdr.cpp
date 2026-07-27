@@ -1,4 +1,5 @@
 #include "rdr.h"
+#include "settings.h"
 #include "raymath.h"
 
 // The seam's recording + raylib executor (V160). The recording types are
@@ -56,6 +57,17 @@ void FlushRaylib(const RaylibInstancedState& st) {
         DrawMeshInstanced(*st.cube, *st.mat, mats.data(), (int)mats.size());
         mats.clear();
     }
+}
+
+void Flush(const RaylibInstancedState& st) {
+    static bool noted = false;
+    if (GetSettings().renderer == 1 && !noted) {
+        noted = true;
+        TraceLog(LOG_INFO,
+                 "rdr: renderer=vulkan requested; executor in progress "
+                 "(RENDERER.md) - executing via GL until parity");
+    }
+    FlushRaylib(st);   // both roads run through the same recording
 }
 
 }  // namespace rdr

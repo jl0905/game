@@ -40,4 +40,11 @@ struct RaylibInstancedState {
 };
 void FlushRaylib(const RaylibInstancedState& st);
 
+// The backend switch (V161): reads Settings::renderer. Today `vulkan`
+// logs once and executes through GL until the Vulkan executor reaches
+// parity (RENDERER.md phase 2 tail: offscreen render + present interop,
+// then the native window swap). Scene code never branches — it calls
+// Flush() and the seam decides.
+void Flush(const RaylibInstancedState& st);
+
 }  // namespace rdr

@@ -1851,3 +1851,13 @@ over two half-features.
   and the recording is byte-for-byte the instance format the Vulkan
   side (vkarmy) already renders at 1400fps. Zero behaviour change:
   bench 16.23ms/62fps, all 137 scripts green. Next: rdr::FlushVulkan.
+
+- [x] **V161. Iteration one-sixty-one — the backend switch exists.**
+  settings.cfg gains enderer raylib|vulkan (and the V153 shadows
+  key finally persists — found unsaved while wiring it). Scene code
+  now calls rdr::Flush(), which reads the setting and picks the
+  executor; ulkan logs its in-progress status once and runs GL
+  until the Vulkan executor (offscreen render + present interop, then
+  the native window swap — RENDERER.md tail) reaches parity. The flip
+  point the whole migration converges on is now a shipped, saved,
+  user-visible switch. 137 scripts green.

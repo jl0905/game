@@ -19,6 +19,10 @@ struct Settings {
     float battleSize   = 200.0f;  // field-battle cap per contingent (V75);
                                   // the overflow arrives as reinforcements
     bool  shadows      = true;    // V153: sun shadow mapping in battles
+    int   renderer     = 0;       // V161: 0 = raylib (GL), 1 = vulkan — the
+                                  // seam (src/rdr.h) picks its executor;
+                                  // vulkan falls back to GL until the
+                                  // executor reaches parity (RENDERER.md)
     bool  postFx       = true;    // V151: filmic post pass (tone map, grade,
                                   // vignette, grain) over the 3D scenes
     bool  ironman      = false;   // V147: OFF = the lone hero always survives
