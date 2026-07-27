@@ -1538,10 +1538,15 @@ void DrawHorse(Vector3 pos, float yaw, float walkPhase, bool batched = false) {
     // Batched tier (V132): the whole horse as oriented boxes through the
     // same sink as its rider — a coherent far silhouette, not a crate on
     // a capsule horse. Minor parts (mane/muzzle/hooves) are dropped.
+    // Since V170 both tiers speak boxes through the seam — the horse is
+    // backend-neutral like its rider; `batched` only drops the minor parts.
     auto DrawCapsuleOr = [&](Vector3 a, Vector3 b, float r, int sl, int ri,
                              Color c) {
-        if (batched) LimbBox(a, b, r, c);
-        else         DrawCapsule(a, b, r, sl, ri, c);
+        (void)sl; (void)ri;
+        LimbBox(a, b, r, c);
+    };
+    auto Detail = [&](Vector3 a, Vector3 b, float r, Color c) {
+        if (!batched) LimbBox(a, b, r, c);
     };
     // Reworked (V132): legs PIVOT from the hip instead of sliding fore-aft
     // (the old parallel-slide read as broken), and the horse gains a mane,
@@ -1551,19 +1556,18 @@ void DrawHorse(Vector3 pos, float yaw, float walkPhase, bool batched = false) {
     const float trot = sinf(walkPhase) * 0.35f;
     DrawCapsuleOr(hAt(0, 1.05f, -0.7f), hAt(0, 1.05f, 0.7f), 0.36f, 8, 5, coat);   // barrel
     DrawCapsuleOr(hAt(0, 1.15f, 0.7f), hAt(0, 1.70f, 1.12f), 0.15f, 6, 4, coat);   // neck
-    if (!batched) DrawCapsule(hAt(0, 1.30f, 0.78f), hAt(0, 1.78f, 1.10f), 0.05f, 4, 3, dark);  // mane
+    Detail(hAt(0, 1.30f, 0.78f), hAt(0, 1.78f, 1.10f), 0.05f, dark);  // mane
     DrawCapsuleOr(hAt(0, 1.70f, 1.12f), hAt(0, 1.58f, 1.52f), 0.11f, 6, 4, coat);  // head
-    if (!batched) DrawCapsule(hAt(0, 1.56f, 1.52f), hAt(0, 1.52f, 1.64f), 0.07f, 4, 3, dark);  // muzzle
-    if (!batched) DrawCapsule(hAt(0, 1.15f, -0.72f), hAt(0, 0.62f, -1.02f), 0.06f, 4, 3, dark); // tail
+    Detail(hAt(0, 1.56f, 1.52f), hAt(0, 1.52f, 1.64f), 0.07f, dark);  // muzzle
+    Detail(hAt(0, 1.15f, -0.72f), hAt(0, 0.62f, -1.02f), 0.06f, dark); // tail
     // Legs pivot around the hip/shoulder: the top stays planted on the
     // body, the hoof swings through the stride arc.
     auto leg = [&](float side, float fwd, float phase) {
         const float sw = sinf(phase) * 0.35f;
         DrawCapsuleOr(hAt(side, 0.95f, fwd), hAt(side, 0.08f, fwd + sw),
                       0.07f, 5, 3, coat);
-        if (!batched)
-            DrawCapsule(hAt(side, 0.10f, fwd + sw), hAt(side, 0.02f, fwd + sw),
-                        0.075f, 4, 3, dark);   // hoof
+        Detail(hAt(side, 0.10f, fwd + sw), hAt(side, 0.02f, fwd + sw),
+               0.075f, dark);   // hoof
     };
     leg(-0.20f,  0.55f, walkPhase);
     leg( 0.20f,  0.55f, walkPhase + PI);

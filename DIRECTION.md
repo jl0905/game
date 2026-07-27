@@ -1933,3 +1933,11 @@ over two half-features.
   600 men. Raw GL left in-battle: terrain colour, water strip, blood
   pools/stains (flat cylinders), horse detail capsules, HUD. 137
   scripts green.
+
+- [x] **V170. Iteration one-seventy — the horse speaks boxes at every distance.**
+  DrawHorse's near tier no longer draws raw GL capsules: every part
+  (barrel, neck, head, legs, mane, muzzle, tail, hooves) records
+  through the seam as oriented boxes — matching the one-honest-box
+  soldier language (V149) and rendering on Vulkan. In-battle raw GL
+  is now down to: terrain colour, water strip, flat stain/pool
+  cylinders, sky gradient, HUD. 137 scripts green.
