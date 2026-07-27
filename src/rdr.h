@@ -79,7 +79,9 @@ const unsigned char* VulkanRenderUi(const void* verts, int vcount,
                                     int nSegs, int w, int h);
 // V177: textured quad at the seam — registers the raylib texture on first
 // use (id-keyed) and records a textured segment; false = caller draws GL.
-bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint);
+bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint,
+                   bool dynamic = false);   // dynamic: re-upload every frame
+void VulkanUpdateUiTexture(int id, const unsigned char* rgba, int w, int h);
 
 // V162: boots a live Vulkan device inside the game process the first time
 // renderer=vulkan flushes a frame; true once the frame executor is usable.
@@ -88,7 +90,9 @@ bool VulkanExecutorReady();
 // V163: the Vulkan frame executor. Renders `count` 80-byte instances
 // (column-major mat4 + rgba floats) offscreen with the game's camera and
 // returns RGBA pixels (row 0 = top), or null on failure.
+// V178: lightVP16 = sun view-proj (z fixed to [0,1]); flags bit0 = shadows.
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
+                                       const float* lightVP16, int flags,
                                        const void* instData, int count,
                                        int w, int h);
 

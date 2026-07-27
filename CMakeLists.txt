@@ -72,3 +72,12 @@ if (WIN32)
     target_include_directories(vkarmy PRIVATE third_party/vulkan-headers)
     target_link_libraries(vkarmy PRIVATE user32 gdi32)
 endif()
+
+# vkwin (V178): the native window/input swap proof - raw Win32 window,
+# Vulkan swapchain presenting directly (no readback/composite), WM_* input
+# captured into the game's Gather*Input shape, resize-safe.
+if (WIN32)
+    add_executable(vkwin tools/vkwin.c)
+    target_include_directories(vkwin PRIVATE third_party/vulkan-headers)
+    target_link_libraries(vkwin PRIVATE user32 gdi32)
+endif()

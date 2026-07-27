@@ -2006,3 +2006,15 @@ over two half-features.
   renders through it — with renderer=vulkan the ENTIRE campaign
   screen (ground, markers, labels, HUD) is Vulkan output composited
   once. 137 scripts green.
+
+- [x] **V178. Iteration one-seventy-eight — three fronts at once (parallel-agent integration).**
+  (a) VULKAN SUN SHADOWS: a 2048 D32 depth pass from the sun with PCF
+  sampling (boxsh/meshsh/boxlit shaders) — Vulkan output now carries
+  the V153 shadow look natively, +1.2ms, gated by the shadows setting.
+  (b) CONTENT SWEEP: parade preview via the dynamic textured quad,
+  inventory grid lines, tavern keg/well/plaza/sign and blob shadows
+  through the seam. (c) NATIVE WINDOW PROOF: tools/vkwin.exe — raw
+  Win32 window + real Vulkan swapchain presenting the instanced army
+  DIRECTLY (no readback), WM_* input driving the camera, resize-safe,
+  161fps vsynced. The in-game window swap is now pure wiring (plan in
+  the vkwin header). GL 8.3ms / VK 9.0ms. 137 scripts green.

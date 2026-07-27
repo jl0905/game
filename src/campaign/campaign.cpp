@@ -4451,11 +4451,13 @@ void InventoryDraw(const GameState& gs) {
 
     // Grid.
     for (int y = 0; y <= INV_H; ++y)
-        DrawLine(ox, oy + y * INV_CELL, ox + INV_W * INV_CELL, oy + y * INV_CELL,
-                 Fade(RAYWHITE, 0.15f));
+        ui::LineEx({ (float)ox, (float)(oy + y * INV_CELL) },
+                   { (float)(ox + INV_W * INV_CELL), (float)(oy + y * INV_CELL) },
+                   1.0f, Fade(RAYWHITE, 0.15f));
     for (int x = 0; x <= INV_W; ++x)
-        DrawLine(ox + x * INV_CELL, oy, ox + x * INV_CELL, oy + INV_H * INV_CELL,
-                 Fade(RAYWHITE, 0.15f));
+        ui::LineEx({ (float)(ox + x * INV_CELL), (float)oy },
+                   { (float)(ox + x * INV_CELL), (float)(oy + INV_H * INV_CELL) },
+                   1.0f, Fade(RAYWHITE, 0.15f));
 
     // Items.
     for (int i = 0; i < (int)gs.inventory.size(); ++i) {
@@ -4875,11 +4877,13 @@ void MarketDraw(const GameState& gs) {
     by += 26;
     const int tile = bagW / INV_W;
     for (int yy = 0; yy <= INV_H; ++yy)
-        DrawLine(bagX, by + yy * tile, bagX + tile * INV_W, by + yy * tile,
-                 Fade(RAYWHITE, 0.12f));
+        ui::LineEx({ (float)bagX, (float)(by + yy * tile) },
+                   { (float)(bagX + tile * INV_W), (float)(by + yy * tile) },
+                   1.0f, Fade(RAYWHITE, 0.12f));
     for (int xx = 0; xx <= INV_W; ++xx)
-        DrawLine(bagX + xx * tile, by, bagX + xx * tile, by + INV_H * tile,
-                 Fade(RAYWHITE, 0.12f));
+        ui::LineEx({ (float)(bagX + xx * tile), (float)by },
+                   { (float)(bagX + xx * tile), (float)(by + INV_H * tile) },
+                   1.0f, Fade(RAYWHITE, 0.12f));
     for (const InvItem& it : gs.inventory) {
         const bool wpn = it.isWeapon;
         const int tw = wpn ? 1 : 2, th = wpn ? 3 : 2;
@@ -5225,7 +5229,9 @@ void PartyDraw(const GameState& gs) {
 
     // The parade panel, framed on the right.
     const int paneX = GetScreenWidth() - 452;
-    DrawTextureRec(parade.texture, { 0, 0, 420, -420 }, { (float)paneX, 180 }, WHITE);
+    if (!rdr::PushUiTexQuad(parade.texture, { 0, 420, 420, -420 },
+                            { (float)paneX, 180, 420, 420 }, WHITE, true))
+        DrawTextureRec(parade.texture, { 0, 0, 420, -420 }, { (float)paneX, 180 }, WHITE);
     ui::RectLines(paneX, 180, 420, 420, Fade(GOLD, 0.5f));
     ui::Text("Your ranks on parade", paneX + 8, 186, 18, Fade(RAYWHITE, 0.7f));
 

@@ -91,8 +91,22 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     const float16 vpf = MatrixToFloatV(vp);
     const float sun[4] = { st.sun.x, st.sun.y, st.sun.z, 0.0f };
     const int w = GetScreenWidth(), h = GetScreenHeight();
+    // Sun shadow matrix (V178): same ortho the GL road uses (gfx.cpp
+    // ShadowBegin), centred a little ahead of the camera, z-fixed for
+    // Vulkan. The camera comes back out of the modelview we already have.
+    const Matrix invView = MatrixInvert(rlGetMatrixModelview());
+    const Vector3 camPos = { invView.m12, invView.m13, invView.m14 };
+    const Vector3 fwd = Vector3Normalize({ -invView.m8, -invView.m9, -invView.m10 });
+    const Vector3 center = Vector3Add(camPos, Vector3Scale(fwd, 60.0f));
+    const Vector3 eye = Vector3Add(center, Vector3Scale(st.sun, -160.0f));
+    const float S = 110.0f;
+    const Matrix lightVP = MatrixMultiply(
+        MatrixMultiply(MatrixLookAt(eye, center, { 0, 1, 0 }),
+                       MatrixOrtho(-S, S, -S, S, 5.0, 400.0)), fix);
+    const float16 lvpf = MatrixToFloatV(lightVP);
+    const int flags = GetSettings().shadows ? 1 : 0;
     const unsigned char* px =
-        VulkanRenderFrame(vpf.v, sun, inst.data(), count, w, h);
+        VulkanRenderFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count, w, h);
     if (!px) return false;
     if (g_vkTex.id == 0 || g_vkTex.width != w || g_vkTex.height != h) {
         if (g_vkTex.id) UnloadTexture(g_vkTex);
@@ -162,12 +176,20 @@ void PushUiVerts(const UiVert* v, int n) {
     SegAppend(-1, n);
 }
 
-bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint) {
+bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint,
+                   bool dynamic) {
     if (!VulkanUiActive() || tex.id == 0) return false;
     int vkId;
     auto it = g_texIds.find(tex.id);
     if (it != g_texIds.end()) {
         vkId = it->second;
+        if (dynamic && vkId >= 0) {   // live preview: refresh the pixels
+            Image im = LoadImageFromTexture(tex);
+            ImageFormat(&im, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+            VulkanUpdateUiTexture(vkId, (const unsigned char*)im.data,
+                                  im.width, im.height);
+            UnloadImage(im);
+        }
     } else {
         Image im = LoadImageFromTexture(tex);
         ImageFormat(&im, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);

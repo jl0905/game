@@ -94,6 +94,26 @@ struct VkExec {
     VkDescriptorPool texPool = VK_NULL_HANDLE;
     int texCount = 0;
     VkDescriptorSet texSet[16] = {};
+    // V178: kept mapped for dynamic textures (per-frame re-upload)
+    unsigned char* texMap[16] = {};
+    size_t texPitch[16] = {};
+    int texW[16] = {}, texH[16] = {};
+    // Sun-shadow pass (V178): 2048 D32 map + depth-only pipelines + a
+    // shadow-sampling main pipeline. shReady gates the whole feature; when
+    // the shaders are missing the legacy no-shadow pipe keeps rendering.
+    bool shTried = false, shReady = false;
+    VkImage shImg = VK_NULL_HANDLE;
+    VkDeviceMemory shMem = VK_NULL_HANDLE;
+    VkImageView shView = VK_NULL_HANDLE;
+    VkSampler shSamp = VK_NULL_HANDLE;
+    VkRenderPass shRp = VK_NULL_HANDLE;
+    VkFramebuffer shFb = VK_NULL_HANDLE;
+    VkPipelineLayout shLayout = VK_NULL_HANDLE;    // 64B lightVP push
+    VkPipeline shBoxPipe = VK_NULL_HANDLE, shMeshPipe = VK_NULL_HANDLE;
+    VkDescriptorSetLayout shDsl = VK_NULL_HANDLE;
+    VkDescriptorSet shSet = VK_NULL_HANDLE;
+    VkPipelineLayout litLayout = VK_NULL_HANDLE;   // 144B push + shadow map
+    VkPipeline litPipe = VK_NULL_HANDLE;
 };
 VkExec g_vk;
 
@@ -514,6 +534,259 @@ bool EnsureInstCap(int slot, int count) {
     return true;
 }
 
+// V178: the sun-shadow stack. Built once, lazily, after the main render
+// pass exists (litPipe targets it). Any failure leaves shReady false and
+// the legacy no-shadow pipeline in charge - parity is never at risk.
+constexpr int SHADOW_RES_VK = 2048;
+
+bool BuildShadowResources() {
+    if (g_vk.shReady) return true;
+    if (g_vk.shTried) return false;
+    g_vk.shTried = true;
+    if (!g_vk.rp || !g_vk.pipe) return false;
+    DFN(vkCreateRenderPass); DFN(vkCreateFramebuffer); DFN(vkCreateShaderModule);
+    DFN(vkCreatePipelineLayout); DFN(vkCreateGraphicsPipelines);
+    DFN(vkCreateSampler); DFN(vkCreateDescriptorSetLayout);
+    DFN(vkCreateDescriptorPool); DFN(vkAllocateDescriptorSets);
+    DFN(vkUpdateDescriptorSets);
+
+    size_t bsv, msv, blv, blf;
+    void* bsvC = ReadSpv("assets/spv/boxsh.vert.spv", &bsv);
+    void* msvC = ReadSpv("assets/spv/meshsh.vert.spv", &msv);
+    void* blvC = ReadSpv("assets/spv/boxlit.vert.spv", &blv);
+    void* blfC = ReadSpv("assets/spv/boxlit.frag.spv", &blf);
+    if (!bsvC || !msvC || !blvC || !blfC) {
+        free(bsvC); free(msvC); free(blvC); free(blfC);
+        TraceLog(RL_LOG_WARNING, "rdr: vulkan shadow shaders missing; no-shadow path stays");
+        return false;
+    }
+
+    // The map: D32, rendered by a depth-only pass, sampled by the lit pass.
+    if (!MakeImage(SHADOW_RES_VK, SHADOW_RES_VK, VK_FORMAT_D32_SFLOAT,
+                   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                   VK_IMAGE_ASPECT_DEPTH_BIT, &g_vk.shImg, &g_vk.shMem, &g_vk.shView))
+        return false;
+
+    {   // depth-only render pass ending in SHADER_READ_ONLY for the lit pass
+        VkAttachmentDescription at = {};
+        at.format = VK_FORMAT_D32_SFLOAT;
+        at.samples = VK_SAMPLE_COUNT_1_BIT;
+        at.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        at.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        at.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        at.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkAttachmentReference dr = { 0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+        VkSubpassDescription sp = {};
+        sp.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sp.pDepthStencilAttachment = &dr;
+        VkSubpassDependency dep = {};
+        dep.srcSubpass = 0;
+        dep.dstSubpass = VK_SUBPASS_EXTERNAL;
+        dep.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dep.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        VkRenderPassCreateInfo rpci = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+        rpci.attachmentCount = 1;
+        rpci.pAttachments = &at;
+        rpci.subpassCount = 1;
+        rpci.pSubpasses = &sp;
+        rpci.dependencyCount = 1;
+        rpci.pDependencies = &dep;
+        if (vkCreateRenderPass(g_vk.dev, &rpci, NULL, &g_vk.shRp) != VK_SUCCESS)
+            return false;
+        VkFramebufferCreateInfo fci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+        fci.renderPass = g_vk.shRp;
+        fci.attachmentCount = 1;
+        fci.pAttachments = &g_vk.shView;
+        fci.width = SHADOW_RES_VK;
+        fci.height = SHADOW_RES_VK;
+        fci.layers = 1;
+        if (vkCreateFramebuffer(g_vk.dev, &fci, NULL, &g_vk.shFb) != VK_SUCCESS)
+            return false;
+    }
+
+    {   // sampler + descriptor for the lit pass to read the map
+        VkSamplerCreateInfo smp = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+        smp.magFilter = VK_FILTER_NEAREST;   // manual 3x3 PCF wants raw depth
+        smp.minFilter = VK_FILTER_NEAREST;
+        smp.addressModeU = smp.addressModeV = smp.addressModeW =
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        vkCreateSampler(g_vk.dev, &smp, NULL, &g_vk.shSamp);
+        VkDescriptorSetLayoutBinding b = {};
+        b.binding = 0;
+        b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b.descriptorCount = 1;
+        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutCreateInfo dlci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+        dlci.bindingCount = 1;
+        dlci.pBindings = &b;
+        vkCreateDescriptorSetLayout(g_vk.dev, &dlci, NULL, &g_vk.shDsl);
+        VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 };
+        VkDescriptorPoolCreateInfo dpci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+        dpci.maxSets = 1;
+        dpci.poolSizeCount = 1;
+        dpci.pPoolSizes = &ps;
+        VkDescriptorPool pool;
+        vkCreateDescriptorPool(g_vk.dev, &dpci, NULL, &pool);
+        VkDescriptorSetAllocateInfo dsai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+        dsai.descriptorPool = pool;
+        dsai.descriptorSetCount = 1;
+        dsai.pSetLayouts = &g_vk.shDsl;
+        if (vkAllocateDescriptorSets(g_vk.dev, &dsai, &g_vk.shSet) != VK_SUCCESS)
+            return false;
+        VkDescriptorImageInfo dii = { g_vk.shSamp, g_vk.shView,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        VkWriteDescriptorSet wds = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+        wds.dstSet = g_vk.shSet;
+        wds.dstBinding = 0;
+        wds.descriptorCount = 1;
+        wds.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        wds.pImageInfo = &dii;
+        vkUpdateDescriptorSets(g_vk.dev, 1, &wds, 0, NULL);
+    }
+
+    VkShaderModuleCreateInfo smci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    VkShaderModule bsvM, msvM, blvM, blfM;
+    smci.codeSize = bsv;  smci.pCode = (const uint32_t*)bsvC;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &bsvM);
+    smci.codeSize = msv;  smci.pCode = (const uint32_t*)msvC;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &msvM);
+    smci.codeSize = blv;  smci.pCode = (const uint32_t*)blvC;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &blvM);
+    smci.codeSize = blf;  smci.pCode = (const uint32_t*)blfC;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &blfM);
+    free(bsvC); free(msvC); free(blvC); free(blfC);
+
+    {   // layouts: 64B lightVP for the depth pass, 144B + map for the lit pass
+        VkPushConstantRange spc = { VK_SHADER_STAGE_VERTEX_BIT, 0, 64 };
+        VkPipelineLayoutCreateInfo plci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+        plci.pushConstantRangeCount = 1;
+        plci.pPushConstantRanges = &spc;
+        vkCreatePipelineLayout(g_vk.dev, &plci, NULL, &g_vk.shLayout);
+        VkPushConstantRange lpc = { VK_SHADER_STAGE_VERTEX_BIT |
+                                    VK_SHADER_STAGE_FRAGMENT_BIT, 0, 144 };
+        plci.pPushConstantRanges = &lpc;
+        plci.setLayoutCount = 1;
+        plci.pSetLayouts = &g_vk.shDsl;
+        vkCreatePipelineLayout(g_vk.dev, &plci, NULL, &g_vk.litLayout);
+    }
+
+    // Shared fixed state for the three new pipelines.
+    VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vps = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    vps.viewportCount = 1;
+    vps.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE;
+    rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineDepthStencilStateCreateInfo dst = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    dst.depthTestEnable = VK_TRUE;
+    dst.depthWriteEnable = VK_TRUE;
+    dst.depthCompareOp = VK_COMPARE_OP_LESS;
+    VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dsci = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dsci.dynamicStateCount = 2;
+    dsci.pDynamicStates = dyn;
+
+    VkVertexInputBindingDescription boxBinds[2] = {
+        { 0, 6 * sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX },
+        { 1, 80,                VK_VERTEX_INPUT_RATE_INSTANCE },
+    };
+    VkVertexInputAttributeDescription boxAttrs[7] = {
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 },
+        { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, 12 },
+        { 2, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 0 },
+        { 3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 16 },
+        { 4, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 32 },
+        { 5, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 48 },
+        { 6, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 64 },
+    };
+    VkPipelineVertexInputStateCreateInfo boxVin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    boxVin.vertexBindingDescriptionCount = 2;
+    boxVin.pVertexBindingDescriptions = boxBinds;
+    boxVin.vertexAttributeDescriptionCount = 7;
+    boxVin.pVertexAttributeDescriptions = boxAttrs;
+
+    VkVertexInputBindingDescription meshBind = { 0, 10 * sizeof(float),
+                                                 VK_VERTEX_INPUT_RATE_VERTEX };
+    VkVertexInputAttributeDescription meshAttr = { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 };
+    VkPipelineVertexInputStateCreateInfo meshVin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    meshVin.vertexBindingDescriptionCount = 1;
+    meshVin.pVertexBindingDescriptions = &meshBind;
+    meshVin.vertexAttributeDescriptionCount = 1;
+    meshVin.pVertexAttributeDescriptions = &meshAttr;
+
+    {   // depth-only pipelines: vertex stage only, no colour attachments
+        VkPipelineShaderStageCreateInfo st = {};
+        st.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        st.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        st.module = bsvM;
+        st.pName = "main";
+        VkPipelineColorBlendStateCreateInfo cb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+        VkGraphicsPipelineCreateInfo gp = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+        gp.stageCount = 1;
+        gp.pStages = &st;
+        gp.pVertexInputState = &boxVin;
+        gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vps;
+        gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms;
+        gp.pDepthStencilState = &dst;
+        gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dsci;
+        gp.layout = g_vk.shLayout;
+        gp.renderPass = g_vk.shRp;
+        if (vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL, &g_vk.shBoxPipe) != VK_SUCCESS)
+            return false;
+        st.module = msvM;
+        gp.pVertexInputState = &meshVin;
+        vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL, &g_vk.shMeshPipe);
+    }
+
+    {   // the shadow-sampling lit pipeline, targeting the main render pass
+        VkPipelineShaderStageCreateInfo st2[2] = {};
+        st2[0].sType = st2[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        st2[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        st2[0].module = blvM;
+        st2[0].pName = "main";
+        st2[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        st2[1].module = blfM;
+        st2[1].pName = "main";
+        VkPipelineColorBlendAttachmentState cba = {};
+        cba.colorWriteMask = 0xF;
+        VkPipelineColorBlendStateCreateInfo cb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+        cb.attachmentCount = 1;
+        cb.pAttachments = &cba;
+        VkGraphicsPipelineCreateInfo gp = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+        gp.stageCount = 2;
+        gp.pStages = st2;
+        gp.pVertexInputState = &boxVin;
+        gp.pInputAssemblyState = &ia;
+        gp.pViewportState = &vps;
+        gp.pRasterizationState = &rs;
+        gp.pMultisampleState = &ms;
+        gp.pDepthStencilState = &dst;
+        gp.pColorBlendState = &cb;
+        gp.pDynamicState = &dsci;
+        gp.layout = g_vk.litLayout;
+        gp.renderPass = g_vk.rp;
+        if (vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL, &g_vk.litPipe) != VK_SUCCESS)
+            return false;
+    }
+
+    g_vk.shReady = true;
+    TraceLog(RL_LOG_INFO,
+             "rdr: VULKAN SHADOW PASS LIVE - %dx%d sun depth map on %s",
+             SHADOW_RES_VK, SHADOW_RES_VK, g_vk.gpuName);
+    return true;
+}
+
 }  // namespace
 
 // V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4). Called
@@ -709,7 +982,26 @@ int VulkanRegisterUiTexture(const unsigned char* rgba, int w, int h) {
     wds.pImageInfo = &dii;
     vkUpdateDescriptorSets(g_vk.dev, 1, &wds, 0, NULL);
     g_vk.texSet[g_vk.texCount] = set;
+    g_vk.texMap[g_vk.texCount] = (unsigned char*)map;
+    g_vk.texPitch[g_vk.texCount] = lay.rowPitch
+                                       ? (size_t)lay.rowPitch + lay.offset * 0
+                                       : (size_t)w * 4;
+    g_vk.texMap[g_vk.texCount] += lay.offset;
+    g_vk.texW[g_vk.texCount] = w;
+    g_vk.texH[g_vk.texCount] = h;
     return g_vk.texCount++;
+}
+
+// V178: overwrite a registered texture in place (dynamic previews). The
+// image stays linear + host-mapped, so this is a straight row copy.
+void VulkanUpdateUiTexture(int id, const unsigned char* rgba, int w, int h) {
+    if (id < 0 || id >= g_vk.texCount || !g_vk.texMap[id]) return;
+    if (w != g_vk.texW[id] || h != g_vk.texH[id]) return;
+    DFN(vkDeviceWaitIdle);
+    vkDeviceWaitIdle(g_vk.dev);   // the previous frame may still sample it
+    for (int y = 0; y < h; ++y)
+        memcpy(g_vk.texMap[id] + (size_t)y * g_vk.texPitch[id],
+               rgba + (size_t)y * w * 4, (size_t)w * 4);
 }
 
 namespace {
@@ -973,7 +1265,11 @@ bool VulkanExecutorReady() {
 // to GL). Pipelined readback (V166): the returned pixels are LAST frame's
 // render - one frame of latency buys back the sync-wait stall â€” the present-interop stage; the native
 // swapchain replaces it when the window itself moves to Vulkan.
+// V178: lightVP16 is the sun's view-proj (already z-fixed to [0,1]) and
+// flags bit0 says "shadows on" - both flow from rdr.cpp, which owns the
+// raylib math this file cannot include.
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
+                                       const float* lightVP16, int flags,
                                        const void* instData, int count,
                                        int w, int h) {
     if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return nullptr;
@@ -993,6 +1289,7 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
         }
     }
     UploadPendingTerrain();
+    BuildShadowResources();   // self-gating; one attempt, logged
 
     DFN(vkBeginCommandBuffer); DFN(vkCmdBeginRenderPass); DFN(vkCmdBindPipeline);
     DFN(vkCmdSetViewport); DFN(vkCmdSetScissor); DFN(vkCmdBindVertexBuffers);
@@ -1016,6 +1313,47 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(g_vk.cmd[cur],&bi);
+    // Sun-shadow pass (V178): depth-only render of the same casters from
+    // the light. Runs (at least as a clear) whenever the stack exists so
+    // the map's layout is always valid for the lit pass that samples it.
+    if (g_vk.shReady) {
+        DFN(vkCmdNextSubpass);
+        (void)vkCmdNextSubpass;
+        VkClearValue shClear;
+        shClear.depthStencil = { 1.0f, 0 };
+        VkRenderPassBeginInfo srbi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+        srbi.renderPass = g_vk.shRp;
+        srbi.framebuffer = g_vk.shFb;
+        srbi.renderArea = { { 0, 0 }, { SHADOW_RES_VK, SHADOW_RES_VK } };
+        srbi.clearValueCount = 1;
+        srbi.pClearValues = &shClear;
+        vkCmdBeginRenderPass(g_vk.cmd[cur], &srbi, VK_SUBPASS_CONTENTS_INLINE);
+        if ((flags & 1) && lightVP16) {
+            VkViewport svp = { 0, (float)SHADOW_RES_VK, (float)SHADOW_RES_VK,
+                               -(float)SHADOW_RES_VK, 0, 1 };
+            VkRect2D ssc = { { 0, 0 }, { SHADOW_RES_VK, SHADOW_RES_VK } };
+            vkCmdSetViewport(g_vk.cmd[cur], 0, 1, &svp);
+            vkCmdSetScissor(g_vk.cmd[cur], 0, 1, &ssc);
+            vkCmdPushConstants(g_vk.cmd[cur], g_vk.shLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT, 0, 64, lightVP16);
+            if (g_vk.terrBuf && g_vk.shMeshPipe) {
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shMeshPipe);
+                VkDeviceSize toff = 0;
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 1, &g_vk.terrBuf, &toff);
+                vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.terrCount, 1, 0, 0);
+            }
+            if (count > 0) {
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shBoxPipe);
+                VkBuffer sbufs[2] = { g_vk.cubeBuf, g_vk.instBuf[cur] };
+                VkDeviceSize soffs[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, sbufs, soffs);
+                vkCmdDraw(g_vk.cmd[cur], 36, (uint32_t)count, 0, 0);
+            }
+        }
+        vkCmdEndRenderPass(g_vk.cmd[cur]);
+    }
     VkClearValue clears[2];
     clears[0].color = { { 0, 0, 0, 0 } };            // transparent: GL composites
     clears[1].depthStencil = { 1.0f, 0 };
@@ -1046,9 +1384,29 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
             vkCmdDraw(g_vk.cmd[cur],(uint32_t)g_vk.terrCount, 1, 0, 0);
         }
         if (count > 0) {
-            vkCmdBindPipeline(g_vk.cmd[cur],VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.pipe);
             VkBuffer bufs[2] = { g_vk.cubeBuf, g_vk.instBuf[cur] };
             VkDeviceSize offs[2] = { 0, 0 };
+            if (g_vk.shReady && lightVP16) {
+                // Shadowed road (V178): lit pipeline samples the sun map.
+                DFN(vkCmdBindDescriptorSets);
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.litPipe);
+                vkCmdBindDescriptorSets(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        g_vk.litLayout, 0, 1, &g_vk.shSet, 0, NULL);
+                float lpc[36];
+                memcpy(lpc, viewProj16, 64);
+                memcpy(lpc + 16, lightVP16, 64);
+                lpc[32] = sun4[0];
+                lpc[33] = sun4[1];
+                lpc[34] = sun4[2];
+                lpc[35] = (flags & 1) ? 1.0f : 0.0f;
+                vkCmdPushConstants(g_vk.cmd[cur], g_vk.litLayout,
+                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                   0, 144, lpc);
+            } else {
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.pipe);
+            }
             vkCmdBindVertexBuffers(g_vk.cmd[cur],0, 2, bufs, offs);
             vkCmdDraw(g_vk.cmd[cur],36, (uint32_t)count, 0, 0);
         }
@@ -1083,7 +1441,7 @@ void VulkanSetUiAtlas(const unsigned char*, int, int) {}
 int VulkanRegisterUiTexture(const unsigned char*, int, int) { return -1; }
 const unsigned char* VulkanRenderUi(const void*, int, const int*, const int*,
                                     int, int, int) { return nullptr; }
-const unsigned char* VulkanRenderFrame(const float*, const float*, const void*,
-                                       int, int, int) { return nullptr; }
+const unsigned char* VulkanRenderFrame(const float*, const float*, const float*,
+                                       int, const void*, int, int, int) { return nullptr; }
 }
 #endif

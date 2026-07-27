@@ -1310,15 +1310,16 @@ void TownDraw(const GameState& gs) {
         // tables with kegs, and a couple of patrons
         for (const float tx : { -2.0f, 1.0f }) {
             SeamCube({ tx, 0.55f, 1.2f }, 1.6f, 1.1f, 1.6f, wood);
-            DrawCylinder({ tx + 0.3f, 1.1f, 1.2f }, 0.16f, 0.16f, 0.3f, 8,
-                         Color{ 120, 90, 60, 255 });
+            rdr::PushOrientedBox({ tx + 0.3f, 1.1f, 1.2f },
+                                 { tx + 0.3f, 1.4f, 1.2f }, 0.16f,
+                                 Color{ 120, 90, 60, 255 });   // keg (V178)
             Pose sit;
             sit.yaw = tx < 0 ? 1.2f : -1.6f;
             DrawCharacter(c, { tx + (tx < 0 ? -1.0f : 1.0f), 0, 1.2f },
                           T.npcs.size() > 1 ? T.npcs[1].loadout : Loadout{}, sit, BEIGE);
         }
         // the hero
-        DrawCylinder({ T.iPos.x, 0.03f, T.iPos.z }, 0.5f, 0.5f, 0.02f, 12, Fade(BLACK, 0.3f));
+        SeamCube({ T.iPos.x, 0.03f, T.iPos.z }, 1.0f, 0.02f, 1.0f, Fade(BLACK, 0.3f));
         Pose hero;
         hero.yaw = T.yaw;
         hero.walkPhase = T.walkPhase;
@@ -1397,8 +1398,10 @@ void TownDraw(const GameState& gs) {
     rdr::EnsureBackendGL();   // town records at the seam too (V172)
     BeginShaderMode(GetLitShader());
     DrawPlane({ 0, 0, 0 }, { TOWN_EDGE * 2, TOWN_EDGE * 2 }, Color{ 96, 128, 72, 255 });
-    DrawCylinder({ 0, 0.01f, 0 }, 16.0f, 16.0f, 0.02f, 24, Color{ 150, 134, 105, 255 }); // plaza
-    DrawCylinder({ 0, 0.02f, 0 }, 1.2f, 1.4f, 0.9f, 12, Color{ 120, 110, 100, 255 });    // well
+    SeamCube({ 0, 0.005f, 0 }, 30.0f, 0.02f, 30.0f,
+             Color{ 150, 134, 105, 255 });   // plaza pavement (V178: flat box)
+    rdr::PushOrientedBox({ 0, 0.02f, 0 }, { 0, 0.92f, 0 }, 1.3f,
+                         Color{ 120, 110, 100, 255 });   // the well
 
     // Buildings (V148, user ask): timber-framed halls and dressed stone
     // instead of single cubes — a plinth, plastered walls with dark beams,
@@ -1481,7 +1484,8 @@ void TownDraw(const GameState& gs) {
             }
         }
         if (b.tavern)   // hanging sign: a keg (or the lord's banner on a keep)
-            DrawSphere({ b.pos.x, h + 3.4f, b.pos.z }, 0.7f, GOLD);
+            rdr::PushOrientedBox({ b.pos.x, h + 3.4f, b.pos.z },
+                                 { b.pos.x, h + 3.4f, b.pos.z }, 0.7f, GOLD);
     }
 
     // Market stalls ring the plaza (N5): posts, a tinted canopy, and a
@@ -1504,16 +1508,16 @@ void TownDraw(const GameState& gs) {
     }
 
     for (const Npc& n : T.npcs) {
-        DrawCylinder({ n.pos.x, 0.03f, n.pos.z }, 0.45f, 0.45f, 0.02f, 12,
-                     Fade(BLACK, 0.25f));
+        SeamCube({ n.pos.x, 0.03f, n.pos.z }, 0.9f, 0.02f, 0.9f,
+                 Fade(BLACK, 0.25f));
         Pose pose;
         pose.yaw = n.yaw;
         pose.walkPhase = n.walkPhase;
         DrawCharacter(c, n.pos, n.loadout, pose, BEIGE);
     }
 
-    DrawCylinder({ T.pPos.x, 0.03f, T.pPos.z }, 0.5f, 0.5f, 0.02f, 12,
-                 Fade(BLACK, 0.28f));
+    SeamCube({ T.pPos.x, 0.03f, T.pPos.z }, 1.0f, 0.02f, 1.0f,
+             Fade(BLACK, 0.28f));
     Pose hero;
     hero.yaw = T.yaw;
     hero.walkPhase = T.walkPhase;
