@@ -23,6 +23,7 @@ add_executable(openwarband
     src/settings.cpp
     src/ui.cpp
     src/gfx.cpp
+    src/rdr.cpp
     src/sfx.cpp
     src/content.cpp
     src/campaign/campaign.cpp

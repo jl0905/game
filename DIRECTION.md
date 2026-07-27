@@ -1840,3 +1840,14 @@ over two half-features.
   for terrain + army + interface. The port's remaining work is wiring
   volume (the draw-list seam and per-screen conversion), not
   technical risk — the map is in RENDERER.md.
+
+- [x] **V160. Iteration one-sixty — the seam enters the game (phase 2
+  integration begins).** src/rdr.h|.cpp: the neutral renderer seam —
+  colour-bucketed box-instance recording (PushBox / PushOrientedBox)
+  with the raylib instanced executor as backend one. battle.cpp's
+  whole batched path (every soldier, limb, corpse, prop the V126/V128
+  system draws) now records into the seam instead of a file-local
+  map; the GL state stays injected so the header is backend-neutral,
+  and the recording is byte-for-byte the instance format the Vulkan
+  side (vkarmy) already renders at 1400fps. Zero behaviour change:
+  bench 16.23ms/62fps, all 137 scripts green. Next: rdr::FlushVulkan.

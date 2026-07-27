@@ -1,6 +1,7 @@
 #include "battle.h"
 #include "character.h"
 #include "../gfx.h"
+#include "../rdr.h"
 #include "../sfx.h"
 #include "../ui.h"
 #include "../parallel.h"
@@ -1455,7 +1456,8 @@ int      g_instVpLoc = -1, g_instMapLoc = -1, g_instShadowsLoc = -1;   // V153
 Shader   g_instShader{};
 Mesh     g_instCube{};
 Material g_instMat{};
-std::unordered_map<unsigned, std::vector<Matrix>> g_instBatch;
+// V160: the transform buckets moved to the renderer seam (src/rdr.h) —
+// scene code records there; this file only owns the GL execution state.
 
 void EnsureInstancing() {
     if (g_instTried) return;
@@ -1480,11 +1482,9 @@ void EnsureInstancing() {
 // draw calls. Colour is the bucket key (alpha included).
 void InstCube(Vector3 center, float sx, float sy, float sz, Color col) {
     if (!g_instReady) { DrawCube(center, sx, sy, sz, col); return; }
-    const unsigned key = (unsigned)col.r | ((unsigned)col.g << 8) |
-                         ((unsigned)col.b << 16) | ((unsigned)col.a << 24);
-    g_instBatch[key].push_back(
-        MatrixMultiply(MatrixScale(sx, sy, sz),
-                       MatrixTranslate(center.x, center.y, center.z)));
+    rdr::PushBox(MatrixMultiply(MatrixScale(sx, sy, sz),
+                                MatrixTranslate(center.x, center.y, center.z)),
+                 col);   // recorded at the seam (V160)
 }
 
 // The limb sink (V128): character.cpp hands tier-1 limbs here as a→b boxes;
@@ -1492,30 +1492,7 @@ void InstCube(Vector3 center, float sx, float sy, float sz, Color col) {
 // as the LOD boxes, so the whole mid-distance army flushes together.
 void LimbBox(Vector3 a, Vector3 b, float r, Color col) {
     if (!g_instReady) return;   // no batcher without the shader
-    const unsigned key = (unsigned)col.r | ((unsigned)col.g << 8) |
-                         ((unsigned)col.b << 16) | ((unsigned)col.a << 24);
-    const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
-    Vector3 d = Vector3Subtract(b, a);
-    const float len = Vector3Length(d);
-    const float w = r * 1.8f;   // box width ~ capsule diameter, slightly slim
-    if (len < 0.001f) {         // degenerate: a blob (the head)
-        g_instBatch[key].push_back(
-            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
-                           MatrixTranslate(mid.x, mid.y, mid.z)));
-        return;
-    }
-    const Vector3 y  = Vector3Scale(d, 1.0f / len);
-    const Vector3 up = fabsf(y.y) < 0.99f ? Vector3{ 0, 1, 0 } : Vector3{ 1, 0, 0 };
-    const Vector3 x  = Vector3Normalize(Vector3CrossProduct(up, y));
-    const Vector3 z  = Vector3CrossProduct(x, y);
-    const float sy = len + r;   // cover the capsule caps, near enough
-    // raylib Matrix braces take the mathematical rows; columns are the
-    // scaled basis vectors, translation in the last column.
-    const Matrix m = { x.x * w, y.x * sy, z.x * w, mid.x,
-                       x.y * w, y.y * sy, z.y * w, mid.y,
-                       x.z * w, y.z * sy, z.z * w, mid.z,
-                       0.0f,    0.0f,     0.0f,    1.0f };
-    g_instBatch[key].push_back(m);
+    rdr::PushOrientedBox(a, b, r, col);   // recorded at the seam (V160)
 }
 
 void FlushInstanced() {
@@ -1523,17 +1500,9 @@ void FlushInstanced() {
     // A low late-afternoon sun (V129); by night the moon takes its line.
     const Vector3 sun = Vector3Normalize(
         B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
-    if (g_instSunLoc >= 0)
-        SetShaderValue(g_instShader, g_instSunLoc, &sun, SHADER_UNIFORM_VEC3);
-    for (auto& [key, mats] : g_instBatch) {
-        if (mats.empty()) continue;
-        g_instMat.maps[MATERIAL_MAP_DIFFUSE].color =
-            Color{ (unsigned char)(key & 0xFF), (unsigned char)((key >> 8) & 0xFF),
-                   (unsigned char)((key >> 16) & 0xFF),
-                   (unsigned char)((key >> 24) & 0xFF) };
-        DrawMeshInstanced(g_instCube, g_instMat, mats.data(), (int)mats.size());
-        mats.clear();
-    }
+    rdr::RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
+                                  g_instSunLoc, sun };
+    rdr::FlushRaylib(st);   // the seam executes the frame (V160)
 }
 
 // Soft blob shadow pinned to the terrain â€” the cheapest depth cue there is.

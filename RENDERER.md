@@ -51,9 +51,14 @@ renderer-only transplant.
    panels over the battle: 0.71 ms / 1415 fps, three draw calls total.
    EVERY rendering unknown is now retired: present, SPIR-V pipelines,
    instancing, terrain meshes, descriptors/texturing, blending, text.
-   Remaining is WIRING VOLUME, not risk: (a) the game-side seam - a
-   draw-list layer battle.cpp/town.cpp/campaign.cpp emit into, with
-   raylib and Vulkan backends consuming it; (b) swapchain resize;
+   THE SEAM IS IN THE GAME (V160): src/rdr.h|.cpp
+   is the neutral recording layer — colour-bucketed box transforms,
+   the exact instance shape vkarmy consumes — and the ENTIRE battle
+   instanced path (every batched soldier, limb, corpse and prop) now
+   records through rdr::PushBox/PushOrientedBox and executes through
+   rdr::FlushRaylib. Zero behaviour change: bench 16.23ms, 137 green.
+   Remaining wiring: (a2) the Vulkan executor for the same recording
+   (window/input swap is the tail); (b) swapchain resize;
    (c) the campaign/town call-site conversion screen by screen;
    (d) `renderer vulkan` in settings.cfg flips the backend, raylib
    stays as fallback until parity, then retires. — same draws through Vulkan;
