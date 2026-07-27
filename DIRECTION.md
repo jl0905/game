@@ -1949,3 +1949,12 @@ over two half-features.
   a battle draws now goes through rdr:: — the in-battle raw-GL
   remainder is exactly: terrain colour model, sky gradient, HUD.
   137 scripts green.
+
+- [x] **V172. Iteration one-seventy-two — the town walks through the seam.**
+  rdr:: gains scene-agnostic entries (EnsureBackendGL / FlushScene),
+  so ANY 3D scene shares battle's instanced backend and the Vulkan
+  road behind it. town.cpp converts wholesale: every building box,
+  timber frame, market stall, tavern wall/table/hearth records at the
+  seam (SeamCube) and flushes per frame. With renderer=vulkan the
+  settlement's solids render on the Vulkan device exactly like the
+  battlefield's. 137 scripts green.

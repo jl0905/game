@@ -1,6 +1,7 @@
 #include "town.h"
 #include "../battle/character.h"   // the one humanoid renderer (battle owns it)
 #include "../gfx.h"
+#include "../rdr.h"
 #include "../sfx.h"
 #include "../ui.h"
 #include "raymath.h"
@@ -9,6 +10,13 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+// Record an axis-aligned box at the renderer seam (V172) - town solids run
+// through the same instanced buckets (and Vulkan road) as the battlefield.
+static void SeamCube(Vector3 c, float sx, float sy, float sz, Color col) {
+    rdr::PushBox(MatrixMultiply(MatrixScale(sx, sy, sz),
+                                MatrixTranslate(c.x, c.y, c.z)), col);
+}
 
 namespace {
 
@@ -1278,28 +1286,29 @@ void TownDraw(const GameState& gs) {
         BeginDrawing();
         ClearBackground(Color{ 24, 18, 14, 255 });
         BeginMode3D(cam);
+    rdr::EnsureBackendGL();   // town records at the seam too (V172)
         BeginShaderMode(GetLitShader());
         const Color wood = { 92, 66, 44, 255 };
         const Color dark = { 58, 42, 30, 255 };
         DrawPlane({ 0, 0, 0 }, { 12, 10 }, dark);                       // floor
-        DrawCube({ 0, 2.0f, -4.6f }, 12, 4, 0.4f, wood);                // walls
-        DrawCube({ 0, 2.0f, 5.0f }, 12, 4, 0.4f, wood);
-        DrawCube({ -6.2f, 2.0f, 0 }, 0.4f, 4, 10, wood);
-        DrawCube({ 6.2f, 2.0f, 0 }, 0.4f, 4, 10, wood);
-        DrawCube({ 0, 4.1f, 0 }, 12, 0.3f, 10, dark);                   // ceiling
+        SeamCube({ 0, 2.0f, -4.6f }, 12, 4, 0.4f, wood);                // walls
+        SeamCube({ 0, 2.0f, 5.0f }, 12, 4, 0.4f, wood);
+        SeamCube({ -6.2f, 2.0f, 0 }, 0.4f, 4, 10, wood);
+        SeamCube({ 6.2f, 2.0f, 0 }, 0.4f, 4, 10, wood);
+        SeamCube({ 0, 4.1f, 0 }, 12, 0.3f, 10, dark);                   // ceiling
         // hearth on the west wall
-        DrawCube({ -5.8f, 1.0f, -2.0f }, 0.8f, 2.0f, 2.0f, Color{ 70, 66, 64, 255 });
-        DrawCube({ -5.5f, 0.6f, -2.0f }, 0.5f, 0.9f, 1.2f, Color{ 240, 140, 40, 255 });
+        SeamCube({ -5.8f, 1.0f, -2.0f }, 0.8f, 2.0f, 2.0f, Color{ 70, 66, 64, 255 });
+        SeamCube({ -5.5f, 0.6f, -2.0f }, 0.5f, 0.9f, 1.2f, Color{ 240, 140, 40, 255 });
         DrawSphere({ -5.2f, 0.8f, -2.0f }, 0.9f, Fade(ORANGE, 0.18f));  // glow
         // the counter and the keeper behind it
-        DrawCube({ 3.0f, 0.7f, -3.2f }, 4.5f, 1.4f, 0.8f, wood);
+        SeamCube({ 3.0f, 0.7f, -3.2f }, 4.5f, 1.4f, 0.8f, wood);
         Pose keeper;
         keeper.yaw = 0.2f;
         DrawCharacter(c, { 3.0f, 0, -4.1f }, T.npcs.empty() ? Loadout{} : T.npcs[0].loadout,
                       keeper, BEIGE);
         // tables with kegs, and a couple of patrons
         for (const float tx : { -2.0f, 1.0f }) {
-            DrawCube({ tx, 0.55f, 1.2f }, 1.6f, 1.1f, 1.6f, wood);
+            SeamCube({ tx, 0.55f, 1.2f }, 1.6f, 1.1f, 1.6f, wood);
             DrawCylinder({ tx + 0.3f, 1.1f, 1.2f }, 0.16f, 0.16f, 0.3f, 8,
                          Color{ 120, 90, 60, 255 });
             Pose sit;
@@ -1314,7 +1323,8 @@ void TownDraw(const GameState& gs) {
         hero.walkPhase = T.walkPhase;
         DrawCharacter(c, T.iPos, gs.playerHero.loadout, hero, Color{ 40, 120, 255, 255 });
         EndShaderMode();
-        EndMode3D();
+        rdr::FlushScene(Vector3Normalize({ -0.45f, -0.75f, -0.35f }));   // V172
+    EndMode3D();
 
         SfxMinstrel(0.3f);   // the minstrel plays by the hearth (N5)
         // HUD: same tavern business, indoors where it belongs.
@@ -1382,6 +1392,7 @@ void TownDraw(const GameState& gs) {
     SfxMinstrel(TownAtTavern() ? 0.12f : 0.0f);
 
     BeginMode3D(cam);
+    rdr::EnsureBackendGL();   // town records at the seam too (V172)
     BeginShaderMode(GetLitShader());
     DrawPlane({ 0, 0, 0 }, { TOWN_EDGE * 2, TOWN_EDGE * 2 }, Color{ 96, 128, 72, 255 });
     DrawCylinder({ 0, 0.01f, 0 }, 16.0f, 16.0f, 0.02f, 24, Color{ 150, 134, 105, 255 }); // plaza
@@ -1411,21 +1422,21 @@ void TownDraw(const GameState& gs) {
         const Color beam    = Color{ 74, 54, 38, 255 };
         const Color stone   = Color{ 128, 124, 120, 255 };
         // stone plinth + wall body
-        DrawCube({ b.pos.x, h * 0.09f, b.pos.z }, w + 0.3f, h * 0.18f, d + 0.3f, stone);
-        DrawCube({ b.pos.x, h * 0.5f, b.pos.z }, w, h, d, plaster);
+        SeamCube({ b.pos.x, h * 0.09f, b.pos.z }, w + 0.3f, h * 0.18f, d + 0.3f, stone);
+        SeamCube({ b.pos.x, h * 0.5f, b.pos.z }, w, h, d, plaster);
         DrawCubeWires({ b.pos.x, h * 0.5f, b.pos.z }, w, h, d, Fade(BLACK, 0.3f));
         if (!b.flatTop) {
             // timber frame: corner posts, a sill beam, and a seeded brace
             for (const float px : { -w / 2 + 0.15f, w / 2 - 0.15f })
                 for (const float pz : { -d / 2 + 0.15f, d / 2 - 0.15f })
-                    DrawCube({ b.pos.x + px, h * 0.55f, b.pos.z + pz },
+                    SeamCube({ b.pos.x + px, h * 0.55f, b.pos.z + pz },
                              0.3f, h * 0.9f, 0.3f, beam);
-            DrawCube({ b.pos.x, h * 0.52f, b.pos.z }, w + 0.1f, 0.25f, d + 0.1f, beam);
+            SeamCube({ b.pos.x, h * 0.52f, b.pos.z }, w + 0.1f, 0.25f, d + 0.1f, beam);
             if (b.seed & 1)   // some houses carry a jetty beam higher up
-                DrawCube({ b.pos.x, h * 0.78f, b.pos.z }, w + 0.2f, 0.25f, d + 0.2f, beam);
+                SeamCube({ b.pos.x, h * 0.78f, b.pos.z }, w + 0.2f, 0.25f, d + 0.2f, beam);
             // door on the plaza side (toward origin)
             const float doorZ = b.pos.z > 0 ? -d / 2 : d / 2;
-            DrawCube({ b.pos.x + ((b.seed >> 1) % 3 - 1) * w * 0.2f, 1.1f,
+            SeamCube({ b.pos.x + ((b.seed >> 1) % 3 - 1) * w * 0.2f, 1.1f,
                        b.pos.z + doorZ + (doorZ > 0 ? 0.06f : -0.06f) },
                      1.3f, 2.2f, 0.15f, Color{ 58, 42, 30, 255 });
             // shuttered windows, lit after dark (V64)
@@ -1433,11 +1444,11 @@ void TownDraw(const GameState& gs) {
                                          : Color{ 40, 34, 30, 255 };
             for (int wi = 0; wi < 2; ++wi) {
                 const float wx = (wi == 0 ? -1.0f : 1.0f) * w * 0.24f;
-                DrawCube({ b.pos.x + wx, h * 0.62f,
+                SeamCube({ b.pos.x + wx, h * 0.62f,
                            b.pos.z + doorZ + (doorZ > 0 ? 0.05f : -0.05f) },
                          0.85f, 0.95f, 0.12f, glow);
                 for (const float sx : { -0.62f, 0.62f })   // shutters
-                    DrawCube({ b.pos.x + wx + sx, h * 0.62f,
+                    SeamCube({ b.pos.x + wx + sx, h * 0.62f,
                                b.pos.z + doorZ + (doorZ > 0 ? 0.05f : -0.05f) },
                              0.28f, 1.0f, 0.10f, beam);
             }
@@ -1453,12 +1464,12 @@ void TownDraw(const GameState& gs) {
             DrawCylinderEx(r0, r1, rr, rr, 4, b.roof);
             // chimney on half the houses
             if (b.seed & 2)
-                DrawCube({ b.pos.x + w * 0.28f, h + rr * 0.8f, b.pos.z - d * 0.2f },
+                SeamCube({ b.pos.x + w * 0.28f, h + rr * 0.8f, b.pos.z - d * 0.2f },
                          0.6f, rr * 1.4f, 0.6f, stone);
         } else {
             // battlements + a corner turret on big flat-tops
             for (float cx = -w / 2; cx < w / 2; cx += 2.4f)
-                DrawCube({ b.pos.x + cx + 0.6f, h + 0.4f, b.pos.z },
+                SeamCube({ b.pos.x + cx + 0.6f, h + 0.4f, b.pos.z },
                          1.1f, 0.8f, fminf(d, 1.6f), b.roof);
             if (w > 6.0f && d > 6.0f) {   // towers wear conical caps
                 DrawCylinderEx({ b.pos.x, h + 0.7f, b.pos.z },
@@ -1482,10 +1493,10 @@ void TownDraw(const GameState& gs) {
                 ? c.goods[(s * 2) % c.goods.size()].tint : BEIGE;
             for (const float px : { -1.2f, 1.2f })
                 for (const float pz : { -0.9f, 0.9f })
-                    DrawCube({ sx + px, 1.0f, sz + pz }, 0.18f, 2.0f, 0.18f,
+                    SeamCube({ sx + px, 1.0f, sz + pz }, 0.18f, 2.0f, 0.18f,
                              Color{ 110, 82, 52, 255 });
-            DrawCube({ sx, 2.05f, sz }, 3.0f, 0.14f, 2.2f, canopy);
-            DrawCube({ sx, 0.5f, sz }, 1.6f, 1.0f, 1.0f,
+            SeamCube({ sx, 2.05f, sz }, 3.0f, 0.14f, 2.2f, canopy);
+            SeamCube({ sx, 0.5f, sz }, 1.6f, 1.0f, 1.0f,
                      Color{ 132, 100, 62, 255 });   // the wares crate
         }
     }
@@ -1506,6 +1517,7 @@ void TownDraw(const GameState& gs) {
     hero.walkPhase = T.walkPhase;
     DrawCharacter(c, T.pPos, gs.playerHero.loadout, hero, Color{ 40, 120, 255, 255 });
     EndShaderMode();
+    rdr::FlushScene(Vector3Normalize({ -0.45f, -0.75f, -0.35f }));   // V172
     EndMode3D();
     PostEnd();   // (V151)
 

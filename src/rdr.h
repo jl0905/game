@@ -47,6 +47,15 @@ void FlushRaylib(const RaylibInstancedState& st);
 // Flush() and the seam decides.
 void Flush(const RaylibInstancedState& st);
 
+// V172: scene-agnostic entry points to the shared instanced backend (the
+// GL state lives in battle.cpp, which owns the instancing shader). Any 3D
+// scene can record boxes and flush them through the active backend:
+//   rdr::EnsureBackendGL();          // once inside BeginMode3D
+//   rdr::PushBox / PushOrientedBox   // record
+//   rdr::FlushScene(sunDir);         // execute before EndMode3D
+void EnsureBackendGL();
+void FlushScene(Vector3 sunDir);
+
 // V162: boots a live Vulkan device inside the game process the first time
 // renderer=vulkan flushes a frame; true once the frame executor is usable.
 bool VulkanExecutorReady();

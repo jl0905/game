@@ -1523,6 +1523,23 @@ void FlushInstanced() {
     rdr::Flush(st);   // the seam picks the backend (V161)
 }
 
+}  // namespace   (briefly close the file-local scope for the rdr bridge)
+
+// Scene-agnostic backend entries (V172): town (and any future 3D scene)
+// records through rdr:: and flushes here, sharing battle's instancing GL
+// state and therefore the whole Vulkan road behind the seam.
+namespace rdr {
+void EnsureBackendGL() { EnsureInstancing(); }
+void FlushScene(Vector3 sunDir) {
+    if (!g_instReady) return;
+    RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
+                             g_instSunLoc, sunDir };
+    Flush(st);
+}
+}  // namespace rdr
+
+namespace {
+
 // Soft blob shadow pinned to the terrain â€” the cheapest depth cue there is.
 void BlobShadow(const Terrain& t, float x, float z, float r) {
     DrawCylinder({ x, t.HeightAt(x, z) + 0.04f, z }, r, r, 0.02f, 12,
