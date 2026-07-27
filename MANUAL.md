@@ -112,6 +112,13 @@ Modding surfaces are in MODDING.md.)
   scout, quartermaster, drillmaster, jailer — and tempers; dishonorable
   deeds can drive the principled ones away. Dress them from your bag.
 
+- **Tournaments** (towns only — the gate row says so elsewhere): a
+  three-round bracket on borrowed, equal fighters; your own blade is the
+  edge, and the round-3 champion is a cut above. Shift on the row or
+  button stakes 50 gold (pays 3x as champion) on top of the 150 purse,
+  +5 renown and the host crown's regard. Losing costs the stake and
+  nothing else — borrowed men leave no widows.
+
 ## Quests & the journal
 
 - [G] in a town (or a lord's court) offers work: bandit hunts, deliveries,

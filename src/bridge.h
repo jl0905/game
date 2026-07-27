@@ -25,8 +25,12 @@ inline BattleSetup MakeBattleSetup(const GameState& gs) {
         // 2 v 2, then the final duel, hero against champion — your own blade
         // is the edge in every round. TODO(balance): field sizes.
         const int round  = gs.arenaRound > 0 ? gs.arenaRound : 1;
+        // A fair ring (V156): both sides borrow the SAME fighters — the
+        // hero's own blade is the edge, not a rigged undercard. Only the
+        // final opponent is a cut above: the reigning champion.
         const int mine   = c.troops.find("recruit");
-        const int theirs = c.troops.find("brigand");
+        const int theirs = round == 3 ? c.troops.find("brigand")
+                                      : c.troops.find("recruit");
         const int allies  = round == 1 ? 4 : round == 2 ? 2 : 0;
         const int enemies = round == 1 ? 4 : round == 2 ? 2 : 1;
         if (mine >= 0)   s.playerTroops[mine] = allies;

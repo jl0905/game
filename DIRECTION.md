@@ -1797,3 +1797,15 @@ over two half-features.
   'PRESENTED 180 frames on NVIDIA GeForce RTX 4060 Laptop GPU'. Both
   vkprobe and vkdemo are CMake targets now. Next: SPIR-V pipeline and
   the instanced-army port. Game exe untouched; 137 scripts green.
+
+- [x] **V156. Iteration one-fifty-six — the lists open properly (fork:
+  tournament functionality).** The bracket worked but the doors were
+  broken: the gate-menu row silently DROPPED the Shift stake (now
+  carried, key or click), castles/villages no-opped silently (row now
+  greys with 'towns hold the lists', walking-mode button answers too),
+  and the ring was RIGGED - your borrowed side fielded recruits against
+  brigands, unwinnable at V144's 55% health (now both sides borrow
+  recruits; only the round-3 champion is a brigand). Harness gains
+  	ourney [stake]; tests/tournament.txt fights all three rounds for
+  real (autoresolve is barred from the ring by design) and pins the
+  chain: stake charged, Round 2, Round 3, terminal champion/cast-out.

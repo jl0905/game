@@ -4,5 +4,7 @@ day 0
 clock 55
 playerpos 2250 2250
 ptroop infantry 5
-hero 1 0 0
+hero 5 0 0
+attr str 8
+attr agi 4
 carry sword

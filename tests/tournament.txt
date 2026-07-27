@@ -1,111 +1,298 @@
-# Tournaments (V156): the bracket functions end to end. Enter Sargoth
-# (a Town) via the gate, walk in, enter the lists staking 50 (gold drops
-# by 50), then FIGHT - autoresolve is deliberately barred from the ring
-# (V41), so the script swings through all three rounds. Expect Round 2 /
-# Round 3 results as wins chain and finally TOURNAMENT CHAMPION with the
-# purse (or an honest Cast out on an upset - either proves resolution).
+# Tournaments (V156): the bracket functions end to end - gate entry,
+# a 50-gold stake, three rounds of REAL fighting (autoresolve is barred
+# from the ring, V41), a FAIR field since V156 (both sides borrow
+# recruits; only the round-3 champion is a brigand). The script sweeps
+# its camera between swing clusters to keep the circling foe in the
+# frontal arc. Expect Round 2 / Round 3 results as wins chain; the
+# final is genuinely contested - TOURNAMENT CHAMPION on a win, Cast
+# out on an upset; either terminal result plus both round lines proves
+# the bracket resolves, pays and charges the stake.
 load tests/fixtures/manor.owb
 enter 3
 choose 10
 tourney 50
 state
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
+tick 1
+look 300 0
 state
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
+tick 1
+look 300 0
 state
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
+tick 1
+look 300 0
+bmove 1 0 0.3
+attack up
+tick 1
+attack left
+tick 1
+attack down
+tick 1
 attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
-attack right
-tick 2
+tick 1
+look 300 0
 state
 quit
