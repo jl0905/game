@@ -32,7 +32,12 @@ renderer-only transplant.
    `shadows on|off` in settings.cfg. SSAO and bloom remain (these carry
    over as they're scene-level, not API-level): sun shadow mapping,
    SSAO, bloom — stacked on the V151 post pipeline.
-2. **Vulkan backend, raster first** — same draws through Vulkan;
+2. **Vulkan backend, raster first** — MILESTONE 1 SHIPPED (V156):
+   tools/vkdemo.c opens a Win32 window, builds a real swapchain and
+   PRESENTS vsynced frames on the RTX 4060 from MinGW with no SDK
+   ("vkdemo: PRESENTED 180 frames on NVIDIA GeForce RTX 4060 Laptop
+   GPU"). Next milestones: SPIR-V pipeline (vendor glslang or embed
+   precompiled shaders) → triangle → instanced boxes → the army. — same draws through Vulkan;
    instanced army path ports directly (it is already transform-lists).
    Feature-flag `renderer vulkan|raylib` in settings.cfg; raylib remains
    the fallback until parity.

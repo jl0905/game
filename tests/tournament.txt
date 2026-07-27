@@ -1,12 +1,111 @@
-# Tournament (direction G2): step into the ring at a town; the bout uses
-# borrowed fighters, so the warband is untouched win or lose.
-seed 21
-state              # party=7 before the bout
-enter 0            # Sargoth
-tournament         # T: into the ring
-tick 2             # tallies update on the first sim ticks
-state              # expect screen=Battle, allies=3 enemies=4
-block on
-tick 300           # the bout plays out on soldier AI
-state              # expect screen=Campaign, party STILL 7, purse or loss text
+# Tournaments (V156): the bracket functions end to end. Enter Sargoth
+# (a Town) via the gate, walk in, enter the lists staking 50 (gold drops
+# by 50), then FIGHT - autoresolve is deliberately barred from the ring
+# (V41), so the script swings through all three rounds. Expect Round 2 /
+# Round 3 results as wins chain and finally TOURNAMENT CHAMPION with the
+# purse (or an honest Cast out on an upset - either proves resolution).
+load tests/fixtures/manor.owb
+enter 3
+choose 10
+tourney 50
+state
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+state
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+state
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+attack right
+tick 2
+state
 quit

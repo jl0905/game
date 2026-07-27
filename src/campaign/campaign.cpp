@@ -1388,6 +1388,12 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                     m.y >= townmenu::Y && row >= 0 && row < townmenu::ROWS)
                     in.menuChoice = row + 1;
             }
+            // The stake rides the row (V156): Shift with the tournament row
+            // (key 3 or click) wagers the 50 — the gate menu was silently
+            // dropping it before.
+            if (in.menuChoice == 3 &&
+                (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
+                in.tournamentBet = true;
             if (IsKeyPressed(KEY_ESCAPE)) in.leaveSettlement = true;
             return in;
         }

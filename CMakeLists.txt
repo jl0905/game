@@ -50,3 +50,15 @@ endif()
 if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
     set_target_properties(openwarband PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
+
+# --- Vulkan lane (RENDERER.md phase 2, V156) --------------------------------
+# Standalone proofs that the Vulkan renderer path works on this toolchain;
+# neither links into the game. vkprobe reports device/RT capabilities,
+# vkdemo opens a swapchain and presents.
+if (WIN32)
+    add_executable(vkprobe tools/vkprobe.c)
+    target_include_directories(vkprobe PRIVATE third_party/vulkan-headers)
+    add_executable(vkdemo tools/vkdemo.c)
+    target_include_directories(vkdemo PRIVATE third_party/vulkan-headers)
+    target_link_libraries(vkdemo PRIVATE user32 gdi32)
+endif()

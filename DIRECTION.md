@@ -1788,3 +1788,12 @@ over two half-features.
   acceleration_structure and ray_query all YES. Hardware ray tracing
   is confirmed reachable from this exact toolchain; phase 2 (Vulkan
   raster backend) is pure code from here.
+
+- [x] **V156. Iteration one-fifty-six — Vulkan presents (renderer
+  phase 2, milestone 1).** tools/vkdemo.c: a raw Win32 window, dynamic
+  vulkan-1.dll loading, discrete-GPU selection, device + queue +
+  FIFO swapchain, per-frame command recording with layout barriers and
+  clear-color animation, fenced submit and present. Ran live:
+  'PRESENTED 180 frames on NVIDIA GeForce RTX 4060 Laptop GPU'. Both
+  vkprobe and vkdemo are CMake targets now. Next: SPIR-V pipeline and
+  the instanced-army port. Game exe untouched; 137 scripts green.

@@ -585,6 +585,10 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
 
     // ---- enter the tournament bracket (T, towns only; Shift+T stakes gold) ----
     if (cin.tournament &&
+        gs.towns[gs.currentSettlement].type != SettlementType::Town) {
+        // The button answers even where it cannot act (V156).
+        gs.resultText = "No lists here - tournaments are held in towns.";
+    } else if (cin.tournament &&
         gs.towns[gs.currentSettlement].type == SettlementType::Town) {
         gs.arenaFight = true;
         gs.arenaRound = 1;
@@ -1675,6 +1679,7 @@ void TownDraw(const GameState& gs) {
         const bool sworn  = gs.liege >= 0;
         bool live[townmenu::ROWS];
         for (int r = 0; r < townmenu::ROWS; ++r) live[r] = true;
+        live[2] = town.type == SettlementType::Town;   // lists in towns (V156)
         live[4] = hireLive;                 // hire: once each, ever (V79)
         live[5] = !sworn && !mine;          // swear: free captains only
         live[7] = mine;                     // garrison a soldier
@@ -1684,6 +1689,7 @@ void TownDraw(const GameState& gs) {
         live[12] = mine && !town.fortified;             // fortify (V51)
         // Dead rows say why (V10): a greyed button that explains itself.
         const char* why[townmenu::ROWS] = { nullptr };
+        if (!live[2]) why[2] = "(towns hold the lists)";
         if (!live[4]) why[4] = "(already yours)";
         if (!live[5]) why[5] = sworn ? "(already sworn)" : "(your own seat)";
         if (!live[7]) why[7] = "(not your walls)";

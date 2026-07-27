@@ -725,6 +725,13 @@ int RunScript(const char* path) {
             std::string mode; ss >> mode;   // screen (V136); off = auto-fight
             h.parleyHold = mode != "off";
             std::printf("parleyhold=%d\n", h.parleyHold ? 1 : 0);
+        } else if (cmd == "tourney") {   // enter the bracket (V156);
+            int stake = 0; ss >> stake;  // optional stake wagers 50
+            CampaignInput cin; cin.tournament = true;
+            cin.tournamentBet = stake > 0;
+            h.Step(cin, BattleInput{});
+            if (!h.gs.resultText.empty())
+                std::printf("result=\"%s\"\n", h.gs.resultText.c_str());
         } else if (cmd == "buyland") {   // a land deed here (V150)
             CampaignInput cin; cin.buyLand = true;
             h.Step(cin, BattleInput{});
