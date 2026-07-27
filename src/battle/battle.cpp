@@ -3356,6 +3356,7 @@ void BattleDraw(const Content& c) {
             DrawHorse(s.pos, s.yaw, s.walkPhase, farTier && g_instReady);
             riderPos.y += 1.25f;
             pose.walkPhase = 0;   // the rider sits; the horse does the running
+            pose.mounted = true;  // torso leans into mounted swings (V181)
         }
         // The lord in person wears his circlet (V101), like the crowned hero.
         if (s.champion && s.hp > 0)
@@ -3502,6 +3503,7 @@ void BattleDraw(const Content& c) {
                         0.16f, 6, 3, Color{ 40, 120, 255, 255 });
             heroDraw.y += 1.25f;
             ppose.walkPhase = 0;
+        ppose.mounted = true;   // V181
         }
         DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
         // A crowned head wears its circlet (V94): a thin gold band riding

@@ -260,3 +260,10 @@ This changes only how bodies are drawn. Arms, weapon swings, blocking,
 hit detection and all combat logic are identical in all three styles,
 and every style renders on both the raylib GL and Vulkan backends.
 Saved to assets/settings.cfg as `bodystyle boxy|blocky|pill`.
+
+## Mounted melee animation (V181)
+From the saddle, the rider's upper body leans into the wind-up and
+follow-through (player and AI). Weapon classes swing differently when
+mounted: one-handers sweep wide and low, polearm thrusts couch like a
+lance, two-handers fall in long diagonals. Pill is the default body
+style; change it in settings row [=].

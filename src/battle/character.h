@@ -23,6 +23,7 @@ struct Pose {
                                               // the loadout's Weapon slot
     float     flash     = 0.0f;               // 0..1 just-hit feedback (white flare)
     Color     accent    = { 0, 0, 0, 0 };     // troop plume colour; alpha 0 = none
+    bool      mounted   = false;              // V181: riders lean into swings
 };
 
 // Tessellation tier (V127): 0 = full detail (hero, town NPCs, close ranks),

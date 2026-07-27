@@ -72,7 +72,8 @@ Color SlotTint(const Content& content, const Loadout& lo, EquipSlot slot, Color 
 // The wind-up ("cocked") and follow-through offsets for each attack direction,
 // in local (right, up, fwd) space. Overhead comes from high/back and lands low
 // front; a thrust pulls back then extends forward; side cuts sweep across.
-void SwingArc(AttackDir dir, Vector3& cocked, Vector3& follow) {
+void SwingArc(AttackDir dir, Vector3& cocked, Vector3& follow,
+              WeaponClass wc = WeaponClass::OneHanded, bool mounted = false) {
     // V143: the cock is DRASTIC — the blade goes far behind the shoulder
     // line, so which swing is coming reads from across a duel circle.
     switch (dir) {
@@ -82,14 +83,43 @@ void SwingArc(AttackDir dir, Vector3& cocked, Vector3& follow) {
         case AttackDir::Right: default:
                                cocked = { -1.9f, 1.75f, -0.55f }; follow = { 1.5f, 1.05f, 1.1f }; break; // L->R
     }
+    // Mounted arcs (V181, Warband read): each class swings differently from
+    // the saddle so the stroke - and its hitbox - telegraphs clearly.
+    if (!mounted) return;
+    switch (wc) {
+        case WeaponClass::OneHanded:   // sabre work: wide, low, sweeping cuts
+            if (dir == AttackDir::Left || dir == AttackDir::Right) {
+                cocked.x *= 1.25f; cocked.y -= 0.20f;
+                follow.x *= 1.35f; follow.y -= 0.35f; follow.z += 0.25f;
+            } else if (dir == AttackDir::Up) {
+                follow.y -= 0.30f; follow.z += 0.40f;   // saddle chop, down past the horse's shoulder
+            } else {
+                follow.y -= 0.25f;                       // thrust angles down at footmen
+            }
+            break;
+        case WeaponClass::Polearm:     // the lance: couched low, driven far forward
+            if (dir == AttackDir::Down) {
+                cocked = { 0.30f, 1.00f, -0.50f };
+                follow = { 0.05f, 0.95f, 2.60f };
+            } else {                   // lateral polearm work is cramped from a saddle
+                cocked.x *= 0.60f;
+                follow.x *= 0.60f;
+            }
+            break;
+        case WeaponClass::TwoHanded:   // great blades ride high and fall in a long diagonal
+            if (dir == AttackDir::Up) { cocked.y += 0.30f; follow.z += 0.50f; }
+            else { follow.y -= 0.20f; follow.x *= 1.15f; }
+            break;
+        default: break;                // ranged etc: unchanged
+    }
 }
 
 // The point the blade aims at this frame, in local space, blending rest ->
 // cocked (while holding a wind-up) -> follow-through (while swinging).
-Vector3 SwingAim(const Pose& pose) {
+Vector3 SwingAim(const Pose& pose, WeaponClass wc = WeaponClass::OneHanded) {
     const Vector3 rest{ 0.45f, 1.35f, 0.95f };
     Vector3 cocked, follow;
-    SwingArc(pose.attackDir, cocked, follow);
+    SwingArc(pose.attackDir, cocked, follow, wc, pose.mounted);
     if (pose.swing > 0.0f) {
         float p = 1.0f - Clamp(pose.swing, 0.0f, 1.0f);   // 0 at strike -> 1 done
         p = p * p * (3.0f - 2.0f * p);                    // ease
@@ -116,7 +146,27 @@ void SetCharacterBatcher(LimbSink sink) { g_sink = sink; }
 void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                    const Pose& pose, Color teamTint) {
     const float yaw = pose.yaw;
-    auto at = [&](float r, float u, float f) { return ToWorld(feet, yaw, r, u, f); };
+    // Mounted swing lean (V181, Warband read): while winding or striking
+    // from the saddle, the whole upper body tilts into the stroke. The lean
+    // is applied INSIDE the local transform, scaled by height, so torso,
+    // head, arms and weapon all angle together while the seat stays planted
+    // - hitboxes read from across the field, for the player and the AI alike.
+    Vector3 lean = { 0, 0, 0 };
+    if (pose.mounted && (pose.windup > 0.0f || pose.swing > 0.0f)) {
+        const int whL = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
+        const WeaponClass wcL = content.weapons.valid(whL)
+                                    ? content.weapons[whL].wclass
+                                    : WeaponClass::OneHanded;
+        const Vector3 aimL = SwingAim(pose, wcL);
+        lean.x = Clamp(aimL.x * 0.24f, -0.48f, 0.48f);
+        lean.z = pose.swing > 0.0f
+                     ? 0.38f * (1.0f - Clamp(pose.swing, 0.0f, 1.0f))
+                     : 0.14f * Clamp(pose.windup, 0.0f, 1.0f);
+    }
+    auto at = [&](float r, float u, float f) {
+        const float t = u / 1.64f;   // 0 at the seat, 1 at the shoulders
+        return ToWorld(feet, yaw, r + lean.x * t, u, f + lean.z * t);
+    };
 
     // Just-hit feedback: everything flares toward white for a few frames.
     const float fl = Clamp(pose.flash, 0.0f, 1.0f);
@@ -272,7 +322,10 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                        wlTip  = {  0.52f, 1.98f, 0.22f }; break; // hanging right
             }
         } else {
-            const Vector3 aim = SwingAim(pose);
+            const int whA = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
+            const Vector3 aim = SwingAim(pose, content.weapons.valid(whA)
+                                                   ? content.weapons[whA].wclass
+                                                   : WeaponClass::OneHanded);   // V181
             // The hand travels toward the aim point (V143): a cocked
             // overhead pulls the fist high behind the head, a thrust
             // coils it back — the arm shows the direction, drastically.

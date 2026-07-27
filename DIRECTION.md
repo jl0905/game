@@ -2047,3 +2047,16 @@ over two half-features.
   protection reads from surface, not silhouette. Helm geometry kept
   (user to decide). GL 8.9ms / VK 9.0ms; suite 137/137; render smoke
   green.
+
+- [x] **V181. Iteration one-eighty-one — riders lean into the stroke; pill is the look.**
+  Mounted melee reads like Warband now: while winding or striking
+  from the saddle the whole upper body tilts into the swing — the
+  lean lives inside the character's local transform, scaled by
+  height, so torso, head, arms and weapon angle together while the
+  seat stays planted, for the player AND every AI rider. Each weapon
+  class gets its own mounted arcs: sabres sweep wide and low past
+  the horse's shoulder, lances couch and drive far forward, great
+  blades ride high into long diagonals — strokes and their hitboxes
+  telegraph across the field. And the pill body is now the DEFAULT
+  model (user call; boxy/blocky remain in settings). Suite 137/137;
+  render smoke green both backends.
