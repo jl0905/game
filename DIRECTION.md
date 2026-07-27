@@ -1917,3 +1917,10 @@ over two half-features.
   present in the Vulkan layer with true depth. GL 9.43ms / VK 9.59ms
   at 600 men. What still draws raw GL in-battle: terrain colour,
   water, siege walls, particles, HUD. 137 scripts green.
+
+- [x] **V168. Iteration one-sixty-eight — the siege works join the recording.**
+  Wall segments, crenellations, hoarding, gate posts, siege towers,
+  ramps, and ladder rails/rungs all record through the seam
+  (InstCube/PushOrientedBox) instead of raw DrawCube/DrawCapsule — on
+  Vulkan the whole siege scene now renders in the Vulkan layer with
+  true depth. 137 scripts green.

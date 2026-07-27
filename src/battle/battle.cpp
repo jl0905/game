@@ -3180,8 +3180,8 @@ void BattleDraw(const Content& c) {
             const float cx = x + 2.0f;
             if (fabsf(cx) <= GATE_HALF + 1.0f) continue;   // the gateway
             const float gy = B.terrain.HeightAt(cx, WALL_Z);
-            DrawCube({ cx, gy + WALL_HEIGHT * 0.5f, WALL_Z }, 4.0f, WALL_HEIGHT, WALL_BAND * 2, stone);
-            DrawCube({ cx - 1.0f, gy + WALL_HEIGHT + 0.35f, WALL_Z }, 1.2f, 0.7f, WALL_BAND * 2,
+            InstCube({ cx, gy + WALL_HEIGHT * 0.5f, WALL_Z }, 4.0f, WALL_HEIGHT, WALL_BAND * 2, stone);
+            InstCube({ cx - 1.0f, gy + WALL_HEIGHT + 0.35f, WALL_Z }, 1.2f, 0.7f, WALL_BAND * 2,
                      Color{ 130, 128, 132, 255 });   // crenellation
         }
         // Climbing points (N1): ladders leaning on the outer face; a built
@@ -3191,28 +3191,28 @@ void BattleDraw(const Content& c) {
             const float gy   = B.terrain.HeightAt(lx, WALL_Z);
             const Color wood = { 122, 88, 54, 255 };
             if (cp.tower) {
-                DrawCube({ lx, gy + (WALL_HEIGHT + 1.6f) * 0.5f, WALL_Z - 3.2f },
+                InstCube({ lx, gy + (WALL_HEIGHT + 1.6f) * 0.5f, WALL_Z - 3.2f },
                          TOWER_HALF * 2.0f, WALL_HEIGHT + 1.6f, 3.4f,
                          Color{ 96, 70, 44, 255 });
-                DrawCube({ lx, gy + WALL_HEIGHT + 0.3f, WALL_Z - 1.0f },
+                InstCube({ lx, gy + WALL_HEIGHT + 0.3f, WALL_Z - 1.0f },
                          TOWER_HALF * 1.6f, 0.3f, 2.6f, wood);   // the ramp
                 continue;
             }
             const Vector3 base{ lx, gy, WALL_Z - 2.6f };
             const Vector3 top { lx, gy + WALL_HEIGHT + 0.6f, WALL_Z - 0.6f };
             for (const float rx : { -0.7f, 0.7f })
-                DrawCapsule({ base.x + rx, base.y, base.z },
-                            { top.x + rx, top.y, top.z }, 0.10f, 6, 3, wood);
+                rdr::PushOrientedBox({ base.x + rx, base.y, base.z },
+                                     { top.x + rx, top.y, top.z }, 0.08f, wood);
             for (int r = 1; r <= 6; ++r) {
                 const float t = (float)r / 7.0f;
                 const Vector3 m = Vector3Lerp(base, top, t);
-                DrawCube(m, 1.5f, 0.09f, 0.09f, wood);
+                InstCube(m, 1.5f, 0.09f, 0.09f, wood);
             }
         }
         // gate posts
         for (const float gx : { -GATE_HALF, GATE_HALF }) {
             const float gy = B.terrain.HeightAt(gx, WALL_Z);
-            DrawCube({ gx, gy + (WALL_HEIGHT + 1.5f) * 0.5f, WALL_Z }, 1.6f,
+            InstCube({ gx, gy + (WALL_HEIGHT + 1.5f) * 0.5f, WALL_Z }, 1.6f,
                      WALL_HEIGHT + 1.5f, WALL_BAND * 2 + 0.4f, Color{ 110, 108, 112, 255 });
         }
         // The hoarding (V53): a timber gallery crowning fortified stone â€”
@@ -3222,7 +3222,7 @@ void BattleDraw(const Content& c) {
                 const float cx = x + 2.0f;
                 if (fabsf(cx) <= GATE_HALF + 1.0f) continue;
                 const float gy = B.terrain.HeightAt(cx, WALL_Z);
-                DrawCube({ cx, gy + WALL_HEIGHT + 0.9f, WALL_Z }, 4.0f, 0.5f,
+                InstCube({ cx, gy + WALL_HEIGHT + 0.9f, WALL_Z }, 4.0f, 0.5f,
                          WALL_BAND * 2 + 1.2f, Color{ 104, 78, 48, 255 });
             }
     }
