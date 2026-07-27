@@ -1987,3 +1987,13 @@ over two half-features.
   ~80 call sites across campaign, town and battle converted: sky
   gradients, skirmish rings, party markers, quest pins, minimap,
   crosshair, market chrome. GL 8.0ms / VK 8.9ms. 137 scripts green.
+
+- [x] **V176. Iteration one-seventy-six — the campaign map crosses the seam.**
+  rdr::SetUiCamera replaces the world-space GL guard: while the
+  campaign camera is set, every recorded UI vertex is transformed
+  world-to-screen at record time, so settlement markers, party dots,
+  skirmish rings, quest pins AND world-space labels all render on the
+  Vulkan UI pipeline, landing pixel-exactly where GL put them. The
+  GL remainder game-wide: the baked map ground texture blit, icon
+  textures, the post/shadow GL passes, and the window itself.
+  137 scripts green.

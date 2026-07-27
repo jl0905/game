@@ -63,7 +63,11 @@ void FlushScene(Vector3 sunDir);
 // pixels; UV (-1,-1) draws a solid untextured panel.
 struct UiVert { float x, y, u, v, r, g, b, a; };
 bool VulkanUiActive();            // record text instead of GL-drawing it?
-void SetUiRecording(bool on);     // pause inside world-space 2D cameras
+void SetUiRecording(bool on);     // pause (e.g. while baking to a texture)
+// V176: record world-space 2D drawing through the seam — while a camera is
+// set, every pushed UI vertex is transformed world->screen at record time,
+// so map markers and labels land exactly where GL would put them.
+void SetUiCamera(const Camera2D* cam);
 void PushUiVerts(const UiVert* v, int n);
 void PresentVulkanUi();           // render + composite; call before EndDrawing
 // Backend side (vkexec.cpp): upload the combined R8 glyph atlas, then render

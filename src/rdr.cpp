@@ -126,8 +126,26 @@ bool VulkanUiActive() {
 
 void SetUiRecording(bool on) { g_uiRecord = on; }
 
+namespace {
+Camera2D g_uiCam{};
+bool g_uiCamOn = false;
+}  // namespace
+
+void SetUiCamera(const Camera2D* cam) {
+    g_uiCamOn = cam != nullptr;
+    if (cam) g_uiCam = *cam;
+}
+
 void PushUiVerts(const UiVert* v, int n) {
+    const size_t base = g_uiVerts.size();
     g_uiVerts.insert(g_uiVerts.end(), v, v + n);
+    if (g_uiCamOn)
+        for (size_t i = base; i < g_uiVerts.size(); ++i) {
+            const Vector2 s = GetWorldToScreen2D(
+                { g_uiVerts[i].x, g_uiVerts[i].y }, g_uiCam);
+            g_uiVerts[i].x = s.x;
+            g_uiVerts[i].y = s.y;
+        }
 }
 
 void PresentVulkanUi() {
