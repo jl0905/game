@@ -13,6 +13,7 @@ namespace rdr {
 
 namespace {
 BoxBuckets g_buckets;
+BoxBuckets g_pills;   // V179: pill/ellipsoid instances, same transform shape
 
 unsigned Key(Color c) {
     return (unsigned)c.r | ((unsigned)c.g << 8) | ((unsigned)c.b << 16) |
@@ -21,6 +22,7 @@ unsigned Key(Color c) {
 }  // namespace
 
 BoxBuckets& Buckets() { return g_buckets; }
+BoxBuckets& PillBuckets() { return g_pills; }
 
 void PushBox(const Matrix& m, Color c) { g_buckets[Key(c)].push_back(m); }
 
@@ -46,6 +48,33 @@ void PushOrientedBox(Vector3 a, Vector3 b, float r, Color c) {
     PushBox(m, c);
 }
 
+// V179: a real rounded primitive. The recorded transform maps the UNIT
+// SPHERE (diameter 1) onto a capsule-ish ellipsoid along a->b: cross-section
+// diameter 2.2r (reads as massive as the 1.8r-wide box did), length len+2r
+// so the rounded caps land where the box's flat ends did.
+void PushPill(Vector3 a, Vector3 b, float r, Color c) {
+    const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
+    const Vector3 d = Vector3Subtract(b, a);
+    const float len = Vector3Length(d);
+    const float w = r * 2.2f;
+    if (len < 0.001f) {
+        g_pills[Key(c)].push_back(
+            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
+                           MatrixTranslate(mid.x, mid.y, mid.z)));
+        return;
+    }
+    const Vector3 y  = Vector3Scale(d, 1.0f / len);
+    const Vector3 up = fabsf(y.y) < 0.99f ? Vector3{ 0, 1, 0 } : Vector3{ 1, 0, 0 };
+    const Vector3 x  = Vector3Normalize(Vector3CrossProduct(up, y));
+    const Vector3 z  = Vector3CrossProduct(x, y);
+    const float sy = len + r * 2.0f;
+    const Matrix m = { x.x * w, y.x * sy, z.x * w, mid.x,
+                       x.y * w, y.y * sy, z.y * w, mid.y,
+                       x.z * w, y.z * sy, z.z * w, mid.z,
+                       0.0f,    0.0f,     0.0f,    1.0f };
+    g_pills[Key(c)].push_back(m);
+}
+
 void FlushRaylib(const RaylibInstancedState& st) {
     if (st.sunLoc >= 0)
         SetShaderValue(st.shader, st.sunLoc, &st.sun, SHADER_UNIFORM_VEC3);
@@ -59,6 +88,19 @@ void FlushRaylib(const RaylibInstancedState& st) {
         DrawMeshInstanced(*st.cube, *st.mat, mats.data(), (int)mats.size());
         mats.clear();
     }
+    // Pills (V179): same material/shader, sphere mesh — mesh-agnostic path.
+    if (st.sphere)
+        for (auto& [key, mats] : g_pills) {
+            if (mats.empty()) continue;
+            st.mat->maps[MATERIAL_MAP_DIFFUSE].color =
+                Color{ (unsigned char)(key & 0xFF),
+                       (unsigned char)((key >> 8) & 0xFF),
+                       (unsigned char)((key >> 16) & 0xFF),
+                       (unsigned char)((key >> 24) & 0xFF) };
+            DrawMeshInstanced(*st.sphere, *st.mat, mats.data(), (int)mats.size());
+            mats.clear();
+        }
+    for (auto& [key, mats] : g_pills) mats.clear();   // sphere-less caller
 }
 
 namespace {
@@ -69,19 +111,24 @@ bool g_vkPending = false;
 // shape, render them offscreen on the Vulkan device with the live camera,
 // and stage the result for PresentVulkan() after EndMode3D().
 bool FlushVulkan(const RaylibInstancedState& st) {
-    static std::vector<float> inst;
-    inst.clear();
-    int count = 0;
-    for (auto& [key, mats] : g_buckets) {
-        const float r = (key & 0xFF) / 255.0f, g = ((key >> 8) & 0xFF) / 255.0f;
-        const float b = ((key >> 16) & 0xFF) / 255.0f, a = ((key >> 24) & 0xFF) / 255.0f;
-        for (const Matrix& m : mats) {
-            const float16 f = MatrixToFloatV(m);   // column-major, as GLSL wants
-            inst.insert(inst.end(), f.v, f.v + 16);
-            inst.push_back(r); inst.push_back(g); inst.push_back(b); inst.push_back(a);
-            ++count;
+    static std::vector<float> inst, pills;
+    auto flatten = [](BoxBuckets& src, std::vector<float>& out) {
+        out.clear();
+        int n = 0;
+        for (auto& [key, mats] : src) {
+            const float r = (key & 0xFF) / 255.0f, g = ((key >> 8) & 0xFF) / 255.0f;
+            const float b = ((key >> 16) & 0xFF) / 255.0f, a = ((key >> 24) & 0xFF) / 255.0f;
+            for (const Matrix& m : mats) {
+                const float16 f = MatrixToFloatV(m);   // column-major, as GLSL wants
+                out.insert(out.end(), f.v, f.v + 16);
+                out.push_back(r); out.push_back(g); out.push_back(b); out.push_back(a);
+                ++n;
+            }
         }
-    }
+        return n;
+    };
+    const int count = flatten(g_buckets, inst);
+    const int pillCount = flatten(g_pills, pills);   // V179
     // GL clip z is [-1,1], Vulkan wants [0,1]: append the classic fix-up.
     Matrix fix = MatrixIdentity();
     fix.m10 = 0.5f;
@@ -106,7 +153,8 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     const float16 lvpf = MatrixToFloatV(lightVP);
     const int flags = GetSettings().shadows ? 1 : 0;
     const unsigned char* px =
-        VulkanRenderFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count, w, h);
+        VulkanRenderFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count,
+                          pills.data(), pillCount, w, h);
     if (!px) return false;
     if (g_vkTex.id == 0 || g_vkTex.width != w || g_vkTex.height != h) {
         if (g_vkTex.id) UnloadTexture(g_vkTex);
@@ -117,6 +165,7 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     }
     g_vkPending = true;
     for (auto& [key, mats] : g_buckets) mats.clear();
+    for (auto& [key, mats] : g_pills) mats.clear();
     return true;
 }
 }  // namespace

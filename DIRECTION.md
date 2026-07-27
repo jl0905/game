@@ -2018,3 +2018,18 @@ over two half-features.
   DIRECTLY (no readback), WM_* input driving the camera, resize-safe,
   161fps vsynced. The in-game window swap is now pure wiring (plan in
   the vkwin header). GL 8.3ms / VK 9.0ms. 137 scripts green.
+
+- [x] **V179. Iteration one-seventy-nine — variable body models (parallel-agent build).**
+  Settings gain 'Body style' ([=] row 12, bodystyle boxy|blocky|pill
+  in the cfg): 0 boxy = the V149 one-box, byte-identical; 1 blocky =
+  Roblox/Minecraft body — cubic 0.5 head (helm silhouette rescaled),
+  squared torso, two striding legs swinging with walkPhase; 2 pill =
+  capsule body + pill head via the NEW rdr::PushPill primitive — a
+  real instanced ellipsoid on BOTH backends (GL instanced sphere
+  mesh; Vulkan sphere VB through the same lit + shadow pipelines, so
+  pills cast and receive). Arms, weapons, swings and all combat
+  logic byte-identical across styles (user requirement). Also: the
+  testing config is retrofitted — tests/run_suite.ps1 (canonical
+  137-runner, 10s) and tests/run_render.ps1 (two-backend smoke that
+  asserts the executor log lines + a VK<=1.6x GL parity guard).
+  Suite 137/137; render smoke green on both backends.

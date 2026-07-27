@@ -1,4 +1,6 @@
 #include "character.h"
+#include "../rdr.h"        // PushPill — the pill body style (V179)
+#include "../settings.h"   // bodyStyle
 #include "raymath.h"
 #include <cmath>
 
@@ -131,33 +133,78 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     const bool  hasHelm = loadout.has(EquipSlot::Head);
     const Color headC   = flashed(hasHelm ? SlotTint(content, loadout, EquipSlot::Head, SKIN) : SKIN);
 
-    // ---- The body is ONE BOX (V149, user call): the segmented legs/torso
-    //      looked worse than honest simplicity. A single prism from boots
-    //      to shoulders, width from the armour value (cloth lean, plate
-    //      broad), rocking gently with the stride. Arms, weapons, shields,
-    //      helmets and plumes stay fully articulated on top of it.
+    // ---- The BODY block (V179: three selectable styles). This is the ONLY
+    //      part the bodyStyle setting touches: torso/legs/boots/head. Arms,
+    //      shields, weapons, plumes and every scrap of combat/pose logic
+    //      below this block are shared by all styles, untouched.
     const float rock = sinf(pose.walkPhase) * 0.06f;   // stride sway
     const int bodyAv = content.armor.valid(loadout.get(EquipSlot::Body))
                            ? content.armor[loadout.get(EquipSlot::Body)].armor : 0;
     const float bw = 0.56f + (bodyAv >= 5 ? 0.10f : bodyAv >= 2 ? 0.05f : 0.0f);
-    Boxy(at(rock * 0.5f, 0.82f, 0.0f), bw, 1.64f, 0.40f, bodyC);
-    // the team surcoat stripe, a thin front plate
-    Boxy(at(rock * 0.5f, 0.95f, 0.21f), bw * 0.34f, 1.1f, 0.05f, flashed(teamTint));
-    // boots: a darker base band
-    Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
+    const int style = GetSettings().bodyStyle;   // 0 boxy | 1 blocky | 2 pill
+    const int helmAv = hasHelm && content.armor.valid(loadout.get(EquipSlot::Head))
+                           ? content.armor[loadout.get(EquipSlot::Head)].armor : 0;
 
-    // ---- Head: a box too; the helm silhouette still follows its armour
-    //      value (brim / cheek guards read at a glance) ----
-    Boxy(at(0.0f, 1.87f, 0.0f), 0.34f, 0.36f, 0.34f, headC);
-    if (hasHelm) {
-        const int helmAv = content.armor.valid(loadout.get(EquipSlot::Head))
-                               ? content.armor[loadout.get(EquipSlot::Head)].armor : 0;
-        if (helmAv >= 2)
-            Boxy(at(0.0f, 1.74f, 0.0f), 0.5f, 0.08f, 0.5f, headC);   // brim
-        Boxy(at(0.0f, 2.06f, 0.0f), 0.3f, 0.14f, 0.3f, headC);       // dome cap
-        if (helmAv >= 3) {   // cheek guards close the face
-            Boxy(at(-0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
-            Boxy(at( 0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
+    if (style == 1) {
+        // ---- BLOCKY (V179): the Roblox/Minecraft read — a big cubic head,
+        //      a squared torso, and two legs that actually stride. Same
+        //      colours, same armour-value width rules as boxy.
+        const float legSwing = sinf(pose.walkPhase) * 0.18f;
+        for (const float side : { -1.0f, 1.0f }) {
+            const float lx = side * bw * 0.24f;
+            const float lz = side * legSwing;             // opposite fore-aft
+            Boxy(at(lx + rock * 0.3f, 0.50f, lz), bw * 0.42f, 0.90f, 0.34f, bodyC);
+            Boxy(at(lx + rock * 0.3f, 0.08f, lz), bw * 0.44f, 0.16f, 0.40f, feetC);
+        }
+        Boxy(at(rock * 0.5f, 1.30f, 0.0f), bw * 1.05f, 0.78f, 0.42f, bodyC);
+        Boxy(at(rock * 0.5f, 1.30f, 0.22f), bw * 0.40f, 0.60f, 0.05f,
+             flashed(teamTint));                          // surcoat plate
+        Boxy(at(0.0f, 1.95f, 0.0f), 0.50f, 0.50f, 0.50f, headC);   // the cube head
+        if (hasHelm) {
+            if (helmAv >= 2)
+                Boxy(at(0.0f, 1.72f, 0.0f), 0.62f, 0.08f, 0.62f, headC);   // brim
+            Boxy(at(0.0f, 2.24f, 0.0f), 0.44f, 0.16f, 0.44f, headC);       // dome
+            if (helmAv >= 3) {
+                Boxy(at(-0.27f, 1.90f, 0.10f), 0.06f, 0.30f, 0.24f, headC);
+                Boxy(at( 0.27f, 1.90f, 0.10f), 0.06f, 0.30f, 0.24f, headC);
+            }
+        }
+    } else if (style == 2) {
+        // ---- PILL (V179): a capsule body hips→shoulders and a rounded
+        //      head through rdr::PushPill (instanced ellipsoids at the
+        //      seam; both backends). Boots and surcoat stay thin boxes.
+        rdr::PushPill(at(rock * 0.5f, 0.30f, 0.0f), at(rock * 0.5f, 1.45f, 0.0f),
+                      bw * 0.42f, bodyC);
+        Boxy(at(rock * 0.5f, 0.95f, 0.24f), bw * 0.30f, 1.0f, 0.04f,
+             flashed(teamTint));                          // surcoat stripe
+        Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
+        rdr::PushPill(at(0.0f, 1.80f, 0.0f), at(0.0f, 1.98f, 0.0f), 0.19f, headC);
+        if (hasHelm) {
+            if (helmAv >= 2)
+                Boxy(at(0.0f, 1.74f, 0.0f), 0.5f, 0.08f, 0.5f, headC);   // brim
+            Boxy(at(0.0f, 2.06f, 0.0f), 0.3f, 0.14f, 0.3f, headC);       // dome
+            if (helmAv >= 3) {
+                Boxy(at(-0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
+                Boxy(at( 0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
+            }
+        }
+    } else {
+        // ---- BOXY (V149, the default): ONE honest prism from boots to
+        //      shoulders — byte-identical to the pre-V179 body.
+        Boxy(at(rock * 0.5f, 0.82f, 0.0f), bw, 1.64f, 0.40f, bodyC);
+        // the team surcoat stripe, a thin front plate
+        Boxy(at(rock * 0.5f, 0.95f, 0.21f), bw * 0.34f, 1.1f, 0.05f, flashed(teamTint));
+        // boots: a darker base band
+        Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
+        Boxy(at(0.0f, 1.87f, 0.0f), 0.34f, 0.36f, 0.34f, headC);
+        if (hasHelm) {
+            if (helmAv >= 2)
+                Boxy(at(0.0f, 1.74f, 0.0f), 0.5f, 0.08f, 0.5f, headC);   // brim
+            Boxy(at(0.0f, 2.06f, 0.0f), 0.3f, 0.14f, 0.3f, headC);       // dome cap
+            if (helmAv >= 3) {   // cheek guards close the face
+                Boxy(at(-0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
+                Boxy(at( 0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
+            }
         }
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).

@@ -47,7 +47,9 @@ void SaveSettings() {
          "#   battlesize       field-battle cap per side (V75); overflow\n"
          "#                    arrives as reinforcement waves\n"
          "#   ironman          on | off   OFF: the lone hero always survives\n"
-         "#                    (default); ON: a destroyed warband ends the game\n\n"
+         "#                    (default); ON: a destroyed warband ends the game\n"
+         "#   bodystyle        boxy | blocky | pill   body MODEL only (V179);\n"
+         "#                    arms, weapons and combat are identical in all three\n\n"
       << "width " << s.windowWidth << "\nheight " << s.windowHeight
       << "\nfullscreen " << (s.fullscreen ? "on" : "off")
       << "\nloddist " << (int)s.lodDistance
@@ -59,7 +61,9 @@ void SaveSettings() {
       << "\nironman " << (s.ironman ? "on" : "off")
       << "\npostfx " << (s.postFx ? "on" : "off")
       << "\nshadows " << (s.shadows ? "on" : "off")
-      << "\nrenderer " << (s.renderer == 1 ? "vulkan" : "raylib") << '\n';
+      << "\nrenderer " << (s.renderer == 1 ? "vulkan" : "raylib")
+      << "\nbodystyle " << (s.bodyStyle == 2 ? "pill"
+                            : s.bodyStyle == 1 ? "blocky" : "boxy") << '\n';
 }
 
 void LoadSettings() {
@@ -87,5 +91,7 @@ void LoadSettings() {
         else if (key == "postfx")     s.postFx       = TruthValue(value);
         else if (key == "shadows")    s.shadows      = TruthValue(value);
         else if (key == "renderer")   s.renderer     = (value == "vulkan") ? 1 : 0;
+        else if (key == "bodystyle")  s.bodyStyle    = (value == "pill")   ? 2
+                                                     : (value == "blocky") ? 1 : 0;
     }
 }

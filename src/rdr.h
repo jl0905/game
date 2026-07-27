@@ -24,8 +24,12 @@ struct BoxInstance {
 using BoxBuckets = std::unordered_map<unsigned, std::vector<Matrix>>;
 
 BoxBuckets& Buckets();               // the current frame's recording
+BoxBuckets& PillBuckets();           // V179: pill/ellipsoid instances
 void PushBox(const Matrix& m, Color c);
 void PushOrientedBox(Vector3 a, Vector3 b, float r, Color c);   // limb form
+// V179: a pill/capsule primitive for the rounded body style. Records into
+// its own bucket set; executed as an instanced ellipsoid on both backends.
+void PushPill(Vector3 a, Vector3 b, float r, Color c);
 
 // Execute + clear through the active backend. The raylib backend needs the
 // instanced cube mesh/material/shader prepared by the caller (battle.cpp
@@ -37,6 +41,7 @@ struct RaylibInstancedState {
     Shader    shader;
     int       sunLoc;
     Vector3   sun;
+    Mesh*     sphere = nullptr;   // V179: unit sphere for the pill buckets
 };
 void FlushRaylib(const RaylibInstancedState& st);
 
@@ -91,9 +96,12 @@ bool VulkanExecutorReady();
 // (column-major mat4 + rgba floats) offscreen with the game's camera and
 // returns RGBA pixels (row 0 = top), or null on failure.
 // V178: lightVP16 = sun view-proj (z fixed to [0,1]); flags bit0 = shadows.
+// V179: pillData/pillCount = ellipsoid instances (same 80-byte layout),
+// drawn with the unit-sphere mesh through the same lit + shadow pipelines.
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,
+                                       const void* pillData, int pillCount,
                                        int w, int h);
 
 // V164: stage the battlefield mesh (10 floats/vert: pos3 nrm3 col4) for the

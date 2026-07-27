@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 // raylib.h cannot coexist with windows.h (CloseWindow/ShowCursor/Rectangle
 // clash), so the few raylib calls used here are declared by hand.
@@ -52,6 +53,15 @@ struct VkExec {
     VkPipelineLayout layout = VK_NULL_HANDLE;
     VkPipeline pipe = VK_NULL_HANDLE;
     VkBuffer cubeBuf = VK_NULL_HANDLE;
+    // V179: the pill primitive - a unit sphere drawn with the same
+    // pipelines, fed by its own 2-slot instance buffers.
+    VkBuffer sphereBuf = VK_NULL_HANDLE;
+    VkDeviceMemory sphereMem = VK_NULL_HANDLE;
+    int sphereVerts = 0;
+    VkBuffer pillBuf[2] = {};
+    VkDeviceMemory pillMem[2] = {};
+    void* pillMap[2] = {};
+    int pillCap[2] = {};
     VkDeviceMemory cubeMem = VK_NULL_HANDLE;
     // Pipelined executor (V166): two in-flight slots. The CPU fills slot N
     // and presents slot N-1, so the fence wait lands on work the GPU
@@ -249,6 +259,8 @@ void* ReadSpv(const char* path, size_t* size) {
 }
 
 // Unit cube centred on the origin, 36 verts, pos+normal interleaved.
+int FillSphere(float** out);   // defined with the buffer helpers below
+
 void FillCube(float* v) {
     const float n[6][3] = { { 0, 0, 1 }, { 0, 0, -1 }, { 1, 0, 0 },
                             { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 } };
@@ -458,6 +470,20 @@ bool BuildFrameResources(int w, int h) {
             return false;
         memcpy(cubeMap, cube, sizeof(cube));
 
+        // The pill's unit sphere (V179): same vertex layout as the cube, so
+        // every pipeline (main, lit, shadow depth) draws it unchanged.
+        float* sph = nullptr;
+        g_vk.sphereVerts = FillSphere(&sph);
+        void* sphMap = nullptr;
+        if (MakeBuffer((VkDeviceSize)g_vk.sphereVerts * 6 * sizeof(float),
+                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                       &g_vk.sphereBuf, &g_vk.sphereMem, &sphMap))
+            memcpy(sphMap, sph, (size_t)g_vk.sphereVerts * 6 * sizeof(float));
+        else
+            g_vk.sphereBuf = VK_NULL_HANDLE;
+        free(sph);
+
         // Terrain pipeline (V164): mesh.vert + the same Lambert fragment,
         // but colour writes OFF â€” it exists to give the soldiers correct
         // hillside occlusion in the composite while GL still paints the
@@ -512,6 +538,50 @@ bool BuildFrameResources(int w, int h) {
 
     g_vk.width = w;
     g_vk.height = h;
+    return true;
+}
+
+// V179: unit-diameter UV sphere, pos+normal interleaved (6 floats/vert),
+// triangle list. stacks x slices x 6 verts; poles degenerate harmlessly.
+int FillSphere(float** out) {
+    const int ST = 10, SL = 12;
+    const int n = ST * SL * 6;
+    float* v = (float*)malloc((size_t)n * 6 * sizeof(float));
+    int k = 0;
+    auto emit = [&](float phi, float theta) {
+        const float sp = sinf(phi), cp = cosf(phi);
+        const float dx = sp * cosf(theta), dy = cp, dz = sp * sinf(theta);
+        v[k++] = dx * 0.5f; v[k++] = dy * 0.5f; v[k++] = dz * 0.5f;
+        v[k++] = dx;        v[k++] = dy;        v[k++] = dz;
+    };
+    const float PIF = 3.14159265f;
+    for (int i = 0; i < ST; ++i)
+        for (int j = 0; j < SL; ++j) {
+            const float p0 = PIF * i / ST, p1 = PIF * (i + 1) / ST;
+            const float t0 = 2 * PIF * j / SL, t1 = 2 * PIF * (j + 1) / SL;
+            emit(p0, t0); emit(p1, t0); emit(p1, t1);
+            emit(p0, t0); emit(p1, t1); emit(p0, t1);
+        }
+    *out = v;
+    return n;
+}
+
+bool EnsurePillCap(int slot, int count) {   // (decl'd above BuildFrameResources)
+    if (count <= g_vk.pillCap[slot]) return true;
+    DFN(vkDestroyBuffer); DFN(vkUnmapMemory); DFN(vkFreeMemory); DFN(vkDeviceWaitIdle);
+    if (g_vk.pillBuf[slot]) {
+        vkDeviceWaitIdle(g_vk.dev);
+        vkUnmapMemory(g_vk.dev, g_vk.pillMem[slot]);
+        vkDestroyBuffer(g_vk.dev, g_vk.pillBuf[slot], NULL);
+        vkFreeMemory(g_vk.dev, g_vk.pillMem[slot], NULL);
+        g_vk.pillBuf[slot] = VK_NULL_HANDLE;
+    }
+    const int cap = count < 1024 ? 1024 : count * 2;
+    if (!MakeBuffer((VkDeviceSize)cap * 80, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    &g_vk.pillBuf[slot], &g_vk.pillMem[slot], &g_vk.pillMap[slot]))
+        return false;
+    g_vk.pillCap[slot] = cap;
     return true;
 }
 
@@ -1271,6 +1341,7 @@ bool VulkanExecutorReady() {
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,
+                                       const void* pillData, int pillCount,
                                        int w, int h) {
     if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return nullptr;
     if (w != g_vk.width || h != g_vk.height) {
@@ -1308,6 +1379,9 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     g_vk.submitted[cur] = false;
     if (!EnsureInstCap(cur, count)) { g_vk.frameFailed = true; return nullptr; }
     if (count > 0) memcpy(g_vk.instMap[cur], instData, (size_t)count * 80);
+    if (!g_vk.sphereBuf) pillCount = 0;   // sphere upload failed: skip pills
+    if (pillCount > 0 && !EnsurePillCap(cur, pillCount)) pillCount = 0;
+    if (pillCount > 0) memcpy(g_vk.pillMap[cur], pillData, (size_t)pillCount * 80);
 
     vkResetCommandBuffer(g_vk.cmd[cur], 0);
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -1350,6 +1424,15 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                 VkDeviceSize soffs[2] = { 0, 0 };
                 vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, sbufs, soffs);
                 vkCmdDraw(g_vk.cmd[cur], 36, (uint32_t)count, 0, 0);
+            }
+            if (pillCount > 0) {   // pills cast too (V179)
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shBoxPipe);
+                VkBuffer pbufs[2] = { g_vk.sphereBuf, g_vk.pillBuf[cur] };
+                VkDeviceSize poffs[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, pbufs, poffs);
+                vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
+                          (uint32_t)pillCount, 0, 0);
             }
         }
         vkCmdEndRenderPass(g_vk.cmd[cur]);
@@ -1410,6 +1493,35 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
             vkCmdBindVertexBuffers(g_vk.cmd[cur],0, 2, bufs, offs);
             vkCmdDraw(g_vk.cmd[cur],36, (uint32_t)count, 0, 0);
         }
+        if (pillCount > 0) {   // the rounded bodies (V179), same pipeline
+            VkBuffer pbufs[2] = { g_vk.sphereBuf, g_vk.pillBuf[cur] };
+            VkDeviceSize poffs[2] = { 0, 0 };
+            if (!(count > 0)) {   // nobody bound a pipeline yet this pass
+                if (g_vk.shReady && lightVP16) {
+                    DFN(vkCmdBindDescriptorSets);
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.litPipe);
+                    vkCmdBindDescriptorSets(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            g_vk.litLayout, 0, 1, &g_vk.shSet, 0, NULL);
+                    float lpc[36];
+                    memcpy(lpc, viewProj16, 64);
+                    memcpy(lpc + 16, lightVP16, 64);
+                    lpc[32] = sun4[0];
+                    lpc[33] = sun4[1];
+                    lpc[34] = sun4[2];
+                    lpc[35] = (flags & 1) ? 1.0f : 0.0f;
+                    vkCmdPushConstants(g_vk.cmd[cur], g_vk.litLayout,
+                                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                       0, 144, lpc);
+                } else {
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.pipe);
+                }
+            }
+            vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, pbufs, poffs);
+            vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
+                      (uint32_t)pillCount, 0, 0);
+        }
     }
     vkCmdEndRenderPass(g_vk.cmd[cur]);
     VkBufferImageCopy region = {};
@@ -1442,6 +1554,7 @@ int VulkanRegisterUiTexture(const unsigned char*, int, int) { return -1; }
 const unsigned char* VulkanRenderUi(const void*, int, const int*, const int*,
                                     int, int, int) { return nullptr; }
 const unsigned char* VulkanRenderFrame(const float*, const float*, const float*,
-                                       int, const void*, int, int, int) { return nullptr; }
+                                       int, const void*, int,
+                                       const void*, int, int, int) { return nullptr; }
 }
 #endif

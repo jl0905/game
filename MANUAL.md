@@ -250,3 +250,13 @@ and VULKAN. Vulkan mode is a migration preview: the battle army and the
 terrain depth pass render on a real Vulkan device (offscreen, composited);
 the native Vulkan window is the remaining step (RENDERER.md). Rows [9]
 Post FX and [0] Shadows toggle the GL effects.
+
+## Body style setting (V179)
+Settings screen (O) row [=] Body style cycles the soldier body MODEL:
+- **boxy** (default) - the one-honest-box body (V149)
+- **BLOCKY** - Minecraft-style head/torso/limb boxes
+- **PILL** - capsule/pill body
+This changes only how bodies are drawn. Arms, weapon swings, blocking,
+hit detection and all combat logic are identical in all three styles,
+and every style renders on both the raylib GL and Vulkan backends.
+Saved to assets/settings.cfg as `bodystyle boxy|blocky|pill`.

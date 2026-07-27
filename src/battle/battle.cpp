@@ -1473,6 +1473,7 @@ int      g_instSunLoc = -1;
 int      g_instVpLoc = -1, g_instMapLoc = -1, g_instShadowsLoc = -1;   // V153
 Shader   g_instShader{};
 Mesh     g_instCube{};
+Mesh     g_instSphere{};   // V179: the pill primitive's unit sphere
 Material g_instMat{};
 // V160: the transform buckets moved to the renderer seam (src/rdr.h) —
 // scene code records there; this file only owns the GL execution state.
@@ -1491,6 +1492,7 @@ void EnsureInstancing() {
     g_instMapLoc     = GetShaderLocation(g_instShader, "shadowMap");
     g_instShadowsLoc = GetShaderLocation(g_instShader, "shadowsOn");
     g_instCube = GenMeshCube(1.0f, 1.0f, 1.0f);
+    g_instSphere = GenMeshSphere(0.5f, 10, 12);   // unit diameter (V179)
     g_instMat  = LoadMaterialDefault();
     g_instMat.shader = g_instShader;
     g_instReady = true;
@@ -1519,7 +1521,7 @@ void FlushInstanced() {
     const Vector3 sun = Vector3Normalize(
         B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
     rdr::RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
-                                  g_instSunLoc, sun };
+                                  g_instSunLoc, sun, &g_instSphere };
     rdr::Flush(st);   // the seam picks the backend (V161)
 }
 
@@ -1533,7 +1535,7 @@ void EnsureBackendGL() { EnsureInstancing(); }
 void FlushScene(Vector3 sunDir) {
     if (!g_instReady) return;
     RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
-                             g_instSunLoc, sunDir };
+                             g_instSunLoc, sunDir, &g_instSphere };
     Flush(st);
 }
 }  // namespace rdr

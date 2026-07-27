@@ -147,7 +147,7 @@ constexpr float TOWN_ENTER_RADIUS = 48.0f;
 // row layouts in the draw functions both quote these — never mirrored
 // literals, so they cannot drift apart.
 namespace layout {
-constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 11;
+constexpr int SETTINGS_Y = 200, SETTINGS_ROW_H = 44, SETTINGS_ROWS = 12;
 constexpr int MARKET_Y   = 230, MARKET_ROW_H   = 32;
 // The market centres itself (V123): ware rows + saddlebag grid span ~1000px,
 // so the whole block floats around the window centre instead of hugging the
@@ -1446,6 +1446,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
             if (IsKeyPressed(KEY_ONE + row)) in.settingsRow = row;
         if (IsKeyPressed(KEY_ZERO))  in.settingsRow = 9;    // shadows (V165)
         if (IsKeyPressed(KEY_MINUS)) in.settingsRow = 10;   // renderer (V165)
+        if (IsKeyPressed(KEY_EQUAL)) in.settingsRow = 11;   // body style (V179)
         // Mouse (H3 pattern): rows quote the shared layout (K7).
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             const Vector2 m = GetMousePosition();
@@ -5018,6 +5019,9 @@ void SettingsUpdate(GameState& gs, const CampaignInput& in) {
         case 10:  // renderer backend (V161/V165): the migration switch
             s.renderer = s.renderer == 1 ? 0 : 1;
             break;
+        case 11:  // body style (V179): the body MODEL only; combat untouched
+            s.bodyStyle = (s.bodyStyle + 1) % 3;
+            break;
         default: break;
     }
     if (in.leaveSettlement) {
@@ -5039,7 +5043,8 @@ void SettingsDraw(const GameState& gs) {
     int y = layout::SETTINGS_Y;
     auto row = [&](int i, const char* label, const char* value) {
         DrawHoverRow(0, y, GetScreenWidth(), layout::SETTINGS_ROW_H);
-        const char* cap = i == 9 ? "0" : i == 10 ? "-" : TextFormat("%d", i + 1);
+        const char* cap = i == 9 ? "0" : i == 10 ? "-" : i == 11 ? "="
+                                                       : TextFormat("%d", i + 1);
         ui::Text(TextFormat("[%s]  %-18s %s", cap, label, value), x, y, 24, RAYWHITE);
         y += layout::SETTINGS_ROW_H;
     };
@@ -5058,6 +5063,9 @@ void SettingsDraw(const GameState& gs) {
     row(10, "Renderer",     s.renderer == 1
                                 ? "VULKAN - migration preview (battle army)"
                                 : "raylib GL - default");    // V161
+    row(11, "Body style",   s.bodyStyle == 2 ? "PILL - capsule body"
+                          : s.bodyStyle == 1 ? "BLOCKY - minecraft-style limbs"
+                                             : "boxy - one honest box");   // V179
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));
