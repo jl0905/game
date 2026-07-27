@@ -42,8 +42,12 @@ renderer-only transplant.
    depth buffer, per-instance transforms+colour, push-constant camera,
    Lambert sun — drawing 2000 marching soldiers + ground in ONE draw:
    "avg 0.62 ms (1618 fps) on NVIDIA GeForce RTX 4060 Laptop GPU".
-   Next: terrain mesh + trees in the vk scene, then text/HUD, then the
-   game seam swaps backends. — same draws through Vulkan;
+   MILESTONE 4 (V158): the battlefield composition —
+   heightfield terrain mesh (the game's smoothstep-hill construction,
+   smooth normals, grass/dirt/rock palette) + 80 trees + the army, in
+   TWO draw calls: 0.75 ms / 1340 fps. Remaining for the full port:
+   text/2D pipeline, the game-side draw seam, swapchain resize, and
+   the campaign/town scenes — then raylib retires behind the flag. — same draws through Vulkan;
    instanced army path ports directly (it is already transform-lists).
    Feature-flag `renderer vulkan|raylib` in settings.cfg; raylib remains
    the fallback until parity.

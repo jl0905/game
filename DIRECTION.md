@@ -1820,3 +1820,13 @@ over two half-features.
   4060. The old raylib full-frame is 15.6ms; the Vulkan render core
   is ~25x cheaper. Also noted from the tournament fork: user wants
   pill-shaped soldier bodies with wrapped 2D armour textures (queued).
+
+- [x] **V158. Iteration one-fifty-eight — the battlefield on Vulkan
+  (phase 2, milestone 4).** vkarmy now composes the whole battle
+  scene: a 96x96 heightfield terrain mesh built with the game's own
+  smoothstep-hill math (smooth central-difference normals, grass/
+  dirt/rock by height and slope, jittered tones), 80 trees rooted in
+  the field, soldiers standing ON the ground — terrain in one mesh
+  draw, army+trees in one instanced draw. 0.75ms / 1340fps uncapped
+  on the RTX 4060. Remaining to full port (RENDERER.md): text/2D
+  pipeline, the game draw seam, and the campaign/town scenes.

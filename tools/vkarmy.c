@@ -4,6 +4,10 @@
 // Lambert-lit) at uncapped speed, per-frame instance upload, exactly the
 // transform-list workload the game's V126/V128 batcher produces. This is
 // the core of the game's battle renderer running on Vulkan.
+// V158 adds the BATTLEFIELD: a hills heightfield terrain mesh (same
+// smoothstep-hill construction as the game's Terrain) with slope/height
+// colouring and smooth normals, plus scattered trees - the whole battle
+// scene composition, all Vulkan.
 //
 //   build/vkarmy.exe [frames]   (default 600; prints avg ms + fps)
 #define VK_NO_PROTOTYPES
@@ -59,6 +63,26 @@ static M4 m4look(float ex, float ey, float ez, float cx, float cy, float cz) {
 
 typedef struct { float row0[4], row1[4], row2[4], row3[4], color[4]; } Inst;
 
+// ---- the battlefield heightfield (V158): the game's hill construction ----
+#define NHILLS 7
+static float g_hx[NHILLS], g_hz[NHILLS], g_hr[NHILLS], g_hh[NHILLS];
+static unsigned g_seed = 20260726u;
+static float frand(void) {
+    g_seed ^= g_seed << 13; g_seed ^= g_seed >> 17; g_seed ^= g_seed << 5;
+    return (g_seed & 0xFFFFFF) / (float)0xFFFFFF;
+}
+static float smoothstepf(float x) { return x * x * (3.0f - 2.0f * x); }
+static float heightAt(float x, float z) {
+    float h = 0.0f;
+    for (int i = 0; i < NHILLS; ++i) {
+        const float dx = x - g_hx[i], dz = z - g_hz[i];
+        const float d = sqrtf(dx * dx + dz * dz);
+        if (d < g_hr[i]) h += g_hh[i] * smoothstepf(1.0f - d / g_hr[i]);
+    }
+    return h;
+}
+typedef struct { float pos[3], nrm[3], col[4]; } MeshVert;
+
 static PFN_vkGetInstanceProcAddr gipa;
 static PFN_vkGetDeviceProcAddr gdpa;
 #define INST_FN(inst, name) PFN_##name name = (PFN_##name)gipa(inst, #name)
@@ -84,7 +108,7 @@ static void* readFile(const char* path, size_t* size) {
 
 int main(int argc, char** argv) {
     const int wantFrames = argc > 1 ? atoi(argv[1]) : 600;
-    enum { SOLDIERS = 2000, INSTANCES = SOLDIERS + 1 };
+    enum { SOLDIERS = 2000, TREES = 80, INSTANCES = SOLDIERS + TREES + 1 };
 
     HMODULE lib = LoadLibraryA("vulkan-1.dll");
     if (!lib) { printf("vkarmy: no loader\n"); return 1; }
@@ -431,6 +455,42 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // ---- second pipeline: static mesh (terrain) ----
+    size_t mvsSize;
+    void* mvsCode = readFile("assets/spv/mesh.vert.spv", &mvsSize);
+    if (!mvsCode) { printf("vkarmy: missing mesh.vert.spv\n"); return 1; }
+    VkShaderModule mvs;
+    {
+        VkShaderModuleCreateInfo mci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+        mci.codeSize = mvsSize;
+        mci.pCode = (const uint32_t*)mvsCode;
+        vkCreateShaderModule(dev, &mci, NULL, &mvs);
+    }
+    VkPipeline meshPipe;
+    {
+        VkPipelineShaderStageCreateInfo mst[2] = { stages[0], stages[1] };
+        mst[0].module = mvs;
+        VkVertexInputBindingDescription mb = { 0, sizeof(MeshVert),
+                                               VK_VERTEX_INPUT_RATE_VERTEX };
+        VkVertexInputAttributeDescription ma[3] = {
+            { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 },
+            { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, 12 },
+            { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 24 },
+        };
+        VkPipelineVertexInputStateCreateInfo mvin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+        mvin.vertexBindingDescriptionCount = 1;
+        mvin.pVertexBindingDescriptions = &mb;
+        mvin.vertexAttributeDescriptionCount = 3;
+        mvin.pVertexAttributeDescriptions = ma;
+        VkGraphicsPipelineCreateInfo mpci = gpci;
+        mpci.pStages = mst;
+        mpci.pVertexInputState = &mvin;
+        if (vkCreateGraphicsPipelines(dev, NULL, 1, &mpci, NULL, &meshPipe)) {
+            printf("vkarmy: mesh pipeline FAILED\n");
+            return 1;
+        }
+    }
+
     // ---- geometry: one unit cube (36 verts, pos+normal) ----
     float cube[36 * 6];
     {
@@ -452,6 +512,50 @@ int main(int argc, char** argv) {
                 v++;
             }
         }
+    }
+
+    // ---- the terrain mesh (V158): 96x96 cells, smooth normals,
+    //      grass/dirt/rock palette by height and slope ----
+    enum { TN = 96 };
+    const float ARENA = 120.0f, CELL = (2.0f * ARENA) / TN;
+    for (int i = 0; i < NHILLS; ++i) {
+        g_hx[i] = (frand() * 2.0f - 1.0f) * ARENA * 0.7f;
+        g_hz[i] = (frand() * 2.0f - 1.0f) * ARENA * 0.7f;
+        g_hr[i] = ARENA * (0.2f + frand() * 0.4f);
+        g_hh[i] = 3.0f + frand() * 14.0f;
+    }
+    const int terrVerts = TN * TN * 6;
+    MeshVert* terr = (MeshVert*)malloc(sizeof(MeshVert) * terrVerts);
+    {
+        int v = 0;
+        for (int j = 0; j < TN; ++j)
+            for (int i = 0; i < TN; ++i) {
+                const float x0 = -ARENA + i * CELL, x1 = x0 + CELL;
+                const float z0 = -ARENA + j * CELL, z1 = z0 + CELL;
+                const float corner[4][2] = { { x0, z0 }, { x1, z0 },
+                                             { x0, z1 }, { x1, z1 } };
+                const int tri[6] = { 0, 2, 1, 1, 2, 3 };
+                for (int k = 0; k < 6; ++k) {
+                    const float x = corner[tri[k]][0], z = corner[tri[k]][1];
+                    const float h = heightAt(x, z);
+                    const float e = CELL * 0.5f;
+                    const float dx = heightAt(x + e, z) - heightAt(x - e, z);
+                    const float dz = heightAt(x, z + e) - heightAt(x, z - e);
+                    float nx = -dx, ny = 2.0f * e, nz = -dz;
+                    const float nl = sqrtf(nx * nx + ny * ny + nz * nz);
+                    nx /= nl; ny /= nl; nz /= nl;
+                    const float slope = 1.0f - ny;
+                    MeshVert* mv = &terr[v++];
+                    mv->pos[0] = x; mv->pos[1] = h; mv->pos[2] = z;
+                    mv->nrm[0] = nx; mv->nrm[1] = ny; mv->nrm[2] = nz;
+                    float r = 0.24f, g = 0.38f, b = 0.20f;         // grass
+                    if (slope > 0.28f) { r = 0.42f; g = 0.34f; b = 0.25f; }  // dirt
+                    if (h > 10.0f)     { r = 0.52f; g = 0.51f; b = 0.53f; }  // rock
+                    const float jig = 0.92f + 0.08f * frand();
+                    mv->col[0] = r * jig; mv->col[1] = g * jig;
+                    mv->col[2] = b * jig; mv->col[3] = 1.0f;
+                }
+            }
     }
 
     // ---- buffers (host-visible; instance buffer rewritten per frame) ----
@@ -483,6 +587,25 @@ int main(int argc, char** argv) {
         vkAllocateMemory(dev, &mai, NULL, &imem);
         vkBindBufferMemory(dev, ibuf, imem, 0);
         vkMapMemory(dev, imem, 0, sizeof(Inst) * INSTANCES, 0, &imap);
+    }
+    VkBuffer tbuf;
+    VkDeviceMemory tmem;
+    {
+        VkBufferCreateInfo bci = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+        bci.size = sizeof(MeshVert) * terrVerts;
+        bci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        vkCreateBuffer(dev, &bci, NULL, &tbuf);
+        VkMemoryRequirements req;
+        vkGetBufferMemoryRequirements(dev, tbuf, &req);
+        VkMemoryAllocateInfo mai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+        mai.allocationSize = req.size;
+        mai.memoryTypeIndex = FIND_MEM(req, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        vkAllocateMemory(dev, &mai, NULL, &tmem);
+        vkBindBufferMemory(dev, tbuf, tmem, 0);
+        void* tmap;
+        vkMapMemory(dev, tmem, 0, bci.size, 0, &tmap);
+        memcpy(tmap, terr, sizeof(MeshVert) * terrVerts);
     }
 
     // ---- commands + sync ----
@@ -522,10 +645,10 @@ int main(int argc, char** argv) {
 
         // ground slab
         memset(&insts[0], 0, sizeof(Inst));
-        insts[0].row0[0] = 240.0f;
+        insts[0].row0[0] = 280.0f;
         insts[0].row1[1] = 0.1f;
-        insts[0].row2[2] = 240.0f;
-        insts[0].row3[1] = -0.05f;
+        insts[0].row2[2] = 280.0f;
+        insts[0].row3[1] = -0.6f;   // an under-plate beneath the heightfield
         insts[0].row3[3] = 1.0f;
         insts[0].color[0] = 0.24f; insts[0].color[1] = 0.36f;
         insts[0].color[2] = 0.20f; insts[0].color[3] = 1.0f;
@@ -543,13 +666,32 @@ int main(int argc, char** argv) {
             it->row1[1] = 1.8f;
             it->row2[2] = 0.44f;
             it->row3[0] = x;
-            it->row3[1] = 0.9f + bob;
+            it->row3[1] = heightAt(x, z) + 0.9f + bob;   // stand ON the field
             it->row3[2] = z;
             it->row3[3] = 1.0f;
             it->color[0] = team ? 0.75f : 0.16f;
             it->color[1] = 0.18f + 0.1f * ((i * 37 % 13) / 13.0f);
             it->color[2] = team ? 0.16f : 0.72f;
             it->color[3] = 1.0f;
+        }
+
+        // trees: static box canopies rooted in the field
+        for (int i = 0; i < TREES; ++i) {
+            Inst* it = &insts[SOLDIERS + 1 + i];
+            memset(it, 0, sizeof(Inst));
+            unsigned th = (unsigned)(i * 2654435761u);
+            const float tx = ((th & 0xFFFF) / 65535.0f * 2.0f - 1.0f) * 110.0f;
+            const float tz = (((th >> 12) & 0xFFFF) / 65535.0f * 2.0f - 1.0f) * 110.0f;
+            const float hgt = 4.0f + (th % 7) * 0.6f;
+            it->row0[0] = 1.6f;
+            it->row1[1] = hgt;
+            it->row2[2] = 1.6f;
+            it->row3[0] = tx;
+            it->row3[1] = heightAt(tx, tz) + hgt * 0.5f;
+            it->row3[2] = tz;
+            it->row3[3] = 1.0f;
+            it->color[0] = 0.13f; it->color[1] = 0.34f + (th % 5) * 0.02f;
+            it->color[2] = 0.15f; it->color[3] = 1.0f;
         }
 
         vkWaitForFences(dev, 1, &fence, VK_TRUE, UINT64_MAX);
@@ -574,21 +716,27 @@ int main(int argc, char** argv) {
         rpbi.clearValueCount = 2;
         rpbi.pClearValues = clears;
         vkCmdBeginRenderPass(cmd, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
-        VkBuffer bufs[2] = { vbuf, ibuf };
-        VkDeviceSize offs[2] = { 0, 0 };
-        vkCmdBindVertexBuffers(cmd, 0, 2, bufs, offs);
 
         struct { M4 vp; float sun[4]; } pc;
         const float ca = t * 0.15f;
-        M4 view = m4look(sinf(ca) * 70.0f, 34.0f, cosf(ca) * 70.0f, 0.0f, 2.0f, 0.0f);
+        M4 view = m4look(sinf(ca) * 95.0f, 46.0f, cosf(ca) * 95.0f, 0.0f, 3.0f, 0.0f);
         M4 proj = m4persp(1.05f, (float)extent.width / extent.height, 0.5f, 600.0f);
         pc.vp = m4mul(proj, view);
         pc.sun[0] = -0.45f; pc.sun[1] = -0.75f; pc.sun[2] = -0.35f; pc.sun[3] = 0;
         vkCmdPushConstants(cmd, layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(pc), &pc);
-        vkCmdDraw(cmd, 36, INSTANCES, 0, 0);   // the whole army: ONE draw
+        // the battlefield: one mesh draw
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipe);
+        VkDeviceSize toff = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &tbuf, &toff);
+        vkCmdDraw(cmd, (uint32_t)terrVerts, 1, 0, 0);
+        // the army + trees: one instanced draw
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        VkBuffer bufs[2] = { vbuf, ibuf };
+        VkDeviceSize offs[2] = { 0, 0 };
+        vkCmdBindVertexBuffers(cmd, 0, 2, bufs, offs);
+        vkCmdDraw(cmd, 36, INSTANCES, 0, 0);
         vkCmdEndRenderPass(cmd);
         vkEndCommandBuffer(cmd);
 
