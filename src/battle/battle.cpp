@@ -449,12 +449,15 @@ void Terrain::Draw() const {
                             Color{ 46, 98, 150, 165 });
     }
 
-    // Grass tufts (V152): three-sided cones, a wheat-brush over the field.
+    // Grass tufts (V152, seam-recorded since V167): thin boxes through the
+    // instanced batch — thousands of tufts collapse into the same handful of
+    // draw calls as the army, on either backend.
     for (const GrassTuft& g : grass_)
-        DrawCylinderEx(g.pos, { g.pos.x, g.pos.y + g.h, g.pos.z },
-                       0.10f, 0.0f, 3, g.tint);
+        rdr::PushOrientedBox(g.pos, { g.pos.x, g.pos.y + g.h, g.pos.z },
+                             0.05f, g.tint);
 
-    // trees
+    // Trees (seam-recorded since V167): trunk + two stacked canopy boxes in
+    // the one-honest-box language the rest of the field speaks (V149).
     for (const Tree& t : trees_) {
         DrawCylinder({ t.pos.x, t.pos.y + 0.04f, t.pos.z }, t.radius * 1.1f,
                      t.radius * 1.1f, 0.02f, 10, Fade(BLACK, 0.25f));   // shadow
@@ -464,14 +467,13 @@ void Terrain::Draw() const {
         const Vector3 crownMid = { base.x + lean, base.y + t.height * 0.28f, base.z };
         const Vector3 crownCut = { base.x + lean * 1.6f, base.y + t.height * 0.66f, base.z };
         const Vector3 crownTop = { base.x + lean * 2.0f, base.y + t.height, base.z };
-        DrawCylinderEx(base, trunkTop, t.radius * 0.22f, t.radius * 0.16f, 6,
-                       Color{ 92, 64, 40, 255 });
-        // two stacked canopy cones: fuller silhouette, deeper skirt tone
-        DrawCylinderEx(crownMid, crownCut, t.radius * 1.15f, t.radius * 0.45f, 8,
-                       Color{ (unsigned char)(t.foliage.r * 0.8f),
-                              (unsigned char)(t.foliage.g * 0.8f),
-                              (unsigned char)(t.foliage.b * 0.8f), 255 });
-        DrawCylinderEx(crownCut, crownTop, t.radius * 0.8f, 0.0f, 8, t.foliage);
+        rdr::PushOrientedBox(base, trunkTop, t.radius * 0.20f,
+                             Color{ 92, 64, 40, 255 });
+        rdr::PushOrientedBox(crownMid, crownCut, t.radius * 0.80f,
+                             Color{ (unsigned char)(t.foliage.r * 0.8f),
+                                    (unsigned char)(t.foliage.g * 0.8f),
+                                    (unsigned char)(t.foliage.b * 0.8f), 255 });
+        rdr::PushOrientedBox(crownCut, crownTop, t.radius * 0.45f, t.foliage);
     }
 }
 

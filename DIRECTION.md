@@ -1909,3 +1909,11 @@ over two half-features.
   write-combined memory per frame, which alone cost ~20ms. One frame
   of latency on the Vulkan layer, imperceptible at 100+fps. 137
   scripts green.
+
+- [x] **V167. Iteration one-sixty-seven — the woods and the wheat join the recording.**
+  Grass tufts (thousands of per-frame DrawCylinderEx calls) and all
+  three tree segments now go through rdr::PushOrientedBox — collapsed
+  into the same instanced buckets as the army on BOTH backends, and
+  present in the Vulkan layer with true depth. GL 9.43ms / VK 9.59ms
+  at 600 men. What still draws raw GL in-battle: terrain colour,
+  water, siege walls, particles, HUD. 137 scripts green.
