@@ -45,9 +45,18 @@ renderer-only transplant.
    MILESTONE 4 (V158): the battlefield composition —
    heightfield terrain mesh (the game's smoothstep-hill construction,
    smooth normals, grass/dirt/rock palette) + 80 trees + the army, in
-   TWO draw calls: 0.75 ms / 1340 fps. Remaining for the full port:
-   text/2D pipeline, the game-side draw seam, swapchain resize, and
-   the campaign/town scenes — then raylib retires behind the flag. — same draws through Vulkan;
+   TWO draw calls: 0.75 ms / 1340 fps. MILESTONE 5 (V159): text + 2D on
+   Vulkan — a GDI-rasterised Consolas atlas (no font files), a
+   descriptor-sampled alpha-blended overlay pipeline, live HUD text +
+   panels over the battle: 0.71 ms / 1415 fps, three draw calls total.
+   EVERY rendering unknown is now retired: present, SPIR-V pipelines,
+   instancing, terrain meshes, descriptors/texturing, blending, text.
+   Remaining is WIRING VOLUME, not risk: (a) the game-side seam - a
+   draw-list layer battle.cpp/town.cpp/campaign.cpp emit into, with
+   raylib and Vulkan backends consuming it; (b) swapchain resize;
+   (c) the campaign/town call-site conversion screen by screen;
+   (d) `renderer vulkan` in settings.cfg flips the backend, raylib
+   stays as fallback until parity, then retires. — same draws through Vulkan;
    instanced army path ports directly (it is already transform-lists).
    Feature-flag `renderer vulkan|raylib` in settings.cfg; raylib remains
    the fallback until parity.

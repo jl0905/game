@@ -1830,3 +1830,13 @@ over two half-features.
   draw, army+trees in one instanced draw. 0.75ms / 1340fps uncapped
   on the RTX 4060. Remaining to full port (RENDERER.md): text/2D
   pipeline, the game draw seam, and the campaign/town scenes.
+
+- [x] **V159. Iteration one-fifty-nine — text on Vulkan; every unknown
+  retired (phase 2, milestone 5).** A GDI-rasterised font atlas (the
+  OS draws the glyphs; no font files), Vulkan's first descriptor set
+  in the project (combined image sampler), an alpha-blended screen-
+  space overlay pipeline, and a live HUD — title, stats line, smoked
+  panel — over the full battlefield: 0.71ms/1415fps, THREE draw calls
+  for terrain + army + interface. The port's remaining work is wiring
+  volume (the draw-list seam and per-screen conversion), not
+  technical risk — the map is in RENDERER.md.
