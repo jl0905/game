@@ -1777,3 +1777,14 @@ over two half-features.
   towns both. Bench 17.61ms/57fps with shadows + bloom + grade all on.
   Meanwhile the Vulkan SDK blocker is being cleared IN-SESSION: the
   LunarG installer supports silent install; download running.
+
+- [x] **V155. Iteration one-fifty-five — the Vulkan lane opens (no
+  blockers left).** The SDK installer kept aborting on an elevated
+  VC-redist step — so it went in the bin: Khronos Vulkan headers are
+  vendored (third_party/vulkan-headers), the loader ships with the GPU
+  drivers, and tools/vkprobe.c (dynamic loading, MinGW-clean) ran live:
+  instance OK, and BOTH adapters — the RTX 4060 Laptop GPU (Vulkan
+  1.4) and the Radeon 610M — report ray_tracing_pipeline,
+  acceleration_structure and ray_query all YES. Hardware ray tracing
+  is confirmed reachable from this exact toolchain; phase 2 (Vulkan
+  raster backend) is pure code from here.

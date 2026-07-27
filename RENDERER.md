@@ -11,8 +11,14 @@ renderer-only transplant.
 - No MSVC on this machine → DirectX Raytracing (DXR) is out for now.
 - MinGW + Vulkan SDK works: **Vulkan is the target API**, ray tracing via
   VK_KHR_ray_tracing_pipeline (NVIDIA/AMD/Intel all ship it).
-- ACTION NEEDED (user): install the LunarG Vulkan SDK
-  (https://vulkan.lunarg.com) — everything else is code.
+- ~~ACTION NEEDED: install the Vulkan SDK~~ **CLEARED (V155), no SDK
+  needed at all**: Khronos headers vendored at third_party/vulkan-headers,
+  the driver-shipped loader (vulkan-1.dll) loads dynamically (no import
+  lib, MinGW-clean), and tools/vkprobe.c PROVES the lane: both GPUs
+  (RTX 4060 Laptop, Vulkan 1.4; Radeon 610M, 1.3) report
+  ray_tracing_pipeline + acceleration_structure + ray_query = YES.
+  Shader compilation: vendor a glslang release zip (no installer) or
+  precompile SPIR-V — decided at phase 2 start.
 
 ## Phases (each ships and keeps the game playable)
 0. **Seam** — introduce `IRenderer` covering every draw the game makes
