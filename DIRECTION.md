@@ -1768,3 +1768,12 @@ over two half-features.
   man drops a true directional shadow, night hands the line to the
   moon. Toggleable (settings.cfg shadows on|off). Bench 16.61ms/60fps
   at 2000 men with shadows + filmic pass on; suite untouched at 137.
+
+- [x] **V154. Iteration one-fifty-four — the glow (renderer phase 1
+  continues, no blockers).** Bloom lands on the post pipeline: a
+  half-res bright-pass (luminance > 0.72) with a 5x5 tent blur,
+  composited into the filmic pass before tone mapping — sun glints,
+  gilt roofs, lit windows and steel highlights now GLOW. Battles and
+  towns both. Bench 17.61ms/57fps with shadows + bloom + grade all on.
+  Meanwhile the Vulkan SDK blocker is being cleared IN-SESSION: the
+  LunarG installer supports silent install; download running.

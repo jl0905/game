@@ -92,6 +92,7 @@ const char* POST_FS = R"(
 #version 330
 in vec2 fragTexCoord;
 uniform sampler2D texture0;
+uniform sampler2D bloomTex;
 uniform float uTime;
 out vec4 finalColor;
 
@@ -105,6 +106,7 @@ float hash(vec2 p) {
 void main() {
     vec2 uv = fragTexCoord;
     vec3 c = texture(texture0, uv).rgb;
+    c += texture(bloomTex, uv).rgb * 0.55;   // the glow (V154)
     // filmic tone map with a touch of pre-exposure
     c = aces(c * 1.15);
     // grade: cool the shadows toward slate, warm the highlights toward gold
@@ -122,9 +124,34 @@ void main() {
 }
 )";
 
+// Bloom (V154): a half-res bright-pass + tent blur, composited by the
+// final post shader — sun glints, gilt roofs and the sky itself glow.
+const char* BLOOM_FS = R"(
+#version 330
+in vec2 fragTexCoord;
+uniform sampler2D texture0;
+out vec4 finalColor;
+void main() {
+    vec2 tx = 1.5 / vec2(textureSize(texture0, 0));
+    vec3 acc = vec3(0.0);
+    float wsum = 0.0;
+    for (int dx = -2; dx <= 2; dx++)
+        for (int dy = -2; dy <= 2; dy++) {
+            float w = 1.0 / (1.0 + float(dx * dx + dy * dy));
+            vec3 c = texture(texture0, fragTexCoord + vec2(dx, dy) * tx).rgb;
+            float lum = dot(c, vec3(0.299, 0.587, 0.114));
+            acc += max(lum - 0.72, 0.0) * c * w;   // bright pass
+            wsum += w;
+        }
+    finalColor = vec4(acc / wsum * 2.2, 1.0);
+}
+)";
+
 RenderTexture2D g_postTarget = { 0 };
+RenderTexture2D g_bloomRT   = { 0 };
 Shader          g_postShader = { 0 };
-int             g_postTimeLoc = -1;
+Shader          g_bloomShader = { 0 };
+int             g_postTimeLoc = -1, g_postBloomLoc = -1;
 bool            g_postLoaded = false, g_postActive = false;
 
 }  // namespace
@@ -132,15 +159,19 @@ bool            g_postLoaded = false, g_postActive = false;
 void PostBegin() {
     if (!IsWindowReady() || !GetSettings().postFx) { g_postActive = false; return; }
     if (!g_postLoaded) {
-        g_postShader  = LoadShaderFromMemory(nullptr, POST_FS);
-        g_postTimeLoc = GetShaderLocation(g_postShader, "uTime");
-        g_postLoaded  = true;
+        g_postShader   = LoadShaderFromMemory(nullptr, POST_FS);
+        g_postTimeLoc  = GetShaderLocation(g_postShader, "uTime");
+        g_postBloomLoc = GetShaderLocation(g_postShader, "bloomTex");
+        g_bloomShader  = LoadShaderFromMemory(nullptr, BLOOM_FS);
+        g_postLoaded   = true;
     }
     if (g_postShader.id == 0) { g_postActive = false; return; }
     const int w = GetScreenWidth(), h = GetScreenHeight();
     if (g_postTarget.texture.width != w || g_postTarget.texture.height != h) {
         if (g_postTarget.id) UnloadRenderTexture(g_postTarget);
         g_postTarget = LoadRenderTexture(w, h);   // follows window resizes
+        if (g_bloomRT.id) UnloadRenderTexture(g_bloomRT);
+        g_bloomRT = LoadRenderTexture(w / 2, h / 2);   // half-res glow (V154)
     }
     BeginTextureMode(g_postTarget);
     g_postActive = true;
@@ -149,9 +180,25 @@ void PostBegin() {
 void PostEnd() {
     if (!g_postActive) return;
     EndTextureMode();
+
+    // Bloom pass (V154): bright-extract + blur the frame at half res.
+    if (g_bloomShader.id != 0 && g_bloomRT.id != 0) {
+        BeginTextureMode(g_bloomRT);
+        BeginShaderMode(g_bloomShader);
+        DrawTexturePro(g_postTarget.texture,
+                       { 0, 0, (float)g_postTarget.texture.width,
+                         (float)-g_postTarget.texture.height },
+                       { 0, 0, (float)g_bloomRT.texture.width,
+                         (float)g_bloomRT.texture.height },
+                       { 0, 0 }, 0.0f, WHITE);
+        EndShaderMode();
+        EndTextureMode();
+    }
+
     const float t = (float)GetTime();
     SetShaderValue(g_postShader, g_postTimeLoc, &t, SHADER_UNIFORM_FLOAT);
     BeginShaderMode(g_postShader);
+    SetShaderValueTexture(g_postShader, g_postBloomLoc, g_bloomRT.texture);
     DrawTextureRec(g_postTarget.texture,
                    { 0, 0, (float)g_postTarget.texture.width,
                      (float)-g_postTarget.texture.height },
