@@ -1941,3 +1941,11 @@ over two half-features.
   soldier language (V149) and rendering on Vulkan. In-battle raw GL
   is now down to: terrain colour, water strip, flat stain/pool
   cylinders, sky gradient, HUD. 137 scripts green.
+
+- [x] **V171. Iteration one-seventy-one — water, stains and shadows join the recording.**
+  The river ribbon (was DrawTriangleStrip3D), battle stains and
+  corpse blood pools (were flat GL cylinders), and tree ground
+  shadows now record through the seam as flat boxes. Every 3D thing
+  a battle draws now goes through rdr:: — the in-battle raw-GL
+  remainder is exactly: terrain colour model, sky gradient, HUD.
+  137 scripts green.

@@ -445,8 +445,10 @@ void Terrain::Draw() const {
             { riverB_.x + pp.x * w, y, riverB_.y + pp.y * w },
             { riverB_.x - pp.x * w, y, riverB_.y - pp.y * w },
         };
-        DrawTriangleStrip3D(const_cast<Vector3*>(q), 4,
-                            Color{ 46, 98, 150, 165 });
+        (void)q;   // V171: the river is a flat oriented box through the seam
+        rdr::PushOrientedBox({ riverA_.x, y - 0.03f, riverA_.y },
+                             { riverB_.x, y - 0.03f, riverB_.y },
+                             w * 0.55f, Color{ 46, 98, 150, 165 });
     }
 
     // Grass tufts (V152, seam-recorded since V167): thin boxes through the
@@ -459,8 +461,9 @@ void Terrain::Draw() const {
     // Trees (seam-recorded since V167): trunk + two stacked canopy boxes in
     // the one-honest-box language the rest of the field speaks (V149).
     for (const Tree& t : trees_) {
-        DrawCylinder({ t.pos.x, t.pos.y + 0.04f, t.pos.z }, t.radius * 1.1f,
-                     t.radius * 1.1f, 0.02f, 10, Fade(BLACK, 0.25f));   // shadow
+        rdr::PushBox(MatrixMultiply(MatrixScale(t.radius * 2.0f, 0.02f, t.radius * 2.0f),
+                                     MatrixTranslate(t.pos.x, t.pos.y + 0.04f, t.pos.z)),
+                     Fade(BLACK, 0.25f));   // shadow
         const float lean = ((int)(t.pos.x * 7.3f) % 5 - 2) * 0.06f;   // V152
         const Vector3 base     = t.pos;
         const Vector3 trunkTop = { base.x + lean, base.y + t.height * 0.42f, base.z };
@@ -3277,8 +3280,8 @@ void BattleDraw(const Content& c) {
                          Fade(DARKGRAY, 0.8f));   // batched (V126)
                 continue;
             }
-            DrawCylinder({ s.pos.x, gy + 0.02f, s.pos.z }, 0.9f, 0.9f, 0.02f, 10,
-                         Fade(Color{ 110, 20, 20, 255 }, 0.5f));   // blood pool
+            InstCube({ s.pos.x, gy + 0.02f, s.pos.z }, 1.7f, 0.015f, 1.7f,
+                     Fade(Color{ 110, 20, 20, 255 }, 0.5f));   // blood pool
             InstCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.8f));
             DrawSphere({ s.pos.x + 0.8f, gy + 0.16f, s.pos.z }, 0.2f,
                        Color{ 214, 176, 142, 255 });   // a fallen man, not a crate
@@ -3384,8 +3387,8 @@ void BattleDraw(const Content& c) {
     // Where men fell (V12): dark stains, flat on the ground, all battle long.
     for (const Vector3& st : B.stains) {
         if (BehindCamera(st)) continue;   // (V40)
-        DrawCylinder({ st.x, B.terrain.HeightAt(st.x, st.z) + 0.02f, st.z },
-                     0.7f, 0.9f, 0.015f, 8, Color{ 92, 24, 20, 200 });
+        InstCube({ st.x, B.terrain.HeightAt(st.x, st.z) + 0.02f, st.z },
+                 1.5f, 0.02f, 1.5f, Color{ 92, 24, 20, 200 });
     }
 
     // Ground dressing (V7): drawn only within the lodDistance setting of
