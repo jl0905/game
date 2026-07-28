@@ -2128,3 +2128,14 @@ over two half-features.
   said bodystyle boxy (a test runner's cleanup had restored a stale
   copy over the V183 migration) — why soldiers still looked
   rectangly. Fixed and committed everywhere. 138/138 green.
+
+- [x] **V187. Iteration one-eighty-seven — why the pill default kept reverting.**
+  Two stacked bugs, both found via the V186 bench config field: the
+  V181 'pill default' edit in settings.h had silently failed to
+  match (default stayed 0 = boxy), and the headless harness never
+  loads settings — so tests/settings.txt saved compiled DEFAULTS
+  over assets/settings.cfg on every suite run, perpetually reverting
+  bodystyle to boxy. Fixed both: bodyStyle defaults to 2 in code,
+  and the harness settings command loads the real cfg before the
+  screen can save (round-trip guard). Proven: cfg survives a full
+  suite run as pill now. 138/138 green.

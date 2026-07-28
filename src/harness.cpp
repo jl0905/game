@@ -1,6 +1,7 @@
 #include "harness.h"
 #include "bridge.h"
 #include "save.h"
+#include "settings.h"
 #include "town/town.h"
 #include "world.h"
 #include "campaign/campaign.h"
@@ -627,6 +628,11 @@ int RunScript(const char* path) {
             cin.buyGood = h.gs.content.goods.size() + (kind == "weapon" ? 1 : 0);
             h.Step(cin, BattleInput{});
         } else if (cmd == "settings") {
+        // Round-trip guard (V186): load the real cfg before the screen can
+        // save, so a headless settings test never clobbers the repo asset
+        // with compiled defaults (it kept reverting bodystyle to boxy).
+        static bool cfgLoaded = false;
+        if (!cfgLoaded) { LoadSettings(); cfgLoaded = true; }
             CampaignInput cin;
             if (h.gs.screen == Screen::Settings) cin.leaveSettlement = true;
             else                                 cin.openSettings = true;

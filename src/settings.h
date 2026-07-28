@@ -28,7 +28,8 @@ struct Settings {
     bool  ironman      = false;   // V147: OFF = the lone hero always survives
                                   // (no game over); ON = a destroyed warband
                                   // ends the campaign, Warband-permadeath.
-    int   bodyStyle    = 0;       // V179: body MODEL only — 0 = boxy (V149
+    int   bodyStyle    = 2;   // pill is the default look (V186, user call)
+                                  // V179: body MODEL only — 0 = boxy (V149
                                   // one-box), 1 = blocky (Minecraft-style
                                   // limbs), 2 = pill (capsule). Arms, weapons
                                   // and combat logic identical in all three.
