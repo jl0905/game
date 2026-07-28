@@ -2085,3 +2085,13 @@ over two half-features.
   remains the deliberately-detailed third option. Arms and weapon
   swing logic untouched. Old cfgs are migrated (bodystyle pill).
   Suite 137/137; smoke green; GL 8.5 / VK 8.6ms.
+
+- [x] **V184. Iteration one-eighty-four — every limb at the seam, every tier.**
+  The last per-character GL primitives are gone: with a batcher
+  installed, Cap/Cyl/Sph/Boxy record at the seam at EVERY detail
+  tier (near-tier raylib capsules retired; the tier now only gates
+  minor parts), and the town scene installs the sink for its NPCs.
+  Arms, weapons, shields and heads render on Vulkan up close, in
+  battle and in town — and killing the near-tier capsule
+  tessellation bought real speed: GL 6.4ms / VK 6.6ms at 600 men
+  (from 8.5). Suite 137/137; smoke green.

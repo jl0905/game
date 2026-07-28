@@ -24,11 +24,11 @@ int R(int full) { return g_charTier ? 2 : full; }
 // Per-part instancing (V128): with a sink installed and tier 1 active,
 // primitives become oriented boxes handed to the caller's batcher.
 LimbSink g_sink = nullptr;
-bool Batched() { return g_sink != nullptr && g_charTier == 1; }
+bool Batched() { return g_sink != nullptr; }   // V184: every tier records
 // Minor parts — boots, neck, stripe, nasal — vanish in the batched tier
 // (V132): at that distance they are sub-pixel, and every skipped part is
 // one fewer instance for the whole army.
-bool Minor() { return Batched(); }
+bool Minor() { return g_sink != nullptr && g_charTier == 1; }
 
 void Cap(Vector3 a, Vector3 b, float r, int sl, int ri, Color c) {
     if (Batched()) { g_sink(a, b, r, c); return; }

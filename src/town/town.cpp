@@ -1288,6 +1288,9 @@ void TownDraw(const GameState& gs) {
         ClearBackground(Color{ 24, 18, 14, 255 });
         BeginMode3D(cam);
     rdr::EnsureBackendGL();   // town records at the seam too (V172)
+    SetCharacterBatcher([](Vector3 a, Vector3 b, float r, Color c) {
+        rdr::PushOrientedBox(a, b, r, c);   // NPC limbs at the seam (V184)
+    });
         BeginShaderMode(GetLitShader());
         const Color wood = { 92, 66, 44, 255 };
         const Color dark = { 58, 42, 30, 255 };
@@ -1396,6 +1399,9 @@ void TownDraw(const GameState& gs) {
 
     BeginMode3D(cam);
     rdr::EnsureBackendGL();   // town records at the seam too (V172)
+    SetCharacterBatcher([](Vector3 a, Vector3 b, float r, Color c) {
+        rdr::PushOrientedBox(a, b, r, c);   // NPC limbs at the seam (V184)
+    });
     BeginShaderMode(GetLitShader());
     DrawPlane({ 0, 0, 0 }, { TOWN_EDGE * 2, TOWN_EDGE * 2 }, Color{ 96, 128, 72, 255 });
     SeamCube({ 0, 0.005f, 0 }, 30.0f, 0.02f, 30.0f,
