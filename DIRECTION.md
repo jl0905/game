@@ -2139,3 +2139,9 @@ over two half-features.
   and the harness settings command loads the real cfg before the
   screen can save (round-trip guard). Proven: cfg survives a full
   suite run as pill now. 138/138 green.
+
+- [x] **V188. Iteration one-eighty-eight — the Manual is on the bar.**
+  The campaign bottom bar gains a ninth chip: Manual (F1 tag on
+  hover) - one click opens the 26-page in-game manual; new
+  openManual intent flows Gather -> main.cpp like every other chip.
+  138/138 green.

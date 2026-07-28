@@ -1748,6 +1748,7 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
                         case 6: in.openEstate    = true; break;
                         case 7: in.parley        = true; break;
                         case 8: in.openSettings  = true; break;
+                        case 9: in.openManual    = true; break;   // V188
                     }
                     break;
                 }
@@ -4006,6 +4007,7 @@ void CampaignDraw(const GameState& gs) {
             { "Character", "C", 3 },   { "Bag", "I", 4 },
             { "Ledger", "B", 5 },      { "Estate", "E", 6 },
             { "Hail a lord", "T", 7 }, { "Options", "O", 8 },
+            { "Manual", "F1", 9 },   // the book at the bar (V188, user call)
         };
         g_barHits.clear();
         int ks = 19;

@@ -171,6 +171,11 @@ int main(int argc, char** argv) {
             case Screen::BattleResult: {
                 const CampaignInput in = GatherCampaignInput(gs);
                 CampaignUpdate(gs, dt, in);
+                if (in.openManual && gs.screen == Screen::Campaign) {
+                    ManualViewOpen(gs);       // the bottom-bar chip (V188)
+                    ManualViewDraw(gs);
+                    break;
+                }
                 if (gs.screen == Screen::Battle) {        // campaign requested a battle
                     BattleInit(gs.content, MakeBattleSetup(gs));
                     BattleDraw(gs.content);

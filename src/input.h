@@ -79,6 +79,7 @@ struct CampaignInput {
     // settings screen (K1)
     bool    openSettings = false;     // O on the map / title
     int     settingsRow  = -1;        // option row to toggle/cycle
+    bool    openManual   = false;     // bottom-bar Manual chip (V188)
 
     // title screen: 1 = new game, 2 = continue (autosave), 3 = quit
     int     menuChoice = 0;
