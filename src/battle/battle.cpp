@@ -1486,7 +1486,39 @@ int      g_instSkinRectLoc = -1;   // V180: armour skin atlas row selector
 Shader   g_instShader{};
 Mesh     g_instCube{};
 Mesh     g_instSphere{};   // V179: the pill primitive's unit sphere
+Mesh     g_instCyl{};      // V185: the capsule shaft's unit cylinder
 Material g_instMat{};
+
+// V185: hand-built unit cylinder, radius 0.5, height 1, CENTRED on the
+// origin along Y, open ends (the sphere caps cover them). Built in code -
+// not GenMeshCylinder - so the origin convention is guaranteed identical
+// to the Vulkan executor's generator and one transform serves both.
+Mesh BuildUnitCylinder() {
+    constexpr int SL = 16;
+    Mesh m{};
+    m.triangleCount = SL * 2;
+    m.vertexCount   = m.triangleCount * 3;
+    m.vertices = (float*)MemAlloc((unsigned)m.vertexCount * 3 * sizeof(float));
+    m.normals  = (float*)MemAlloc((unsigned)m.vertexCount * 3 * sizeof(float));
+    int k = 0;
+    auto emit = [&](float ang, float y) {
+        const float nx = cosf(ang), nz = sinf(ang);
+        m.vertices[k * 3 + 0] = nx * 0.5f;
+        m.vertices[k * 3 + 1] = y;
+        m.vertices[k * 3 + 2] = nz * 0.5f;
+        m.normals[k * 3 + 0] = nx;
+        m.normals[k * 3 + 1] = 0.0f;
+        m.normals[k * 3 + 2] = nz;
+        ++k;
+    };
+    for (int i = 0; i < SL; ++i) {
+        const float a0 = 2.0f * PI * i / SL, a1 = 2.0f * PI * (i + 1) / SL;
+        emit(a0, -0.5f); emit(a0, 0.5f); emit(a1, 0.5f);
+        emit(a0, -0.5f); emit(a1, 0.5f); emit(a1, -0.5f);
+    }
+    UploadMesh(&m, false);
+    return m;
+}
 // V160: the transform buckets moved to the renderer seam (src/rdr.h) —
 // scene code records there; this file only owns the GL execution state.
 
@@ -1506,6 +1538,7 @@ void EnsureInstancing() {
     g_instSkinRectLoc = GetShaderLocation(g_instShader, "skinRect");
     g_instCube = GenMeshCube(1.0f, 1.0f, 1.0f);
     g_instSphere = GenMeshSphere(0.5f, 10, 12);   // unit diameter (V179)
+    g_instCyl    = BuildUnitCylinder();           // capsule shaft (V185)
     g_instMat  = LoadMaterialDefault();
     g_instMat.shader = g_instShader;
     {   // Armour skin atlas (V180): procedural, shared verbatim with Vulkan.
@@ -1545,7 +1578,7 @@ void FlushInstanced() {
         B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
     rdr::RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
                                   g_instSunLoc, sun, &g_instSphere,
-                                  g_instSkinRectLoc };
+                                  g_instSkinRectLoc, &g_instCyl };
     rdr::Flush(st);   // the seam picks the backend (V161)
 }
 
@@ -1560,7 +1593,7 @@ void FlushScene(Vector3 sunDir) {
     if (!g_instReady) return;
     RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
                              g_instSunLoc, sunDir, &g_instSphere,
-                             g_instSkinRectLoc };
+                             g_instSkinRectLoc, &g_instCyl };
     Flush(st);
 }
 }  // namespace rdr
@@ -2172,7 +2205,12 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 else            DisableCursor();
             }
         }
-        if (B.showMenu) {
+        // Formation keys work with or without the menu (V185 audit fix):
+        // 1-5 and [ ] were gathered every frame but silently ignored unless
+        // the ~ menu was open — a live-looking key that did nothing. Now
+        // they bark like the F1-F3 orders; the menu remains the readable
+        // way to see what you're picking.
+        {
             switch (in.formationSelect) {
                 // Picking a shape implies an order (M2): Charge frees the
                 // line, any held shape means "form on me".

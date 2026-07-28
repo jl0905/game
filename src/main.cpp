@@ -8,6 +8,7 @@
 #include "campaign/campaign.h"
 #include "battle/battle.h"
 #include "town/town.h"
+#include "manualview.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -245,6 +246,11 @@ int main(int argc, char** argv) {
                 else                              TitleDraw(gs);
                 break;
             }
+            case Screen::ManualView: {           // the in-game manual (V185)
+                ManualViewUpdate(gs);
+                ManualViewDraw(gs);              // one last frame on close is fine
+                break;
+            }
             case Screen::Battle: {
                 const BattleInput in = GatherBattleInput();
                 BattleOutcome out;
@@ -263,6 +269,21 @@ int main(int argc, char** argv) {
                     CampaignDraw(gs);
                 }
                 break;
+            }
+        }
+        // F1 opens the manual from the map and any paused menu screen (V185).
+        // Battle keeps F1 for the HOLD order; the manual waits for the camp.
+        if (IsKeyPressed(KEY_F1)) {
+            switch (screenAtFrameStart) {
+                case Screen::Campaign: case Screen::Settlement:
+                case Screen::Market:   case Screen::Party:
+                case Screen::Inventory: case Screen::Character:
+                case Screen::Kingdom:  case Screen::Quests:
+                case Screen::Estate:   case Screen::Settings:
+                case Screen::Title:
+                    if (gs.screen == screenAtFrameStart) ManualViewOpen(gs);
+                    break;
+                default: break;
             }
         }
         // Quit needs a deliberate double-Esc on the overworld itself — not one

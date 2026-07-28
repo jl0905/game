@@ -2095,3 +2095,24 @@ over two half-features.
   battle and in town — and killing the near-tier capsule
   tessellation bought real speed: GL 6.4ms / VK 6.6ms at 600 men
   (from 8.5). Suite 137/137; smoke green.
+
+- [x] **V185. Iteration one-eighty-five — the audit, the manual, the tent, and true pills (parallel-agent build).**
+  (a) EVERY player path audited across campaign, battle and town;
+  two dead paths found and fixed: mid-battle formation keys 1-5 and
+  [/] ranks now apply without the ~ menu, and the quest journal
+  gains [X] abandon (-2 crown relation, recorded). (b) TOURNAMENTS:
+  the victory-screen wedge is dead - won rounds routed through a
+  screen main.cpp never re-inited; rounds now chain through a proper
+  BETWEEN-ROUNDS TENT (bracket progress, winnings, Fight on /
+  Withdraw with real payout), and the whole thing is data-driven via
+  TournamentDef in the content registry (town gate stake reads it
+  too). New regression: tournament_withdraw. (c) THE IN-GAME MANUAL:
+  F1 from any non-battle screen opens a 15+11-page mouse-driven
+  manual (assets/manual.txt) documenting every control, button,
+  dialogue topic (hail lord included), market service, siege option
+  and how the systems loop together - rendered through ui:: on the
+  Vulkan text pipeline. (d) TRUE PILLS (user call): the capsule is
+  now a real cylinder shaft with uniform ball caps on both backends
+  (shadow + skin passes included), the body is thicker (r 0.38), and
+  the floating plume cube above heads is gone - body and head only.
+  Suite 138/138; smoke green; GL 5.9ms / VK 6.1ms at 600.

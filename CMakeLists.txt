@@ -25,6 +25,7 @@ add_executable(openwarband
     src/gfx.cpp
     src/rdr.cpp
     src/skins.cpp
+    src/manualview.cpp
     src/vkexec.cpp
     src/sfx.cpp
     src/content.cpp

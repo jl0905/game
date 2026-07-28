@@ -601,7 +601,9 @@ bool TownUpdate(GameState& gs, float dt, const BattleInput& in, const CampaignIn
         gs.arenaFight = true;
         gs.arenaRound = 1;
         gs.arenaBet   = 0;
-        constexpr int ARENA_STAKE = 50;   // TODO(balance): pays 3x as champion
+        // The stake reads the tournament def (V185): data-driven like the rest.
+        const int ARENA_STAKE = gs.content.tournaments.size() > 0
+                                    ? gs.content.tournaments[0].entryStake : 50;
         if (cin.tournamentBet && gs.gold >= ARENA_STAKE) {
             gs.gold -= ARENA_STAKE;
             gs.arenaBet = ARENA_STAKE;

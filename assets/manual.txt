@@ -1,0 +1,501 @@
+# Getting started
+Welcome, captain. OpenWarband is a Mount & Blade style sandbox: a
+top-down campaign map where you roam, trade, recruit and scheme, and a
+real-time third-person battlefield where every fight is yours to win in
+person. Press F1 anywhere on the map or in a menu to reopen this manual.
+
+## The one rule of time
+The world only moves while you do. Travel (WASD, or hold the left mouse
+button) or hold SPACE to wait, and time flows; stand still and every
+army on the map freezes with you. Nothing can catch you while you think.
+
+## Your first hour
+Recruit a few men at a village (enter it, pick Recruit), take work from
+a town notable (G in a town), hunt a small bandit band, and sell the
+loot at a market. Wages and grain are paid at dawn - keep gold for both,
+and keep grain in the bag or men start walking home hungry.
+
+# Campaign map
+## Moving
+WASD or hold LMB to travel. Click a distant town and the party sets a
+course by itself - any manual input takes the reins back. Within reach
+of a gate, a click walks you in. The mouse wheel zooms the map.
+
+## Ground and roads
+Plains are fast, forest slower, mountains slowest. The bright trunk
+roads join settlements - you move at full pace on them whatever the
+ground. A scout companion marches the whole band 15 percent faster.
+One storm cell drifts the map: inside it you travel at three quarter
+pace, battles are fought in rain, and crops suffer where it sits.
+
+## The bottom bar (every chip is clickable)
+Q journal - every quest taken, done or failed, with its clock.
+P party - roster, promotions, and spending troop experience.
+C character - the hero sheet: skills, honor, renown.
+I bag - the tiled inventory; dress companions from here too.
+B ledger - the ruler's view: fiefs, wars, taxes, income books.
+E estate - your personal manor (press near a friendly town to found).
+T hail - HAIL A LORD: opens talk with the nearest lord party in reach,
+  same as riding into him but without the collision. Gifts, loans,
+  quest work and courtship of his opinion all start here.
+O options - settings. F5 to F7 quicksave. Esc twice saves and quits.
+
+## Other parties
+Lord hosts (about 150 strong) war and besiege on their own; caravans
+carry the economy; bandit lairs breed raiders until burned out. Two
+hostile parties that collide lock into a skirmish - watch it, or press
+1 or 2 to join a side and fight it in person as a full battle.
+
+# Settlements
+## The gate view
+Entering a settlement shows the eagle view over the roofs with the menu
+on the right. Every row is clickable and dead rows say why they are
+dead. Boots only touch ground when you pick Enter - walk the streets.
+Recruit - hire from the local pool (grows with prosperity).
+Market - the goods grid, services and the forge counter.
+Tavern - companions for hire, ransoming captives, rumors.
+Tournament - a three round bracket on borrowed equal gear; Shift
+  stakes 50 gold on yourself (pays triple as champion), the purse is
+  150, plus renown and the host crown's regard.
+Work - take a quest from the town notables.
+Audience - speak with the resident lord, if he is at home.
+Feast - host one (gold) to warm every attending lord's opinion.
+Garrison - station or withdraw your own troops to hold the walls.
+Fortify - pay masons to thicken the walls; sieges against them bleed.
+Sellswords - a mercenary company for hire, cash up front.
+
+## Walking the streets
+In walking mode the service strip is clickable: T tournament, M market,
+G work, H hire, V oath, E talk, F garrison. The gold-roofed building is
+the tavern. Villagers wander; talk to them for flavor and leads.
+
+## Prosperity and danger
+Prosperity (30 to 150) scales market stock, recruit pools, enterprise
+income and estate rent. It grows from caravans that actually arrive -
+so danger on the roads (bandit bands near the town) strangles trade,
+withers the market, and thins the garrison pool. Burn out a lair and
+the whole region revives: fewer raiders, safer roads, richer towns.
+
+# Economy
+## The market grid
+Wares are tiles on pages: click a tile to buy one, right-click or
+Shift-click to sell, number keys address the visible page, arrows turn
+pages. Prices live: scarce stock costs more, village produce is cheap
+at the source, war adds a markup in the owning crown's towns. Buy low,
+haul, sell high; saddlebags cap what you carry.
+
+## Services (all proper buttons at the market)
+Caravan 200 - stake a trade wagon; it pays out if it arrives.
+Deposit / Withdraw - the bank: 5 percent a week; big deposits feed the
+  town's prosperity.
+Loan - borrow against the future; debt compounds weekly, and past 700
+  the lender sends collectors after you in person.
+Destrier 200 - a warhorse, so you ride in battle (Z to mount).
+Enterprise - buy the mill, smithy or brewery: daily income scaled by
+  prosperity; expand it once for double the take.
+Land deed - up to three parcels per town, each dearer; rent rides the
+  town's prosperity through the daily ledger. Hostile owners
+  confiscate the take until peace.
+
+## The forge counter
+Two rotating pieces a day, towns only. Every item's price is derived
+from its stats - damage, reach, missile range, armour - and loot
+resells at half that same worth.
+
+## Lending to lords
+At a lord's court, stake him 300 gold: 360 back in six days plus his
+gratitude, if he still rides. A fallen or captured debtor defaults.
+
+# Party & troops
+## The roster (P)
+Survivors of won battles earn experience per troop type; spend it here
+to promote. A promotion costs exactly the gear delta - what the next
+tier's added equipment and training would cost at the counter, plus
+200 for his first horse. The price is quoted on the row.
+
+## Upkeep
+Wages daily, tiered by quality. Grain feeds the band each dawn; a
+quartermaster companion stretches the sacks, an estate granary never
+runs out. Hungry men fight worse and desert on the second empty dawn.
+Party cap is 20 plus renown plus Charisma, plus 10 with a barracks.
+
+## Companions
+Tavern hires are unique heroes with perks - surgeon, scout,
+quartermaster, drillmaster, jailer - and tempers. Dishonorable deeds
+drive the principled ones away. Dress them from your bag (I).
+
+## Prisoners
+Beaten enemies can yield. Ransom them in taverns, or press them into
+your line at spear point - your honor suffers for it.
+
+## No permadeath by default
+Losing every soldier is a setback, not the end: the lone hero rides
+on, fights, recruits, rebuilds. Turn Ironman ON in settings for
+Warband-style finality.
+
+# Battle
+## The three rules of melee
+1. Aim is your last flick. The direction the mouse moved last is the
+   direction your swing comes from - sideways reads as a cut, vertical
+   as overhead or thrust. The press locks it in.
+2. The wind-up is the weight. Release early for a half-force blow;
+   hold the draw and it lands whole. Recovery after a blow is near
+   zero, so you can feint: start a cut, cancel into block, bait the
+   parry. Clean blows decide fights - men die fast.
+3. Guards are lines. A shield soaks from every direction while the
+   wood lasts (the E kick goes through it). A bare weapon bars ONE
+   line, shown by the stance; RMB blocks the same way - with a weapon
+   alone, flick the mouse to pick which line you bar.
+
+## The rest of the kit
+G scavenges a fallen man's weapon and pulls spent arrows. Q swaps
+between your carried weapons. A bow draws and looses where the camera
+looks - a full draw hits harder, and you carry 24 arrows. Z mounts and
+dismounts; the gallop adds reach, weight and trampling - unless the
+man you ride down has a braced polearm. From the saddle your torso
+leans into every stroke so the swing reads clearly.
+
+## Reading the field
+Your hits rise off the struck man as gold numbers, hits on you in red,
+and every fall is called by name in the kill feed. N auto-resolves the
+battle on paper if you would rather not fight it.
+
+# Commands & morale
+## Orders
+F1 hold, F2 follow, F3 charge. The tilde key opens the strategy menu:
+Line, Square, Spread, Shield Wall (slow, braced, tough) and the rank
+count. Deployment before the horn lets you shape the line first.
+
+## Morale
+Every soldier carries nerve. Deaths nearby drain it, kills restore it,
+your war horn (V) rallies, and your own kills embolden the men who saw
+them. Broken men rout; routed armies yield quarter - prisoners.
+
+## Sieges
+Walls, a gate, ladders; attackers funnel and climb, defenders hold the
+wall. Fortified walls bite harder. Relief lords can ride to a
+defender's aid - including to yours.
+Besides storming, a hostile walled town offers:
+Blockade - throw a cordon and stay close: each dawn the garrison
+  starves a little; thinned enough, the gates open without a fight.
+Poison the wells - a third of the defenders die at once. A black
+  deed: honor suffers and the owner remembers.
+
+## Parley - words before steel
+When a hostile band catches you, the encounter opens with words:
+1 Draw steel - fight as normal.
+2 Buy the road - 15 gold per man they field; lords charge double.
+3 Demand surrender - at three-to-one odds they ground arms and march
+  as captives, no blood. Short of that, they laugh and charge.
+4 Slip away - you escape, unless their horse outruns yours.
+
+# Kingdom & estate
+## Renown and oaths
+Renown opens doors: with enough, swear to a crown (V in their town),
+fight their wars, answer musters, earn fiefs. Or stay free.
+
+## The ledger (B)
+Fiefs and their lords, armies afield, wars - click one to sue for
+peace or declare - the tax lever (higher taxes bite prosperity), and
+the day's full income and wage books.
+
+## Lords remember
+Gifts, feasts, relieved sieges, freed captives, repaid loans - and
+above all deeds in the field: fight beside a lord's host and he
+remembers it. Scorned lords of your own crown can defect at dawn.
+Captured lords escape if unguarded; a jailer companion helps.
+
+## Your estate (E near a friendly town, 1000 gold)
+The manor rises outside the gates, tied to that town's fortunes.
+Build one work at a time: Tilled Fields (rent by prosperity),
+Barracks (party cap and recruit pool), Estate Smithy (promotions 15
+percent cheaper), Granary (hunger never thins your ranks), Stone
+Walls (field battles on estate land are fortified).
+
+# Settings & renderer
+## The options screen (O)
+Every row is clickable and hotkeyed: fullscreen, draw distance,
+particles, volume, invert Y, lettering scale, battle size (bigger
+battles arrive as reserve waves), Ironman, Post FX, Shadows, Renderer,
+and Body style.
+
+## Renderer
+raylib GL is the classic path; VULKAN runs the battlefield, text and
+interface on a real Vulkan device (the migration preview - it should
+look identical and run at least as fast). Switch any time.
+
+## Body style
+The soldier body model: PILL (default) - one capsule and a head;
+boxy - one prism and a head; BLOCKY - Minecraft-style limbs. Armour is
+a texture on the body, team identity tints it, and combat is identical
+in every style.
+
+## Saving
+F5 to F7 quicksave to three slots, autosave on quit, Esc twice on the
+map saves and exits. The load menu peeks into each slot before you
+commit.
+
+Every control and choice on the battle and settlement screens: what it
+does, and which system it feeds. (Campaign-map, market, and kingdom
+screens are covered in the companion manual sections.)
+
+# Battle: your own hands
+
+W A S D - Move, camera-relative. Hero physics; sprinting into terrain obeys the same heightfield the AI uses.
+Mouse - Look. The last direction you flicked before releasing an attack picks your swing (dominant axis: up = overhead, down = thrust, left/right = cuts). The V143 aim rule — the HUD shows the current `aim` direction.
+LMB hold → release - Hold to wind up (the cock is deliberately huge so enemies can read it — so can you), release to strike. Damage, reach and cooldown come from the wielded weapon's data. Directional melee; hero melee recovery is near-zero so you can feint: cock, cancel with RMB, re-cock.
+RMB - Block (hold). With a shield: blocks all four directions and soaks arrows. With a weapon only: a directional parry — it bars the direction of your last mouse flick (shown as the guard pose); a matched parry costs the attacker most of the hit. Blocking also cancels your own wind-up (the feint). Guard/parry system; `BLOCK_MISSILE_FACTOR` for arrows.
+Space - Jump (on foot). Hero physics; lets you hop low rubble and ladder lips.
+Mouse wheel - Camera closer / farther. Adjustable third-person camera.
+Q - Swap to your next carried weapon (your arsenal cycles; the AI auto-picks per range instead). Loadout arsenal (spear at range, sword in the press).
+E — the boot - A short kick, ~1.2s recovery, on foot only (you cannot kick from the saddle — dismount first). Staggers the man in front and opens a turtled shield for a beat. The HUD shows `BOOT READY` / its cooldown. Anti-turtle tool; kicks landed are tallied in the after-battle report.
+G - Take up a fallen man's weapon if one lies at your feet (replaces your active weapon). Battlefield scavenging — grab a spear when your blade is short.
+Z - Dismount / remount your horse (if you own one and it lives). A killed mount drops you on foot for the rest of the fight. Mount system; loose horses wander and yours is marked gold.
+V — the war horn - A cry that turns nearby routed friendlies back into the fight. Costs nothing; timing it as your line wavers is the skill. Morale/rout system.
+N - Auto-resolve: the battle is fought on paper immediately (deployment or early in the fight). The V41 resolver — same odds math the campaign skirmishes use.
+Esc - Retreat/leave per the pre-battle terms. Battle outcome carries to the campaign.
+
+# Battle: commanding your men
+
+F1 / F2 / F3 - Barked orders, no menu: Hold (form on this spot and keep it), Follow (form on you as you move), Charge (loose them).
+1–5 - Pick a formation any time — menu open or not (fixed in the V185 audit; previously the keys silently did nothing unless the ~ menu was up): 1 Charge (also orders the charge), 2 Line, 3 Square, 4 Spread, 5 Shield Wall. Picking a held shape (2–5) while charging automatically switches your men to Follow so the shape can form.
+[ / ] - Fewer / more ranks (1–8): a wide thin line versus a deep short one. Works alongside any formation, menu or not.
+~ - The strategy menu: the readable version of all of the above — click rows instead of remembering keys. Opens the cursor.
+R (deployment) - Sound the horn — end the deployment pause and begin the battle. Until then the field holds its breath: no movement, no arrows.
+D (deployment) - Single combat: if the enemy fields a champion (a lord in person, circlet on his head), challenge him. Both armies hold while you duel; the winner's side takes the field's morale.
+
+Formations are yours only — allies and enemies always charge. Your
+formation, order and rank count persist through the battle until you
+change them.
+
+# Battle: before the steel (the parley screen)
+
+When you engage certain parties you get words before blades (see the
+campaign manual for the full option list — hail/parley is the campaign-map
+`T` key: it opens talk with the nearest lord's party, where terms,
+tribute, or the fight itself are chosen). Against walls two more
+options are real, not flavour: blockade & starve marks the town — its
+garrison starves a little every dawn you hold the cordon (walk away and it
+lifts); poison the wells kills defenders immediately but is a black
+deed your honour pays for.
+
+# Sieges
+
+Attacking walls adds climbing points: ladders lean on the outer face
+(climb by walking into them — the bump carries you up), a built siege
+tower rolls its ramp onto the rampart, and the gate is the choke.
+Fortified stone (bought at the settlement menu) reads darker, carries a
+timber hoarding, and holds +10 garrison beds.
+
+# The settlement (gate view and streets)
+
+Entering a settlement opens the gate view: an eagle-eye look at the
+town with the menu at the side. Nothing moves until you choose. Every row
+is a button (hotkey appears under the mouse); greyed rows say why they're
+dead.
+
+| Row | What it does | System |
+The market - Buy/sell goods and arms on the tile GUI, the moneylender (deposit/withdraw/loan), caravans, enterprises, land deeds, the destrier. Economy: prices move with prosperity, road danger and your own trading.
+The tavern - Walk in at the hearth. Inside: number keys recruit from your faction's roster (drains the town's recruit pool — let towns prosper to refill it), R ransoms captives, the companion waits by the fire. E steps back out. Recruiting, captives, companions.
+The tournament - Enter the arena bracket (towns only). Shift-click stakes 50 gold on yourself. Win rounds for renown and the purse. Arena/renown; party cap grows with renown.
+Seek work - The local quest giver: fetch/escort/hunt work with real rewards; tracked in the quest journal (Q on the map). Quest system.
+Hire the companion - Each town's named companion joins once, forever (gear them via the inventory, Tab to target them). Companions: heroes that never drift or starve.
+Swear to this crown - Vassalage: your banner joins this faction — its wars become yours, lords' opinions start mattering, fiefs may follow. Free captains only. Diplomacy/fealty.
+The hall - At a castle: the lord's court (news, politics, lend to the lord — loans come back with interest and gratitude). Elsewhere: the local talk. Dialogue options are numbered; each names its topic. Dialogue/diplomacy; lord opinions.
+Garrison / recall a soldier - Your walls only: move one soldier between party and garrison (F / Shift+F work anywhere in town too). Garrisons defend when you're elsewhere and eat from the town's purse. Settlement defence.
+Walk the streets in person - Third-person walk mode (battle controls). E near a passer-by stops them for a word; E at the tavern door enters; Esc returns to the gate view. The walkable scene: villagers live here, buildings are solid.
+Host a feast - Your own hall, 200 gold: every lord of your realm warms to you (+opinion), the town eats well (+prosperity), matches may be made while it holds. One feast in the land at a time. Feast/marriage/opinion systems.
+Sellswords for hire - Towns only, 150 gold: a rotating 5-man pack (pikemen / arbalists / infantry by town and day) joins instantly if you have room. Instant muscle, no pool drain — the mercenary economy.
+Fortify the walls - Your walls, 500 gold, once: +10 garrison beds, a hoarding, and a harder storm for anyone who tries. Siege defence.
+Ride on (Esc) - Leave. From the streets, Esc first returns to the gate view. —
+
+# How it hangs together
+
+Recruits come from town pools that refill with prosperity; prosperity
+follows caravans arriving safely, which follows road danger, which
+follows who you've been killing (or failing to). Garrisons and feasts
+spend the same gold your enterprises, land rents and loot bring in. Renown
+from tournaments and battles raises your party cap; honour from how
+you fight (poisoned wells remember) shapes how lords and quests treat you.
+The battle is where all of it is spent — and the outcome writes straight
+back into every one of those ledgers.
+
+This is the campaign half of the manual: what every option does, and which
+system it feeds. Nothing here is decoration — every line below was traced to
+real state changes in the world (and the few that weren't have been given
+teeth, marked [NEW]).
+
+# The map
+
+- Click the ground / hold WASD — your warband marches. Time only flows
+while you move or wait: the world is passively paused, so nothing sneaks up
+on a thinking player.
+- SPACE (hold) — wait in place. Time flows: caravans trade, lords hunt,
+wounds heal, construction advances, dawn ticks the economy.
+- Click a settlement — sets course for it; you enter by arriving at the
+gate (clicking from across the map does not teleport you in).
+- Click a bandit lair — sets course to burn it out; arriving starts the
+assault.
+- Mouse wheel — zoom the map.
+- [1] / [2] near a skirmish — two AI parties fighting each other lock
+into a skirmish that resolves on its own; these keys join a side, turning
+it into a full battle with the backed party as your ally. Their casualties
+carry back to their campaign party, and helping a faction warms relations.
+- [T] Hail a lord — opens a road-side audience with the nearest
+non-hostile lord's party within hailing distance. This is the same
+conversation you'd have in his hall: swear service, ask for work, court
+him with gifts, propose marriage, recruit his company, pay off Graves the
+collector, lend him gold, or talk him into turning his coat. A hostile
+lord will not talk ("he talks with steel") — except Graves, who always
+hears gold if you owe him.
+- [K] Claim a crown — with two settlements held, you crown yourself: a
+faction of your own, wars of your own. Crowning while sworn to a liege is
+rebellion, and he will treat it as such.
+- [J] Rally the banners — as a crowned ruler, calls your lords to your
+position for three days; they fight beside you when the war comes to you.
+- [R] after a defeat (Ironman only) — begin again. With Ironman off
+(the default) the lone hero always survives defeat; this key only matters
+when you chose permadeath.
+- [F5/F6/F7] save slots, [F9] quick-load — three slots plus the quick
+pair; the Load menu on the title screen reads the same slots.
+
+### The bottom bar
+Every button is also a hotkey; hovering shows it.
+Journal [Q] · Party [P] · Character [C] · Bag [I] ·
+Ledger [B] · Estate [E] · Hail a lord [T] · Options [O].
+
+### Sieges (walk into a hostile settlement)
+A prompt with five real choices:
+1. Storm the gate — immediate assault; walls mean ladders at the gate.
+2. Torch it (villages) / Build ladders (walls) — ladders take a day
+and 2 timber (bought from sutlers at 8 gold a beam if your bags are
+short) and open extra climbing points.
+3. Build a siege tower — two days, 5 timber; a rolling tower with its
+ramp on the rampart.
+4. Blockade — throw a cordon and stay close: the garrison starves a
+little every dawn. Riding away (or peace) lifts it.
+5. Poison the wells — a third of the garrison sickens and dies, your
+honor pays for it, and the deed is remembered in relations and chronicle.
+
+# Settlements — the gate menu
+An eagle-eye view with a side menu; you only walk the streets if you choose
+to. Rows (click or number): enter and walk [Enter], tournament [3]
+(Shift stakes gold), market, tavern, recruits, quests, feast [0] (spends
+food and gold, buys the town's regard), sellswords [J], fortify [F]
+(town works that raise the walls), and the same party/options/ledger side
+buttons as the map bar.
+
+### Walking the streets
+- [E] Talk to villagers and the tavern keeper; lords hold court in the
+keep. Every dialogue topic changes something (see Dialogue below).
+- [1..9] Recruit from the roster chips; [H] hire the tavern company;
+[T] tournament; [M] market; [G] ask for work (quests);
+[V] swear to the local crown; [F] garrison a soldier (Shift+F
+takes one back); [R] ransom your captives for gold; [U]/[Y]
+ransom or release captive lords (releasing buys goodwill, ransoming
+buys gold and resentment); [L] raise a lord from your veterans once
+you are crowned.
+
+# The tournament (data-driven since V185)
+Enter from the gate menu row 3 or [T] in the streets; Shift stakes 50
+gold that pays ×3 if you take the crown. The circuit itself — rounds,
+purse, per-round winnings, stake odds, renown — is a `TournamentDef` in the
+content registry, so mods can field their own circuits.
+
+- Three rounds of real fighting with borrowed gear beside borrowed blades —
+autoresolve is barred from the ring, and nothing that happens in the
+lists touches the world outside it (no casualties, no war score).
+- [NEW] Between rounds you stand in the tent: bracket progress, your
+winnings so far, and two honest buttons — Fight on or Withdraw with
+your winnings (each round taken pays out, and your stake comes home).
+This screen also fixes the old wedge where a won round could stick the
+game on the victory banner forever.
+- The champion takes the purse, the stake at odds, renown, hero XP, and the
+host crown's regard.
+
+# The market
+A paged tile grid; hover shows prices. Left-click/[1-9] buys, right-click
+or Shift sells. Prices are live: they follow the town's stock and
+prosperity, which follow caravans, war, blockades, your banked capital and
+your enterprises — the whole economy is one connected loop.
+- Caravan [C] (200 gold + cargo) — loads this market's surplus and
+plies the roads; every sale rides home to your ledger. Bandits can smell
+it, and road danger reroutes trade — which is why prosperous roads matter.
+- Deposit / Withdraw [D / Shift+D] — the moneylender pays 5% a week,
+and banked capital feeds the town's prosperity daily (interest touching
+prices, made real).
+- Destrier [W] — one horse, once, for life; twice the mount under you
+in every battle.
+- Loan / repay [L] — 300 now against 350 in ten days; default and
+Graves the collector comes for you on the road.
+- Enterprise [B] — buy the town's works (one per town), buy again to
+expand it for twice the take; it also nudges the town's prosperity.
+- Land deed [T] — up to three parcels per town; rent rides prosperity,
+and a hostile owner confiscates the take until peace.
+- Armour / weapon tiles — the forge's two pieces of the day, priced by
+the same stat formulas troop promotions pay.
+
+# Dialogue — what every topic actually does
+- News of the war — a live report assembled from the world state.
+- Swear my sword — vassalage under the local crown: their wars become
+yours, fiefs may follow.
+- Work for me? — a real quest with a clock (deliveries, bandit hunts,
+escorts). The journal tracks it.
+- Grant this seat — as a liege: hand a settlement to a lord (his regard
+rises with the gift).
+- Marriage suit — renown and regard gate it; a match binds his house to
+yours in war.
+- Rebellion — talk a disaffected lord into rising with you.
+- A gift — gold for regard, the blunt instrument of diplomacy.
+- Hire the company — his armed retinue shadows your banner for a fee.
+- Turn his coat — the expensive way to steal a lord, priced by his
+regard for his own liege.
+- Pay Graves — clears your debt when the collector finds you.
+- Lend to him — lords borrow too; the ledger tracks their notes, and
+dawn services the interest. A lord in your debt fights a little harder
+to stay your friend.
+
+# The journal [Q]
+The task at hand with live progress and its clock, plus the permanent
+record of everything done. [NEW] [X] abandons the task — laying a quest
+down costs a little regard with the giver's crown and is written into the
+record; before this the only way out of an impossible errand was to let
+the clock run out.
+
+# Party [P], Character [C], Bag [I]
+- Party: click a row to promote (the cost is literally the gear
+delta between tiers), right-click/Shift to dismiss; [R] presses a
+captive into your ranks (they may desert on the road).
+- Character: spend level-up points on attributes; they feed damage,
+health and speed through the same data-driven formulas troops use.
+- Bag: a tiled grid; pick up with click, equip with [E]/right-click
+(the paper-doll shows slots), sell with [S], and [Tab] cycles which
+companion you are outfitting. What a fighter wears is what the battle
+renderer draws.
+
+# The ledger [B]
+Income (tariffs, enterprises, rents, garrison wages) against costs, war
+scores per front, and the levers: [T] cycles taxes (light/customary/
+heavy — the land blooms or withers), click a war row to sue for peace
+with tribute priced by the war score, click a rival crown to declare
+war. Truces hold for a few days; breaking the peace early is not on offer.
+
+# The estate [E]
+Your manor by its town: each row is a building from the data registry —
+cost, days of construction (masons work while time flows), and a daily or
+military effect once it stands. One crew at a time; the hall remembers
+what is built.
+
+# Options [O]
+Twelve rows, all clickable: fullscreen, draw distance, particles, volume,
+invert-Y, lettering scale, battle size, Ironman (permadeath is opt-in),
+Post FX, shadows, renderer (raylib GL / Vulkan), and body style
+(pill / blocky / boxy). Everything persists to `assets/settings.cfg`.
+
+# How it all loops together
+Caravans and peace raise prosperity → prosperity moves prices,
+recruit pools and tax income → gold builds enterprises, land,
+banks and estates → those deepen prosperity and fund wars → wars
+create danger that reroutes trade and starves towns → victories buy
+renown, renown buys lords, marriages and crowns → and the crown
+turns the whole machine over to you.

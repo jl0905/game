@@ -267,3 +267,8 @@ follow-through (player and AI). Weapon classes swing differently when
 mounted: one-handers sweep wide and low, polearm thrusts couch like a
 lance, two-handers fall in long diagonals. Pill is the default body
 style; change it in settings row [=].
+
+## The in-game manual (V185)
+Press F1 on any non-battle screen for the full in-game manual - every
+control, button, dialogue topic and system, paginated with clickable
+tabs. Source of truth: assets/manual.txt (modders can edit it).

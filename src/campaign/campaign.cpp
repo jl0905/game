@@ -901,10 +901,19 @@ static void ApplyBattleResult(GameState& gs) {
     // captives or war score touch the world — only the purse and the champion's
     // renown. TODO(balance): purse size.
     if (gs.arenaFight) {
-        // A won round advances the bracket (K3); the third crowns a champion.
-        if (gs.battleWon && gs.arenaRound < 3) {
+        // The circuit is data (V185): every number below reads from the
+        // registered TournamentDef instead of scattered constants.
+        const TournamentDef td = gs.content.tournaments.size() > 0
+                                     ? gs.content.tournaments[0]
+                                     : TournamentDef{};
+        // A won round advances the bracket (K3); the last crowns a champion.
+        // The next bout is entered from the BETWEEN-ROUNDS screen (V185) —
+        // jumping straight to Screen::Battle from here left main.cpp's
+        // battle case running an uninitialised battle, wedged forever on
+        // the victory banner. Screen::Parley routes through BattleInit.
+        if (gs.battleWon && gs.arenaRound < td.rounds) {
             gs.arenaRound++;
-            gs.screen = Screen::Battle;   // straight into the next round
+            gs.screen = Screen::Parley;   // the between-rounds tent
             gs.resultText = TextFormat("Round %d!  The field narrows.", gs.arenaRound);
             gs.battlePartyIndex = -1;
             gs.battleAllyIndex  = -1;
@@ -914,8 +923,8 @@ static void ApplyBattleResult(GameState& gs) {
         const int arenaHost = gs.currentSettlement;   // before it clears (V17)
         gs.currentSettlement = -1;   // the bracket spills back onto the map
         if (gs.battleWon) {
-            const int purse  = 150;                 // TODO(balance)
-            const int payout = purse + gs.arenaBet * 3;   // stake pays 3x
+            const int purse  = td.purse;
+            const int payout = purse + gs.arenaBet * td.stakeOdds;
             gs.gold += payout;
             Character& hero = gs.playerHero;
             hero.xp += HERO_XP_PER_WIN;
@@ -926,16 +935,15 @@ static void ApplyBattleResult(GameState& gs) {
             }
             gs.resultText = gs.arenaBet > 0
                 ? TextFormat("TOURNAMENT CHAMPION!  Purse %d + winnings %d gold.",
-                             purse, gs.arenaBet * 3)
+                             purse, gs.arenaBet * td.stakeOdds)
                 : TextFormat("TOURNAMENT CHAMPION!  The purse is %d gold.", purse);
             gs.battleReport.push_back("TOURNAMENT CHAMPION");
             gs.battleReport.push_back(TextFormat("Winnings: %d gold      Hero: +%d XP",
                                                  payout, HERO_XP_PER_WIN));
-            gs.renown += 5;   // the crowd remembers a champion (M1). TODO(balance)
-            // And the host crown warms to the name on every tongue (V17,
-            // closing K3's follow-up). TODO(balance).
+            gs.renown += td.renown;   // the crowd remembers a champion (M1)
+            // And the host crown warms to the name on every tongue (V17).
             if (arenaHost >= 0 && arenaHost < (int)gs.towns.size())
-                NudgeRelation(gs, gs.towns[arenaHost].owner, +5);
+                NudgeRelation(gs, gs.towns[arenaHost].owner, td.hostRelation);
         } else {
             gs.resultText = gs.arenaBet > 0
                 ? TextFormat("Cast out in round %d... your %d-gold stake is gone.",
@@ -1570,6 +1578,10 @@ CampaignInput GatherCampaignInput(const GameState& gs) {
     }
 
     if (gs.screen == Screen::Quests) {   // the journal (V124)
+        if (IsKeyPressed(KEY_X)) in.menuChoice = 1;   // abandon the task (V185)
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+            GetMousePosition().y < 160)               // the title band = abandon
+            in.menuChoice = 1;
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q))
             in.leaveSettlement = true;
         return in;
@@ -5659,6 +5671,23 @@ void LoadMenuUpdate(GameState& gs, const CampaignInput& in) {
 // reward, clock — and the record of every task taken, done, or failed.
 // ---------------------------------------------------------------------------
 void QuestsUpdate(GameState& gs, const CampaignInput& in) {
+    // Abandon the task (V185, audit: the journal had no way to lay a quest
+    // down — an impossible errand just ran out its clock). Costs a little
+    // regard with the giver's crown; the record remembers.
+    if (in.menuChoice == 1 && gs.activeQuest >= 0) {
+        const Content& c = gs.content;
+        if (gs.questTown >= 0 && gs.questTown < (int)gs.towns.size())
+            NudgeRelation(gs, gs.towns[gs.questTown].owner, -2);   // TODO(balance)
+        if (gs.activeQuest < c.quests.size())
+            gs.questLog.push_back(TextFormat(
+                "ABANDONED: %s", c.quests[gs.activeQuest].name.c_str()));
+        gs.activeQuest   = -1;
+        gs.questTown     = -1;
+        gs.questEscort   = -1;
+        gs.questProgress = 0;
+        gs.questDays     = 0;
+        gs.resultText = "You lay the task down. Word of it will travel.";
+    }
     if (in.leaveSettlement) gs.screen = Screen::Campaign;
 }
 
@@ -5669,7 +5698,8 @@ void QuestsDraw(const GameState& gs) {
     const int w = GetScreenWidth();
     const int x = w / 2 - 430 > 10 ? w / 2 - 430 : 10;   // centred, clamped
     ui::Title("THE JOURNAL", x, 60, 44, GOLD);
-    ui::Text("[Esc / Q] back to the map", x, 116, 20, Fade(RAYWHITE, 0.7f));
+    ui::Text("[Esc / Q] back to the map      [X] abandon the task at hand",
+             x, 116, 20, Fade(RAYWHITE, 0.7f));
 
     int y = 170;
     ui::Text("THE TASK AT HAND", x, y, 22, GOLD);
@@ -5759,6 +5789,32 @@ int PlayerMountedCount(const GameState& gs) {
 
 void ParleyUpdate(GameState& gs, const CampaignInput& in) {
     const Content& c = gs.content;
+    // ---- The between-rounds tent (V185): a running bracket borrows this
+    //      screen. [1] fights the next bout (main.cpp's Parley case runs
+    //      BattleInit, which the old straight-to-Battle jump never did —
+    //      the wedge this fixes); [2] withdraws with the winnings so far.
+    if (gs.arenaFight) {
+        const TournamentDef td = c.tournaments.size() > 0 ? c.tournaments[0]
+                                                          : TournamentDef{};
+        if (in.menuChoice == 1) {
+            gs.screen = Screen::Battle;   // into the lists
+        } else if (in.menuChoice == 2) {
+            const int won    = gs.arenaRound - 1;   // rounds already taken
+            const int payout = won * td.roundWinnings + gs.arenaBet;
+            gs.gold += payout;
+            gs.arenaFight = false;
+            gs.arenaRound = 0;
+            gs.arenaBet   = 0;
+            gs.currentSettlement = -1;   // the lists spill back onto the map
+            gs.screen = Screen::Campaign;
+            gs.resultText = TextFormat(
+                "You bow out with %d round%s taken: %d gold in winnings.",
+                won, won == 1 ? "" : "s", payout);
+            Chronicle(gs, TextFormat("Withdrew from the lists with %d gold.",
+                                     payout));
+        }
+        return;
+    }
     if (gs.battlePartyIndex < 0 || gs.battlePartyIndex >= (int)gs.parties.size() ||
         !gs.parties[gs.battlePartyIndex].alive) {
         gs.screen = Screen::Campaign;   // the foe evaporated: nothing to parley
@@ -5841,6 +5897,46 @@ void ParleyDraw(const GameState& gs) {
     BeginDrawing();
     ClearBackground(Color{ 24, 26, 30, 255 });
     const int x = GetScreenWidth() / 2 - 430 > 10 ? GetScreenWidth() / 2 - 430 : 10;
+    // ---- The between-rounds tent (V185) ----
+    if (gs.arenaFight) {
+        const TournamentDef td = c.tournaments.size() > 0 ? c.tournaments[0]
+                                                          : TournamentDef{};
+        const int won = gs.arenaRound - 1;
+        ui::Title(td.name.c_str(), x, 60, 44, GOLD);
+        ui::Text(TextFormat("Round %d of %d.  %d bout%s taken, %d gold a round "
+                            "if you bow out%s.",
+                            gs.arenaRound, td.rounds, won, won == 1 ? "" : "s",
+                            td.roundWinnings,
+                            gs.arenaBet > 0
+                                ? TextFormat("  (your %d-gold stake rides to the crown, x%d)",
+                                             gs.arenaBet, td.stakeOdds)
+                                : ""),
+                 x, 122, 22, RAYWHITE);
+        // Bracket progress: one mark per round, filled as they fall.
+        for (int r = 0; r < td.rounds; ++r)
+            ui::Rect(x + r * 46, 162, 38, 10,
+                     r < won ? GOLD : Fade(RAYWHITE, 0.25f));
+        int y = layout::SETTINGS_Y;
+        auto row = [&](int i, const char* text, Color col) {
+            DrawHoverRow(0, y, GetScreenWidth(), layout::SETTINGS_ROW_H);
+            ui::Text(TextFormat("[%d]  %s", i, text), x, y + 8, 22, col);
+            y += layout::SETTINGS_ROW_H;
+        };
+        row(1, TextFormat("Fight on - round %d, the crowd is up.", gs.arenaRound),
+            RAYWHITE);
+        row(2, TextFormat("Withdraw with your winnings - %d gold.",
+                          won * td.roundWinnings + gs.arenaBet),
+            won > 0 || gs.arenaBet > 0 ? GOLD : Fade(RAYWHITE, 0.5f));
+        ui::Text(TextFormat("The purse at the end of it: %d gold, and the "
+                            "crowd's memory (+%d renown).",
+                            td.purse, td.renown),
+                 x, y + 14, 19, Fade(RAYWHITE, 0.6f));
+        if (!gs.resultText.empty())
+            ui::Text(gs.resultText.c_str(), x, y + 44, 19, GOLD);
+        rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
+        EndDrawing();
+        return;
+    }
     if (gs.battlePartyIndex < 0 || gs.battlePartyIndex >= (int)gs.parties.size()) {
         rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();

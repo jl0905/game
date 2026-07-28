@@ -55,6 +55,9 @@ struct RaylibInstancedState {
     // material's SPECULAR map slot (bound by raylib as `texture1`); this is
     // the location of the `skinRect` vec4 uniform (-1 = shader lacks it).
     int       skinRectLoc = -1;
+    // V185: unit cylinder (radius 0.5, height 1, CENTRED on the origin) for
+    // true-capsule pill shafts. Null = pills fall back to cap spheres only.
+    Mesh*     cyl = nullptr;
 };
 void FlushRaylib(const RaylibInstancedState& st);
 
@@ -123,7 +126,13 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                                        const void* skinPillData,
                                        const int* skinPillSegSkin,
                                        const int* skinPillSegCount, int nSkinPillSegs,
+                                       const void* cylData, int cylCount,
+                                       const void* skinCylData,
+                                       const int* skinCylSegSkin,
+                                       const int* skinCylSegCount, int nSkinCylSegs,
                                        int w, int h);
+// V185: cyl* = true-capsule pill shafts (unit centred cylinder instances);
+// skinCyl* = their armour-textured runs, seg arrays as above.
 
 // V180: upload the procedural armour skin atlas (skins.h pixels) to the
 // Vulkan device. Safe to call before the device exists (staged like terrain).

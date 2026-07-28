@@ -583,6 +583,10 @@ void LoadDefaultContent(Content& c) {
 
     // ---- Enterprises (direction E4) --------------------------------------
     // One per town at most; bought at the market. TODO(balance): all numbers.
+    // The standard tournament circuit (V185): the arena reads every number
+    // from here. TODO(balance): all of it.
+    c.tournaments.add({ "standard", "The Town Lists", 3, 150, 40, 50, 3, 5, 5 });
+
     c.enterprises.add({ "mill",     "Grain Mill", 300, 15, "grain" });
     c.enterprises.add({ "smithy",   "Smithy",     300, 15, "tools" });
     c.enterprises.add({ "dyeworks", "Dyeworks",   300, 15, "wool" });

@@ -62,6 +62,16 @@ struct VkExec {
     VkDeviceMemory pillMem[2] = {};
     void* pillMap[2] = {};
     int pillCap[2] = {};
+    // V185: the capsule shaft - a unit centred cylinder with its own
+    // pipelined instance streams (plain + skinned).
+    VkBuffer cylBuf = VK_NULL_HANDLE;
+    VkDeviceMemory cylMem = VK_NULL_HANDLE;
+    int cylVerts = 0;
+    VkBuffer cylInst[2] = {}, skinCylBuf[2] = {};
+    VkDeviceMemory cylInstMem[2] = {}, skinCylMem[2] = {};
+    void* cylInstMap[2] = {};
+    void* skinCylMap[2] = {};
+    int cylInstCap[2] = {}, skinCylCap[2] = {};
     VkDeviceMemory cubeMem = VK_NULL_HANDLE;
     // Pipelined executor (V166): two in-flight slots. The CPU fills slot N
     // and presents slot N-1, so the fence wait lands on work the GPU
@@ -280,6 +290,7 @@ void* ReadSpv(const char* path, size_t* size) {
 
 // Unit cube centred on the origin, 36 verts, pos+normal interleaved.
 int FillSphere(float** out);   // defined with the buffer helpers below
+int FillCylinder(float** out); // V185: capsule shaft mesh
 
 void FillCube(float* v) {
     const float n[6][3] = { { 0, 0, 1 }, { 0, 0, -1 }, { 1, 0, 0 },
@@ -504,6 +515,21 @@ bool BuildFrameResources(int w, int h) {
             g_vk.sphereBuf = VK_NULL_HANDLE;
         free(sph);
 
+        // The capsule shaft (V185): unit centred cylinder, same layout, so
+        // every pipeline draws it unchanged. Convention matches the GL
+        // BuildUnitCylinder in battle.cpp exactly (radius 0.5, y -0.5..0.5).
+        float* cyl = nullptr;
+        g_vk.cylVerts = FillCylinder(&cyl);
+        void* cylMap = nullptr;
+        if (MakeBuffer((VkDeviceSize)g_vk.cylVerts * 6 * sizeof(float),
+                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                       &g_vk.cylBuf, &g_vk.cylMem, &cylMap))
+            memcpy(cylMap, cyl, (size_t)g_vk.cylVerts * 6 * sizeof(float));
+        else
+            g_vk.cylBuf = VK_NULL_HANDLE;
+        free(cyl);
+
         // Terrain pipeline (V164): mesh.vert + the same Lambert fragment,
         // but colour writes OFF â€” it exists to give the soldiers correct
         // hillside occlusion in the composite while GL still paints the
@@ -582,6 +608,28 @@ int FillSphere(float** out) {
             emit(p0, t0); emit(p1, t0); emit(p1, t1);
             emit(p0, t0); emit(p1, t1); emit(p0, t1);
         }
+    *out = v;
+    return n;
+}
+
+// V185: matching generator for the GL BuildUnitCylinder - 16 slices, open
+// ends, radius 0.5, y in [-0.5, 0.5], outward normals.
+int FillCylinder(float** out) {
+    const int SL = 16;
+    const int n = SL * 6;
+    float* v = (float*)malloc((size_t)n * 6 * sizeof(float));
+    int k = 0;
+    const float PIF = 3.14159265f;
+    auto emit = [&](float ang, float y) {
+        const float nx = cosf(ang), nz = sinf(ang);
+        v[k++] = nx * 0.5f; v[k++] = y; v[k++] = nz * 0.5f;
+        v[k++] = nx;        v[k++] = 0; v[k++] = nz;
+    };
+    for (int i = 0; i < SL; ++i) {
+        const float a0 = 2 * PIF * i / SL, a1 = 2 * PIF * (i + 1) / SL;
+        emit(a0, -0.5f); emit(a0, 0.5f); emit(a1, 0.5f);
+        emit(a0, -0.5f); emit(a1, 0.5f); emit(a1, -0.5f);
+    }
     *out = v;
     return n;
 }
@@ -1596,6 +1644,9 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                                        const int* skinBoxSegCount, int nSkinBoxSegs,
                                        const void* skinPillData, const int* skinPillSegSkin,
                                        const int* skinPillSegCount, int nSkinPillSegs,
+                                       const void* cylData, int cylCount,
+                                       const void* skinCylData, const int* skinCylSegSkin,
+                                       const int* skinCylSegCount, int nSkinCylSegs,
                                        int w, int h) {
     if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return nullptr;
     if (w != g_vk.width || h != g_vk.height) {
@@ -1618,11 +1669,13 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     BuildSkinResources();     // V180: needs shadow stack + staged atlas
 
     // Total skinned instances per stream (the seg arrays partition them).
-    int skinBoxCount = 0, skinPillCount = 0;
+    int skinBoxCount = 0, skinPillCount = 0, skinCylCount = 0;
     for (int s = 0; s < nSkinBoxSegs; ++s) skinBoxCount += skinBoxSegCount[s];
     for (int s = 0; s < nSkinPillSegs; ++s) skinPillCount += skinPillSegCount[s];
+    for (int s = 0; s < nSkinCylSegs; ++s) skinCylCount += skinCylSegCount[s];
     if (!skinBoxData) skinBoxCount = 0;
     if (!skinPillData || !g_vk.sphereBuf) skinPillCount = 0;
+    if (!skinCylData || !g_vk.cylBuf) skinCylCount = 0;   // V185
 
     DFN(vkBeginCommandBuffer); DFN(vkCmdBeginRenderPass); DFN(vkCmdBindPipeline);
     DFN(vkCmdSetViewport); DFN(vkCmdSetScissor); DFN(vkCmdBindVertexBuffers);
@@ -1656,6 +1709,19 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
         skinPillCount = 0;
     if (skinPillCount > 0)
         memcpy(g_vk.skinPillMap[cur], skinPillData, (size_t)skinPillCount * 80);
+    // Capsule shafts (V185): plain + skinned cylinder streams.
+    if (!g_vk.cylBuf) cylCount = 0;
+    if (cylCount > 0 &&
+        !EnsureStreamCap(g_vk.cylInst, g_vk.cylInstMem, g_vk.cylInstMap,
+                         g_vk.cylInstCap, cur, cylCount))
+        cylCount = 0;
+    if (cylCount > 0) memcpy(g_vk.cylInstMap[cur], cylData, (size_t)cylCount * 80);
+    if (skinCylCount > 0 &&
+        !EnsureStreamCap(g_vk.skinCylBuf, g_vk.skinCylMem, g_vk.skinCylMap,
+                         g_vk.skinCylCap, cur, skinCylCount))
+        skinCylCount = 0;
+    if (skinCylCount > 0)
+        memcpy(g_vk.skinCylMap[cur], skinCylData, (size_t)skinCylCount * 80);
 
     vkResetCommandBuffer(g_vk.cmd[cur], 0);
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -1724,6 +1790,24 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                 vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, kbufs, koffs);
                 vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
                           (uint32_t)skinPillCount, 0, 0);
+            }
+            if (cylCount > 0) {   // capsule shafts cast (V185)
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shBoxPipe);
+                VkBuffer cbufs[2] = { g_vk.cylBuf, g_vk.cylInst[cur] };
+                VkDeviceSize coffs[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, cbufs, coffs);
+                vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.cylVerts,
+                          (uint32_t)cylCount, 0, 0);
+            }
+            if (skinCylCount > 0) {
+                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  g_vk.shBoxPipe);
+                VkBuffer cbufs[2] = { g_vk.cylBuf, g_vk.skinCylBuf[cur] };
+                VkDeviceSize coffs[2] = { 0, 0 };
+                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, cbufs, coffs);
+                vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.cylVerts,
+                          (uint32_t)skinCylCount, 0, 0);
             }
         }
         vkCmdEndRenderPass(g_vk.cmd[cur]);
@@ -1813,10 +1897,39 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
             vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.sphereVerts,
                       (uint32_t)pillCount, 0, 0);
         }
+        if (cylCount > 0) {   // capsule shafts (V185), same pipeline
+            VkBuffer cbufs[2] = { g_vk.cylBuf, g_vk.cylInst[cur] };
+            VkDeviceSize coffs[2] = { 0, 0 };
+            if (count <= 0 && pillCount <= 0) {   // nobody bound yet this pass
+                if (g_vk.shReady && lightVP16) {
+                    DFN(vkCmdBindDescriptorSets);
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.litPipe);
+                    vkCmdBindDescriptorSets(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            g_vk.litLayout, 0, 1, &g_vk.shSet, 0, NULL);
+                    float lpc[36];
+                    memcpy(lpc, viewProj16, 64);
+                    memcpy(lpc + 16, lightVP16, 64);
+                    lpc[32] = sun4[0];
+                    lpc[33] = sun4[1];
+                    lpc[34] = sun4[2];
+                    lpc[35] = (flags & 1) ? 1.0f : 0.0f;
+                    vkCmdPushConstants(g_vk.cmd[cur], g_vk.litLayout,
+                                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                       0, 144, lpc);
+                } else {
+                    vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      g_vk.pipe);
+                }
+            }
+            vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 2, cbufs, coffs);
+            vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.cylVerts,
+                      (uint32_t)cylCount, 0, 0);
+        }
         // Skinned streams (V180): per-segment draws with the atlas row in
         // the push constant. Fail-soft: without the skin pipeline they run
         // through the plain lit/no-shadow pipeline, untextured but present.
-        if (skinBoxCount > 0 || skinPillCount > 0) {
+        if (skinBoxCount > 0 || skinPillCount > 0 || skinCylCount > 0) {
             DFN(vkCmdBindDescriptorSets);
             const bool skinned = g_vk.skinReady && lightVP16;
             float kpc[40];
@@ -1885,6 +1998,12 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                          g_vk.skinPillBuf[cur],
                          skinPillSegSkin, skinPillSegCount, nSkinPillSegs);
             }
+            if (skinCylCount > 0) {   // skinned capsule shafts (V185)
+                bindSkinned();
+                drawSegs(g_vk.cylBuf, (uint32_t)g_vk.cylVerts,
+                         g_vk.skinCylBuf[cur],
+                         skinCylSegSkin, skinCylSegCount, nSkinCylSegs);
+            }
         }
     }
     vkCmdEndRenderPass(g_vk.cmd[cur]);
@@ -1921,6 +2040,8 @@ void VulkanSetSkinAtlas(const unsigned char*, int, int) {}
 const unsigned char* VulkanRenderFrame(const float*, const float*, const float*,
                                        int, const void*, int, const void*, int,
                                        const void*, const int*, const int*, int,
+                                       const void*, const int*, const int*, int,
+                                       const void*, int,
                                        const void*, const int*, const int*, int,
                                        int, int) { return nullptr; }
 }

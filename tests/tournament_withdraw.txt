@@ -1,0 +1,41 @@
+# The between-rounds tent (V185): a won bout no longer jumps straight
+# into an uninitialised battle (the wedge that stuck windowed play on the
+# victory banner) - it lands on the interlude screen, where the fighter
+# chooses to fight on or withdraw with the winnings so far. This script
+# stakes 50 at the gate (300 -> 250), wins round one behind the borrowed
+# blades, HOLDS at the tent (parleyhold), and bows out: 1 round x 40 gold
+# + the 50-gold stake back = 340 gold, screen back on the map, no arena
+# state dangling. Numbers read from the TournamentDef (content.cpp).
+seed 1
+parleyhold on
+enter 0
+tournament bet
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 12
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+attack down
+tick 1
+block on
+tick 30
+state
+choose 2
+state
+quit

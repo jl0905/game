@@ -165,6 +165,21 @@ struct EventDef {
 //   "barracks" (+party cap, +recruit pool), "smithy" (promotions cheaper),
 //   "granary" (hunger never bites while it stands), "walls" (estate battles
 //   fight fortified). New effects = new string + one hook site.
+// A tournament circuit (V185): every number the arena uses, as data. The
+// game ships one "standard" circuit; mods can register richer ones.
+// TODO(balance): all values are flat placeholders.
+struct TournamentDef {
+    std::string id;
+    std::string name;
+    int rounds        = 3;    // bouts to the crown
+    int purse         = 150;  // champion's prize
+    int roundWinnings = 40;   // paid per round won if you withdraw early
+    int entryStake    = 50;   // the optional gate wager (mirrored in town.cpp)
+    int stakeOdds     = 3;    // the wager pays this many times over as champion
+    int renown        = 5;    // the crowd remembers a champion
+    int hostRelation  = 5;    // the host crown warms to the name
+};
+
 struct BuildingDef {
     std::string id;
     std::string name;
@@ -262,6 +277,7 @@ struct Content {
     Registry<QuestDef>     quests;
     Registry<EventDef>     events;
     Registry<BuildingDef>  buildings;   // estate & town works (V135)
+    Registry<TournamentDef> tournaments;   // arena circuits (V185)
     MapDef                 map;
 
     int playerFaction = -1;  // resolved after loading

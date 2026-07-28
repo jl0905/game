@@ -13,9 +13,11 @@ namespace rdr {
 
 namespace {
 BoxBuckets g_buckets;
-BoxBuckets g_pills;   // V179: pill/ellipsoid instances, same transform shape
+BoxBuckets g_pills;   // V179: sphere instances (pill CAPS since V185)
+BoxBuckets g_cyls;    // V185: cylinder shaft instances - the pill's barrel
 SkinBuckets g_skinBoxes;   // V180: armour-textured instances, colour|skin keyed
 SkinBuckets g_skinPills;
+SkinBuckets g_skinCyls;    // V185: armour-textured shafts
 
 unsigned Key(Color c) {
     return (unsigned)c.r | ((unsigned)c.g << 8) | ((unsigned)c.b << 16) |
@@ -71,31 +73,29 @@ void PushOrientedBox(Vector3 a, Vector3 b, float r, Color c) {
     PushBox(m, c);
 }
 
-// V179: a real rounded primitive. The recorded transform maps the UNIT
-// SPHERE (diameter 1) onto a capsule-ish ellipsoid along a->b: cross-section
-// diameter 2.2r (reads as massive as the 1.8r-wide box did), length len+2r
-// so the rounded caps land where the box's flat ends did.
+namespace {
+// A uniform sphere of radius r at p - the pill's end cap.
+Matrix CapSphere(Vector3 p, float r) {
+    return MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
+                          MatrixTranslate(p.x, p.y, p.z));
+}
+}  // namespace
+
+// V185: a TRUE capsule (user call: "pills are cylindrical except the top
+// and bottom which are like balls"). Decomposed into three instances: a
+// unit-cylinder shaft scaled (2r, len, 2r) along a->b plus two UNIFORM
+// sphere caps at the exact endpoints - the caps stay perfectly round at
+// any body length, unlike the old stretched-ellipsoid single instance.
 void PushPill(Vector3 a, Vector3 b, float r, Color c) {
-    const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
-    const Vector3 d = Vector3Subtract(b, a);
-    const float len = Vector3Length(d);
-    const float w = r * 2.2f;
+    const float len = Vector3Length(Vector3Subtract(b, a));
     if (len < 0.001f) {
         g_pills[Key(c)].push_back(
-            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
-                           MatrixTranslate(mid.x, mid.y, mid.z)));
+            CapSphere(Vector3Scale(Vector3Add(a, b), 0.5f), r));
         return;
     }
-    const Vector3 y  = Vector3Scale(d, 1.0f / len);
-    const Vector3 up = fabsf(y.y) < 0.99f ? Vector3{ 0, 1, 0 } : Vector3{ 1, 0, 0 };
-    const Vector3 x  = Vector3Normalize(Vector3CrossProduct(up, y));
-    const Vector3 z  = Vector3CrossProduct(x, y);
-    const float sy = len + r * 2.0f;
-    const Matrix m = { x.x * w, y.x * sy, z.x * w, mid.x,
-                       x.y * w, y.y * sy, z.y * w, mid.y,
-                       x.z * w, y.z * sy, z.z * w, mid.z,
-                       0.0f,    0.0f,     0.0f,    1.0f };
-    g_pills[Key(c)].push_back(m);
+    g_cyls[Key(c)].push_back(OrientedFrame(a, b, r * 2.0f, len));
+    g_pills[Key(c)].push_back(CapSphere(a, r));
+    g_pills[Key(c)].push_back(CapSphere(b, r));
 }
 
 // V180: skinned pushes — same transforms, uint64 colour|skin buckets. The
@@ -119,14 +119,14 @@ void PushOrientedBoxSkinned(Vector3 a, Vector3 b, float r, Color c, int skin) {
 void PushPillSkinned(Vector3 a, Vector3 b, float r, Color c, int skin) {
     const float len = Vector3Length(Vector3Subtract(b, a));
     if (len < 0.001f) {
-        const Vector3 mid = Vector3Scale(Vector3Add(a, b), 0.5f);
         g_skinPills[Key64(c, skin)].push_back(
-            MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
-                           MatrixTranslate(mid.x, mid.y, mid.z)));
+            CapSphere(Vector3Scale(Vector3Add(a, b), 0.5f), r));
         return;
     }
-    g_skinPills[Key64(c, skin)].push_back(
-        OrientedFrame(a, b, r * 2.2f, len + r * 2.0f));
+    // True capsule (V185): skinned shaft + skinned round caps.
+    g_skinCyls[Key64(c, skin)].push_back(OrientedFrame(a, b, r * 2.0f, len));
+    g_skinPills[Key64(c, skin)].push_back(CapSphere(a, r));
+    g_skinPills[Key64(c, skin)].push_back(CapSphere(b, r));
 }
 
 void FlushRaylib(const RaylibInstancedState& st) {
@@ -155,6 +155,19 @@ void FlushRaylib(const RaylibInstancedState& st) {
             mats.clear();
         }
     for (auto& [key, mats] : g_pills) mats.clear();   // sphere-less caller
+    // Capsule shafts (V185): same shader, cylinder mesh.
+    if (st.cyl)
+        for (auto& [key, mats] : g_cyls) {
+            if (mats.empty()) continue;
+            st.mat->maps[MATERIAL_MAP_DIFFUSE].color =
+                Color{ (unsigned char)(key & 0xFF),
+                       (unsigned char)((key >> 8) & 0xFF),
+                       (unsigned char)((key >> 16) & 0xFF),
+                       (unsigned char)((key >> 24) & 0xFF) };
+            DrawMeshInstanced(*st.cyl, *st.mat, mats.data(), (int)mats.size());
+            mats.clear();
+        }
+    for (auto& [key, mats] : g_cyls) mats.clear();    // cyl-less caller
 
     // Armour skins (V180): one draw per (colour, skin) bucket, the atlas row
     // selected by the skinRect uniform. The atlas rides the material's
@@ -182,6 +195,7 @@ void FlushRaylib(const RaylibInstancedState& st) {
     };
     drawSkinned(g_skinBoxes, st.cube);
     drawSkinned(g_skinPills, st.sphere);
+    drawSkinned(g_skinCyls, st.cyl);   // V185: skinned capsule shafts
     if (skinned) {   // restore the plain path for the next frame's boxes
         const float none[4] = { 0, 0, 0, 0 };
         SetShaderValue(st.shader, st.skinRectLoc, none, SHADER_UNIFORM_VEC4);
@@ -213,7 +227,9 @@ bool FlushVulkan(const RaylibInstancedState& st) {
         return n;
     };
     const int count = flatten(g_buckets, inst);
-    const int pillCount = flatten(g_pills, pills);   // V179
+    const int pillCount = flatten(g_pills, pills);   // V179 (caps since V185)
+    static std::vector<float> cyls;
+    const int cylCount = flatten(g_cyls, cyls);      // V185: capsule shafts
     // Skinned streams (V180): packed the same way, plus (skin, count) runs.
     static std::vector<float> skinBoxes, skinPills;
     static std::vector<int> sbSkin, sbCount, spSkin, spCount;
@@ -238,6 +254,9 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     };
     flattenSkinned(g_skinBoxes, skinBoxes, sbSkin, sbCount);
     flattenSkinned(g_skinPills, skinPills, spSkin, spCount);
+    static std::vector<float> skinCyls;
+    static std::vector<int> scSkin, scCount;
+    flattenSkinned(g_skinCyls, skinCyls, scSkin, scCount);   // V185
     // GL clip z is [-1,1], Vulkan wants [0,1]: append the classic fix-up.
     Matrix fix = MatrixIdentity();
     fix.m10 = 0.5f;
@@ -267,7 +286,10 @@ bool FlushVulkan(const RaylibInstancedState& st) {
                           skinBoxes.data(), sbSkin.data(), sbCount.data(),
                           (int)sbSkin.size(),
                           skinPills.data(), spSkin.data(), spCount.data(),
-                          (int)spSkin.size(), w, h);
+                          (int)spSkin.size(),
+                          cyls.data(), cylCount,
+                          skinCyls.data(), scSkin.data(), scCount.data(),
+                          (int)scSkin.size(), w, h);
     if (!px) return false;
     if (g_vkTex.id == 0 || g_vkTex.width != w || g_vkTex.height != h) {
         if (g_vkTex.id) UnloadTexture(g_vkTex);
@@ -281,6 +303,8 @@ bool FlushVulkan(const RaylibInstancedState& st) {
     for (auto& [key, mats] : g_pills) mats.clear();
     for (auto& [key, mats] : g_skinBoxes) mats.clear();
     for (auto& [key, mats] : g_skinPills) mats.clear();
+    for (auto& [key, mats] : g_cyls) mats.clear();
+    for (auto& [key, mats] : g_skinCyls) mats.clear();
     return true;
 }
 }  // namespace

@@ -248,7 +248,7 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                  0.30f, bodyOne, bodySkin);
             // The head: a sphere; a helm simply makes it a bit bigger and
             // wears the helm's tint — silhouette stays one round shape.
-            const float hr = hasHelm ? 0.22f : 0.19f;
+            const float hr = hasHelm ? 0.26f : 0.23f;   // reads over the thick body
             rdr::PushPill(at(0.0f, 1.86f, 0.0f), at(0.0f, 1.86f + 0.001f, 0.0f),
                           hr, headC);
         } else {
