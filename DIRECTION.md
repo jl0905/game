@@ -2073,3 +2073,15 @@ over two half-features.
   not over-amplify. Known-and-accepted: AI riders lean only during
   the strike (soldiers have no wind-up sim to telegraph from).
   Suite 137/137; render smoke green.
+
+- [x] **V183. Iteration one-eighty-three — one shape and a head.**
+  The body render is rebuilt ground-up per the user's call: the
+  whole troop body is ONE shape plus a head — pill (default): a
+  single capsule boots-to-shoulders and a sphere head (a helm just
+  enlarges it and wears the helm tint); boxy: one prism + head box.
+  The boot band (the 'ugly pad'), surcoat plate, and all helm add-on
+  boxes are GONE from these styles; armour reads from the skin
+  atlas, team identity blends 25% into the body colour, and blocky
+  remains the deliberately-detailed third option. Arms and weapon
+  swing logic untouched. Old cfgs are migrated (bodystyle pill).
+  Suite 137/137; smoke green; GL 8.5 / VK 8.6ms.

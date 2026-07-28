@@ -226,45 +226,38 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 Boxy(at( 0.27f, 1.90f, 0.10f), 0.06f, 0.30f, 0.24f, headC);
             }
         }
-    } else if (style == 2) {
-        // ---- PILL (V179): a capsule body hips→shoulders and a rounded
-        //      head through rdr::PushPill (instanced ellipsoids at the
-        //      seam; both backends). Boots and surcoat stay thin boxes.
-        rdr::PushPillSkinned(at(rock * 0.5f, 0.30f, 0.0f),
-                             at(rock * 0.5f, 1.45f, 0.0f),
-                             bw * 0.42f, bodyC, bodySkin);
-        Boxy(at(rock * 0.5f, 0.95f, 0.24f), bw * 0.30f, 1.0f, 0.04f,
-             flashed(teamTint));                          // surcoat stripe
-        Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
-        rdr::PushPill(at(0.0f, 1.80f, 0.0f), at(0.0f, 1.98f, 0.0f), 0.19f, headC);
-        if (hasHelm) {
-            if (helmAv >= 2)
-                Boxy(at(0.0f, 1.74f, 0.0f), 0.5f, 0.08f, 0.5f, headC);   // brim
-            Boxy(at(0.0f, 2.06f, 0.0f), 0.3f, 0.14f, 0.3f, headC);       // dome
-            if (helmAv >= 3) {
-                Boxy(at(-0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
-                Boxy(at( 0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
-            }
-        }
     } else {
-        // ---- BOXY (V149, the default): ONE honest prism from boots to
-        //      shoulders — byte-identical to the pre-V179 body.
-        rdr::PushOrientedBoxSkinned(at(rock * 0.5f, 0.0f, 0.0f),
-                                    at(rock * 0.5f, 1.64f, 0.0f),
-                                    bw / 1.8f, bodyC, bodySkin);
-        // the team surcoat stripe, a thin front plate
-        Boxy(at(rock * 0.5f, 0.95f, 0.21f), bw * 0.34f, 1.1f, 0.05f, flashed(teamTint));
-        // boots: a darker base band
-        Boxy(at(rock * 0.5f, 0.14f, 0.0f), bw + 0.02f, 0.28f, 0.42f, feetC);
-        Boxy(at(0.0f, 1.87f, 0.0f), 0.34f, 0.36f, 0.34f, headC);
-        if (hasHelm) {
-            if (helmAv >= 2)
-                Boxy(at(0.0f, 1.74f, 0.0f), 0.5f, 0.08f, 0.5f, headC);   // brim
-            Boxy(at(0.0f, 2.06f, 0.0f), 0.3f, 0.14f, 0.3f, headC);       // dome cap
-            if (helmAv >= 3) {   // cheek guards close the face
-                Boxy(at(-0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
-                Boxy(at( 0.19f, 1.82f, 0.08f), 0.06f, 0.22f, 0.18f, headC);
-            }
+        // ---- ONE SHAPE + A HEAD (V183, user call: "single simple shape for
+        //      the whole player model and maybe a head"). No boot band, no
+        //      surcoat plate, no helm add-on boxes — the whole silhouette is
+        //      one capsule (or one prism in boxy) plus one head, armour from
+        //      the skin atlas, team identity blended into the body colour.
+        //      (feetC/helmAv keep informing colours, not geometry.)
+        (void)feetC;
+        (void)helmAv;
+        auto teamBlend = [&](Color c) {
+            return Color{ (unsigned char)(c.r + (teamTint.r - c.r) / 4),
+                          (unsigned char)(c.g + (teamTint.g - c.g) / 4),
+                          (unsigned char)(c.b + (teamTint.b - c.b) / 4), c.a };
+        };
+        const Color bodyOne = flashed(teamBlend(bodyC));
+        if (style == 2) {
+            // PILL (the default): one capsule, boots to shoulders.
+            rdr::PushPillSkinned(at(rock * 0.5f, 0.16f, 0.0f),
+                                 at(rock * 0.5f, 1.50f, 0.0f),
+                                 0.30f, bodyOne, bodySkin);
+            // The head: a sphere; a helm simply makes it a bit bigger and
+            // wears the helm's tint — silhouette stays one round shape.
+            const float hr = hasHelm ? 0.22f : 0.19f;
+            rdr::PushPill(at(0.0f, 1.86f, 0.0f), at(0.0f, 1.86f + 0.001f, 0.0f),
+                          hr, headC);
+        } else {
+            // BOXY: one prism, boots to shoulders, and a head box.
+            rdr::PushOrientedBoxSkinned(at(rock * 0.5f, 0.0f, 0.0f),
+                                        at(rock * 0.5f, 1.64f, 0.0f),
+                                        bw / 1.8f, bodyOne, bodySkin);
+            const float hs = hasHelm ? 0.40f : 0.34f;
+            Boxy(at(0.0f, 1.87f, 0.0f), hs, hs, hs, headC);
         }
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
