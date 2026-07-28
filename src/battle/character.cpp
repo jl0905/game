@@ -164,7 +164,9 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                      : 0.14f * Clamp(pose.windup, 0.0f, 1.0f);
     }
     auto at = [&](float r, float u, float f) {
-        const float t = u / 1.64f;   // 0 at the seat, 1 at the shoulders
+        // 0 at the seat, 1 at the shoulders; capped so hand/blade points
+        // above the shoulder line don't over-amplify the tilt (V182).
+        const float t = fminf(u / 1.64f, 1.2f);
         return ToWorld(feet, yaw, r + lean.x * t, u, f + lean.z * t);
     };
 

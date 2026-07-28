@@ -1315,8 +1315,10 @@ int VulkanRegisterUiTexture(const unsigned char* rgba, int w, int h) {
 void VulkanUpdateUiTexture(int id, const unsigned char* rgba, int w, int h) {
     if (id < 0 || id >= g_vk.texCount || !g_vk.texMap[id]) return;
     if (w != g_vk.texW[id] || h != g_vk.texH[id]) return;
-    DFN(vkDeviceWaitIdle);
-    vkDeviceWaitIdle(g_vk.dev);   // the previous frame may still sample it
+    // No wait needed (V182): UI textures are only sampled by the UI pass,
+    // which is synchronous — PresentVulkanUi fence-waits before returning,
+    // so by the time the next frame records here the GPU is done with it.
+    // (The pipelined 3D slots never touch UI textures.)
     for (int y = 0; y < h; ++y)
         memcpy(g_vk.texMap[id] + (size_t)y * g_vk.texPitch[id],
                rgba + (size_t)y * w * 4, (size_t)w * 4);

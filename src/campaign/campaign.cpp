@@ -5167,6 +5167,7 @@ void PartyDraw(const GameState& gs) {
         pc.fovy = 40;
         pc.projection = CAMERA_PERSPECTIVE;
         BeginMode3D(pc);
+        rdr::EnsureBackendGL();   // bodies record at the seam since V179 (V182 fix)
         BeginShaderMode(GetLitShader());
         DrawPlane({ mid, 0, 0 }, { 30, 12 }, Color{ 52, 58, 50, 255 });
         for (int i = 0; i < (int)rows.size() && i < 6; ++i) {
@@ -5176,6 +5177,10 @@ void PartyDraw(const GameState& gs) {
             DrawCharacter(c, { i * 1.8f, 0, 0 }, c.troops[rows[i]].loadout, pose,
                           Color{ 40, 120, 255, 255 });
         }
+        // Flush the recorded torsos INTO the bake - without this the parade
+        // drew bodyless soldiers and the buckets leaked into the next
+        // battle/town flush as ghost torsos at the parade's coordinates.
+        rdr::FlushScene(Vector3Normalize({ -0.45f, -0.75f, -0.35f }));
         EndShaderMode();
         EndMode3D();
     }

@@ -2060,3 +2060,16 @@ over two half-features.
   telegraph across the field. And the pill body is now the DEFAULT
   model (user call; boxy/blocky remain in settings). Suite 137/137;
   render smoke green both backends.
+
+- [x] **V182. Iteration one-eighty-two — code-review fixes.**
+  Review of V178-V181 found and this fixes: (1) HIGH - the roster
+  parade bake never flushed the seam, so since V179 it drew bodyless
+  soldiers AND leaked their recorded torsos into the next battle/town
+  flush as ghosts - the bake now EnsureBackendGL()s and flushes
+  inside the texture; (2) the dynamic parade texture no longer
+  vkDeviceWaitIdle()s per frame in Vulkan mode (the UI pass is
+  fence-synchronous, the wait was pure stall); (3) the mounted-lean
+  height factor is capped at 1.2 so above-shoulder blade points do
+  not over-amplify. Known-and-accepted: AI riders lean only during
+  the strike (soldiers have no wind-up sim to telegraph from).
+  Suite 137/137; render smoke green.
