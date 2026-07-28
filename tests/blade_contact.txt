@@ -1,0 +1,33 @@
+# V190: the blade IS the hitbox - 1:1 with the rendered sword. Walk into
+# the enemy line on foot, about-face: with every raider at your back the
+# full cuts meet only air (kills stays 0 - geometry cannot reach behind
+# you). Face them again and the same cuts, at pressing range, bite.
+seed 42
+hunt 60
+bmove 1 0 5
+mount
+block on
+tick 3
+block off
+look 1047 0
+attack right
+tick 1
+attack left
+tick 1
+attack right
+state
+look -1047 0
+attack right
+tick 1
+attack left
+tick 1
+attack right
+tick 1
+attack left
+tick 1
+attack right
+tick 1
+attack left
+tick 1
+state
+quit

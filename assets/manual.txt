@@ -499,3 +499,29 @@ banks and estates → those deepen prosperity and fund wars → wars
 create danger that reroutes trade and starves towns → victories buy
 renown, renown buys lords, marriages and crowns → and the crown
 turns the whole machine over to you.
+
+# When a button refuses
+Every button in the game either acts or tells you why it cannot - the
+reason appears on the message rail at the bottom-centre of the screen.
+The common refusals and their fixes:
+
+## On the campaign map
+Estate [E] - you need friendly land: ride within reach of a town at
+peace with you, and carry 1000 gold to found the manor. Once founded,
+E (or the Estate chip) opens it from anywhere.
+Hail a lord [T] - a lord's party must be within hail on the road; an
+enemy lord talks only with steel.
+Crown [K] - hold two settlements first.
+Rally lords [J] - only a crowned ruler can call banners.
+Join a skirmish [1]/[2] - ride toward the crossed-blades marker first.
+
+## At the market
+Caravan / destrier / loan / enterprise / land deed - each names its
+price when you cannot pay, and the loan, horse dealer and enterprises
+keep to the towns (villages have none).
+Bank - deposits and withdrawals move in hundreds; the message tells
+you when your purse or the account runs short.
+
+## In the journal
+Abandon [X] - only with a task in hand; laying one down costs a little
+regard with the giver's crown.

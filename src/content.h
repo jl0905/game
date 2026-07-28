@@ -35,6 +35,9 @@ struct WeaponDef {
     float       reach     = 0.0f;  // TODO(balance): attack range
     float       damage    = 0.0f;  // TODO(balance): hit damage
     float       swingTime = 0.0f;  // TODO(balance): cooldown between swings
+    float       strikeTime = 0.0f; // TODO(balance): seconds the strike itself
+                                   // takes (V190) - drives the swing animation
+                                   // AND the contact window; 0 = class default
     // Ranged weapons only (wclass == WeaponClass::Ranged):
     float       missileRange = 0.0f;  // TODO(balance): how far it can shoot
     float       missileSpeed = 0.0f;  // TODO(balance): projectile speed

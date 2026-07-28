@@ -7,6 +7,7 @@
 #include "../ui.h"
 #include "../parallel.h"
 #include "../settings.h"
+#include "../notify.h"
 #include "raymath.h"
 #include <algorithm>
 #include <cmath>
@@ -667,6 +668,10 @@ struct Soldier {
     int     slot = -1;         // formation slot (player's own troops only)
     float   shieldHp = SHIELD_HP;   // wood left on the arm (G4)
     float   stun = 0;          // hit-stun (T): reeling, can't move or swing
+    // V190: an armed strike waiting for BLADE CONTACT (1:1 with the model).
+    int     pendTarget = -1;   // -1 none, -2 the player, else soldier index
+    int     pendDir    = 0;
+    float   pendDmg    = 0;
     float   stunImmune = 0;    // post-stun grace â€” an opening, not a lock
     bool    looted = false;    // his weapon already taken up (V39)
     bool    champion = false;  // the enemy lord in person (V101)
@@ -793,6 +798,13 @@ struct BattleState {
     float   vY = 0;
     float   walkPhase = 0;
     float   pFlash = 0;         // hero just-hit feedback
+    // V190: the armed hero strike - captured at release, resolved by
+    // blade contact tick by tick. One number (swingStrike) paces both the
+    // animation and the hit window.
+    float   swingStrike = 0.62f;
+    float   swingDraw = 0, swingMomentum = 1.0f;
+    int     swingWpn = -1;
+    std::vector<unsigned char> struckMask;   // one hit per swing per man
     bool    mounted = false;    // the hero rides in field battles (not sieges)
     float   pTrampleCd = 0;
     float   pHorseHp = 0;       // the hero's mount can be killed under him
@@ -819,8 +831,6 @@ struct BattleState {
     int   heroQuiver = 24;        // shafts on the hip (V118) TODO(balance)
     float camDist = 4.5f;         // shoulder distance, wheel-adjustable (V121)
     float gallop = 0;             // hero mount's built-up speed 0..1 (V141)
-    std::string pickupMsg;             // "TAKEN UP: ..." caption (V39)
-    float       pickupTimer = 0;
     std::vector<int> surrendered;      // enemies who yielded, per troop (V42)
     // Floating combat text (V144, user ask): damage numbers rise off the
     // struck man; capped and short-lived. Updated in sim, drawn windowed.
@@ -834,9 +844,6 @@ struct BattleState {
     float hornCd = 0;                  // the war horn's wind (V66)
     Vector3 lastHitFrom{};             // where the last blow came from (V108)
     float   hitFromTimer = 0;
-    // The feed (V88): the fight's last moments, ticker-taped. Newest first.
-    struct FeedLine { std::string text; float age = 0; };
-    std::vector<FeedLine> feed;
     float pShieldHp = SHIELD_HP;       // the hero's own wood (V71)
     std::vector<int> reserveOwn, reserveAlly, reserveEnemy;   // waves (V75)
     float reinforceCd = 0;
@@ -934,6 +941,53 @@ float WeaponCooldown(const Content& c, int wh) {
     // 2.2x its old time — blows are commitments. TODO(balance): the factor.
     return (c.weapons.valid(wh) && c.weapons[wh].swingTime > 0.05f
                 ? c.weapons[wh].swingTime : FIST_SWING) * 2.2f;
+}
+
+// V190: how long the strike itself takes (release -> follow-through done).
+// Drives the swing ANIMATION and the contact window with one number, so the
+// visual and the hitbox never drift. Per-def strikeTime wins; otherwise the
+// class speaks: knives-and-swords quick, great blades slower, polearms
+// slowest. All a touch slower than the old flat 0.56s. TODO(balance).
+float StrikeTime(const Content& c, int wh) {
+    if (c.weapons.valid(wh)) {
+        const WeaponDef& w = c.weapons[wh];
+        if (w.strikeTime > 0.02f) return w.strikeTime;
+        switch (w.wclass) {
+            case WeaponClass::TwoHanded: return 0.75f;
+            case WeaponClass::Polearm:   return 0.82f;
+            case WeaponClass::Axe:       return 0.68f;
+            default:                     return 0.62f;
+        }
+    }
+    return 0.55f;   // bare fists
+}
+
+// Squared distance between two segments (blade line vs body axis) - the
+// whole 1:1 hitbox test is this one function against the rendered blade.
+float SegSegDistSqr(Vector3 p1, Vector3 q1, Vector3 p2, Vector3 q2) {
+    const Vector3 d1 = Vector3Subtract(q1, p1);
+    const Vector3 d2 = Vector3Subtract(q2, p2);
+    const Vector3 r  = Vector3Subtract(p1, p2);
+    const float a = Vector3DotProduct(d1, d1), e = Vector3DotProduct(d2, d2);
+    const float f = Vector3DotProduct(d2, r);
+    float s, u;
+    if (a <= 1e-8f && e <= 1e-8f) { s = u = 0.0f; }
+    else if (a <= 1e-8f) { s = 0.0f; u = Clamp(f / e, 0.0f, 1.0f); }
+    else {
+        const float cc = Vector3DotProduct(d1, r);
+        if (e <= 1e-8f) { u = 0.0f; s = Clamp(-cc / a, 0.0f, 1.0f); }
+        else {
+            const float b = Vector3DotProduct(d1, d2);
+            const float den = a * e - b * b;
+            s = den > 1e-8f ? Clamp((b * f - cc * e) / den, 0.0f, 1.0f) : 0.0f;
+            u = (b * s + f) / e;
+            if (u < 0.0f)      { u = 0.0f; s = Clamp(-cc / a, 0.0f, 1.0f); }
+            else if (u > 1.0f) { u = 1.0f; s = Clamp((b - cc) / a, 0.0f, 1.0f); }
+        }
+    }
+    const Vector3 c1 = Vector3Add(p1, Vector3Scale(d1, s));
+    const Vector3 c2 = Vector3Add(p2, Vector3Scale(d2, u));
+    return Vector3DistanceSqr(c1, c2);
 }
 
 // Worn armour soaks a flat amount per hit; a landed blow always tells a little.
@@ -1127,10 +1181,11 @@ constexpr float TARGET_CROWD_PENALTY   = 2.0f;  // per foe already aiming at him
 constexpr float TARGET_ATTACKER_BONUS  = 4.0f;  // he is attacking me
 constexpr float TARGET_UNSHIELDED_BONUS = 3.0f; // archers: no shield to raise
 
-// Push one line onto the battle feed (V88), newest first, capped.
+// The battle feed rides the one message rail now (V189/V190): kills,
+// yields and banners land in the same bottom-centre stack as every
+// campaign notice, exactly as the user asked.
 void Feed(const char* text) {
-    B.feed.insert(B.feed.begin(), { text, 0.0f });
-    if (B.feed.size() > 4) B.feed.pop_back();
+    notify::Push(text, Color{ 232, 226, 210, 255 }, 5.0f);
 }
 
 // The hero carries wood by the same rule as his men (V71): a one-handed
@@ -1215,7 +1270,9 @@ AICmd ComputeAI(const Content& c, int i, float dt, FormationType formation,
     AICmd cmd;
     cmd.yaw         = s.yaw;
     cmd.newCooldown = s.cooldown - dt;
-    cmd.newSwing    = s.swing > 0 ? s.swing - dt * 1.8f : 0.0f;   // V143: unhurried arcs
+    cmd.newSwing    = s.swing > 0
+                          ? s.swing - dt / StrikeTime(c, s.activeWeapon)
+                          : 0.0f;   // V190: the weapon paces its own arc
     cmd.newTarget   = s.target;
 
     // Single combat (V102): while the duel holds, every man but the
@@ -1995,6 +2052,88 @@ BattleInput GatherBattleInput() {
     return in;
 }
 
+// V190 (user goal): the hero's blade IS the hitbox. Every tick of the
+// strike, the world-space blade segment - the exact one the renderer draws
+// (BladeWorld: same aim, same hand travel, same mounted lean) - is tested
+// against enemy body capsules. Contact deals the blow; a swing aimed at air
+// passes through air. One hit per swing per man.
+void HeroBladeContact(const Content& c) {
+    const int wh = B.swingWpn;
+    if (B.swing <= 0.0f || !c.weapons.valid(wh) || c.weapons[wh].isRanged())
+        return;
+    Pose hp;
+    hp.yaw       = B.yaw;
+    hp.swing     = fmaxf(B.swing, 0.01f);
+    hp.attackDir = B.attackDir;
+    hp.mounted   = B.mounted;
+    hp.weapon    = wh;
+    Vector3 feet = B.pPos;
+    if (B.mounted) feet.y += 1.25f;
+    Vector3 bh, bt;
+    BladeWorld(c, feet, B.setup.heroLoadout, hp, bh, bt);
+    constexpr float RR = (0.06f + 0.45f) * (0.06f + 0.45f);
+    const float HERO_DAMAGE_FACTOR = 2.5f;   // playtest-tuned 2026-07-21
+
+    if (B.struckMask.size() != B.soldiers.size())
+        B.struckMask.assign(B.soldiers.size(), 0);
+    for (Soldier& s : B.soldiers) {
+        const int vi = (int)(&s - &B.soldiers[0]);
+        if (s.hp <= 0 || s.escaped || s.team != Team::Enemy || B.struckMask[vi])
+            continue;
+        const float sy = IsMounted(c, s) ? 1.25f : 0.0f;
+        const Vector3 base = { s.pos.x, s.pos.y + sy + 0.1f, s.pos.z };
+        const Vector3 top  = { s.pos.x, s.pos.y + sy + 1.75f, s.pos.z };
+        if (SegSegDistSqr(bh, bt, base, top) > RR) continue;
+        B.struckMask[vi] = 1;   // this swing has spent itself on him
+        // The blow carries what the wind-up put into it (V142) and what the
+        // gallop adds (T5); armour, shield and guard judge it AT CONTACT.
+        float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR
+                                   * B.swingMomentum
+                                   * (0.5f + 0.5f * B.swingDraw),
+                               LoadoutArmor(c, TroopLoadout(c, s.troop)));
+        const float before = dmg;
+        dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
+        if (s.guard && !(HasShield(c, s) && s.shieldHp > 0) &&
+            Vector3DotProduct(
+                Vector3Normalize(Vector3Subtract(B.pPos, s.pos)),
+                Vector3{ sinf(s.yaw), 0, cosf(s.yaw) }) > 0.2f) {
+            if (GuardDir(vi, s) == (int)B.attackDir) {
+                dmg *= 0.15f;   // parried TODO(balance)
+                SpawnSparks(s.pos);
+                SfxPlay(Sfx::Clang, 0.7f);
+            } else {
+                s.guardDir = (int)B.attackDir;   // learns the line
+            }
+        }
+        if (dmg < before) {
+            SpawnSparks(s.pos);
+            SfxPlay(Sfx::Clang, 0.6f);
+            B.soakFlash = 1.0f;   // name those sparks (U5)
+        }
+        if (dmg > 0.5f)
+            SfxPlay(Sfx::Thud, Clamp(0.3f + dmg / 25.0f, 0.3f, 1.0f));
+        if (dmg >= 1.0f && B.floats.size() < 48)
+            B.floats.push_back({ s.pos, 1.0f, (int)dmg, false });
+        if (vi < (int)B.lastHitter.size()) B.lastHitter[vi] = -1;
+        DamageSoldier(c, s, dmg);
+        if (s.hp <= 0) FreeHorse(c, s);   // (T6)
+        if (s.hp <= 0) {   // a kill by the hero's own hand rallies
+            B.heroKills++;
+            Feed(TextFormat("You slay a %s", c.troops[s.troop].name.c_str()));
+            B.rallyPulse = RALLY_PULSE_TIME;
+            SfxPlay(Sfx::WarCry, 0.25f);
+            if (!B.setup.arena)
+                B.grid.ForNeighbors(B.pPos, RALLY_RADIUS * 2.0f, [&](int j) {
+                    Soldier& w = B.soldiers[j];
+                    if (w.hp <= 0) return;
+                    w.nerve += (w.team == Team::Player) ? NERVE_RALLY
+                                                        : -NERVE_ALLY_DEATH;
+                    w.nerve = fminf(NERVE_MAX, w.nerve);
+                });
+        }
+    }
+}
+
 bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutcome& out) {
     if (dt > 0.05f) dt = 0.05f;
     g_dbgFrame++;
@@ -2162,7 +2301,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
 
         B.blocking = in.block;
         B.cooldown -= dt;
-        if (B.swing > 0) B.swing -= dt * 1.8f;   // V143: the follow-through reads
+        if (B.swing > 0) {
+        B.swing -= dt / fmaxf(0.05f, B.swingStrike);   // per-weapon pace (V190)
+        HeroBladeContact(c);   // the blade is the hitbox - 1:1 (V190)
+    }
 
         // ---- dismount / remount (U11): Z, and the horse waits for you ----
         if (in.mountToggle) {
@@ -2300,9 +2442,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             }
             if (pulled > 0) {
                 B.heroQuiver += pulled;
-                B.pickupMsg   = TextFormat("PULLED %d SHAFT%s FREE", pulled,
-                                           pulled == 1 ? "" : "S");
-                B.pickupTimer = 1.8f;
+                notify::Push(TextFormat("PULLED %d SHAFT%s FREE", pulled,
+                                        pulled == 1 ? "" : "S"),
+                             GOLD, 2.0f);
                 SfxPlay(Sfx::Swing, 0.4f);
             }
             for (Soldier& s : B.soldiers) {
@@ -2316,8 +2458,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 s.looted = true;
                 B.heroArsenal[B.heroWeapon] = w;   // yours falls where he lies
                 B.setup.heroLoadout.set(EquipSlot::Weapon, w);
-                B.pickupMsg   = TextFormat("TAKEN UP: %s", c.weapons[w].name.c_str());
-                B.pickupTimer = 1.8f;
+                notify::Push(TextFormat("TAKEN UP: %s", c.weapons[w].name.c_str()),
+                             GOLD, 2.0f);
                 SfxPlay(Sfx::Swing, 0.6f);
                 break;
             }
@@ -2356,8 +2498,8 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 // gives them back one at a time under [G].
                 if (B.heroQuiver <= 0) {
                     B.swing = 0.0f;
-                    B.pickupMsg   = "QUIVER EMPTY â€” pull shafts from the ground [G]";
-                    B.pickupTimer = 1.8f;
+                    notify::Push("QUIVER EMPTY - pull shafts from the ground [G]",
+                                 GOLD, 2.0f);
                     SfxPlay(Sfx::Click, 0.7f);
                 } else {
                 B.heroQuiver--;
@@ -2377,88 +2519,20 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 SfxPlay(Sfx::Loose);
                 }   // quiver had a shaft (V118)
             } else {
+            // V190 (user goal): the release only ARMS the swing. Damage now
+            // lands in HeroBladeContact, when - and only when - the rendered
+            // blade geometry sweeps through a body. Whiffs pass through.
             SfxPlay(Sfx::Swing);
-            const float reach = WeaponReach(c, wh);
-            B.cooldown = WeaponCooldown(c, wh) * 0.1f;   // V144: near-zero for feints
-            // The hero hits like a hero: the first user-playtest balance
-            // change (T) â€” with flat 100/10 numbers a player needed ten
-            // clean hits per man while three men killed him in five
-            // seconds, which read as "my attacks do nothing".
-            const float HERO_DAMAGE_FACTOR = 2.5f;   // playtest-tuned 2026-07-21
-            // Mounted identity (T5): the saddle adds reach, and the gallop
-            // adds weight â€” up to +50% at full stride. TODO(balance).
-            const float mountReach = B.mounted ? 0.9f : 0.0f;
-            const float momentum   = (B.mounted
+            B.cooldown      = WeaponCooldown(c, wh) * 0.1f;   // V144: feints stay
+            B.swingStrike   = StrikeTime(c, wh);
+            B.swingWpn      = wh;
+            B.swingDraw     = draw;
+            // Mounted identity (T5): the gallop adds weight - up to +50% at
+            // full stride - and Strength (V14) its share. TODO(balance).
+            B.swingMomentum = (B.mounted
                 ? 1.0f + 0.5f * fminf(1.0f, B.heroSpeed / 14.0f) : 1.0f)
-                * (1.0f + 0.05f * B.setup.heroStr);   // Strength (V14)
-            for (Soldier& s : B.soldiers) {
-                if (s.hp <= 0 || s.escaped || s.team != Team::Enemy) continue;
-                Vector3 to = Vector3Subtract(s.pos, B.pPos);
-                to.y = 0;
-                const float d = Vector3Length(to);
-                if (d < reach + mountReach + 0.6f && d > 0.01f &&
-                    Vector3DotProduct(Vector3Normalize(to), fwd) > 0.4f) {
-                    // ~120Â° frontal arc; armour soaks per hit, and a raised
-                    // shield meets the hero's chosen swing direction (G4).
-                    const int vi = (int)(&s - &B.soldiers[0]);
-                    // Deliberate steel (V142): the blow carries what the
-                    // wind-up put into it — a panicked flick lands at half
-                    // weight, a full-drawn cut lands whole. Same rule the
-                    // bow already lives by (V117).
-                    float dmg = ApplyArmor(WeaponDamage(c, wh) * HERO_DAMAGE_FACTOR
-                                               * momentum * (0.5f + 0.5f * draw),
-                                           LoadoutArmor(c, TroopLoadout(c, s.troop)));
-                    const float before = dmg;
-                    dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
-                    // The man guards against the hero too — directionally
-                    // (V143): swing INTO his barred line and steel rings
-                    // off steel; pick any other line and it lands, and he
-                    // shifts his guard to cover it. Read the stance, vary
-                    // your swings — that's the whole game.
-                    if (s.guard && !(HasShield(c, s) && s.shieldHp > 0) &&
-                        Vector3DotProduct(
-                            Vector3Normalize(Vector3Subtract(B.pPos, s.pos)),
-                            Vector3{ sinf(s.yaw), 0, cosf(s.yaw) }) > 0.2f) {
-                        if (GuardDir(vi, s) == (int)B.attackDir) {
-                            dmg *= 0.15f;   // parried TODO(balance)
-                            SpawnSparks(s.pos);
-                            SfxPlay(Sfx::Clang, 0.7f);
-                        } else {
-                            s.guardDir = (int)B.attackDir;   // learns the line
-                        }
-                    }
-                    if (dmg < before) {
-                        SpawnSparks(s.pos);
-                        SfxPlay(Sfx::Clang, 0.6f);
-                        B.soakFlash = 1.0f;   // name those sparks (U5)
-                    }
-                    // A landed blow sounds as heavy as it hit (V24): a glance
-                    // taps, a plate-cracking overhead lands like a hammer.
-                    if (dmg > 0.5f)
-                        SfxPlay(Sfx::Thud, Clamp(0.3f + dmg / 25.0f, 0.3f, 1.0f));
-                    // Your blow, in numbers, off his chest (V144).
-                    if (dmg >= 1.0f && B.floats.size() < 48)
-                        B.floats.push_back({ s.pos, 1.0f, (int)dmg, false });
-                    if (vi < (int)B.lastHitter.size()) B.lastHitter[vi] = -1;
-                    DamageSoldier(c, s, dmg);
-                    if (s.hp <= 0) FreeHorse(c, s);   // (T6)
-                    if (s.hp <= 0) {   // a kill by the hero's own hand rallies
-                        B.heroKills++;
-                        Feed(TextFormat("You slay a %s", c.troops[s.troop].name.c_str()));
-                        B.rallyPulse = RALLY_PULSE_TIME;
-                        SfxPlay(Sfx::WarCry, 0.25f);
-                        // The kill-cry stiffens friends and shakes foes (K4).
-                        if (!B.setup.arena)
-                            B.grid.ForNeighbors(B.pPos, RALLY_RADIUS * 2.0f, [&](int j) {
-                                Soldier& w = B.soldiers[j];
-                                if (w.hp <= 0) return;
-                                w.nerve += (w.team == Team::Player) ? NERVE_RALLY
-                                                                    : -NERVE_ALLY_DEATH;
-                                w.nerve = fminf(NERVE_MAX, w.nerve);
-                            });
-                    }
-                }
-            }
+                * (1.0f + 0.05f * B.setup.heroStr);
+            B.struckMask.assign(B.soldiers.size(), 0);
             }   // end melee branch (V117)
         }
     } else if (B.over) {
@@ -2785,64 +2859,13 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                     }
                 });
             }
-            // Armour soaks per hit, so reduction happens per blow, not per frame.
-            if (cmd.hitSoldier >= 0) {
-                Soldier& v = B.soldiers[cmd.hitSoldier];
-                float hit = ShieldSoak(
-                    c, cmd.hitSoldier, v, cmd.swingDir,
-                    ApplyArmor(cmd.hitDamage,
-                               LoadoutArmor(c, TroopLoadout(c, v.troop))));
-                // Directional weapon guards (V143, was V125's flat soak):
-                // a shieldless man holds his blade across ONE line. Meet
-                // his guard and the blow is parried near-whole; come from
-                // any other side and it lands — and he shifts his guard to
-                // the side that just bled. Skill both ways: easy to learn,
-                // hard to master.
-                if (v.guard && hit > 0 &&
-                    !(HasShield(c, v) && v.shieldHp > 0)) {
-                    Vector3 toAtk = Vector3Subtract(B.soldiers[i].pos, v.pos);
-                    toAtk.y = 0;
-                    const Vector3 face = { sinf(v.yaw), 0, cosf(v.yaw) };
-                    if (Vector3LengthSqr(toAtk) > 0.01f &&
-                        Vector3DotProduct(Vector3Normalize(toAtk), face) > 0.2f) {
-                        if (GuardDir(cmd.hitSoldier, v) == cmd.swingDir)
-                            hit *= 0.15f;   // parried on the blade TODO(balance)
-                        else
-                            v.guardDir = cmd.swingDir;   // covers it next time
-                    }
-                }
-                B.dmg[cmd.hitSoldier] += hit;
-                B.lastHitter[cmd.hitSoldier] = s.troop;   // the tale needs a name (V144)
-            }
-            if (cmd.hitPlayer) {
-                float d = ApplyArmor(cmd.hitDamage,
-                                     LoadoutArmor(c, B.setup.heroLoadout));
-                // The hero's block is a stance too (V143): a shield covers
-                // every line (V142); a bare weapon parries only the line of
-                // your LAST mouse flick — matched, the blow dies on the
-                // blade; mismatched, it glances through your arms.
-                if (B.blocking && d > 0) {
-                    if (HeroHasShield(c)) {
-                        d *= BLOCK_MELEE_FACTOR * 0.5f;
-                        B.pShieldHp -= SHIELD_WEAR_PER_HIT;
-                        if (B.pShieldHp <= 0) {
-                            B.cryTimer = 2.0f;
-                            B.cryText  = "YOUR SHIELD SPLINTERS!";
-                            Feed("Your shield splinters");
-                            SfxPlay(Sfx::Knell, 0.6f);
-                        }
-                    } else if ((int)B.lastAim == cmd.swingDir) {
-                        d *= BLOCK_MELEE_FACTOR;   // clean parry
-                        B.soakFlash = 1.0f;
-                    } else {
-                        d *= 0.75f;   // wrong line: it glances through
-                    }
-                }
-                playerDamage += d;
-                if (d >= 1.0f && B.floats.size() < 48)   // you feel it in numbers (V144)
-                    B.floats.push_back({ B.pPos, 1.0f, (int)d, true });
-                B.lastHitFrom  = B.soldiers[i].pos;   // where it came from (V108)
-                B.hitFromTimer = 0.9f;
+            // V190: a melee blow is only ARMED here. It lands in the
+            // contact pass below, when the blade geometry reaches the body -
+            // armour, shields and guards are judged at the moment of contact.
+            if (cmd.hitSoldier >= 0 || cmd.hitPlayer) {
+                s.pendTarget = cmd.hitPlayer ? -2 : cmd.hitSoldier;
+                s.pendDir    = cmd.swingDir;
+                s.pendDmg    = cmd.hitDamage;
             }
             if (cmd.shoot) {
                 // Loose an arrow from chest height, lobbed to compensate for
@@ -2863,6 +2886,90 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                 s.quiver--;   // (V119) a dry quiver forces the sidearm
                 SfxPlay(Sfx::Loose,
                         Clamp(1.0f - Vector3Distance(s.pos, B.pPos) / 45.0f, 0.05f, 0.8f));
+            }
+        }
+
+        // V190: swept-blade contact for every armed AI strike. The blade
+        // segment is the SAME BladeWorld the renderer draws; the victim is a
+        // body capsule. No contact by the end of the follow-through: a whiff
+        // - steel passes through air, nobody bleeds.
+        for (int i = 0; i < n; ++i) {
+            Soldier& s = B.soldiers[i];
+            if (s.hp <= 0 || s.escaped || s.pendTarget == -1) continue;
+            if (s.swing <= 0.06f) { s.pendTarget = -1; continue; }
+            Pose ap;
+            ap.yaw       = s.yaw;
+            ap.swing     = s.swing;
+            ap.attackDir = (AttackDir)(s.pendDir & 3);
+            ap.mounted   = IsMounted(c, s);
+            ap.weapon    = s.activeWeapon;
+            Vector3 feet = s.pos;
+            if (ap.mounted) feet.y += 1.25f;
+            Vector3 bh, bt;
+            BladeWorld(c, feet, TroopLoadout(c, s.troop), ap, bh, bt);
+            constexpr float RR = (0.06f + 0.45f) * (0.06f + 0.45f);
+            if (s.pendTarget == -2) {
+                const float my = B.mounted ? 1.25f : 0.0f;
+                const Vector3 base = { B.pPos.x, B.pPos.y + my + 0.1f, B.pPos.z };
+                const Vector3 top  = { B.pPos.x, B.pPos.y + my + 1.75f, B.pPos.z };
+                if (SegSegDistSqr(bh, bt, base, top) > RR) continue;
+                s.pendTarget = -1;
+                float d = ApplyArmor(s.pendDmg,
+                                     LoadoutArmor(c, B.setup.heroLoadout));
+                // The hero's block is a stance (V143): a shield covers every
+                // line; a bare weapon parries only the line of the LAST
+                // mouse flick - judged at the moment steel arrives.
+                if (B.blocking && d > 0) {
+                    if (HeroHasShield(c)) {
+                        d *= BLOCK_MELEE_FACTOR * 0.5f;
+                        B.pShieldHp -= SHIELD_WEAR_PER_HIT;
+                        if (B.pShieldHp <= 0) {
+                            B.cryTimer = 2.0f;
+                            B.cryText  = "YOUR SHIELD SPLINTERS!";
+                            Feed("Your shield splinters");
+                            SfxPlay(Sfx::Knell, 0.6f);
+                        }
+                    } else if ((int)B.lastAim == s.pendDir) {
+                        d *= BLOCK_MELEE_FACTOR;   // clean parry
+                        B.soakFlash = 1.0f;
+                    } else {
+                        d *= 0.75f;   // wrong line: it glances through
+                    }
+                }
+                playerDamage += d;
+                if (d >= 1.0f && B.floats.size() < 48)
+                    B.floats.push_back({ B.pPos, 1.0f, (int)d, true });
+                B.lastHitFrom  = s.pos;
+                B.hitFromTimer = 0.9f;
+            } else {
+                Soldier& v = B.soldiers[s.pendTarget];
+                if (v.hp <= 0 || v.escaped) { s.pendTarget = -1; continue; }
+                const float vy = IsMounted(c, v) ? 1.25f : 0.0f;
+                const Vector3 base = { v.pos.x, v.pos.y + vy + 0.1f, v.pos.z };
+                const Vector3 top  = { v.pos.x, v.pos.y + vy + 1.75f, v.pos.z };
+                if (SegSegDistSqr(bh, bt, base, top) > RR) continue;
+                const int victimIdx = s.pendTarget;
+                s.pendTarget = -1;
+                float hit = ShieldSoak(
+                    c, victimIdx, v, s.pendDir,
+                    ApplyArmor(s.pendDmg,
+                               LoadoutArmor(c, TroopLoadout(c, v.troop))));
+                // Directional weapon guards (V143), judged at contact.
+                if (v.guard && hit > 0 &&
+                    !(HasShield(c, v) && v.shieldHp > 0)) {
+                    Vector3 toAtk = Vector3Subtract(s.pos, v.pos);
+                    toAtk.y = 0;
+                    const Vector3 face = { sinf(v.yaw), 0, cosf(v.yaw) };
+                    if (Vector3LengthSqr(toAtk) > 0.01f &&
+                        Vector3DotProduct(Vector3Normalize(toAtk), face) > 0.2f) {
+                        if (GuardDir(victimIdx, v) == s.pendDir)
+                            hit *= 0.15f;   // parried on the blade TODO(balance)
+                        else
+                            v.guardDir = s.pendDir;   // covers it next time
+                    }
+                }
+                B.dmg[victimIdx] += hit;
+                B.lastHitter[victimIdx] = s.troop;   // the tale needs a name
             }
         }
         // The press of bodies (U6, reworked V132): men cannot share ground.
@@ -3706,20 +3813,8 @@ void BattleDraw(const Content& c) {
                  Fade(RED, 0.55f * alpha));
     }
 
-    // The feed (V88): the fight's last moments, bottom-right, fading out.
-    if (!B.over) {
-        int fy = GetScreenHeight() - 130;
-        for (auto& fl : B.feed) {
-            fl.age += GetFrameTime();
-            const float a = Clamp(1.0f - fl.age / 6.0f, 0.0f, 1.0f);
-            if (a <= 0) continue;
-            const int fw = ui::Measure(fl.text.c_str(), 17);
-            ui::Text(fl.text.c_str(), GetScreenWidth() - fw - 18, fy, 17,
-                     Fade(RAYWHITE, 0.85f * a));
-            fy -= 24;
-        }
-        while (!B.feed.empty() && B.feed.back().age > 6.0f) B.feed.pop_back();
-    }
+    // The battle feed renders on the shared message rail (V189/V190).
+
 
     // Every door on one line (V67), the T7 rule brought to the battle: the
     // keys players kept not finding, plus live readiness for the two
@@ -3883,28 +3978,7 @@ void BattleDraw(const Content& c) {
         const int   rw = ui::Measure(B.routText, 40);
         ui::Title(B.routText, (GetScreenWidth() - rw) / 2, 150, 40, Fade(GOLD, ra));
     }
-    B.pickupTimer = fmaxf(0.0f, B.pickupTimer - GetFrameTime());
-    if (B.pickupTimer > 0 && !B.over) {   // the field re-arms you (V39)
-        const float pa = fminf(B.pickupTimer / 0.4f, 1.0f);
-        const int pw = ui::Measure(B.pickupMsg.c_str(), 24);
-        ui::Text(B.pickupMsg.c_str(), (GetScreenWidth() - pw) / 2,
-                 GetScreenHeight() - 150, 24, Fade(GOLD, pa));
-    } else if (!B.over && B.pHp > 0) {
-        // A quiet prompt when a fallen man's weapon lies in reach.
-        for (const Soldier& s : B.soldiers) {
-            if (s.hp > 0 || s.escaped || s.looted) continue;
-            Vector3 to = Vector3Subtract(s.pos, B.pPos);
-            to.y = 0;
-            if (Vector3Length(to) > 2.5f) continue;
-            const Loadout& lo = TroopLoadout(c, s.troop);
-            if (lo.weaponCount() <= 0) continue;
-            const char* hint = "[G] take up the fallen weapon";
-            const int hw = ui::Measure(hint, 20);
-            ui::Text(hint, (GetScreenWidth() - hw) / 2, GetScreenHeight() - 150,
-                     20, Fade(RAYWHITE, 0.75f));
-            break;
-        }
-    }
+    // Pickup captions ride the one message rail now (V190).
     B.bannerFlash = fmaxf(0.0f, B.bannerFlash - GetFrameTime());
     if (B.bannerFlash > 0 && B.introTimer <= 0 && !B.over) {   // V32
         const float ba = fminf(B.bannerFlash / 0.5f, 1.0f);
@@ -3942,6 +4016,7 @@ void BattleDraw(const Content& c) {
         ui::Title(msg, (GetScreenWidth() - w) / 2, GetScreenHeight() / 2 - 60, 60, B.won ? GOLD : RED);
     }
 
+    notify::Draw();   // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }

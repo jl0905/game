@@ -2145,3 +2145,21 @@ over two half-features.
   hover) - one click opens the 26-page in-game manual; new
   openManual intent flows Gather -> main.cpp like every other chip.
   138/138 green.
+
+- [x] **V189. Iteration one-eighty-nine — the blade is real and every
+  button speaks.** Three systems, one ship: (1) true swept-blade
+  hitbox — the exact rendered blade segment (shared BladeWorld()
+  from character.cpp, render and hitbox cannot drift) is swept
+  against body capsules each tick for hero AND AI; damage lands at
+  the moment of contact, whiffs pass through; per-weapon
+  strikeTime in WeaponDef (1H 0.62 / 2H 0.75 / polearm 0.82,
+  TODO(balance)) drives animation and hit window from one number.
+  (2) notify:: global message rail — kill feed, pickup captions,
+  campaign notices and button refusals all render in one fading
+  bottom-centre stack on every screen. (3) silent-button sweep —
+  eight fully-silent wrong-context presses (rally, join, bank,
+  caravan, enterprise, village services, journal abandon) now
+  refuse with actionable toasts; Estate-class refusals moved from
+  the easy-to-miss top-left line to the rail; new "When a button
+  refuses" manual page (27 pages). 139/139 green, render parity
+  GL 4.46 / VK 4.62 ms.

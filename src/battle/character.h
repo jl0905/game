@@ -29,6 +29,12 @@ struct Pose {
 // Tessellation tier (V127): 0 = full detail (hero, town NPCs, close ranks),
 // 1 = roughly half the slices/rings for soldiers past half the LOD line —
 // the silhouette is identical, the vertex bill is not. Sticky until changed.
+// V190: the rendered blade, in world space - hilt to tip - for the given
+// pose. The SAME math DrawCharacter renders with (aim, hand travel, mounted
+// lean), exported so the combat hitbox is 1:1 with the model by construction.
+void BladeWorld(const Content& content, Vector3 feet, const Loadout& loadout,
+                const Pose& pose, Vector3& hiltOut, Vector3& tipOut);
+
 void SetCharacterDetail(int tier);
 
 // Per-part instancing hook (V128): when a batcher is installed AND the

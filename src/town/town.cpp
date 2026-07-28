@@ -2,6 +2,7 @@
 #include "../battle/character.h"   // the one humanoid renderer (battle owns it)
 #include "../gfx.h"
 #include "../rdr.h"
+#include "../notify.h"
 #include "../sfx.h"
 #include "../ui.h"
 #include "raymath.h"
@@ -1255,6 +1256,7 @@ void DialogueDraw(const GameState& gs) {
     }
     option(DLG_LEAVE, "[Esc / E] Take your leave", Fade(RAYWHITE, 0.6f));
     g_dlgHitX = x;
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -1355,7 +1357,8 @@ void TownDraw(const GameState& gs) {
                      10, GetScreenHeight() - 54, 20, LIME);
         ui::Text("[E] back to the street", 10, GetScreenHeight() - 26, 16,
                  Fade(RAYWHITE, 0.7f));
-        rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
+        notify::Draw();           // the one message rail (V189)
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
         return;
     }
@@ -1750,6 +1753,7 @@ void TownDraw(const GameState& gs) {
         if (!gs.resultText.empty())
             ui::Text(gs.resultText.c_str(), x0, y + 30, 17, GOLD);
     }
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }

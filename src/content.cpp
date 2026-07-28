@@ -95,6 +95,11 @@ void LoadDefaultContent(Content& c) {
     bow.missileRange = 40.0f;   // TODO(balance)
     bow.missileSpeed = 30.0f;   // TODO(balance)
     bow.swingTime    = 2.0f;    // TODO(balance): nock-draw-loose is slower than a cut
+    // V190: per-weapon strike pace - the seconds one swing takes, driving
+    // the animation AND the contact window. TODO(balance), all of them.
+    sword.strikeTime = 0.60f;
+    great.strikeTime = 0.75f;
+    spear.strikeTime = 0.80f;
 
     // Inventory footprints — big weapons take big bags (identity, not balance).
     great.tileW = 2; great.tileH = 4;

@@ -130,6 +130,47 @@ Vector3 SwingAim(const Pose& pose, WeaponClass wc = WeaponClass::OneHanded) {
     return rest;
 }
 
+// Mounted swing lean (V181), shared by render AND hitbox (V190): while
+// winding or striking from the saddle the upper body tilts into the stroke.
+Vector3 SwingLean(const Content& content, const Loadout& loadout,
+                  const Pose& pose) {
+    Vector3 lean = { 0, 0, 0 };
+    if (pose.mounted && (pose.windup > 0.0f || pose.swing > 0.0f)) {
+        const int whL = pose.weapon >= 0 ? pose.weapon
+                                         : loadout.get(EquipSlot::Weapon);
+        const WeaponClass wcL = content.weapons.valid(whL)
+                                    ? content.weapons[whL].wclass
+                                    : WeaponClass::OneHanded;
+        const Vector3 aimL = SwingAim(pose, wcL);
+        lean.x = Clamp(aimL.x * 0.24f, -0.48f, 0.48f);
+        lean.z = pose.swing > 0.0f
+                     ? 0.38f * (1.0f - Clamp(pose.swing, 0.0f, 1.0f))
+                     : 0.14f * Clamp(pose.windup, 0.0f, 1.0f);
+    }
+    return lean;
+}
+
+// The swinging blade in LOCAL space (V190): the hand travels toward the
+// aim, the tip rides the hand at the weapon's reach - exactly what the
+// renderer draws. Shared by DrawCharacter and the exported BladeWorld.
+void BladeLocalLine(const Content& content, const Loadout& loadout,
+                    const Pose& pose, Vector3& hand, Vector3& tip) {
+    hand = { 0.42f, 1.15f, 0.15f };
+    tip  = { 0.42f, 1.15f, 1.55f };
+    const int wh = pose.weapon >= 0 ? pose.weapon
+                                    : loadout.get(EquipSlot::Weapon);
+    if (!content.weapons.valid(wh) ||
+        content.weapons[wh].wclass == WeaponClass::Ranged)
+        return;
+    const float reach = content.weapons[wh].reach > 0.5f
+                            ? content.weapons[wh].reach : 1.4f;
+    const Vector3 aim = SwingAim(pose, content.weapons[wh].wclass);
+    hand = Vector3Add(hand, Vector3Scale(Vector3Subtract(aim, hand), 0.30f));
+    tip  = Vector3Add(hand, Vector3Scale(Vector3Normalize(
+                                             Vector3Subtract(aim, hand)),
+                                         reach));
+}
+
 // Blade hilt + tip for a given aim point, along the arm from the hand.
 void BladeLine(const Vector3& aim, Vector3& hilt, Vector3& tip, float reach) {
     const Vector3 hand{ 0.42f, 1.15f, 0.15f };
@@ -146,23 +187,9 @@ void SetCharacterBatcher(LimbSink sink) { g_sink = sink; }
 void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                    const Pose& pose, Color teamTint) {
     const float yaw = pose.yaw;
-    // Mounted swing lean (V181, Warband read): while winding or striking
-    // from the saddle, the whole upper body tilts into the stroke. The lean
-    // is applied INSIDE the local transform, scaled by height, so torso,
-    // head, arms and weapon all angle together while the seat stays planted
-    // - hitboxes read from across the field, for the player and the AI alike.
-    Vector3 lean = { 0, 0, 0 };
-    if (pose.mounted && (pose.windup > 0.0f || pose.swing > 0.0f)) {
-        const int whL = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
-        const WeaponClass wcL = content.weapons.valid(whL)
-                                    ? content.weapons[whL].wclass
-                                    : WeaponClass::OneHanded;
-        const Vector3 aimL = SwingAim(pose, wcL);
-        lean.x = Clamp(aimL.x * 0.24f, -0.48f, 0.48f);
-        lean.z = pose.swing > 0.0f
-                     ? 0.38f * (1.0f - Clamp(pose.swing, 0.0f, 1.0f))
-                     : 0.14f * Clamp(pose.windup, 0.0f, 1.0f);
-    }
+    // Mounted swing lean: computed by the same helper the hitbox uses
+    // (SwingLean, V190) - render and combat cannot drift apart.
+    const Vector3 lean = SwingLean(content, loadout, pose);
     auto at = [&](float r, float u, float f) {
         // 0 at the seat, 1 at the shoulders; capped so hand/blade points
         // above the shoulder line don't over-amplify the tilt (V182).
@@ -317,19 +344,8 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                        wlTip  = {  0.52f, 1.98f, 0.22f }; break; // hanging right
             }
         } else {
-            const int whA = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
-            const Vector3 aim = SwingAim(pose, content.weapons.valid(whA)
-                                                   ? content.weapons[whA].wclass
-                                                   : WeaponClass::OneHanded);   // V181
-            // The hand travels toward the aim point (V143): a cocked
-            // overhead pulls the fist high behind the head, a thrust
-            // coils it back — the arm shows the direction, drastically.
-            wlHand = Vector3Add(wlHand,
-                                Vector3Scale(Vector3Subtract(aim, wlHand), 0.30f));
-            wlTip = Vector3Add(wlHand,
-                               Vector3Scale(Vector3Normalize(
-                                                Vector3Subtract(aim, wlHand)),
-                                            reach));
+            // The swinging blade line, shared with the combat hitbox (V190).
+            BladeLocalLine(content, loadout, pose, wlHand, wlTip);
         }
     }
 
@@ -417,4 +433,20 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
 
     // ---- Team banner accent (small marker above head) ----
     Sph(at(0.0f, 2.2f, 0.0f), 0.07f, R(8), S(8), teamTint);
+}
+
+// The rendered blade in world space (V190): identical lean, identical local
+// blade line, identical height-scaled tilt transform - the combat hitbox IS
+// the model, by construction.
+void BladeWorld(const Content& content, Vector3 feet, const Loadout& loadout,
+                const Pose& pose, Vector3& hiltOut, Vector3& tipOut) {
+    const Vector3 lean = SwingLean(content, loadout, pose);
+    auto at = [&](float r, float u, float f) {
+        const float t = fminf(u / 1.64f, 1.2f);
+        return ToWorld(feet, pose.yaw, r + lean.x * t, u, f + lean.z * t);
+    };
+    Vector3 hand, tip;
+    BladeLocalLine(content, loadout, pose, hand, tip);
+    hiltOut = at(hand.x, hand.y, hand.z);
+    tipOut  = at(tip.x, tip.y, tip.z);
 }

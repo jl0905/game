@@ -2,6 +2,7 @@
 #include "../settings.h"
 #include "../gfx.h"
 #include "../rdr.h"
+#include "../notify.h"
 #include "../battle/character.h"   // roster parade preview (read-only reuse)
 #include "../save.h"
 #include "../sfx.h"
@@ -172,6 +173,14 @@ constexpr int PANEL_HALF = 360, PANEL_W        = 560;
 // 4 bag, 5 ledger, 6 estate, 7 hail, 8 options.
 struct BarHit { int x, w, id; };
 std::vector<BarHit> g_barHits;
+
+// One rail for refusals (V189, user call: no silent buttons EVER). The
+// harness keeps reading resultText; the player reads the notify stack -
+// every refused press says exactly why, in the same place every time.
+void Refuse(GameState& gs, const std::string& msg) {
+    gs.resultText = msg;
+    notify::Push(msg.c_str(), Color{ 255, 208, 120, 255 }, 4.0f);
+}
 
 // The market grid (V146): a GUI shop, not a text list. Draw records every
 // interactive rect here; the gatherer hit-tests them (K7/V27 pattern).
@@ -1828,7 +1837,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
     }
     if (in.quickLoad) {
         if (LoadGame(gs, DefaultSavePath())) { gs.resultText = "Game loaded."; return; }
-        gs.resultText = "No save to load.";
+        Refuse(gs, "No save to load.");
     }
 
     // ---- call your lords to the banner (K5, crowned only) ----
@@ -1837,6 +1846,9 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         gs.lordsRallyPos  = gs.player.pos;
         gs.lordsRallyDays = 3.0f;   // TODO(balance)
         gs.resultText = "Your lords ride to your banner.";
+        notify::Push("Your lords ride to your banner.", GOLD);
+    } else if (in.rallyLords) {
+        Refuse(gs, "Rallying lords takes a crown - claim yours [K] once you hold two settlements.");
     }
 
     // ---- hail a lord on the road (S4): parley with the nearest lord party ----
@@ -1872,8 +1884,8 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
                             : "Well met on the road, captain. Speak.");
             gs.screen = Screen::Dialogue;
         } else {
-            gs.resultText = sawHostile ? "The only lord in hail is an enemy. He talks with steel."
-                                       : "No lord's banner within hail.";
+            Refuse(gs, sawHostile ? "The only lord in hail is an enemy. He talks with steel."
+                                  : "No lord's banner within hail - ride nearer a lord's party.");
         }
     }
 
@@ -1906,7 +1918,7 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.resultText = "YOU CLAIM A CROWN.  Every throne in the land answers with war.";
             SfxPlay(Sfx::Fanfare);
         } else {
-            gs.resultText = "A crown needs a realm: hold two settlements first.";
+            Refuse(gs, "A crown needs a realm: hold two settlements first.");
         }
     }
 
@@ -2074,10 +2086,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
         }
         constexpr int ESTATE_COST = 1000;   // TODO(balance)
         if (near < 0 || bd > 200.0f) {
-            gs.resultText = "An estate needs friendly land - ride nearer a town at peace with you.";
+            Refuse(gs, "An estate needs friendly land - ride nearer a town at peace with you.");
         } else if (gs.gold < ESTATE_COST) {
-            gs.resultText = TextFormat("Founding an estate by %s takes %d gold.",
-                                       gs.towns[near].name.c_str(), ESTATE_COST);
+            Refuse(gs, TextFormat("Founding an estate by %s takes %d gold - you carry %d.",
+                                  gs.towns[near].name.c_str(), ESTATE_COST, gs.gold));
         } else {
             gs.gold -= ESTATE_COST;
             gs.estateTown = near;
@@ -3436,6 +3448,10 @@ void CampaignUpdate(GameState& gs, float dt, const CampaignInput& in) {
             gs.screen = Screen::Battle;
             return;
         }
+    } else if (in.joinSide != 0 && nearSkirmish < 0) {
+        Refuse(gs, "No skirmish within reach - ride toward the crossed blades first.");
+    } else if (in.joinSide != 0) {
+        Refuse(gs, "Your warband cannot take the field right now.");
     }
 }
 
@@ -4224,6 +4240,7 @@ void CampaignDraw(const GameState& gs) {
                             gs.mercDays, gs.parties[gs.mercParty].totalTroops()),
                  10, 94, 19, GOLD);
 
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -4533,6 +4550,7 @@ void InventoryDraw(const GameState& gs) {
         }
     }
 
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -4643,9 +4661,11 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
                     gs.towns[to].name.c_str(), CARAVAN_OUTFIT,
                     gs.parties.back().cargoCost);
                 SfxPlay(Sfx::Click);
+            } else {
+                Refuse(gs, "No market at peace with your banner will take a caravan right now.");
             }
         } else {
-            gs.resultText = "Outfitting a caravan costs 200 gold.";
+            Refuse(gs, "Outfitting a caravan costs 200 gold.");
         }
     }
 
@@ -4667,6 +4687,11 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
             gs.gold -= in.bankMove;
             gs.resultText = TextFormat("Withdrew 100. %s holds %d of yours.",
                                        t.name.c_str(), acct);
+        } else if (in.bankMove > 0) {
+            Refuse(gs, "Deposits move in hundreds - you carry less than 100 gold.");
+        } else {
+            Refuse(gs, TextFormat("%s holds less than 100 of yours to withdraw.",
+                                  t.name.c_str()));
         }
     }
 
@@ -4679,10 +4704,11 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
         int& lvl = gs.landAt[gs.currentSettlement];
         const int cost = 400 * (lvl + 1);   // TODO(balance)
         if (lvl >= 3)
-            gs.resultText = TextFormat("You already hold every parcel around %s.",
-                                       t.name.c_str());
+            Refuse(gs, TextFormat("You already hold every parcel around %s.",
+                                  t.name.c_str()));
         else if (gs.gold < cost)
-            gs.resultText = TextFormat("The next parcel here runs %d gold.", cost);
+            Refuse(gs, TextFormat("The next parcel here runs %d gold - you carry %d.",
+                                  cost, gs.gold));
         else {
             gs.gold -= cost;
             lvl++;
@@ -4708,13 +4734,16 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
                 gs.enterpriseAt[gs.currentSettlement] = kind;
                 gs.resultText = TextFormat("You now own the %s of %s.",
                                            e.name.c_str(), t.name.c_str());
+            } else {
+                Refuse(gs, TextFormat("The %s costs %d gold - you carry %d.",
+                                      e.name.c_str(), e.cost, gs.gold));
             }
         } else if (gs.enterpriseLvl[gs.currentSettlement] < 2) {
             // Expand it (V49): the same B, sunk again, doubles the take.
             const EnterpriseDef& e = c.enterprises[owned];
             if (gs.gold < e.cost)
-                gs.resultText = TextFormat("Expanding the %s costs %d gold.",
-                                           e.name.c_str(), e.cost);
+                Refuse(gs, TextFormat("Expanding the %s costs %d gold.",
+                                      e.name.c_str(), e.cost));
             else {
                 gs.gold -= e.cost;
                 gs.enterpriseLvl[gs.currentSettlement] = 2;
@@ -4724,8 +4753,10 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
                 SfxPlay(Sfx::Fanfare);
             }
         } else {
-            gs.resultText = "The works run at full stretch already.";
+            Refuse(gs, "The works run at full stretch already.");
         }
+    } else if (in.buyEnterprise) {
+        Refuse(gs, "Enterprises are town works - this village has none to sell.");
     }
 
     // The loan (V84): borrow against your name, or clear the slate.
@@ -4739,9 +4770,9 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
                 gs.debt = 0;
                 gs.debtDays = 0;
             } else {
-                gs.resultText = TextFormat(
+                Refuse(gs, TextFormat(
                     "You owe %d and carry %d. The lender waits (%.0f days).",
-                    gs.debt, gs.gold, gs.debtDays);
+                    gs.debt, gs.gold, gs.debtDays));
             }
         } else {
             gs.gold += 300;
@@ -4750,15 +4781,18 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
             gs.resultText =
                 "The moneylender counts out 300. He wants 350 within ten days.";
         }
+    } else if (in.loan) {
+        Refuse(gs, "Moneylenders keep to the towns.");
     }
 
     // The destrier (V82): one horse, once, for life. TODO(balance): price.
     if (in.buyWarhorse && t.type == SettlementType::Town) {
         constexpr int WARHORSE_COST = 200;
         if (gs.warhorse)
-            gs.resultText = "You already ride the finest horse gold can buy.";
+            Refuse(gs, "You already ride the finest horse gold can buy.");
         else if (gs.gold < WARHORSE_COST)
-            gs.resultText = TextFormat("A destrier costs %d gold.", WARHORSE_COST);
+            Refuse(gs, TextFormat("A destrier costs %d gold - you carry %d.",
+                                  WARHORSE_COST, gs.gold));
         else {
             gs.gold -= WARHORSE_COST;
             gs.warhorse = true;
@@ -4766,6 +4800,8 @@ void MarketUpdate(GameState& gs, const CampaignInput& in) {
             Chronicle(gs, "Bought a destrier.");
             SfxPlay(Sfx::Gallop, 0.8f);
         }
+    } else if (in.buyWarhorse) {
+        Refuse(gs, "Horse dealers keep to the towns.");
     }
 
     if (in.leaveSettlement) gs.screen = Screen::Settlement;   // back to the streets
@@ -4979,6 +5015,7 @@ void MarketDraw(const GameState& gs) {
         }
     }
 
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -5083,6 +5120,7 @@ void SettingsDraw(const GameState& gs) {
 
     ui::Text("Window size lives in assets/settings.cfg (takes effect on restart).",
              x, y + 20, 18, Fade(RAYWHITE, 0.55f));
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -5284,6 +5322,7 @@ void PartyDraw(const GameState& gs) {
     }
     ui::Text("[1-9 / click] promote one (20 gold)    [Shift / right-click] dismiss one    [Esc / P] back",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -5346,6 +5385,7 @@ void VictoryDraw(const GameState& gs) {
     const char* t3 = "[Esc]  Return to the title";
     ui::Text(t3, (w - ui::Measure(t3, 24)) / 2, GetScreenHeight() - 60, 24,
              Fade(RAYWHITE, 0.8f));
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -5646,6 +5686,7 @@ void KingdomDraw(const GameState& gs) {
 
     ui::Text("[Esc / B] close the book", lx, GetScreenHeight() - 44, 20,
              Fade(RAYWHITE, 0.7f));
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -5689,6 +5730,9 @@ void QuestsUpdate(GameState& gs, const CampaignInput& in) {
         gs.questProgress = 0;
         gs.questDays     = 0;
         gs.resultText = "You lay the task down. Word of it will travel.";
+        notify::Push("Task abandoned. Word of it will travel.", ORANGE);
+    } else if (in.menuChoice == 1) {
+        Refuse(gs, "No task to lay down - the journal is empty.");
     }
     if (in.leaveSettlement) gs.screen = Screen::Campaign;
 }
@@ -5763,6 +5807,7 @@ void QuestsDraw(const GameState& gs) {
         ui::Text(e.c_str(), x, y, 19, col);
         y += 26;
     }
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -5935,12 +5980,14 @@ void ParleyDraw(const GameState& gs) {
                  x, y + 14, 19, Fade(RAYWHITE, 0.6f));
         if (!gs.resultText.empty())
             ui::Text(gs.resultText.c_str(), x, y + 44, 19, GOLD);
-        rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
+        notify::Draw();           // the one message rail (V189)
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
         EndDrawing();
         return;
     }
     if (gs.battlePartyIndex < 0 || gs.battlePartyIndex >= (int)gs.parties.size()) {
-        rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
+        notify::Draw();           // the one message rail (V189)
+    rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
         return;
     }
@@ -5976,6 +6023,7 @@ void ParleyDraw(const GameState& gs) {
     ui::Text("[Esc] words fail - fight", x, y + 14, 18, Fade(RAYWHITE, 0.6f));
     if (!gs.resultText.empty())
         ui::Text(gs.resultText.c_str(), x, y + 44, 19, GOLD);
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -6049,6 +6097,7 @@ void EstateDraw(const GameState& gs) {
     }
     if (!gs.resultText.empty())
         ui::Text(gs.resultText.c_str(), x, y + 16, 19, GOLD);
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -6078,6 +6127,7 @@ void LoadMenuDraw(const GameState& gs) {
     row(4, "Slot 3", SaveSlotPath(3));
     ui::Text("[Esc] back      (save on the map with F5 / F6 / F7)",
              w / 2 - 250, y + 16, 18, Fade(RAYWHITE, 0.6f));
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -6126,6 +6176,7 @@ void TitleDraw(const GameState& gs) {
     option("[L]  Load Game", RAYWHITE);
     option("[Esc]  Quit", Fade(RAYWHITE, 0.8f));
 
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -6202,6 +6253,7 @@ void BackgroundDraw(const GameState& gs) {
            "+400 gold, 10 sacks of grain, +1 honor");
     option("[3]  A deserter",
            "3 brigands at your back, -150 gold, the patrols' suspicion");
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
@@ -6285,6 +6337,7 @@ void CharacterDraw(const GameState& gs) {
 
     ui::Text("[1-4 / click a row] spend a point    [Esc / C] back to the map",
              panelX, GetScreenHeight() - 48, 20, Fade(RAYWHITE, 0.7f));
+    notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }
