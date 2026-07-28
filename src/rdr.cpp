@@ -79,6 +79,12 @@ Matrix CapSphere(Vector3 p, float r) {
     return MatrixMultiply(MatrixScale(r * 2.0f, r * 2.0f, r * 2.0f),
                           MatrixTranslate(p.x, p.y, p.z));
 }
+// V191: shaft-end caps are drawn a hair OVER-size. At exactly r the
+// cylinder's rim circle lies tangentially ON the sphere surface, and the
+// two meshes (different tessellations) z-fight in a shimmering ring at
+// every pill's shoulder seam. At 1.03r the sphere cleanly overlaps the
+// shaft near the seam — no coplanar polygons, no ring.
+constexpr float CAP_OVERLAP = 1.03f;
 }  // namespace
 
 // V185: a TRUE capsule (user call: "pills are cylindrical except the top
@@ -94,8 +100,8 @@ void PushPill(Vector3 a, Vector3 b, float r, Color c) {
         return;
     }
     g_cyls[Key(c)].push_back(OrientedFrame(a, b, r * 2.0f, len));
-    g_pills[Key(c)].push_back(CapSphere(a, r));
-    g_pills[Key(c)].push_back(CapSphere(b, r));
+    g_pills[Key(c)].push_back(CapSphere(a, r * CAP_OVERLAP));
+    g_pills[Key(c)].push_back(CapSphere(b, r * CAP_OVERLAP));
 }
 
 // V180: skinned pushes — same transforms, uint64 colour|skin buckets. The
@@ -125,8 +131,8 @@ void PushPillSkinned(Vector3 a, Vector3 b, float r, Color c, int skin) {
     }
     // True capsule (V185): skinned shaft + skinned round caps.
     g_skinCyls[Key64(c, skin)].push_back(OrientedFrame(a, b, r * 2.0f, len));
-    g_skinPills[Key64(c, skin)].push_back(CapSphere(a, r));
-    g_skinPills[Key64(c, skin)].push_back(CapSphere(b, r));
+    g_skinPills[Key64(c, skin)].push_back(CapSphere(a, r * CAP_OVERLAP));
+    g_skinPills[Key64(c, skin)].push_back(CapSphere(b, r * CAP_OVERLAP));
 }
 
 void FlushRaylib(const RaylibInstancedState& st) {

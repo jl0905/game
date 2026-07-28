@@ -2093,6 +2093,10 @@ void HeroBladeContact(const Content& c) {
                                LoadoutArmor(c, TroopLoadout(c, s.troop)));
         const float before = dmg;
         dmg = ShieldSoak(c, vi, s, (int)B.attackDir, dmg);
+        // Blocked-hit feedback (V191, user ask): steel caught on shield-WOOD
+        // knocks, steel parried on a BLADE rings — you hear which defence
+        // just ate your swing.
+        const bool woodBlocked = dmg < before;
         if (s.guard && !(HasShield(c, s) && s.shieldHp > 0) &&
             Vector3DotProduct(
                 Vector3Normalize(Vector3Subtract(B.pPos, s.pos)),
@@ -2105,9 +2109,9 @@ void HeroBladeContact(const Content& c) {
                 s.guardDir = (int)B.attackDir;   // learns the line
             }
         }
-        if (dmg < before) {
+        if (woodBlocked) {
             SpawnSparks(s.pos);
-            SfxPlay(Sfx::Clang, 0.6f);
+            SfxPlay(Sfx::Wood, 0.9f);
             B.soakFlash = 1.0f;   // name those sparks (U5)
         }
         if (dmg > 0.5f)
@@ -3076,7 +3080,9 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
             if (B.blocking) SpawnSparks(B.pPos);   // steel meets shield
             else            SpawnBlood(B.pPos);
             B.shake = fminf(1.0f, B.shake + (B.blocking ? 0.25f : 0.6f));
-            SfxPlay(B.blocking ? Sfx::Clang : Sfx::Thud);
+            // V191: your own shield speaks wood too; a bare-blade parry rings.
+            SfxPlay(B.blocking ? (HeroHasShield(c) ? Sfx::Wood : Sfx::Clang)
+                               : Sfx::Thud);
         }
 
         // Keep living soldiers sitting on the terrain surface (they moved in
@@ -3159,7 +3165,10 @@ bool BattleUpdate(const Content& c, float dt, const BattleInput& in, BattleOutco
                         SpawnBlood(B.pPos);
                     }
                     B.shake = fminf(1.0f, B.shake + 0.35f);
-                    SfxPlay(B.blocking ? Sfx::Clang : Sfx::Thud);
+                    // V191: an arrow thocking into shield-wood, not ringing.
+                    SfxPlay(B.blocking
+                                ? (HeroHasShield(c) ? Sfx::Wood : Sfx::Clang)
+                                : Sfx::Thud);
                     a.alive = false;
                 }
             }

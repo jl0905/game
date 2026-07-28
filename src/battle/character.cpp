@@ -38,10 +38,6 @@ void Cyl(Vector3 a, Vector3 b, float r0, float r1, int sl, Color c) {
     if (Batched()) { g_sink(a, b, r0 > r1 ? r0 : r1, c); return; }
     DrawCylinderEx(a, b, r0, r1, sl, c);
 }
-void Sph(Vector3 p, float r, int ri, int sl, Color c) {
-    if (Batched()) { g_sink(p, p, r, c); return; }
-    DrawSphereEx(p, r, ri, sl, c);
-}
 // An axis-agnostic box (V149): the one-box body. Batched it rides the sink
 // (vertical extent as the a→b axis); direct it is a plain DrawCube — the
 // cheapest primitive raylib has.
@@ -275,9 +271,12 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                  0.30f, bodyOne, bodySkin);
             // The head: a sphere; a helm simply makes it a bit bigger and
             // wears the helm's tint — silhouette stays one round shape.
+            // Identical endpoints take PushPill's degenerate single-sphere
+            // path (V191): the old +0.001 axis sat exactly ON the < 0.001
+            // cutoff, emitting TWO coincident cap spheres that z-fought.
             const float hr = hasHelm ? 0.26f : 0.23f;   // reads over the thick body
-            rdr::PushPill(at(0.0f, 1.86f, 0.0f), at(0.0f, 1.86f + 0.001f, 0.0f),
-                          hr, headC);
+            const Vector3 headAt = at(0.0f, 1.86f, 0.0f);
+            rdr::PushPill(headAt, headAt, hr, headC);
         } else {
             // BOXY: one prism, boots to shoulders, and a head box.
             rdr::PushOrientedBoxSkinned(at(rock * 0.5f, 0.0f, 0.0f),
@@ -431,8 +430,10 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
         }
     }
 
-    // ---- Team banner accent (small marker above head) ----
-    Sph(at(0.0f, 2.2f, 0.0f), 0.07f, R(8), S(8), teamTint);
+    // The old floating team-marker sphere above the head is GONE (V191):
+    // with every tier batched (V184) it rendered as a hovering CUBE, and
+    // team identity already lives in the body tint and the plume.
+    (void)teamTint;
 }
 
 // The rendered blade in world space (V190): identical lean, identical local

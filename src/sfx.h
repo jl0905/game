@@ -5,7 +5,8 @@
 // All calls are safe headless (no audio device = silent no-ops).
 // ---------------------------------------------------------------------------
 
-enum class Sfx { Thud, Clang, Loose, Swing, Gallop, Click, Fanfare, Knell, WarCry };
+enum class Sfx { Thud, Clang, Loose, Swing, Gallop, Click, Fanfare, Knell, WarCry,
+                 Wood };   // V191: a blow eaten by shield-wood — blocked-hit feedback
 
 void SfxInit();       // call once after InitWindow (opens the audio device)
 void SfxShutdown();

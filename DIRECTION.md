@@ -2163,3 +2163,19 @@ over two half-features.
   the easy-to-miss top-left line to the rail; new "When a button
   refuses" manual page (27 pages). 139/139 green, render parity
   GL 4.46 / VK 4.62 ms.
+
+- [x] **V190. Iteration one-ninety — clean models, honest wood.** (user
+  bugs) (1) The hovering blue CUBE above every fighter is gone: the
+  old team-marker sphere rendered through the V184 all-tiers limb
+  batcher, whose only primitive is a box — marker removed outright
+  (team identity lives in the body tint and plume). (2) Pill-model
+  z-fighting fixed twice over: the head's +0.001 axis sat exactly ON
+  PushPill's < 0.001 degenerate cutoff, emitting TWO coincident cap
+  spheres that shimmered — now a true single sphere; and every
+  capsule's shaft-rim circle lay tangentially ON its cap-sphere
+  surface, z-fighting in a ring at the seam — caps now drawn 1.03x
+  so they cleanly overlap the shaft (both GL and Vulkan, same
+  recorded matrices). (3) Sfx::Wood, a hollow shield-knock voice:
+  plays when your swing or an arrow is eaten by shield-wood — yours
+  or theirs — while bare-blade parries keep the steel Clang; you
+  hear WHICH defence ate the blow. Bench 800 men 7.44 ms avg.

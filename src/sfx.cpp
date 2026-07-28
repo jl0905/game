@@ -21,7 +21,7 @@
 namespace {
 
 constexpr int   RATE   = 22050;
-constexpr int   NSFX   = 9;
+constexpr int   NSFX   = 10;
 Sound  g_sounds[NSFX] = {};
 double g_lastPlay[NSFX] = {};
 Sound  g_wind = {};
@@ -38,7 +38,7 @@ bool   g_ready = false;
 constexpr double MIN_GAP[NSFX] = {
     /*Thud*/ 0.07, /*Clang*/ 0.08, /*Loose*/ 0.06, /*Swing*/ 0.09,
     /*Gallop*/ 0.25, /*Click*/ 0.08, /*Fanfare*/ 0.80, /*Knell*/ 0.50,
-    /*WarCry*/ 0.60,
+    /*WarCry*/ 0.60, /*Wood*/ 0.07,
 };
 
 // Global voice budget (V145): a ring of recent play timestamps. Past
@@ -195,6 +195,16 @@ void SfxInit() {
         lp += (Noise() - lp) * 0.12f;
         const float voice = sinf(2 * PI * (95.0f + 9.0f * sinf(2 * PI * 5.0f * t)) * t);
         return lp * 1.0f + voice * 0.35f * env;
+    });
+    // Wood (V191): a blade caught on shield-wood — a hollow knock, two dull
+    // woody partials over a thick noise chock, dead in a tenth of a second.
+    // Unmistakably NOT the Clang: this is the "he blocked it" voice.
+    g_sounds[(int)Sfx::Wood] = Synth(0.13f, 950.0f, [](float t) {
+        const float env = expf(-t * 38.0f);
+        const float knock = t < 0.008f ? Noise() * 1.2f : 0.0f;
+        return (sinf(2 * PI * 172.0f * t) * 0.55f +
+                sinf(2 * PI * 411.0f * t) * 0.30f +   // hollow body resonance
+                Noise() * 0.35f + knock) * env;
     });
     // Wind bed: slow-breathing low noise.
     g_wind = Synth(2.0f, 500.0f, [](float t) {
