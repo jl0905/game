@@ -2116,3 +2116,15 @@ over two half-features.
   (shadow + skin passes included), the body is thicker (r 0.38), and
   the floating plume cube above heads is gone - body and head only.
   Suite 138/138; smoke green; GL 5.9ms / VK 6.1ms at 600.
+
+- [x] **V186. Iteration one-eighty-six — the benchmark grows up (and the pill default actually sticks).**
+  --bench modernized to the current stack: the hero fights in the top
+  troop's real kit, every troop type is on the clock (AI, arrows,
+  cavalry, ragdolls), bench.txt lines now carry p50 plus the exact
+  config measured (renderer/bodystyle/shadows/postfx — appended, so
+  old parsers keep working), and --bench sweep runs the standard
+  300/600/1000/2000-a-side ladder in one go. The new config field
+  immediately caught a real bug: the committed settings.cfg still
+  said bodystyle boxy (a test runner's cleanup had restored a stale
+  copy over the V183 migration) — why soldiers still looked
+  rectangly. Fixed and committed everywhere. 138/138 green.

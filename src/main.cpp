@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <numeric>
+#include <string>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -29,13 +30,20 @@
 
 namespace {
 
-// ---- render benchmark (--bench N): N-vs-N synthetic battle, uncapped FPS ----
-int RunBench(int perSide, Vector2 where) {
-    if (perSide <= 0) perSide = 300;
-    SetConfigFlags(FLAG_MSAA_4X_HINT);          // no vsync: measure real speed
-    InitWindow(1280, 720, "OpenWarband bench");
-    SetTargetFPS(0);
+// ---- render benchmark (V186 modernization) --------------------------------
+// `--bench N [x y]` measures one N-vs-N battle; `--bench sweep` measures the
+// standard ladder (300/600/1000/2000 a side) in one run. The whole modern
+// stack is exercised and REPORTED: renderer backend, body style, shadows,
+// post fx, armour skins, full soldier AI + physics. The hero wears the top
+// troop's real loadout so weapon/armour paths are hot, and each line in
+// bench.txt now carries the config it was measured under (fields appended -
+// existing avg_ms/p99 parsers keep working).
+struct BenchRow {
+    int soldiers, frames;
+    float avg, p50, p99;
+};
 
+BenchRow BenchOne(int perSide, Vector2 where) {
     GameState gs;
     LoadDefaultContent(gs.content);
     GetSettings().battleSize = 1e6f;   // the bench measures ALL of them (V75)
@@ -43,18 +51,23 @@ int RunBench(int perSide, Vector2 where) {
     BattleSetup s;
     s.playerTroops.assign(gs.content.troops.size(), 0);
     s.enemyTroops.assign(gs.content.troops.size(), 0);
-    // Mixed composition; exact mix is irrelevant to rendering cost.
+    // Mixed composition across every troop type - infantry, archers and
+    // cavalry all present so AI, arrows and horses are all on the clock.
     for (int t = 0; t < gs.content.troops.size(); ++t) {
         s.playerTroops[t] = perSide / gs.content.troops.size();
         s.enemyTroops[t]  = perSide / gs.content.troops.size();
     }
-    Character hero;   // default loadout-less hero; battle handles it
+    // The hero fights in the top troop's REAL kit (armour skin tiers, arsenal
+    // swaps and the whole loadout render path get measured, not skipped).
+    Character hero;
+    if (gs.content.troops.size() > 0)
+        hero.loadout = gs.content.troops[gs.content.troops.size() - 1].loadout;
     s.heroLoadout = hero.loadout;
     s.heroMaxHp   = 1000000;          // don't die mid-benchmark
     s.campaignPos = where;            // fixed spot -> deterministic terrain
     BattleInit(gs.content, s);
 
-    const int WARMUP = 60, FRAMES = 600;
+    const int WARMUP = 90, FRAMES = 600;
     std::vector<float> ms;
     ms.reserve(FRAMES);
     for (int i = 0; i < WARMUP + FRAMES && !WindowShouldClose(); ++i) {
@@ -65,17 +78,46 @@ int RunBench(int perSide, Vector2 where) {
         BattleDraw(gs.content);
         if (i >= WARMUP) ms.push_back((float)((GetTime() - t0) * 1000.0));
     }
-    CloseWindow();
 
     std::sort(ms.begin(), ms.end());
-    const float avg = std::accumulate(ms.begin(), ms.end(), 0.0f) / (float)ms.size();
-    const float p99 = ms[(size_t)((float)ms.size() * 0.99f)];
+    BenchRow r;
+    r.soldiers = perSide * 2;
+    r.frames   = (int)ms.size();
+    r.avg = std::accumulate(ms.begin(), ms.end(), 0.0f) / (float)ms.size();
+    r.p50 = ms[ms.size() / 2];
+    r.p99 = ms[(size_t)((float)ms.size() * 0.99f)];
+    return r;
+}
+
+int RunBench(int perSide, Vector2 where, bool sweep) {
+    SetConfigFlags(FLAG_MSAA_4X_HINT);          // no vsync: measure real speed
+    InitWindow(1280, 720, "OpenWarband bench");
+    SetTargetFPS(0);
+
+    const Settings& st = GetSettings();
+    const std::string cfg = TextFormat(
+        "renderer=%s bodystyle=%s shadows=%s postfx=%s",
+        st.renderer == 1 ? "vulkan" : "raylib",
+        st.bodyStyle == 2 ? "pill" : st.bodyStyle == 1 ? "blocky" : "boxy",
+        st.shadows ? "on" : "off", st.postFx ? "on" : "off");
+
     FILE* f = std::fopen("bench.txt", "w");
-    if (f) {
-        std::fprintf(f, "soldiers=%d frames=%d avg_ms=%.2f p99_ms=%.2f avg_fps=%.0f\n",
-                     perSide * 2, (int)ms.size(), avg, p99, 1000.0f / avg);
-        std::fclose(f);
+    const int ladder[] = { 300, 600, 1000, 2000 };
+    for (const int n : sweep ? std::vector<int>(ladder, ladder + 4)
+                             : std::vector<int>{ perSide > 0 ? perSide : 300 }) {
+        const BenchRow r = BenchOne(n, where);
+        if (f) {
+            std::fprintf(f,
+                         "soldiers=%d frames=%d avg_ms=%.2f p99_ms=%.2f "
+                         "avg_fps=%.0f p50_ms=%.2f %s\n",
+                         r.soldiers, r.frames, r.avg, r.p99, 1000.0f / r.avg,
+                         r.p50, cfg.c_str());
+            std::fflush(f);
+        }
+        if (WindowShouldClose()) break;
     }
+    if (f) std::fclose(f);
+    CloseWindow();
     return 0;
 }
 
@@ -91,7 +133,8 @@ int main(int argc, char** argv) {
         Vector2 where = { 500, 500 };
         if (argc >= 5) where = { (float)std::atof(argv[3]), (float)std::atof(argv[4]) };
         LoadSettings();   // honour renderer/shadows/postfx in the measurement
-        return RunBench(std::atoi(argv[2]), where);
+        const bool sweep = std::strcmp(argv[2], "sweep") == 0;   // V186 ladder
+        return RunBench(sweep ? 0 : std::atoi(argv[2]), where, sweep);
     }
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
