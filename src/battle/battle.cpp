@@ -1557,8 +1557,14 @@ Mesh BuildUnitCylinder() {
     m.vertexCount   = m.triangleCount * 3;
     m.vertices = (float*)MemAlloc((unsigned)m.vertexCount * 3 * sizeof(float));
     m.normals  = (float*)MemAlloc((unsigned)m.vertexCount * 3 * sizeof(float));
+    // V190: texcoords, wrapped once around and 0..1 down the barrel. Without
+    // them the instancing shader sampled the armour atlas at one fixed texel,
+    // so a skinned capsule rendered PATTERNED caps around a FLAT shaft — the
+    // visible "three materials" body. (Vulkan was never affected: its skin
+    // shader derives object-space UVs in the vertex stage.)
+    m.texcoords = (float*)MemAlloc((unsigned)m.vertexCount * 2 * sizeof(float));
     int k = 0;
-    auto emit = [&](float ang, float y) {
+    auto emit = [&](float ang, float y, float u) {
         const float nx = cosf(ang), nz = sinf(ang);
         m.vertices[k * 3 + 0] = nx * 0.5f;
         m.vertices[k * 3 + 1] = y;
@@ -1566,12 +1572,15 @@ Mesh BuildUnitCylinder() {
         m.normals[k * 3 + 0] = nx;
         m.normals[k * 3 + 1] = 0.0f;
         m.normals[k * 3 + 2] = nz;
+        m.texcoords[k * 2 + 0] = u;
+        m.texcoords[k * 2 + 1] = 0.5f - y;
         ++k;
     };
     for (int i = 0; i < SL; ++i) {
         const float a0 = 2.0f * PI * i / SL, a1 = 2.0f * PI * (i + 1) / SL;
-        emit(a0, -0.5f); emit(a0, 0.5f); emit(a1, 0.5f);
-        emit(a0, -0.5f); emit(a1, 0.5f); emit(a1, -0.5f);
+        const float u0 = (float)i / SL, u1 = (float)(i + 1) / SL;
+        emit(a0, -0.5f, u0); emit(a0, 0.5f, u0); emit(a1, 0.5f, u1);
+        emit(a0, -0.5f, u0); emit(a1, 0.5f, u1); emit(a1, -0.5f, u1);
     }
     UploadMesh(&m, false);
     return m;

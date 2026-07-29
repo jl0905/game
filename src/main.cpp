@@ -121,12 +121,66 @@ int RunBench(int perSide, Vector2 where, bool sweep) {
     return 0;
 }
 
+// ---- frame capture (V190 verification) ------------------------------------
+// `--shots N dir [x y]` runs the same N-vs-N battle the bench does, windowed,
+// and exports screenshot PAIRS of consecutive frames at a fixed cadence into
+// `dir` (shot_F.png, shot_F+1.png). Consecutive pairs are what make temporal
+// artifacts (z-fighting shimmer) visible offline: a stable seam renders
+// identically twice, a fighting one flickers between the frames. The hero
+// raises the guard for the tail third so the block pose is captured too.
+int RunShots(int perSide, const char* dir, Vector2 where) {
+    InitWindow(1280, 720, "OpenWarband shots");
+    SetTargetFPS(0);
+
+    GameState gs;
+    LoadDefaultContent(gs.content);
+    GetSettings().battleSize = 1e6f;
+
+    BattleSetup s;
+    s.playerTroops.assign(gs.content.troops.size(), 0);
+    s.enemyTroops.assign(gs.content.troops.size(), 0);
+    for (int t = 0; t < gs.content.troops.size(); ++t) {
+        s.playerTroops[t] = perSide / gs.content.troops.size();
+        s.enemyTroops[t]  = perSide / gs.content.troops.size();
+    }
+    Character hero;
+    if (gs.content.troops.size() > 0)
+        hero.loadout = gs.content.troops[gs.content.troops.size() - 1].loadout;
+    s.heroLoadout = hero.loadout;
+    s.heroMaxHp   = 1000000;
+    s.campaignPos = where;
+    BattleInit(gs.content, s);
+
+    const int TOTAL = 900, EVERY = 60;
+    for (int i = 0; i < TOTAL && !WindowShouldClose(); ++i) {
+        BattleInput in{};
+        in.block = i >= TOTAL * 2 / 3;   // capture the raised-guard pose too
+        BattleOutcome out;
+        BattleUpdate(gs.content, 1.0f / 60.0f, in, out);
+        BattleDraw(gs.content);
+        if (i % EVERY == 0 || i % EVERY == 1) {   // consecutive pair
+            Image shot = LoadImageFromScreen();
+            ExportImage(shot, TextFormat("%s/shot_%04d.png", dir, i));
+            UnloadImage(shot);
+        }
+    }
+    CloseWindow();
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
     // Headless scripted mode: no window, same simulation.
     if (argc >= 3 && std::strcmp(argv[1], "--script") == 0)
         return RunScript(argv[2]);
+    // Frame capture for visual verification (V190): see RunShots above.
+    if (argc >= 4 && std::strcmp(argv[1], "--shots") == 0) {
+        Vector2 where = { 500, 500 };
+        if (argc >= 6) where = { (float)std::atof(argv[4]), (float)std::atof(argv[5]) };
+        LoadSettings();
+        return RunShots(std::atoi(argv[2]), argv[3], where);
+    }
     // Render benchmark: N-vs-N battle, uncapped FPS, results to bench.txt.
     // Optional trailing "x y" picks the battlefield spot (terrain/weather).
     if (argc >= 3 && std::strcmp(argv[1], "--bench") == 0) {

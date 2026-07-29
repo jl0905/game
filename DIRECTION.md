@@ -2179,3 +2179,16 @@ over two half-features.
   plays when your swing or an arrow is eaten by shield-wood — yours
   or theirs — while bare-blade parries keep the steel Clang; you
   hear WHICH defence ate the blow. Bench 800 men 7.44 ms avg.
+
+- [x] **V191. Iteration one-ninety-one — seen with our own eyes.** A
+  `--shots N dir` capture mode: the bench battle, windowed, exporting
+  consecutive-frame screenshot PAIRS (temporal artifacts like z-fights
+  flicker between two frames of a static scene; the pose script raises
+  the guard for the tail third). Used it to verify V190 A/B against a
+  pre-fix worktree build: blue head-cube present in old frames, gone in
+  new; per-pair pixel-diff over the hero region flat. The captures also
+  CAUGHT a real bug the numbers missed: the hand-built GL capsule-shaft
+  cylinder had no texcoords, so a skinned body drew PATTERNED atlas
+  caps around a FLAT one-texel shaft — the "weird middle of the pill".
+  Texcoords added (wrap-once u, 0..1 v); body reads as one material.
+  Vulkan was never affected (object-space UVs in boxskin.vert).
