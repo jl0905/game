@@ -6,6 +6,7 @@
 // clash), so the few raylib calls used here are declared by hand.
 extern "C" bool IsWindowReady(void);
 extern "C" void TraceLog(int logLevel, const char* text, ...);
+extern "C" void* GetWindowHandle(void);   // V198: the HWND the overlay covers
 enum { RL_LOG_INFO = 3, RL_LOG_WARNING = 4 };
 
 // ---------------------------------------------------------------------------
@@ -20,6 +21,7 @@ enum { RL_LOG_INFO = 3, RL_LOG_WARNING = 4 };
 // ---------------------------------------------------------------------------
 #if defined(_WIN32)
 #define VK_NO_PROTOTYPES
+#define VK_USE_PLATFORM_WIN32_KHR   // V198: Win32 surface + swapchain types
 #include <windows.h>
 #include <vulkan/vulkan.h>
 #include <stdio.h>
@@ -86,6 +88,23 @@ struct VkExec {
     bool submitted[2] = {};
     int frame = 0;
     int lastSubmit = -1;   // V197: slot of the not-yet-resolved submission
+    // V198: the native swapchain present target - a hit-test-transparent
+    // child window over the game's client area, with its own surface,
+    // swapchain and per-image framebuffers. nativeFailed gates the whole
+    // road; any error falls back to the readback bridge for good.
+    bool nativeFailed = false, nativeVisible = false, dumpNative = false;
+    HWND parentWnd = NULL, childWnd = NULL;
+    VkSurfaceKHR surf = VK_NULL_HANDLE;
+    VkSwapchainKHR swap = VK_NULL_HANDLE;
+    int swW = 0, swH = 0;
+    uint32_t swCount = 0;
+    VkImage swImages[8] = {};
+    VkSemaphore semAcq = VK_NULL_HANDLE, semRen = VK_NULL_HANDLE;
+    VkPipeline meshColorPipe = VK_NULL_HANDLE;   // terrain COLOR (native)
+    VkBuffer natUiBuf[2] = {};        // per-slot sky+HUD vert streams
+    VkDeviceMemory natUiMem[2] = {};
+    void* natUiMap[2] = {};
+    int natUiCap[2] = {};
     VkCommandPool pool = VK_NULL_HANDLE;
     // terrain occluder (V164): depth-only static mesh
     VkPipeline meshPipe = VK_NULL_HANDLE;
@@ -169,7 +188,18 @@ void BootDevice() {
     app.apiVersion = VK_API_VERSION_1_2;
     VkInstanceCreateInfo ici = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     ici.pApplicationInfo = &app;
-    if (createInstance(&ici, NULL, &g_vk.inst) != VK_SUCCESS) return;
+    // V198: surface extensions for the native swapchain present. If the
+    // loader refuses them (headless RDP session etc.) boot without - the
+    // readback bridge still works, only native present is off the table.
+    const char* iext[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+    ici.enabledExtensionCount = 2;
+    ici.ppEnabledExtensionNames = iext;
+    if (createInstance(&ici, NULL, &g_vk.inst) != VK_SUCCESS) {
+        g_vk.nativeFailed = true;
+        ici.enabledExtensionCount = 0;
+        ici.ppEnabledExtensionNames = NULL;
+        if (createInstance(&ici, NULL, &g_vk.inst) != VK_SUCCESS) return;
+    }
 
     IFN(vkEnumeratePhysicalDevices);
     IFN(vkGetPhysicalDeviceProperties);
@@ -213,7 +243,19 @@ void BootDevice() {
     VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
-    if (vkCreateDevice(g_vk.phys, &dci, NULL, &g_vk.dev) != VK_SUCCESS) return;
+    // V198: the swapchain extension rides along unless surfaces failed.
+    const char* dext[] = { "VK_KHR_swapchain" };
+    if (!g_vk.nativeFailed) {
+        dci.enabledExtensionCount = 1;
+        dci.ppEnabledExtensionNames = dext;
+    }
+    if (vkCreateDevice(g_vk.phys, &dci, NULL, &g_vk.dev) != VK_SUCCESS) {
+        g_vk.nativeFailed = true;
+        dci.enabledExtensionCount = 0;
+        dci.ppEnabledExtensionNames = NULL;
+        if (vkCreateDevice(g_vk.phys, &dci, NULL, &g_vk.dev) != VK_SUCCESS)
+            return;
+    }
     DFN(vkGetDeviceQueue);
     vkGetDeviceQueue(g_vk.dev, g_vk.qfam, 0, &g_vk.queue);
     strncpy(g_vk.gpuName, props.deviceName, sizeof(g_vk.gpuName) - 1);
@@ -1631,6 +1673,234 @@ bool VulkanExecutorReady() {
     return g_vk.live && !g_vk.frameFailed;
 }
 
+// ---------------------------------------------------------------------------
+// V198: the NATIVE SWAPCHAIN target (RENDERER.md phase-2 tail). A hit-test-
+// transparent child window covers the game's client area; the finished
+// offscreen frame (sky + terrain + army + HUD, all Vulkan) is blitted into
+// its swapchain and presented - no CPU readback, no GL composite, no GL
+// content on screen at all while it is up. Any failure flips nativeFailed
+// and the readback bridge takes over permanently for the session.
+// ---------------------------------------------------------------------------
+namespace {
+
+LRESULT CALLBACK NativeWndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
+    if (m == WM_NCHITTEST) return HTTRANSPARENT;   // clicks fall to the game
+    if (m == WM_ERASEBKGND) return 1;              // never GDI-clear over VK
+    return DefWindowProcA(h, m, w, l);
+}
+
+VkFormat g_swFmt = VK_FORMAT_UNDEFINED;
+
+bool EnsureNativeTarget(int w, int h) {
+    if (g_vk.nativeFailed) return false;
+    if (!g_vk.parentWnd) {
+        g_vk.parentWnd = (HWND)GetWindowHandle();
+        if (!g_vk.parentWnd) { g_vk.nativeFailed = true; return false; }
+    }
+    if (!g_vk.childWnd) {
+        WNDCLASSA wc = { 0 };
+        wc.lpfnWndProc = NativeWndProc;
+        wc.hInstance = GetModuleHandleA(NULL);
+        wc.lpszClassName = "owb_vk_native";
+        RegisterClassA(&wc);   // idempotent enough; failure caught below
+        g_vk.childWnd = CreateWindowExA(
+            0, "owb_vk_native", "", WS_CHILD | WS_CLIPSIBLINGS, 0, 0, w, h,
+            g_vk.parentWnd, NULL, wc.hInstance, NULL);
+        if (!g_vk.childWnd) { g_vk.nativeFailed = true; return false; }
+    }
+    if (!g_vk.surf) {
+        auto createSurf = (PFN_vkCreateWin32SurfaceKHR)g_gipa(
+            g_vk.inst, "vkCreateWin32SurfaceKHR");
+        auto supportFn = (PFN_vkGetPhysicalDeviceSurfaceSupportKHR)g_gipa(
+            g_vk.inst, "vkGetPhysicalDeviceSurfaceSupportKHR");
+        if (!createSurf || !supportFn) { g_vk.nativeFailed = true; return false; }
+        VkWin32SurfaceCreateInfoKHR sci = {
+            VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
+        sci.hinstance = GetModuleHandleA(NULL);
+        sci.hwnd = g_vk.childWnd;
+        if (createSurf(g_vk.inst, &sci, NULL, &g_vk.surf) != VK_SUCCESS) {
+            g_vk.nativeFailed = true;
+            return false;
+        }
+        VkBool32 sup = VK_FALSE;
+        supportFn(g_vk.phys, g_vk.qfam, g_vk.surf, &sup);
+        if (!sup) { g_vk.nativeFailed = true; return false; }
+    }
+    if (g_vk.swap && g_vk.swW == w && g_vk.swH == h) return true;
+
+    // (Re)build the swapchain at the new size.
+    MoveWindow(g_vk.childWnd, 0, 0, w, h, FALSE);
+    DFN(vkDeviceWaitIdle); DFN(vkCreateSwapchainKHR); DFN(vkDestroySwapchainKHR);
+    DFN(vkGetSwapchainImagesKHR); DFN(vkCreateSemaphore);
+    auto capsFn = (PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR)g_gipa(
+        g_vk.inst, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+    auto fmtFn = (PFN_vkGetPhysicalDeviceSurfaceFormatsKHR)g_gipa(
+        g_vk.inst, "vkGetPhysicalDeviceSurfaceFormatsKHR");
+    auto pmFn = (PFN_vkGetPhysicalDeviceSurfacePresentModesKHR)g_gipa(
+        g_vk.inst, "vkGetPhysicalDeviceSurfacePresentModesKHR");
+    if (!capsFn || !fmtFn || !pmFn) { g_vk.nativeFailed = true; return false; }
+    vkDeviceWaitIdle(g_vk.dev);
+    if (g_vk.swap) { vkDestroySwapchainKHR(g_vk.dev, g_vk.swap, NULL); g_vk.swap = VK_NULL_HANDLE; }
+
+    VkSurfaceCapabilitiesKHR caps;
+    capsFn(g_vk.phys, g_vk.surf, &caps);
+    uint32_t nf = 0;
+    fmtFn(g_vk.phys, g_vk.surf, &nf, NULL);
+    VkSurfaceFormatKHR fmts[32];
+    if (nf > 32) nf = 32;
+    fmtFn(g_vk.phys, g_vk.surf, &nf, fmts);
+    VkSurfaceFormatKHR pick = fmts[0];
+    for (uint32_t i = 0; i < nf; ++i)   // prefer RGBA (blit is 1:1), BGRA ok
+        if (fmts[i].format == VK_FORMAT_R8G8B8A8_UNORM) { pick = fmts[i]; break; }
+    if (pick.format != VK_FORMAT_R8G8B8A8_UNORM)
+        for (uint32_t i = 0; i < nf; ++i)
+            if (fmts[i].format == VK_FORMAT_B8G8R8A8_UNORM) { pick = fmts[i]; break; }
+    g_swFmt = pick.format;
+    uint32_t npm = 0;
+    pmFn(g_vk.phys, g_vk.surf, &npm, NULL);
+    VkPresentModeKHR pms[8];
+    if (npm > 8) npm = 8;
+    pmFn(g_vk.phys, g_vk.surf, &npm, pms);
+    // MAILBOX: no tearing AND non-blocking - GL's vsynced swap on the parent
+    // window already paces the loop, so the overlay must never block twice.
+    VkPresentModeKHR mode = VK_PRESENT_MODE_FIFO_KHR;
+    for (uint32_t i = 0; i < npm; ++i)
+        if (pms[i] == VK_PRESENT_MODE_MAILBOX_KHR) mode = VK_PRESENT_MODE_MAILBOX_KHR;
+    if (mode == VK_PRESENT_MODE_FIFO_KHR)
+        for (uint32_t i = 0; i < npm; ++i)
+            if (pms[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+
+    VkSwapchainCreateInfoKHR sc = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+    sc.surface = g_vk.surf;
+    sc.minImageCount = caps.minImageCount + 1 <= caps.maxImageCount || caps.maxImageCount == 0
+                           ? caps.minImageCount + 1 : caps.minImageCount;
+    sc.imageFormat = pick.format;
+    sc.imageColorSpace = pick.colorSpace;
+    sc.imageExtent = caps.currentExtent;
+    if (sc.imageExtent.width == 0xFFFFFFFFu) sc.imageExtent = { (uint32_t)w, (uint32_t)h };
+    sc.imageArrayLayers = 1;
+    sc.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    sc.preTransform = caps.currentTransform;
+    sc.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    sc.presentMode = mode;
+    sc.clipped = VK_TRUE;
+    if (vkCreateSwapchainKHR(g_vk.dev, &sc, NULL, &g_vk.swap) != VK_SUCCESS) {
+        g_vk.nativeFailed = true;
+        return false;
+    }
+    g_vk.swCount = 0;
+    vkGetSwapchainImagesKHR(g_vk.dev, g_vk.swap, &g_vk.swCount, NULL);
+    if (g_vk.swCount > 8) g_vk.swCount = 8;
+    vkGetSwapchainImagesKHR(g_vk.dev, g_vk.swap, &g_vk.swCount, g_vk.swImages);
+    if (!g_vk.semAcq) {
+        VkSemaphoreCreateInfo semci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        vkCreateSemaphore(g_vk.dev, &semci, NULL, &g_vk.semAcq);
+        vkCreateSemaphore(g_vk.dev, &semci, NULL, &g_vk.semRen);
+    }
+    g_vk.swW = w;
+    g_vk.swH = h;
+    TraceLog(RL_LOG_INFO,
+             "rdr: VULKAN NATIVE SWAPCHAIN LIVE - %dx%d %s, present mode %d on %s",
+             w, h, g_swFmt == VK_FORMAT_R8G8B8A8_UNORM ? "RGBA8" : "BGRA8",
+             (int)mode, g_vk.gpuName);
+    return true;
+}
+
+// The terrain COLOR pipeline (native mode): the staged battlefield mesh
+// through mesh.vert + box.frag - sun-lit Lambert, same 80B push-constant
+// layout as the plain box pipeline, so g_vk.layout serves unchanged.
+bool EnsureMeshColorPipe() {
+    if (g_vk.meshColorPipe) return true;
+    if (!g_vk.rp || !g_vk.layout) return false;
+    DFN(vkCreateShaderModule); DFN(vkCreateGraphicsPipelines);
+    size_t vsSize, fsSize;
+    void* vsCode = ReadSpv("assets/spv/mesh.vert.spv", &vsSize);
+    void* fsCode = ReadSpv("assets/spv/box.frag.spv", &fsSize);
+    if (!vsCode || !fsCode) { free(vsCode); free(fsCode); return false; }
+    VkShaderModuleCreateInfo smci = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    smci.codeSize = vsSize;
+    smci.pCode = (const uint32_t*)vsCode;
+    VkShaderModule vs, fs;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &vs);
+    smci.codeSize = fsSize;
+    smci.pCode = (const uint32_t*)fsCode;
+    vkCreateShaderModule(g_vk.dev, &smci, NULL, &fs);
+    free(vsCode); free(fsCode);
+    VkPipelineShaderStageCreateInfo stages[2] = {};
+    stages[0].sType = stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    stages[0].module = vs;
+    stages[0].pName = "main";
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    stages[1].module = fs;
+    stages[1].pName = "main";
+    VkVertexInputBindingDescription bind = { 0, 10 * sizeof(float),
+                                             VK_VERTEX_INPUT_RATE_VERTEX };
+    VkVertexInputAttributeDescription attrs[3] = {
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 },
+        { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, 12 },
+        { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 24 },
+    };
+    VkPipelineVertexInputStateCreateInfo vin = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    vin.vertexBindingDescriptionCount = 1;
+    vin.pVertexBindingDescriptions = &bind;
+    vin.vertexAttributeDescriptionCount = 3;
+    vin.pVertexAttributeDescriptions = attrs;
+    VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo vps = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    vps.viewportCount = 1;
+    vps.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rs = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE;
+    rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rs.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineDepthStencilStateCreateInfo dst = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    dst.depthTestEnable = VK_TRUE;
+    dst.depthWriteEnable = VK_TRUE;
+    dst.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    VkPipelineColorBlendAttachmentState cba = {};
+    cba.colorWriteMask = 0xF;
+    VkPipelineColorBlendStateCreateInfo cb = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cb.attachmentCount = 1;
+    cb.pAttachments = &cba;
+    VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dsi = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dsi.dynamicStateCount = 2;
+    dsi.pDynamicStates = dyn;
+    VkGraphicsPipelineCreateInfo gp = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    gp.stageCount = 2;
+    gp.pStages = stages;
+    gp.pVertexInputState = &vin;
+    gp.pInputAssemblyState = &ia;
+    gp.pViewportState = &vps;
+    gp.pRasterizationState = &rs;
+    gp.pMultisampleState = &ms;
+    gp.pDepthStencilState = &dst;
+    gp.pColorBlendState = &cb;
+    gp.pDynamicState = &dsi;
+    gp.layout = g_vk.layout;
+    gp.renderPass = g_vk.rp;
+    return vkCreateGraphicsPipelines(g_vk.dev, NULL, 1, &gp, NULL,
+                                     &g_vk.meshColorPipe) == VK_SUCCESS;
+}
+
+}  // namespace
+
+bool VulkanNativeAvailable() {
+    return g_vk.live && !g_vk.frameFailed && !g_vk.nativeFailed;
+}
+
+void VulkanNativeHide() {
+    if (g_vk.nativeVisible && g_vk.childWnd) {
+        ShowWindow(g_vk.childWnd, SW_HIDE);
+        g_vk.nativeVisible = false;
+    }
+}
+
 // V197: submit/resolve SPLIT. VulkanSubmitFrame records + submits the frame
 // and returns immediately; VulkanResolveFrame fence-waits and returns the
 // pixels. The caller overlaps the gap with its own GL work (battle draws
@@ -1650,7 +1920,11 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
                                        const void* cylData, int cylCount,
                                        const void* skinCylData, const int* skinCylSegSkin,
                                        const int* skinCylSegCount, int nSkinCylSegs,
-                                       int w, int h) {
+                                       int w, int h,
+                                       const void* skyVerts, int skyCount,
+                                       const void* uiVerts, int uiCount,
+                                       const int* uiSegTex, const int* uiSegCount,
+                                       int nUiSegs, int presentNative) {
     if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return false;
     if (w != g_vk.width || h != g_vk.height) {
         DFN(vkDeviceWaitIdle);
@@ -1670,6 +1944,26 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
     UploadPendingTerrain();
     BuildShadowResources();   // self-gating; one attempt, logged
     BuildSkinResources();     // V180: needs shadow stack + staged atlas
+
+    // V198: native present prep - target, pipelines, and the acquired image
+    // all come first so ANY failure can fall back to the bridge before the
+    // recording is consumed.
+    bool native = presentNative != 0;
+    uint32_t swIdx = 0;
+    if (native) {
+        if (!EnsureNativeTarget(w, h) || !EnsureUiPipeline() ||
+            !EnsureMeshColorPipe())
+            return false;   // caller re-submits through the bridge
+        DFN(vkAcquireNextImageKHR);
+        const VkResult ar = vkAcquireNextImageKHR(
+            g_vk.dev, g_vk.swap, UINT64_MAX, g_vk.semAcq, NULL, &swIdx);
+        if (ar == VK_ERROR_OUT_OF_DATE_KHR) { g_vk.swW = 0; return false; }
+        if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR) {
+            g_vk.nativeFailed = true;
+            return false;
+        }
+        if (ar == VK_SUBOPTIMAL_KHR) g_vk.swW = 0;   // present, rebuild next
+    }
 
     // Total skinned instances per stream (the seg arrays partition them).
     int skinBoxCount = 0, skinPillCount = 0, skinCylCount = 0;
@@ -1725,6 +2019,45 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
         skinCylCount = 0;
     if (skinCylCount > 0)
         memcpy(g_vk.skinCylMap[cur], skinCylData, (size_t)skinCylCount * 80);
+
+    // V198: sky underlay + HUD overlay verts, per-slot buffered like every
+    // other stream (the previous frame may still be reading its slot).
+    int totalUi = 0, natSkyN = 0, natUiN = 0;
+    if (native) {
+        DFN(vkDeviceWaitIdle); DFN(vkUnmapMemory); DFN(vkDestroyBuffer);
+        DFN(vkFreeMemory);
+        const int nSky = natSkyN = skyVerts ? skyCount : 0;
+        const int nUi = natUiN = uiVerts ? uiCount : 0;
+        totalUi = nSky + nUi;
+        if (totalUi > 0) {
+            if (totalUi > g_vk.natUiCap[cur]) {
+                if (g_vk.natUiBuf[cur]) {
+                    vkDeviceWaitIdle(g_vk.dev);
+                    vkUnmapMemory(g_vk.dev, g_vk.natUiMem[cur]);
+                    vkDestroyBuffer(g_vk.dev, g_vk.natUiBuf[cur], NULL);
+                    vkFreeMemory(g_vk.dev, g_vk.natUiMem[cur], NULL);
+                    g_vk.natUiBuf[cur] = VK_NULL_HANDLE;
+                }
+                const int cap = totalUi < 16384 ? 16384 : totalUi * 2;
+                if (!MakeBuffer((VkDeviceSize)cap * 32,
+                                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                &g_vk.natUiBuf[cur], &g_vk.natUiMem[cur],
+                                &g_vk.natUiMap[cur]))
+                    totalUi = 0;
+                else
+                    g_vk.natUiCap[cur] = cap;
+            }
+            if (totalUi > 0) {
+                if (nSky > 0)
+                    memcpy(g_vk.natUiMap[cur], skyVerts, (size_t)nSky * 32);
+                if (nUi > 0)
+                    memcpy((char*)g_vk.natUiMap[cur] + (size_t)nSky * 32,
+                           uiVerts, (size_t)nUi * 32);
+            }
+        }
+    }
 
     vkResetCommandBuffer(g_vk.cmd[cur], 0);
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -1825,6 +2158,25 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
     rbi.clearValueCount = 2;
     rbi.pClearValues = clears;
     vkCmdBeginRenderPass(g_vk.cmd[cur],&rbi, VK_SUBPASS_CONTENTS_INLINE);
+    // V198 native: the SKY paints first - underlay quads through the blended
+    // UI pipeline (depth off), pixel-space viewport, before any 3D lands.
+    if (native && totalUi > 0 && natSkyN > 0 && g_vk.natUiBuf[cur]) {
+        DFN(vkCmdBindDescriptorSets);
+        vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          g_vk.uiPipe);
+        vkCmdBindDescriptorSets(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                g_vk.uiLayout, 0, 1, &g_vk.uiDset, 0, NULL);
+        VkViewport uvp = { 0, 0, (float)w, (float)h, 0, 1 };
+        VkRect2D usc = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
+        vkCmdSetViewport(g_vk.cmd[cur], 0, 1, &uvp);
+        vkCmdSetScissor(g_vk.cmd[cur], 0, 1, &usc);
+        const float scr[4] = { (float)w, (float)h, 0, 0 };
+        vkCmdPushConstants(g_vk.cmd[cur], g_vk.uiLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, 16, scr);
+        VkDeviceSize uoff = 0;
+        vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 1, &g_vk.natUiBuf[cur], &uoff);
+        vkCmdDraw(g_vk.cmd[cur], (uint32_t)natSkyN, 1, 0, 0);
+    }
     {
         // Negative-height viewport (core 1.1) keeps GL clip conventions, so
         // the game's matrices work unmodified and row 0 reads back as top.
@@ -1838,8 +2190,13 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
         vkCmdPushConstants(g_vk.cmd[cur],g_vk.layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, 80, pc);
-        if (g_vk.terrBuf && g_vk.meshPipe) {   // depth-only hillside occluder
-            vkCmdBindPipeline(g_vk.cmd[cur],VK_PIPELINE_BIND_POINT_GRAPHICS, g_vk.meshPipe);
+        // Terrain: depth-only occluder on the bridge; FULL COLOUR when the
+        // native swapchain owns the screen (V198) - same staged mesh, same
+        // 80B push constant, mesh.vert + box.frag Lambert.
+        const VkPipeline terrPipe =
+            native && g_vk.meshColorPipe ? g_vk.meshColorPipe : g_vk.meshPipe;
+        if (g_vk.terrBuf && terrPipe) {
+            vkCmdBindPipeline(g_vk.cmd[cur],VK_PIPELINE_BIND_POINT_GRAPHICS, terrPipe);
             VkDeviceSize toff = 0;
             vkCmdBindVertexBuffers(g_vk.cmd[cur],0, 1, &g_vk.terrBuf, &toff);
             vkCmdDraw(g_vk.cmd[cur],(uint32_t)g_vk.terrCount, 1, 0, 0);
@@ -2009,21 +2366,130 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
             }
         }
     }
+    // V198 native: the HUD overlay - the recorded ui:: frame (text, panels,
+    // minimap quads) drawn INSIDE the same pass, over the 3D, blended.
+    if (native && totalUi > 0 && natUiN > 0 && g_vk.natUiBuf[cur]) {
+        DFN(vkCmdBindDescriptorSets);
+        VkViewport uvp = { 0, 0, (float)w, (float)h, 0, 1 };
+        VkRect2D usc = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
+        vkCmdSetViewport(g_vk.cmd[cur], 0, 1, &uvp);
+        vkCmdSetScissor(g_vk.cmd[cur], 0, 1, &usc);
+        const float scr[4] = { (float)w, (float)h, 0, 0 };
+        vkCmdPushConstants(g_vk.cmd[cur], g_vk.uiLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, 16, scr);
+        VkDeviceSize uoff = 0;
+        vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 1, &g_vk.natUiBuf[cur], &uoff);
+        int first = natSkyN;   // sky verts precede the HUD in the buffer
+        if (!uiSegTex || nUiSegs <= 0) {
+            vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              g_vk.uiPipe);
+            vkCmdBindDescriptorSets(g_vk.cmd[cur],
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    g_vk.uiLayout, 0, 1, &g_vk.uiDset, 0, NULL);
+            vkCmdDraw(g_vk.cmd[cur], (uint32_t)natUiN, 1, (uint32_t)first, 0);
+        } else {
+            for (int s = 0; s < nUiSegs; ++s) {
+                const int tex = uiSegTex[s], n = uiSegCount[s];
+                if (n <= 0) continue;
+                const bool textured = tex >= 0 && tex < g_vk.texCount &&
+                                      g_vk.imgPipe;
+                vkCmdBindPipeline(g_vk.cmd[cur],
+                                  VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  textured ? g_vk.imgPipe : g_vk.uiPipe);
+                vkCmdBindDescriptorSets(
+                    g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    g_vk.uiLayout, 0, 1,
+                    textured ? &g_vk.texSet[tex] : &g_vk.uiDset, 0, NULL);
+                vkCmdDraw(g_vk.cmd[cur], (uint32_t)n, 1, (uint32_t)first, 0);
+                first += n;
+            }
+        }
+    }
     vkCmdEndRenderPass(g_vk.cmd[cur]);
-    VkBufferImageCopy region = {};
-    region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    region.imageExtent = { (uint32_t)w, (uint32_t)h, 1 };
-    vkCmdCopyImageToBuffer(g_vk.cmd[cur], g_vk.color, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           g_vk.readBuf[cur], 1, &region);
+    if (native) {
+        // V198: blit the finished frame into the acquired swapchain image
+        // (format-converting if the surface is BGRA) - no CPU readback.
+        DFN(vkCmdBlitImage); DFN(vkCmdPipelineBarrier);
+        VkImageSubresourceRange range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        VkImageMemoryBarrier toDst = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+        toDst.srcAccessMask = 0;
+        toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toDst.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toDst.srcQueueFamilyIndex = toDst.dstQueueFamilyIndex = g_vk.qfam;
+        toDst.image = g_vk.swImages[swIdx];
+        toDst.subresourceRange = range;
+        vkCmdPipelineBarrier(g_vk.cmd[cur], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0,
+                             NULL, 1, &toDst);
+        VkImageBlit blit = {};
+        blit.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        blit.srcOffsets[1] = { w, h, 1 };
+        blit.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        blit.dstOffsets[1] = { g_vk.swW, g_vk.swH, 1 };
+        vkCmdBlitImage(g_vk.cmd[cur], g_vk.color,
+                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       g_vk.swImages[swIdx],
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit,
+                       VK_FILTER_NEAREST);
+        VkImageMemoryBarrier toPresent = toDst;
+        toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toPresent.dstAccessMask = 0;
+        toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        vkCmdPipelineBarrier(g_vk.cmd[cur], VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL,
+                             0, NULL, 1, &toPresent);
+    }
+    if (!native || g_vk.dumpNative) {
+        // Bridge readback - or the native DEBUG tap (V198): the same copy,
+        // so a capture harness can pull true presented frames off the GPU.
+        VkBufferImageCopy region = {};
+        region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        region.imageExtent = { (uint32_t)w, (uint32_t)h, 1 };
+        vkCmdCopyImageToBuffer(g_vk.cmd[cur], g_vk.color,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               g_vk.readBuf[cur], 1, &region);
+    }
     vkEndCommandBuffer(g_vk.cmd[cur]);
     VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     si.commandBufferCount = 1;
     si.pCommandBuffers = &g_vk.cmd[cur];
+    const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    if (native) {
+        si.waitSemaphoreCount = 1;
+        si.pWaitSemaphores = &g_vk.semAcq;
+        si.pWaitDstStageMask = &waitStage;
+        si.signalSemaphoreCount = 1;
+        si.pSignalSemaphores = &g_vk.semRen;
+    }
     vkQueueSubmit(g_vk.queue, 1, &si, g_vk.fence[cur]);
     g_vk.submitted[cur] = true;
     g_vk.lastSubmit = cur;
+    if (native) {
+        DFN(vkQueuePresentKHR);
+        VkPresentInfoKHR pi = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+        pi.waitSemaphoreCount = 1;
+        pi.pWaitSemaphores = &g_vk.semRen;
+        pi.swapchainCount = 1;
+        pi.pSwapchains = &g_vk.swap;
+        pi.pImageIndices = &swIdx;
+        const VkResult pr = vkQueuePresentKHR(g_vk.queue, &pi);
+        if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_SUBOPTIMAL_KHR)
+            g_vk.swW = 0;   // rebuild next frame
+        else if (pr != VK_SUCCESS)
+            g_vk.nativeFailed = true;
+        if (!g_vk.nativeVisible && g_vk.childWnd) {
+            ShowWindow(g_vk.childWnd, SW_SHOWNA);
+            g_vk.nativeVisible = true;
+        }
+        if (!g_vk.dumpNative)
+            g_vk.lastSubmit = -1;   // nothing to resolve - it's on screen
+    }
     return true;
 }
+
+void VulkanNativeDebugDump(bool on) { g_vk.dumpNative = on; }
 
 // V197: fence-wait the last submitted frame and hand back its pixels. Still
 // same-frame (V196 latency fix) - but the caller has been drawing GL terrain
@@ -2055,7 +2521,7 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                              skinPillData, skinPillSegSkin, skinPillSegCount,
                              nSkinPillSegs, cylData, cylCount, skinCylData,
                              skinCylSegSkin, skinCylSegCount, nSkinCylSegs,
-                             w, h)
+                             w, h, NULL, 0, NULL, 0, NULL, NULL, 0, 0)
                ? VulkanResolveFrame()
                : nullptr;
 }
@@ -2084,7 +2550,11 @@ bool VulkanSubmitFrame(const float*, const float*, const float*, int,
                        const void*, const int*, const int*, int,
                        const void*, int,
                        const void*, const int*, const int*, int,
-                       int, int) { return false; }
+                       int, int, const void*, int, const void*, int,
+                       const int*, const int*, int, int) { return false; }
 const unsigned char* VulkanResolveFrame() { return nullptr; }
+bool VulkanNativeAvailable() { return false; }
+void VulkanNativeHide() {}
+void VulkanNativeDebugDump(bool) {}
 }
 #endif

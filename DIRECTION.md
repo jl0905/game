@@ -2270,3 +2270,24 @@ over two half-features.
   GL 11.30 ms — parity. Battle capture + map round trip verified;
   suite green. Native-swapchain present remains the endgame that
   removes the readback bridge entirely.
+
+- [x] **V198. Iteration one-ninety-eight — the native swapchain.** (user
+  call: complete the migration.) Battles now present on a REAL Vulkan
+  swapchain: a hit-test-transparent child window covers the client
+  area (input falls through to the game), and the whole frame — sky
+  underlay via the blended UI pipeline, TERRAIN IN COLOUR from the
+  staged mesh (mesh.vert + box.frag), the entire recorded army, and
+  the HUD/minimap overlay — renders in ONE render pass and blits to
+  the acquired image. No CPU readback, no GL composite, no GL pixels
+  on screen: the GL frame behind the overlay is a blank clear, the
+  GL shadow prepass and postfx are skipped, and the last direct-GL
+  battle draws (crown, saddle, circlets, corpse heads, pennants,
+  bowstrings) became seam-recorded primitives on every backend.
+  MAILBOX present (GL vsync paces; the overlay never double-blocks);
+  auto-fallback chain native → bridge → GL on any failure; overlay
+  hides on non-battle screens (campaign/town/menus remain GL for
+  now — the remaining migration). OWB_NATIVE_DUMP=<dir> taps true
+  presented frames off the GPU for verification — used to catch and
+  fix a stream-zeroing double-flatten. Numbers, 1080p 800 men:
+  native 2.27 ms / 441 fps vs GL 8.31 ms / 120 fps; 4000 soldiers
+  8.32 ms. Suite green; campaign round trip intact.

@@ -176,7 +176,9 @@ public:
     void  Generate(const TerrainConfig& cfg, float arenaHalf);
     float HeightAt(float x, float z) const;      // world ground height
     bool  IsWaterAt(float x, float z) const;      // inside the river channel?
-    void  Draw() const;                           // call inside BeginMode3D
+    void  Draw(bool recordOnly = false) const;    // call inside BeginMode3D;
+                                                  // recordOnly (V198 native):
+                                                  // seam dress only, no GL
     void  DrawCasters() const;                    // depth-only pass (V153)
 
 private:
@@ -430,9 +432,11 @@ void Terrain::DrawCasters() const {
                        t.radius, 0.0f, 6, WHITE);
 }
 
-void Terrain::Draw() const {
+void Terrain::Draw(bool recordOnly) const {
     if (!baked_) BakeModel();
-    DrawModel(model_, { 0, 0, 0 }, 1.0f, WHITE);
+    // V198 native: the heightfield renders from the staged device mesh; the
+    // dress below is all seam-recorded and rides the same frame.
+    if (!recordOnly) DrawModel(model_, { 0, 0, 0 }, 1.0f, WHITE);
 
     // Water (V152): one translucent ribbon laid along the river line —
     // a surface, not a mosaic of little squares.
@@ -3321,13 +3325,19 @@ void BattleDraw(const Content& c) {
 
     // ================= DRAW =================
     BeginDrawing();
+    // V198: when the native swapchain owns the screen, everything visible
+    // must be Vulkan - the sky records into the underlay, the HUD into the
+    // overlay, terrain renders from its staged mesh, and every GL-only pass
+    // (shadow prepass, postfx, decals) is skipped outright. The GL frame
+    // behind the overlay stays blank and cheap.
+    const bool vkn = rdr::NativeActive();
 
     // The sun writes its depth first (V153, before the post capture —
     // framebuffer passes must not nest): terrain and one box per man
     // rendered from the light; both lit shaders sample the map, so hills
     // shade valleys and every soldier drops a true directional shadow.
     Matrix lightVP = MatrixIdentity();
-    const bool shadowsLive = ShadowsOn();
+    const bool shadowsLive = ShadowsOn() && !vkn;   // V198: VK maps its own sun
     if (shadowsLive) {
         const Vector3 sunD = Vector3Normalize(
             B.night ? Vector3{ 0.2f, -0.9f, 0.3f }
@@ -3345,7 +3355,7 @@ void BattleDraw(const Content& c) {
         ShadowEnd();
     }
 
-    PostBegin();   // the filmic pass captures the whole 3D frame (V151)
+    if (!vkn) PostBegin();   // the filmic pass captures the whole 3D frame (V151)
     // The sky follows the campaign clock (O3): blue noon, amber dusk,
     // deep night. Also clears the DEPTH buffer.
     const float tod   = B.setup.timeOfDay;
@@ -3359,7 +3369,10 @@ void BattleDraw(const Content& c) {
     // record into the HUD overlay composited at end-of-frame — the whole sky
     // (sun included) was painting OVER the terrain and the army. Pause the
     // UI recording so the sky rasterizes straight into the GL frame here.
-    rdr::SetUiRecording(false);
+    // V198 native: the sky records into the UNDERLAY instead - the native
+    // frame draws it before the 3D scene, exactly where GL painted it.
+    if (vkn) rdr::SetUiUnderlay(true);
+    else     rdr::SetUiRecording(false);
     // A real sky (V4): zenith deepens, horizon pales â€” drawn flat before
     // the 3D pass, which paints over it with depth. Costs one rectangle.
     {
@@ -3414,7 +3427,8 @@ void BattleDraw(const Content& c) {
                            Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
         EndScissorMode();
     }
-    rdr::SetUiRecording(true);   // V192: HUD recording resumes past the sky
+    if (vkn) rdr::SetUiUnderlay(false);   // V198: underlay closed, HUD next
+    else     rdr::SetUiRecording(true);   // V192: recording resumes past the sky
 
     BeginMode3D(cam);
     BeginShaderMode(GetLitShader());   // one sun over everything solid
@@ -3529,8 +3543,10 @@ void BattleDraw(const Content& c) {
             InstCube({ s.pos.x, gy + 0.02f, s.pos.z }, 1.7f, 0.015f, 1.7f,
                      Fade(Color{ 110, 20, 20, 255 }, 0.5f));   // blood pool
             InstCube({ s.pos.x, gy + 0.15f, s.pos.z }, 1.4f, 0.3f, 0.6f, Fade(DARKGRAY, 0.8f));
-            DrawSphere({ s.pos.x + 0.8f, gy + 0.16f, s.pos.z }, 0.2f,
-                       Color{ 214, 176, 142, 255 });   // a fallen man, not a crate
+            // The fallen head, seam-recorded (V198): visible on every backend.
+            rdr::PushPill({ s.pos.x + 0.8f, gy + 0.16f, s.pos.z },
+                          { s.pos.x + 0.8f, gy + 0.16f, s.pos.z }, 0.2f,
+                          Color{ 214, 176, 142, 255 });
             continue;
         }
         BlobShadow(B.terrain, s.pos.x, s.pos.z, IsMounted(c, s) ? 0.85f : 0.5f);
@@ -3561,11 +3577,13 @@ void BattleDraw(const Content& c) {
             pose.mounted = true;  // torso leans into mounted swings (V181)
         }
         // The lord in person wears his circlet (V101), like the crowned hero.
-        if (s.champion && s.hp > 0)
-            DrawCylinder({ s.pos.x, s.pos.y + 2.1f + (IsMounted(c, s) ? 1.25f : 0.0f),
-                           s.pos.z },
-                         0.25f, 0.27f, 0.07f, 8,
-                         Fade(Color{ 255, 210, 80, 255 }, 0.9f));
+        // Seam-recorded band since V198 - a circlet on every backend.
+        if (s.champion && s.hp > 0) {
+            const float cy2 = s.pos.y + 2.1f + (IsMounted(c, s) ? 1.25f : 0.0f);
+            rdr::PushOrientedBox({ s.pos.x, cy2 - 0.035f, s.pos.z },
+                                 { s.pos.x, cy2 + 0.035f, s.pos.z }, 0.15f,
+                                 Color{ 255, 210, 80, 255 });
+        }
 
         // Implicit health (U2): no floating bars â€” a hurt man reads from his
         // body, darkening and bloodying as the fight wears him down.
@@ -3655,9 +3673,10 @@ void BattleDraw(const Content& c) {
     for (const LooseHorse& h : B.looseHorses) {
         BlobShadow(B.terrain, h.pos.x, h.pos.z, 0.85f);
         DrawHorse(h.pos, h.yaw, h.walkPhase);
-        if (h.yours)
-            DrawCylinder({ h.pos.x, h.pos.y + 2.6f, h.pos.z }, 0.0f, 0.25f,
-                         0.5f, 6, GOLD);   // a little pennant point
+        if (h.yours)   // pennant point, seam-recorded (V198)
+            rdr::PushOrientedBox({ h.pos.x, h.pos.y + 2.6f, h.pos.z },
+                                 { h.pos.x, h.pos.y + 3.1f, h.pos.z }, 0.09f,
+                                 GOLD);
     }
 
     // particles (blood, dust)
@@ -3690,11 +3709,11 @@ void BattleDraw(const Content& c) {
             // axis-aligned cube read as a blue crate under the rider —
             // now a saddle pad laid across the barrel, turning with it.
             const Vector3 side = { cosf(B.yaw), 0, -sinf(B.yaw) };
-            DrawCapsule(Vector3{ B.pPos.x + side.x * 0.42f, B.pPos.y + 1.18f,
-                                 B.pPos.z + side.z * 0.42f },
-                        Vector3{ B.pPos.x - side.x * 0.42f, B.pPos.y + 1.18f,
-                                 B.pPos.z - side.z * 0.42f },
-                        0.16f, 6, 3, Color{ 40, 120, 255, 255 });
+            rdr::PushPill(Vector3{ B.pPos.x + side.x * 0.42f, B.pPos.y + 1.18f,
+                                   B.pPos.z + side.z * 0.42f },
+                          Vector3{ B.pPos.x - side.x * 0.42f, B.pPos.y + 1.18f,
+                                   B.pPos.z - side.z * 0.42f },
+                          0.16f, Color{ 40, 120, 255, 255 });   // seam (V198)
             heroDraw.y += 1.25f;
             ppose.walkPhase = 0;
         ppose.mounted = true;   // V181
@@ -3702,22 +3721,29 @@ void BattleDraw(const Content& c) {
         DrawCharacter(c, heroDraw, B.setup.heroLoadout, ppose, Color{ 40, 120, 255, 255 });
         // A crowned head wears its circlet (V94): a thin gold band riding
         // just above the helm, turned with the hero.
-        if (B.setup.crowned) {
+        if (B.setup.crowned) {   // seam-recorded gold band since V198
             const Vector3 crownAt = { heroDraw.x, heroDraw.y + 2.06f, heroDraw.z };
-            DrawCylinderWires(crownAt, 0.26f, 0.26f, 0.10f, 8,
-                              Color{ 255, 210, 80, 255 });
-            DrawCylinder(crownAt, 0.25f, 0.27f, 0.06f, 8,
-                         Fade(Color{ 255, 210, 80, 255 }, 0.85f));
+            rdr::PushOrientedBox({ crownAt.x, crownAt.y - 0.04f, crownAt.z },
+                                 { crownAt.x, crownAt.y + 0.04f, crownAt.z },
+                                 0.16f, Color{ 255, 210, 80, 255 });
         }
     }
+    // V198 native: the terrain DRESS (trees, grass, water - all recorded at
+    // the seam since V167) must be in the buckets before the flush; the
+    // heightfield itself renders from the staged mesh on the device.
+    if (vkn) B.terrain.Draw(true);
     // V197: the overlap. Everything recorded above is submitted to the
     // Vulkan device NOW (GL mode: no-op) - then the GL share of the scene
     // (terrain, decals, ghosts) draws while the GPU renders the army - and
     // the final Flush resolves a fence that has usually already signalled.
     FlushInstancedSubmit();
-    B.terrain.Draw();
-    DrawQueuedBlobShadows();   // translucent: needed the ground first
-    if (B.deploying || B.showMenu) {   // formation ghosts (moved, V197)
+    if (!vkn) {
+        B.terrain.Draw();
+        DrawQueuedBlobShadows();   // translucent: needed the ground first
+    } else {
+        g_blobQ.clear();   // no GL decals on the native road (real shadows)
+    }
+    if (!vkn && (B.deploying || B.showMenu)) {   // formation ghosts (moved, V197)
         FormationType ghostForm = B.formation;
         Vector3       ghostAnchor = B.pPos;
         if (B.order == OrderType::Charge) ghostForm = FormationType::Line;
@@ -3737,7 +3763,7 @@ void BattleDraw(const Content& c) {
 
     EndMode3D();
     rdr::PresentVulkan();   // composite the Vulkan-rendered army (V163)
-    PostEnd();     // grade the world; HUD stays crisp (V151)
+    if (!vkn) PostEnd();    // grade the world; HUD stays crisp (V151)
 
     // Floating damage numbers (V144): your hits in gold rising off the man,
     // hits on YOU in red. Projected from world space each frame.

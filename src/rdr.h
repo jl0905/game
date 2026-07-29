@@ -91,6 +91,13 @@ void FlushScene(Vector3 sunDir);
 struct UiVert { float x, y, u, v, r, g, b, a; };
 bool VulkanUiActive();            // record text instead of GL-drawing it?
 void SetUiRecording(bool on);     // pause (e.g. while baking to a texture)
+// V198: while ON, ui:: primitives record into the native frame's UNDERLAY,
+// drawn before the 3D scene - the battle sky's channel to the swapchain.
+void SetUiUnderlay(bool on);
+// V198: true when the native swapchain owns presentation this frame - the
+// battle uses it to route sky/HUD and skip its GL drawing entirely.
+bool NativeActive();
+void SetNativeEnabled(bool on);   // capture modes force the bridge
 // V176: record world-space 2D drawing through the seam — while a camera is
 // set, every pushed UI vertex is transformed world->screen at record time,
 // so map markers and labels land exactly where GL would put them.
@@ -125,6 +132,11 @@ bool VulkanExecutorReady();
 // V197: split form of VulkanRenderFrame. Submit records + queues the frame
 // and returns at once; Resolve fence-waits and returns the pixels. Callers
 // overlap the gap with their own GL drawing (see battle.cpp's 3D pass).
+// V198 additions: sky underlay verts, HUD overlay verts + texture segments,
+// and presentNative=1 to render sky+terrain-colour+scene+HUD and PRESENT the
+// frame on the native swapchain (no readback). With presentNative=0 the
+// trailing args are ignored and the offscreen/readback bridge behavior is
+// unchanged.
 bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
                        const float* lightVP16, int flags,
                        const void* instData, int count,
@@ -136,8 +148,15 @@ bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
                        const void* cylData, int cylCount,
                        const void* skinCylData, const int* skinCylSegSkin,
                        const int* skinCylSegCount, int nSkinCylSegs,
-                       int w, int h);
+                       int w, int h,
+                       const void* skyVerts, int skyCount,
+                       const void* uiVerts, int uiCount,
+                       const int* uiSegTex, const int* uiSegCount, int nUiSegs,
+                       int presentNative);
 const unsigned char* VulkanResolveFrame();
+bool VulkanNativeAvailable();   // device up, surface/swapchain road not failed
+void VulkanNativeHide();        // hide the overlay (leaving battle)
+void VulkanNativeDebugDump(bool on);   // also copy native frames to readback
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,

@@ -394,9 +394,11 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 break;
             }
             case WeaponClass::Ranged:
-                // A simple bow held vertically in the hand.
+                // A simple bow held vertically in the hand. The string is a
+                // recorded sliver since V198 - visible on every backend.
                 Cyl(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), 0.03f, 0.03f, 6, w.tint);
-                DrawLine3D(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), Fade(RAYWHITE, 0.6f)); // string
+                Cyl(at(0.49f, 1.63f, 0.2f), at(0.49f, 0.67f, 0.2f), 0.008f,
+                    0.008f, 3, Fade(RAYWHITE, 0.8f));   // string
                 break;
             case WeaponClass::Axe: {
                 // A haft with a broad head set just below the tip.

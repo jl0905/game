@@ -9,6 +9,7 @@
 #include "battle/battle.h"
 #include "town/town.h"
 #include "manualview.h"
+#include "rdr.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -134,6 +135,7 @@ int RunBench(int perSide, Vector2 where, bool sweep) {
 int RunShots(int perSide, const char* dir, Vector2 where) {
     InitWindow(1280, 720, "OpenWarband shots");
     SetTargetFPS(0);
+    rdr::SetNativeEnabled(false);   // V198: captures read the GL buffer
 
     GameState gs;
     LoadDefaultContent(gs.content);
@@ -179,6 +181,7 @@ int RunShots(int perSide, const char* dir, Vector2 where) {
 int RunTrip(const char* dir) {
     InitWindow(1280, 720, "OpenWarband trip");
     SetTargetFPS(0);
+    rdr::SetNativeEnabled(false);   // V198: captures read the GL buffer
     ui::LoadFonts();
     ui::SetTextScale(GetSettings().textScale);
 

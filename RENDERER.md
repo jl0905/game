@@ -81,3 +81,14 @@ renderer-only transplant.
   on the Vulkan device every frame (offscreen + readback composite over GL).
   Remaining: native Vulkan window/swapchain (removes the readback tax),
   terrain/text through the seam, campaign/town screens, raylib retires.
+
+- V198: NATIVE SWAPCHAIN SHIPPED for battles. A hit-test-transparent child
+  window presents the full Vulkan frame (sky underlay + colour terrain +
+  army + HUD in one pass, blitted to the acquired image, MAILBOX). No
+  readback, no GL composite, no GL content on screen during battles; the
+  GL shadow prepass and postfx are skipped natively. 1080p/800 men:
+  2.27 ms (441 fps) vs GL 8.31 ms. Fallback chain native -> readback
+  bridge -> GL. Remaining for full raylib retirement: campaign/town/menu
+  screens (2D ui:: + town 3D), terrain shadows in the native pass
+  (meshlit with the sun map), postfx grade as a Vulkan pass, and the
+  window itself (input/GLFW) once every screen speaks Vulkan.
