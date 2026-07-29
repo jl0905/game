@@ -2324,3 +2324,16 @@ over two half-features.
   regression-tested from now on. Verified: town renders after a
   battle (buildings, NPCs, menu), zero contract warnings, native
   battle dump intact, pace p50 8.33 ms, suite green.
+
+- [x] **V201. Iteration two-hundred-one — killer bean, medieval.** (user
+  call: cartoonish proportions + Roblox faces for every troop.) The
+  pill body is now a chunky BEAN — wider (r 0.34), shorter shaft
+  (0.16→1.34), and a BIG head (r 0.31, helm 0.34) sitting right on the
+  shoulders, no neck. And every troop wears a FACE: two dark oval eyes
+  and a smile with upturned corners, built from tiny seam-recorded
+  primitives pinned to the head's front — backend-neutral (native,
+  bridge, GL), all three body styles (pill, boxy, blocky cube heads
+  included), turning with the character's yaw and lean. Plume, crown
+  and circlet raised for the taller head. Combat hitboxes untouched
+  (visual-only). Verified by frame captures: the bean silhouette and
+  the faces read clearly on approaching enemies. Suite green.

@@ -202,6 +202,26 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                    (unsigned char)(c.b + (255 - c.b) * fl), c.a };
     };
 
+    // V201 (user call): the ROBLOX FACE — two oval eyes and a smile, tiny
+    // recorded primitives pinned to the head's front. Backend-neutral, every
+    // body style, every troop. `u` = head centre height, `fwd` = how far the
+    // face sits forward of the head centre, `s` scales with head size.
+    auto drawFace = [&](float u, float fwd, float s) {
+        const Color ink = flashed(Color{ 28, 24, 22, 255 });
+        for (const float side : { -1.0f, 1.0f }) {
+            const Vector3 a = at(side * 0.105f * s, u + 0.030f * s, fwd);
+            const Vector3 b = at(side * 0.105f * s, u + 0.095f * s, fwd);
+            rdr::PushPill(a, b, 0.034f * s, ink);            // oval eye
+        }
+        rdr::PushOrientedBox(at(-0.075f * s, u - 0.090f * s, fwd),
+                             at( 0.075f * s, u - 0.090f * s, fwd),
+                             0.018f * s, ink);               // the smile bar
+        for (const float side : { -1.0f, 1.0f }) {           // upturned corners
+            const Vector3 cnr = at(side * 0.100f * s, u - 0.068f * s, fwd);
+            rdr::PushPill(cnr, cnr, 0.020f * s, ink);
+        }
+    };
+
     const Color bodyC   = flashed(SlotTint(content, loadout, EquipSlot::Body, teamTint));
     const Color feetC   = flashed(SlotTint(content, loadout, EquipSlot::Feet, DARKBROWN));
     const Color handsC  = flashed(SlotTint(content, loadout, EquipSlot::Hands, SKIN));
@@ -240,6 +260,7 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
         Boxy(at(rock * 0.5f, 1.30f, 0.22f), bw * 0.40f, 0.60f, 0.05f,
              flashed(teamTint));                          // surcoat plate
         Boxy(at(0.0f, 1.95f, 0.0f), 0.50f, 0.50f, 0.50f, headC);   // the cube head
+        drawFace(1.95f, 0.27f, 1.35f);   // V201: the face
         if (hasHelm) {
             if (helmAv >= 2)
                 Boxy(at(0.0f, 1.72f, 0.0f), 0.62f, 0.08f, 0.62f, headC);   // brim
@@ -265,18 +286,21 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
         };
         const Color bodyOne = flashed(teamBlend(bodyC));
         if (style == 2) {
-            // PILL (the default): one capsule, boots to shoulders.
+            // PILL (V201, user call: "killer bean but medieval"): a chunky
+            // bean of a body and a BIG head sitting right on the shoulders,
+            // no neck - cartoon proportions, same combat hitbox.
             rdr::PushPillSkinned(at(rock * 0.5f, 0.16f, 0.0f),
-                                 at(rock * 0.5f, 1.50f, 0.0f),
-                                 0.30f, bodyOne, bodySkin);
+                                 at(rock * 0.5f, 1.34f, 0.0f),
+                                 0.34f, bodyOne, bodySkin);
             // The head: a sphere; a helm simply makes it a bit bigger and
             // wears the helm's tint — silhouette stays one round shape.
             // Identical endpoints take PushPill's degenerate single-sphere
             // path (V191): the old +0.001 axis sat exactly ON the < 0.001
             // cutoff, emitting TWO coincident cap spheres that z-fought.
-            const float hr = hasHelm ? 0.26f : 0.23f;   // reads over the thick body
-            const Vector3 headAt = at(0.0f, 1.86f, 0.0f);
+            const float hr = hasHelm ? 0.34f : 0.31f;   // the cartoon head
+            const Vector3 headAt = at(0.0f, 1.76f, 0.0f);
             rdr::PushPill(headAt, headAt, hr, headC);
+            drawFace(1.76f, hr * 0.88f, 1.0f);   // V201: the face
         } else {
             // BOXY: one prism, boots to shoulders, and a head box.
             rdr::PushOrientedBoxSkinned(at(rock * 0.5f, 0.0f, 0.0f),
@@ -284,11 +308,13 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                         bw / 1.8f, bodyOne, bodySkin);
             const float hs = hasHelm ? 0.40f : 0.34f;
             Boxy(at(0.0f, 1.87f, 0.0f), hs, hs, hs, headC);
+            drawFace(1.87f, hs * 0.5f + 0.02f, hs / 0.32f);   // V201
         }
     }
     // Troop plume: rank/type identity at a glance (accent alpha 0 = none).
+    // (V201: raised for the big cartoon head.)
     if (pose.accent.a > 0)
-        Cap(at(0.0f, 2.05f, -0.05f), at(0.0f, 2.30f, -0.18f), 0.05f, S(5), R(3),
+        Cap(at(0.0f, 2.12f, -0.05f), at(0.0f, 2.38f, -0.18f), 0.05f, S(5), R(3),
                     flashed(pose.accent));
 
     // ---- Left arm + shield ----

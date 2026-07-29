@@ -3585,10 +3585,10 @@ void BattleDraw(const Content& c) {
         // The lord in person wears his circlet (V101), like the crowned hero.
         // Seam-recorded band since V198 - a circlet on every backend.
         if (s.champion && s.hp > 0) {
-            const float cy2 = s.pos.y + 2.1f + (IsMounted(c, s) ? 1.25f : 0.0f);
+            const float cy2 = s.pos.y + 2.16f + (IsMounted(c, s) ? 1.25f : 0.0f);
             rdr::PushOrientedBox({ s.pos.x, cy2 - 0.035f, s.pos.z },
-                                 { s.pos.x, cy2 + 0.035f, s.pos.z }, 0.15f,
-                                 Color{ 255, 210, 80, 255 });
+                                 { s.pos.x, cy2 + 0.035f, s.pos.z }, 0.17f,
+                                 Color{ 255, 210, 80, 255 });   // V201: taller head
         }
 
         // Implicit health (U2): no floating bars â€” a hurt man reads from his
@@ -3728,10 +3728,10 @@ void BattleDraw(const Content& c) {
         // A crowned head wears its circlet (V94): a thin gold band riding
         // just above the helm, turned with the hero.
         if (B.setup.crowned) {   // seam-recorded gold band since V198
-            const Vector3 crownAt = { heroDraw.x, heroDraw.y + 2.06f, heroDraw.z };
+            const Vector3 crownAt = { heroDraw.x, heroDraw.y + 2.14f, heroDraw.z };
             rdr::PushOrientedBox({ crownAt.x, crownAt.y - 0.04f, crownAt.z },
                                  { crownAt.x, crownAt.y + 0.04f, crownAt.z },
-                                 0.16f, Color{ 255, 210, 80, 255 });
+                                 0.18f, Color{ 255, 210, 80, 255 });   // V201
         }
     }
     // V198 native: the terrain DRESS (trees, grass, water - all recorded at
