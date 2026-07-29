@@ -3555,6 +3555,14 @@ void CampaignDraw(const GameState& gs) {
     const Camera2D cam = CampaignCamera(gs);
     const int nearSkirmish = NearestSkirmishIndex(gs);
 
+    // V193: the map draws GL-direct on every backend. Most of this screen is
+    // world-space ui:: under a Camera2D; in Vulkan mode recorded UI verts
+    // are composited in SCREEN space, so the map scattered into garbage the
+    // moment something re-enabled recording (the V192 battle sky bracket —
+    // before that, the map-bake leak below disabled recording forever, which
+    // is why this "worked"). Recording resumes at the end of this function.
+    rdr::SetUiRecording(false);
+
     SfxAmbience(0.07f);   // a soft wind over the overworld
     SfxMusic(0.06f);      // and a low drone beneath it (N5)
 
@@ -4241,6 +4249,9 @@ void CampaignDraw(const GameState& gs) {
                  10, 94, 19, GOLD);
 
     notify::Draw();           // the one message rail (V189)
+    rdr::SetUiRecording(true);   // V193: overlay recording back on for
+                                 // screens that ARE screen-space (ledger,
+                                 // settings, battle HUD)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
     EndDrawing();
 }

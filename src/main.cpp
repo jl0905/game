@@ -168,12 +168,62 @@ int RunShots(int perSide, const char* dir, Vector2 where) {
     return 0;
 }
 
+// V193: `--shots-trip dir` captures the campaign -> battle -> campaign round
+// trip that broke when the V192 sky bracket re-enabled UI recording: frame
+// captures of the map BEFORE a battle and AFTER returning from one must look
+// the same (the map is world-space ui:: and must never land in the
+// screen-space Vulkan overlay).
+int RunTrip(const char* dir) {
+    InitWindow(1280, 720, "OpenWarband trip");
+    SetTargetFPS(0);
+    ui::LoadFonts();
+    ui::SetTextScale(GetSettings().textScale);
+
+    GameState gs;
+    LoadDefaultContent(gs.content);
+    CampaignInit(gs);
+    gs.screen = Screen::Campaign;
+
+    auto shoot = [&](const char* name) {
+        Image shot = LoadImageFromScreen();
+        ExportImage(shot, TextFormat("%s/%s.png", dir, name));
+        UnloadImage(shot);
+    };
+    for (int i = 0; i < 5; ++i) CampaignDraw(gs);
+    shoot("map_before");
+
+    BattleSetup s;   // the bench composition; the sim never touches gs
+    s.playerTroops.assign(gs.content.troops.size(), 2);
+    s.enemyTroops.assign(gs.content.troops.size(), 2);
+    s.heroLoadout = gs.content.troops.size() > 0
+        ? gs.content.troops[gs.content.troops.size() - 1].loadout : Loadout{};
+    s.heroMaxHp = 1000000;
+    s.campaignPos = { 500, 500 };
+    BattleInit(gs.content, s);
+    for (int i = 0; i < 90; ++i) {
+        BattleOutcome out;
+        BattleUpdate(gs.content, 1.0f / 60.0f, BattleInput{}, out);
+        BattleDraw(gs.content);
+    }
+    shoot("battle");
+
+    for (int i = 0; i < 5; ++i) CampaignDraw(gs);
+    shoot("map_after");
+    CloseWindow();
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
     // Headless scripted mode: no window, same simulation.
     if (argc >= 3 && std::strcmp(argv[1], "--script") == 0)
         return RunScript(argv[2]);
+    // Round-trip capture (V193): campaign -> battle -> campaign frames.
+    if (argc >= 3 && std::strcmp(argv[1], "--shots-trip") == 0) {
+        LoadSettings();
+        return RunTrip(argv[2]);
+    }
     // Frame capture for visual verification (V190): see RunShots above.
     if (argc >= 4 && std::strcmp(argv[1], "--shots") == 0) {
         Vector2 where = { 500, 500 };

@@ -2208,3 +2208,15 @@ over two half-features.
   terrain" user bug, which was real on GL too). Verified with --shots
   frame captures on both backends — near-identical battles — plus
   suite scripts green. Bench 800 men: VK 5.99-8.25 ms.
+
+- [x] **V193. Iteration one-ninety-three — the map holds after the
+  fight.** (user bug: campaign map scrambled after returning from a
+  battle in Vulkan mode.) The campaign map is world-space ui:: under a
+  Camera2D; recorded Vulkan UI verts composite in SCREEN space, so it
+  only ever looked right because the map-texture bake leaked
+  SetUiRecording(false) forever — and V192's per-frame battle-sky
+  bracket re-enabled recording, scattering the map after the first
+  battle. CampaignDraw now brackets itself GL-direct explicitly and
+  restores recording at the end for the screen-space screens. New
+  `--shots-trip dir` capture proves the round trip: map_before and
+  map_after a full battle are byte-identical (hash-equal PNGs).
