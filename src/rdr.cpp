@@ -342,7 +342,13 @@ void SegAppend(int tex, int n) {
 }  // namespace
 
 bool VulkanUiActive() {
-    return g_uiRecord && GetSettings().renderer == 1 && VulkanExecutorReady();
+    // V196: the Vulkan HUD overlay is PARKED. Its render is synchronous — a
+    // submit + fence wait + full-frame CPU readback + GL re-upload in the
+    // middle of every frame — which cost more in stalls than it will ever
+    // save before the native-swapchain present lands (RENDERER.md). The HUD
+    // draws through GL on both backends; the text pipeline stays built and
+    // this gate is where it comes back.
+    return false;
 }
 
 void SetUiRecording(bool on) { g_uiRecord = on; }

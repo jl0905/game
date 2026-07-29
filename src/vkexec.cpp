@@ -2018,12 +2018,15 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     si.pCommandBuffers = &g_vk.cmd[cur];
     vkQueueSubmit(g_vk.queue, 1, &si, g_vk.fence[cur]);
     g_vk.submitted[cur] = true;
-    // Present the other slot: its GPU work has had a full frame to land,
-    // so this wait is normally instant â€” the pipelining win (V166).
-    const int prev = cur ^ 1;
-    if (!g_vk.submitted[prev]) return nullptr;   // very first frame: GL covers it
-    vkWaitForFences(g_vk.dev, 1, &g_vk.fence[prev], VK_TRUE, UINT64_MAX);
-    return (const unsigned char*)g_vk.readMap[prev];
+    // V196: present THIS frame. The V166 slot-pipelined present (show the
+    // previous frame's layer) hid the fence wait but put the whole army one
+    // frame behind the GL camera - with the late scene flush on top, the
+    // player model trailed the mouse by two frames (the reported rubber-
+    // banding). The army render is ~1-2 ms on the queue; waiting for it now
+    // costs less than a frame of visible input lag. The double-buffered
+    // instance slots stay: uploads still never overwrite in-flight reads.
+    vkWaitForFences(g_vk.dev, 1, &g_vk.fence[cur], VK_TRUE, UINT64_MAX);
+    return (const unsigned char*)g_vk.readMap[cur];
 }
 
 }  // namespace rdr

@@ -2233,3 +2233,24 @@ over two half-features.
   loop, UI click. The knell keeps its synth bell (no good CC0 toll
   found). Default master volume 1.0 → 0.7 (settings.h + settings.cfg).
   Verified: all ten files decode at boot (WASAPI log), suite green.
+
+- [x] **V196. Iteration one-ninety-six — the lag hunt.** (user bug:
+  Vulkan laggy; mouse-look while moving rubber-bands.) Three real
+  defects found and fixed, measured after each: (1) the battle's ONE
+  instanced flush ran before the hero, horses, arrows and particles
+  were recorded — everything the eye tracks drew one frame late on
+  both backends; the flush moved to the end of the 3D pass. (2) The
+  V166 slot-pipelined Vulkan present showed the PREVIOUS frame's army
+  layer — plus (1), the player model trailed the mouse by two frames;
+  present is now same-frame (the fence wait costs ~1 ms, far less
+  than a frame of visible lag). (3) The Vulkan HUD overlay did a
+  synchronous submit+fence+full-frame CPU readback+GL re-upload every
+  frame; it is PARKED (HUD draws GL on both backends, identically)
+  until the native swapchain lands. Also: bench now runs at the
+  CONFIGURED resolution — and exposed that LoadSettings pre-window
+  reads the CWD cfg, which had silently made every earlier "GL"
+  measurement actually Vulkan. Honest 1080p numbers, 800 men:
+  GL 12.6 ms / VK 14.2 ms (the remaining gap is the offscreen→CPU→GL
+  composite bridge, gone when native present ships); 200 men:
+  GL 9.7 / VK 11.4. Both backends' battle + map round-trip captures
+  verified pixel-correct after the changes.

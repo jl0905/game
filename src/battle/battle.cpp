@@ -3553,7 +3553,12 @@ void BattleDraw(const Content& c) {
         DrawCharacter(c, riderPos, TroopLoadout(c, s.troop), pose, tint);
     }
     SetCharacterDetail(0);   // the hero and town scenes draw full (V127)
-    FlushInstanced();   // the whole far field in a handful of draw calls (V126)
+    // V196: the flush MOVED to the end of the 3D pass (just before
+    // EndShaderMode). It used to run here — but the hero, loose horses,
+    // arrows and particles are recorded BELOW this point, so everything the
+    // eye tracks most was drawn one frame late; with the Vulkan executor's
+    // pipelined present on top, the player model trailed the camera by two
+    // frames — the mouse-look rubber-banding the user reported.
 
     // Deployment ghosts (V58): while the field holds its breath â€” or the
     // ~ strategy menu is open mid-fight â€” show where the chosen shape will
@@ -3692,6 +3697,8 @@ void BattleDraw(const Content& c) {
                          Fade(Color{ 255, 210, 80, 255 }, 0.85f));
         }
     }
+    FlushInstanced();   // V196: one flush for the WHOLE scene, same-frame —
+                        // army, horses, arrows, particles and the hero
     EndShaderMode();
 
     EndMode3D();

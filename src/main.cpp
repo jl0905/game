@@ -91,15 +91,18 @@ BenchRow BenchOne(int perSide, Vector2 where) {
 
 int RunBench(int perSide, Vector2 where, bool sweep) {
     SetConfigFlags(FLAG_MSAA_4X_HINT);          // no vsync: measure real speed
-    InitWindow(1280, 720, "OpenWarband bench");
+    const Settings& st = GetSettings();
+    // V196: bench at the CONFIGURED window size — the Vulkan composite cost
+    // scales with resolution, so a fixed 720p bench was hiding it.
+    InitWindow(st.windowWidth, st.windowHeight, "OpenWarband bench");
     SetTargetFPS(0);
 
-    const Settings& st = GetSettings();
     const std::string cfg = TextFormat(
-        "renderer=%s bodystyle=%s shadows=%s postfx=%s",
+        "renderer=%s bodystyle=%s shadows=%s postfx=%s res=%dx%d",
         st.renderer == 1 ? "vulkan" : "raylib",
         st.bodyStyle == 2 ? "pill" : st.bodyStyle == 1 ? "blocky" : "boxy",
-        st.shadows ? "on" : "off", st.postFx ? "on" : "off");
+        st.shadows ? "on" : "off", st.postFx ? "on" : "off",
+        st.windowWidth, st.windowHeight);
 
     FILE* f = std::fopen("bench.txt", "w");
     const int ladder[] = { 300, 600, 1000, 2000 };
