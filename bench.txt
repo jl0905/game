@@ -1,1 +1,1 @@
-soldiers=200 frames=600 avg_ms=9.66 p99_ms=12.40 avg_fps=104 p50_ms=9.26 renderer=raylib bodystyle=pill shadows=on postfx=on res=1920x1080
+soldiers=800 frames=600 avg_ms=13.90 p99_ms=19.54 avg_fps=72 p50_ms=13.30 renderer=raylib bodystyle=pill shadows=on postfx=on res=1920x1080

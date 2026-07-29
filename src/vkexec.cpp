@@ -85,6 +85,7 @@ struct VkExec {
     VkFence fence[2] = {};
     bool submitted[2] = {};
     int frame = 0;
+    int lastSubmit = -1;   // V197: slot of the not-yet-resolved submission
     VkCommandPool pool = VK_NULL_HANDLE;
     // terrain occluder (V164): depth-only static mesh
     VkPipeline meshPipe = VK_NULL_HANDLE;
@@ -675,7 +676,10 @@ bool EnsureInstCap(int slot, int count) {
 // V178: the sun-shadow stack. Built once, lazily, after the main render
 // pass exists (litPipe targets it). Any failure leaves shReady false and
 // the legacy no-shadow pipeline in charge - parity is never at risk.
-constexpr int SHADOW_RES_VK = 2048;
+// V197: 1024, was 2048. The VK map only shades the ARMY layer (ground
+// shadows come from the GL map the terrain shader samples), so a quarter of
+// the fill buys back real frame time for a barely visible softening.
+constexpr int SHADOW_RES_VK = 1024;
 
 bool BuildShadowResources() {
     if (g_vk.shReady) return true;
@@ -1627,16 +1631,15 @@ bool VulkanExecutorReady() {
     return g_vk.live && !g_vk.frameFailed;
 }
 
-// Renders `count` instances (80 bytes each: column-major mat4 + rgba floats)
-// through the Vulkan box pipeline into an offscreen target and returns the
-// RGBA pixels (w*h*4, row 0 = top), or null on failure or warm-up (caller falls back
-// to GL). Pipelined readback (V166): the returned pixels are LAST frame's
-// render - one frame of latency buys back the sync-wait stall â€” the present-interop stage; the native
-// swapchain replaces it when the window itself moves to Vulkan.
+// V197: submit/resolve SPLIT. VulkanSubmitFrame records + submits the frame
+// and returns immediately; VulkanResolveFrame fence-waits and returns the
+// pixels. The caller overlaps the gap with its own GL work (battle draws
+// terrain + walls between the two), which buys the fence wait back almost
+// entirely. VulkanRenderFrame remains the synchronous convenience wrapper.
 // V178: lightVP16 is the sun's view-proj (already z-fixed to [0,1]) and
 // flags bit0 says "shadows on" - both flow from rdr.cpp, which owns the
 // raylib math this file cannot include.
-const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
+bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,
                                        const void* pillData, int pillCount,
@@ -1648,14 +1651,14 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
                                        const void* skinCylData, const int* skinCylSegSkin,
                                        const int* skinCylSegCount, int nSkinCylSegs,
                                        int w, int h) {
-    if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return nullptr;
+    if (!g_vk.live || g_vk.frameFailed || w <= 0 || h <= 0) return false;
     if (w != g_vk.width || h != g_vk.height) {
         DFN(vkDeviceWaitIdle);
         if (g_vk.fb) vkDeviceWaitIdle(g_vk.dev);
         if (!BuildFrameResources(w, h)) {
             g_vk.frameFailed = true;
             TraceLog(RL_LOG_WARNING, "rdr: vulkan frame resources failed; GL fallback");
-            return nullptr;
+            return false;
         }
         if (!g_vk.frameReady) {
             g_vk.frameReady = true;
@@ -1692,7 +1695,7 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
         vkWaitForFences(g_vk.dev, 1, &g_vk.fence[cur], VK_TRUE, UINT64_MAX);
     vkResetFences(g_vk.dev, 1, &g_vk.fence[cur]);
     g_vk.submitted[cur] = false;
-    if (!EnsureInstCap(cur, count)) { g_vk.frameFailed = true; return nullptr; }
+    if (!EnsureInstCap(cur, count)) { g_vk.frameFailed = true; return false; }
     if (count > 0) memcpy(g_vk.instMap[cur], instData, (size_t)count * 80);
     if (!g_vk.sphereBuf) pillCount = 0;   // sphere upload failed: skip pills
     if (pillCount > 0 && !EnsurePillCap(cur, pillCount)) pillCount = 0;
@@ -1750,13 +1753,13 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
             vkCmdSetScissor(g_vk.cmd[cur], 0, 1, &ssc);
             vkCmdPushConstants(g_vk.cmd[cur], g_vk.shLayout,
                                VK_SHADER_STAGE_VERTEX_BIT, 0, 64, lightVP16);
-            if (g_vk.terrBuf && g_vk.shMeshPipe) {
-                vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                  g_vk.shMeshPipe);
-                VkDeviceSize toff = 0;
-                vkCmdBindVertexBuffers(g_vk.cmd[cur], 0, 1, &g_vk.terrBuf, &toff);
-                vkCmdDraw(g_vk.cmd[cur], (uint32_t)g_vk.terrCount, 1, 0, 0);
-            }
+            // V197: the terrain does NOT cast into the VK map any more. This
+            // map only shades the ARMY layer; hillside shading of the ground
+            // comes from the GL map the terrain shader samples, and a whole
+            // battlefield mesh at shadow res every frame was the single
+            // biggest redundant draw in the pass. (Soldiers standing in a
+            // hill's cast shade lose that one cue - the GL ground shadow
+            // under their feet still tells the story.)
             if (count > 0) {
                 vkCmdBindPipeline(g_vk.cmd[cur], VK_PIPELINE_BIND_POINT_GRAPHICS,
                                   g_vk.shBoxPipe);
@@ -2018,15 +2021,43 @@ const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun
     si.pCommandBuffers = &g_vk.cmd[cur];
     vkQueueSubmit(g_vk.queue, 1, &si, g_vk.fence[cur]);
     g_vk.submitted[cur] = true;
-    // V196: present THIS frame. The V166 slot-pipelined present (show the
-    // previous frame's layer) hid the fence wait but put the whole army one
-    // frame behind the GL camera - with the late scene flush on top, the
-    // player model trailed the mouse by two frames (the reported rubber-
-    // banding). The army render is ~1-2 ms on the queue; waiting for it now
-    // costs less than a frame of visible input lag. The double-buffered
-    // instance slots stay: uploads still never overwrite in-flight reads.
-    vkWaitForFences(g_vk.dev, 1, &g_vk.fence[cur], VK_TRUE, UINT64_MAX);
-    return (const unsigned char*)g_vk.readMap[cur];
+    g_vk.lastSubmit = cur;
+    return true;
+}
+
+// V197: fence-wait the last submitted frame and hand back its pixels. Still
+// same-frame (V196 latency fix) - but the caller has been drawing GL terrain
+// since the submit, so the GPU has usually finished and the wait is ~free.
+const unsigned char* VulkanResolveFrame() {
+    if (g_vk.lastSubmit < 0 || !g_vk.live || g_vk.frameFailed) return nullptr;
+    DFN(vkWaitForFences);
+    const int slot = g_vk.lastSubmit;
+    g_vk.lastSubmit = -1;
+    vkWaitForFences(g_vk.dev, 1, &g_vk.fence[slot], VK_TRUE, UINT64_MAX);
+    return (const unsigned char*)g_vk.readMap[slot];
+}
+
+const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
+                                       const float* lightVP16, int flags,
+                                       const void* instData, int count,
+                                       const void* pillData, int pillCount,
+                                       const void* skinBoxData, const int* skinBoxSegSkin,
+                                       const int* skinBoxSegCount, int nSkinBoxSegs,
+                                       const void* skinPillData, const int* skinPillSegSkin,
+                                       const int* skinPillSegCount, int nSkinPillSegs,
+                                       const void* cylData, int cylCount,
+                                       const void* skinCylData, const int* skinCylSegSkin,
+                                       const int* skinCylSegCount, int nSkinCylSegs,
+                                       int w, int h) {
+    return VulkanSubmitFrame(viewProj16, sun4, lightVP16, flags, instData,
+                             count, pillData, pillCount, skinBoxData,
+                             skinBoxSegSkin, skinBoxSegCount, nSkinBoxSegs,
+                             skinPillData, skinPillSegSkin, skinPillSegCount,
+                             nSkinPillSegs, cylData, cylCount, skinCylData,
+                             skinCylSegSkin, skinCylSegCount, nSkinCylSegs,
+                             w, h)
+               ? VulkanResolveFrame()
+               : nullptr;
 }
 
 }  // namespace rdr
@@ -2047,5 +2078,13 @@ const unsigned char* VulkanRenderFrame(const float*, const float*, const float*,
                                        const void*, int,
                                        const void*, const int*, const int*, int,
                                        int, int) { return nullptr; }
+bool VulkanSubmitFrame(const float*, const float*, const float*, int,
+                       const void*, int, const void*, int,
+                       const void*, const int*, const int*, int,
+                       const void*, const int*, const int*, int,
+                       const void*, int,
+                       const void*, const int*, const int*, int,
+                       int, int) { return false; }
+const unsigned char* VulkanResolveFrame() { return nullptr; }
 }
 #endif

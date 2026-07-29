@@ -61,6 +61,12 @@ struct RaylibInstancedState {
 };
 void FlushRaylib(const RaylibInstancedState& st);
 
+// V197: optional split flush. FlushSubmit() consumes the recording and queues
+// it on the Vulkan device WITHOUT waiting (true), letting the caller overlap
+// its own GL drawing; the later Flush() then resolves and stages the layer.
+// In GL mode it returns false and does nothing - call Flush() as always.
+bool FlushSubmit(const RaylibInstancedState& st);
+
 // The backend switch (V161): reads Settings::renderer. Today `vulkan`
 // logs once and executes through GL until the Vulkan executor reaches
 // parity (RENDERER.md phase 2 tail: offscreen render + present interop,
@@ -116,6 +122,22 @@ bool VulkanExecutorReady();
 // drawn with the unit-sphere mesh through the same lit + shadow pipelines.
 // V180: skinBox*/skinPill* = armour-textured instances; the seg arrays give
 // (skin id, instance count) runs in bucket order over the packed data.
+// V197: split form of VulkanRenderFrame. Submit records + queues the frame
+// and returns at once; Resolve fence-waits and returns the pixels. Callers
+// overlap the gap with their own GL drawing (see battle.cpp's 3D pass).
+bool VulkanSubmitFrame(const float* viewProj16, const float* sun4,
+                       const float* lightVP16, int flags,
+                       const void* instData, int count,
+                       const void* pillData, int pillCount,
+                       const void* skinBoxData, const int* skinBoxSegSkin,
+                       const int* skinBoxSegCount, int nSkinBoxSegs,
+                       const void* skinPillData, const int* skinPillSegSkin,
+                       const int* skinPillSegCount, int nSkinPillSegs,
+                       const void* cylData, int cylCount,
+                       const void* skinCylData, const int* skinCylSegSkin,
+                       const int* skinCylSegCount, int nSkinCylSegs,
+                       int w, int h);
+const unsigned char* VulkanResolveFrame();
 const unsigned char* VulkanRenderFrame(const float* viewProj16, const float* sun4,
                                        const float* lightVP16, int flags,
                                        const void* instData, int count,

@@ -2254,3 +2254,19 @@ over two half-features.
   composite bridge, gone when native present ships); 200 men:
   GL 9.7 / VK 11.4. Both backends' battle + map round-trip captures
   verified pixel-correct after the changes.
+
+- [x] **V197. Iteration one-ninety-seven — parity.** (user call: match
+  GL.) Three structural cuts, measured with interleaved 4-round p50
+  benches: (1) submit/resolve SPLIT at the seam — FlushSubmit() hands
+  the recording to the Vulkan device right after the last instance and
+  the 3D pass then draws its GL share (terrain moved AFTER the army
+  recording; blob shadows queue until ground exists; formation ghosts
+  follow) while the GPU renders the army, so the resolve fence wait
+  fell 2.0 → 0.22 ms; the terrain reorder ALSO bought GL early-z
+  (~1.5 ms). (2) VK shadow map 2048→1024 — it only shades the army
+  layer. (3) terrain no longer casts into the VK map (the biggest
+  redundant per-frame draw; ground shading is the GL map's job).
+  Result at 1920x1080, 800 men, interleaved: VK p50 avg 11.28 ms vs
+  GL 11.30 ms — parity. Battle capture + map round trip verified;
+  suite green. Native-swapchain present remains the endgame that
+  removes the readback bridge entirely.

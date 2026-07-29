@@ -1637,15 +1637,28 @@ void LimbBox(Vector3 a, Vector3 b, float r, Color col) {
     rdr::PushOrientedBox(a, b, r, col);   // recorded at the seam (V160)
 }
 
-void FlushInstanced() {
-    if (!g_instReady) return;
+rdr::RaylibInstancedState InstState() {
     // A low late-afternoon sun (V129); by night the moon takes its line.
     const Vector3 sun = Vector3Normalize(
         B.night ? Vector3{ 0.2f, -0.9f, 0.3f } : Vector3{ -0.45f, -0.75f, -0.35f });
-    rdr::RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
-                                  g_instSunLoc, sun, &g_instSphere,
-                                  g_instSkinRectLoc, &g_instCyl };
+    return rdr::RaylibInstancedState{ &g_instCube, &g_instMat, g_instShader,
+                                      g_instSunLoc, sun, &g_instSphere,
+                                      g_instSkinRectLoc, &g_instCyl };
+}
+
+void FlushInstanced() {
+    if (!g_instReady) return;
+    const rdr::RaylibInstancedState st = InstState();
     rdr::Flush(st);   // the seam picks the backend (V161)
+}
+
+// V197: hand the recording to the Vulkan device WITHOUT waiting - the 3D
+// pass draws its GL share (terrain, decals) while the GPU renders the army,
+// and the later FlushInstanced() resolves. GL mode: no-op, false.
+void FlushInstancedSubmit() {
+    if (!g_instReady) return;
+    const rdr::RaylibInstancedState st = InstState();
+    rdr::FlushSubmit(st);
 }
 
 }  // namespace   (briefly close the file-local scope for the rdr bridge)
@@ -1667,9 +1680,18 @@ void FlushScene(Vector3 sunDir) {
 namespace {
 
 // Soft blob shadow pinned to the terrain â€” the cheapest depth cue there is.
+// V197: QUEUED, not drawn - the 3D pass now records soldiers before the GL
+// terrain lands, and a translucent disc drawn over bare sky blends wrong.
+// DrawQueuedBlobShadows() paints them right after the terrain.
+std::vector<Vector4> g_blobQ;   // x,z world; y ground height; w radius
 void BlobShadow(const Terrain& t, float x, float z, float r) {
-    DrawCylinder({ x, t.HeightAt(x, z) + 0.04f, z }, r, r, 0.02f, 12,
-                 Fade(BLACK, 0.28f));
+    g_blobQ.push_back({ x, t.HeightAt(x, z), z, r });
+}
+void DrawQueuedBlobShadows() {
+    for (const Vector4& b : g_blobQ)
+        DrawCylinder({ b.x, b.y + 0.04f, b.z }, b.w, b.w, 0.02f, 12,
+                     Fade(BLACK, 0.28f));
+    g_blobQ.clear();
 }
 
 // The horse: barrel, neck + head, four trotting legs. The rider is drawn by
@@ -3396,7 +3418,11 @@ void BattleDraw(const Content& c) {
 
     BeginMode3D(cam);
     BeginShaderMode(GetLitShader());   // one sun over everything solid
-    B.terrain.Draw();
+    // V197: the terrain is drawn LATER, after the army recording has been
+    // submitted to the Vulkan device - the GL terrain work overlaps the GPU
+    // army render, and the fence wait at resolve time comes back ~free.
+    // Everything before it is either recorded (walls, soldiers, hero) or
+    // opaque (the depth buffer keeps ordering honest either way).
 
     // Siege wall: stone segments with crenellations, broken by the gate.
     // Fortified stone (V52/V53) reads darker and carries a hoarding band.
@@ -3564,21 +3590,8 @@ void BattleDraw(const Content& c) {
     // ~ strategy menu is open mid-fight â€” show where the chosen shape will
     // actually stand: one translucent disc per own soldier's formation
     // slot, mirroring the AI's anchor rules exactly.
-    if (B.deploying || B.showMenu) {
-        FormationType ghostForm = B.formation;
-        Vector3       ghostAnchor = B.pPos;
-        if (B.order == OrderType::Charge) ghostForm = FormationType::Line;
-        else if (B.order == OrderType::Hold) ghostAnchor = B.holdPos;
-        if (ghostForm == FormationType::Charge) ghostForm = FormationType::Line;
-        for (const Soldier& s : B.soldiers) {
-            if (s.team != Team::Player || s.ally || s.hp <= 0) continue;
-            Vector3 g = FormationTarget(ghostForm, B.ranks, ghostAnchor,
-                                        B.yaw, s.slot, B.ownCount);
-            g.y = B.terrain.HeightAt(g.x, g.z);
-            DrawCylinder({ g.x, g.y + 0.03f, g.z }, 0.55f, 0.55f, 0.03f, 10,
-                         Fade(Color{ 80, 160, 255, 255 }, 0.35f));
-        }
-    }
+    // (V197: the translucent formation-ghost discs moved AFTER the terrain
+    // draw below - blended discs need the ground under them first.)
 
     // The standards (V32): a tall pole and pennant over each bannerman,
     // drawn at any distance â€” the line reads from across the field.
@@ -3697,8 +3710,29 @@ void BattleDraw(const Content& c) {
                          Fade(Color{ 255, 210, 80, 255 }, 0.85f));
         }
     }
-    FlushInstanced();   // V196: one flush for the WHOLE scene, same-frame —
-                        // army, horses, arrows, particles and the hero
+    // V197: the overlap. Everything recorded above is submitted to the
+    // Vulkan device NOW (GL mode: no-op) - then the GL share of the scene
+    // (terrain, decals, ghosts) draws while the GPU renders the army - and
+    // the final Flush resolves a fence that has usually already signalled.
+    FlushInstancedSubmit();
+    B.terrain.Draw();
+    DrawQueuedBlobShadows();   // translucent: needed the ground first
+    if (B.deploying || B.showMenu) {   // formation ghosts (moved, V197)
+        FormationType ghostForm = B.formation;
+        Vector3       ghostAnchor = B.pPos;
+        if (B.order == OrderType::Charge) ghostForm = FormationType::Line;
+        else if (B.order == OrderType::Hold) ghostAnchor = B.holdPos;
+        if (ghostForm == FormationType::Charge) ghostForm = FormationType::Line;
+        for (const Soldier& s : B.soldiers) {
+            if (s.team != Team::Player || s.ally || s.hp <= 0) continue;
+            Vector3 g = FormationTarget(ghostForm, B.ranks, ghostAnchor,
+                                        B.yaw, s.slot, B.ownCount);
+            g.y = B.terrain.HeightAt(g.x, g.z);
+            DrawCylinder({ g.x, g.y + 0.03f, g.z }, 0.55f, 0.55f, 0.03f, 10,
+                         Fade(Color{ 80, 160, 255, 255 }, 0.35f));
+        }
+    }
+    FlushInstanced();   // V196/V197: resolve + stage (VK) or draw it all (GL)
     EndShaderMode();
 
     EndMode3D();

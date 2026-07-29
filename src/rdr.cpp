@@ -215,7 +215,13 @@ bool g_vkPending = false;
 // The Vulkan road (V163): flatten the buckets into the vkarmy instance
 // shape, render them offscreen on the Vulkan device with the live camera,
 // and stage the result for PresentVulkan() after EndMode3D().
-bool FlushVulkan(const RaylibInstancedState& st) {
+// V197: split into SUBMIT (flatten + queue the GPU work, buckets consumed)
+// and RESOLVE (fence-wait + stage the layer) so the caller can overlap the
+// GPU render with its own GL drawing between the two.
+bool g_vkSubmitPending = false;
+int  g_vkSubmitW = 0, g_vkSubmitH = 0;
+
+bool FlushVulkanSubmit(const RaylibInstancedState& st) {
     static std::vector<float> inst, pills;
     auto flatten = [](BoxBuckets& src, std::vector<float>& out) {
         out.clear();
@@ -286,17 +292,35 @@ bool FlushVulkan(const RaylibInstancedState& st) {
                        MatrixOrtho(-S, S, -S, S, 5.0, 400.0)), fix);
     const float16 lvpf = MatrixToFloatV(lightVP);
     const int flags = GetSettings().shadows ? 1 : 0;
-    const unsigned char* px =
-        VulkanRenderFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count,
-                          pills.data(), pillCount,
-                          skinBoxes.data(), sbSkin.data(), sbCount.data(),
-                          (int)sbSkin.size(),
-                          skinPills.data(), spSkin.data(), spCount.data(),
-                          (int)spSkin.size(),
-                          cyls.data(), cylCount,
-                          skinCyls.data(), scSkin.data(), scCount.data(),
-                          (int)scSkin.size(), w, h);
+    if (!VulkanSubmitFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count,
+                           pills.data(), pillCount,
+                           skinBoxes.data(), sbSkin.data(), sbCount.data(),
+                           (int)sbSkin.size(),
+                           skinPills.data(), spSkin.data(), spCount.data(),
+                           (int)spSkin.size(),
+                           cyls.data(), cylCount,
+                           skinCyls.data(), scSkin.data(), scCount.data(),
+                           (int)scSkin.size(), w, h))
+        return false;
+    // The GPU owns copies of everything now - the recording is spent.
+    for (auto& [key, mats] : g_buckets) mats.clear();
+    for (auto& [key, mats] : g_pills) mats.clear();
+    for (auto& [key, mats] : g_skinBoxes) mats.clear();
+    for (auto& [key, mats] : g_skinPills) mats.clear();
+    for (auto& [key, mats] : g_cyls) mats.clear();
+    for (auto& [key, mats] : g_skinCyls) mats.clear();
+    g_vkSubmitPending = true;
+    g_vkSubmitW = w;
+    g_vkSubmitH = h;
+    return true;
+}
+
+bool FlushVulkanResolve() {
+    if (!g_vkSubmitPending) return false;
+    g_vkSubmitPending = false;
+    const unsigned char* px = VulkanResolveFrame();
     if (!px) return false;
+    const int w = g_vkSubmitW, h = g_vkSubmitH;
     if (g_vkTex.id == 0 || g_vkTex.width != w || g_vkTex.height != h) {
         if (g_vkTex.id) UnloadTexture(g_vkTex);
         Image im = { (void*)px, w, h, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
@@ -305,13 +329,11 @@ bool FlushVulkan(const RaylibInstancedState& st) {
         UpdateTexture(g_vkTex, px);
     }
     g_vkPending = true;
-    for (auto& [key, mats] : g_buckets) mats.clear();
-    for (auto& [key, mats] : g_pills) mats.clear();
-    for (auto& [key, mats] : g_skinBoxes) mats.clear();
-    for (auto& [key, mats] : g_skinPills) mats.clear();
-    for (auto& [key, mats] : g_cyls) mats.clear();
-    for (auto& [key, mats] : g_skinCyls) mats.clear();
     return true;
+}
+
+bool FlushVulkan(const RaylibInstancedState& st) {
+    return FlushVulkanSubmit(st) && FlushVulkanResolve();
 }
 }  // namespace
 
@@ -442,7 +464,20 @@ void PresentVulkanUi() {
     DrawTexture(g_uiTex, 0, 0, WHITE);
 }
 
+// V197: submit-only entry for callers that overlap GL work before Flush().
+// True = the recording was consumed and queued on the Vulkan device; false =
+// GL mode (or executor down) - the caller just proceeds to Flush() as ever.
+bool FlushSubmit(const RaylibInstancedState& st) {
+    return GetSettings().renderer == 1 && VulkanExecutorReady() &&
+           FlushVulkanSubmit(st);
+}
+
 void Flush(const RaylibInstancedState& st) {
+    if (g_vkSubmitPending) {       // V197: second half of a split flush
+        FlushVulkanResolve();
+        FlushRaylib(st);           // drain any post-submit stragglers via GL
+        return;
+    }
     if (GetSettings().renderer == 1 && VulkanExecutorReady() && FlushVulkan(st))
         return;        // Vulkan rendered the recording this frame
     FlushRaylib(st);   // the GL road, unchanged
