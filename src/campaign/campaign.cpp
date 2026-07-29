@@ -3563,7 +3563,9 @@ void CampaignDraw(const GameState& gs) {
     // is why this "worked"). Recording resumes at the end of this function.
     rdr::SetUiRecording(false);
 
-    SfxAmbience(0.07f);   // a soft wind over the overworld
+    SfxAmbience(0.0f);    // V194 (user call): no wind loop on the map —
+                          // 0 also fades out any wind carried back from
+                          // a battle instead of leaving it mid-howl
     SfxMusic(0.06f);      // and a low drone beneath it (N5)
 
     const Texture2D& map = CachedMapTexture(gs);   // before BeginDrawing
