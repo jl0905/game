@@ -2192,3 +2192,19 @@ over two half-features.
   caps around a FLAT one-texel shaft — the "weird middle of the pill".
   Texcoords added (wrap-once u, 0..1 v); body reads as one material.
   Vulkan was never affected (object-space UVs in boxskin.vert).
+
+- [x] **V192. Iteration one-ninety-two — Vulkan takes the field.** (user
+  call) Vulkan is the DEFAULT renderer (settings.h + settings.cfg; GL
+  remains the automatic fallback and a settings-screen toggle). Making
+  it default exposed the real reason "parity" never looked right: the
+  battle and town SKIES are painted with ui:: primitives, and in
+  Vulkan mode those record into the end-of-frame HUD overlay — the sky
+  (sun included) composited OVER the terrain and the army, leaving
+  only sky+HUD visible, and at the horizon the sun showed through the
+  world. Fix: rdr::SetUiRecording(false/true) brackets both sky
+  blocks so they rasterize under the 3D pass on either backend; and
+  the sun/moon halo discs are scissored to the sky band so the glow
+  can no longer bleed below the horizon strip (the "sun under the
+  terrain" user bug, which was real on GL too). Verified with --shots
+  frame captures on both backends — near-identical battles — plus
+  suite scripts green. Bench 800 men: VK 5.99-8.25 ms.

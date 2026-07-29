@@ -3333,6 +3333,11 @@ void BattleDraw(const Content& c) {
     else if (tod >= 0.70f)  sky = { 178, 116, 84, 255 };   // dusk
     else if (tod < 0.10f)   sky = { 148, 120, 104, 255 };  // dawn
     ClearBackground(sky);
+    // V192: the sky must land UNDER the 3D world. In Vulkan mode ui:: calls
+    // record into the HUD overlay composited at end-of-frame — the whole sky
+    // (sun included) was painting OVER the terrain and the army. Pause the
+    // UI recording so the sky rasterizes straight into the GL frame here.
+    rdr::SetUiRecording(false);
     // A real sky (V4): zenith deepens, horizon pales â€” drawn flat before
     // the 3D pass, which paints over it with depth. Costs one rectangle.
     {
@@ -3367,19 +3372,27 @@ void BattleDraw(const Content& c) {
             ui::Rect(sx, sy, ((s >> 7) & 3) == 0 ? 2 : 1, 1,
                           Fade(RAYWHITE, tw));
         }
+        // V192 (user bug): moon and sun glows are CLIPPED to the sky band —
+        // the soft halo was bleeding into the below-horizon strip and read
+        // as a light shining from under the terrain.
+        BeginScissorMode(0, 0, w, h * 2 / 3);
         ui::DiscGradient(w * 3 / 4, h / 4, 70,
                            Fade(Color{ 224, 228, 240, 255 }, 0.95f),
                            Fade(Color{ 224, 228, 240, 255 }, 0.0f));
         ui::Disc(w * 3 / 4, h / 4, 26, Color{ 226, 230, 240, 255 });
         ui::Disc(w * 3 / 4 + 9, h / 4 - 4, 22, Color{ 24, 30, 52, 255 });   // crescent
+        EndScissorMode();
     } else {
         Color top = { 92, 148, 214, 255 }, bot = { 208, 224, 238, 255 };
         if (tod >= 0.70f) { top = { 150, 96, 84, 255 };  bot = { 236, 168, 120, 255 }; }
         else if (tod < 0.10f) { top = { 128, 108, 110, 255 }; bot = { 232, 196, 160, 255 }; }
         ui::GradientV(0, 0, GetScreenWidth(), GetScreenHeight(), top, bot);
+        BeginScissorMode(0, 0, GetScreenWidth(), GetScreenHeight() * 2 / 3);   // V192
         ui::DiscGradient(GetScreenWidth() * 3 / 4, GetScreenHeight() / 4, 90,
                            Fade(Color{ 255, 244, 214, 255 }, 0.9f), Fade(WHITE, 0.0f));
+        EndScissorMode();
     }
+    rdr::SetUiRecording(true);   // V192: HUD recording resumes past the sky
 
     BeginMode3D(cam);
     BeginShaderMode(GetLitShader());   // one sun over everything solid

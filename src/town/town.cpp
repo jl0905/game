@@ -1396,8 +1396,12 @@ void TownDraw(const GameState& gs) {
     else if (townTod >= 0.70f){ skyTop = { 168, 106, 88, 255 }; skyBot = { 238, 176, 128, 255 }; }
     else if (townTod < 0.10f) { skyTop = { 140, 118, 116, 255 }; skyBot = { 234, 200, 166, 255 }; }
     ClearBackground(skyTop);   // clears depth too
+    // V192: sky under the world, not over it — in Vulkan mode ui:: records
+    // into the end-of-frame HUD overlay, which was covering the 3D street.
+    rdr::SetUiRecording(false);
     ui::GradientV(0, 0, GetScreenWidth(), GetScreenHeight(),
                            skyTop, skyBot);
+    rdr::SetUiRecording(true);
 
     // Faint lute from the gold-roofed door when you stand near it (N5).
     SfxMinstrel(TownAtTavern() ? 0.12f : 0.0f);
