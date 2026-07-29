@@ -173,6 +173,58 @@ int RunShots(int perSide, const char* dir, Vector2 where) {
     return 0;
 }
 
+// V199: `--pace N` runs an N-vs-N battle under REAL play conditions - vsync
+// hint, SetTargetFPS(120), the whole windowed loop - and reports the wall
+// time BETWEEN frames (p50/p99/max), which is what stutter actually is.
+// The bench measures raw draw cost; this measures the delivered cadence.
+int RunPace(int perSide, Vector2 where) {
+    SetConfigFlags(FLAG_MSAA_4X_HINT |
+                   (GetSettings().renderer == 1 ? 0u : FLAG_VSYNC_HINT));
+    const Settings& st = GetSettings();
+    InitWindow(st.windowWidth, st.windowHeight, "OpenWarband pace");
+    SetTargetFPS(120);
+    GameState gs;
+    LoadDefaultContent(gs.content);
+    GetSettings().battleSize = 1e6f;
+    BattleSetup s;
+    s.playerTroops.assign(gs.content.troops.size(), 0);
+    s.enemyTroops.assign(gs.content.troops.size(), 0);
+    for (int t = 0; t < gs.content.troops.size(); ++t) {
+        s.playerTroops[t] = perSide / gs.content.troops.size();
+        s.enemyTroops[t]  = perSide / gs.content.troops.size();
+    }
+    if (gs.content.troops.size() > 0)
+        s.heroLoadout = gs.content.troops[gs.content.troops.size() - 1].loadout;
+    s.heroMaxHp   = 1000000;
+    s.campaignPos = where;
+    BattleInit(gs.content, s);
+    const int WARMUP = 120, FRAMES = 600;
+    std::vector<float> gap;
+    gap.reserve(FRAMES);
+    double last = GetTime();
+    for (int i = 0; i < WARMUP + FRAMES && !WindowShouldClose(); ++i) {
+        BattleOutcome out;
+        BattleUpdate(gs.content, GetFrameTime(), BattleInput{}, out);
+        BattleDraw(gs.content);
+        const double now = GetTime();
+        if (i >= WARMUP) gap.push_back((float)((now - last) * 1000.0));
+        last = now;
+    }
+    std::sort(gap.begin(), gap.end());
+    FILE* f = std::fopen("pace.txt", "w");
+    if (f && !gap.empty()) {
+        std::fprintf(f,
+                     "soldiers=%d frames=%d gap_p50=%.2f gap_p99=%.2f "
+                     "gap_max=%.2f renderer=%s\n",
+                     perSide * 2, (int)gap.size(), gap[gap.size() / 2],
+                     gap[(size_t)((float)gap.size() * 0.99f)], gap.back(),
+                     GetSettings().renderer == 1 ? "vulkan" : "raylib");
+        std::fclose(f);
+    }
+    CloseWindow();
+    return 0;
+}
+
 // V193: `--shots-trip dir` captures the campaign -> battle -> campaign round
 // trip that broke when the V192 sky bracket re-enabled UI recording: frame
 // captures of the map BEFORE a battle and AFTER returning from one must look
@@ -225,6 +277,11 @@ int main(int argc, char** argv) {
     // Headless scripted mode: no window, same simulation.
     if (argc >= 3 && std::strcmp(argv[1], "--script") == 0)
         return RunScript(argv[2]);
+    // Frame pacing probe (V199): play-condition cadence, see RunPace.
+    if (argc >= 3 && std::strcmp(argv[1], "--pace") == 0) {
+        LoadSettings();
+        return RunPace(std::atoi(argv[2]), { 500, 500 });
+    }
     // Round-trip capture (V193): campaign -> battle -> campaign frames.
     if (argc >= 3 && std::strcmp(argv[1], "--shots-trip") == 0) {
         LoadSettings();
@@ -247,8 +304,13 @@ int main(int argc, char** argv) {
         return RunBench(sweep ? 0 : std::atoi(argv[2]), where, sweep);
     }
 
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
     LoadSettings();   // assets/settings.cfg: window, LOD, audio, input comfort
+    // V199: with the Vulkan renderer the GL window is a pacing liability -
+    // its vsynced swap stacked with the native overlay's present serialized
+    // battles to TWO vblanks a frame (~31 fps). SetTargetFPS(120) paces the
+    // loop instead; the overlay presents without contention.
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT |
+                   (GetSettings().renderer == 1 ? 0u : FLAG_VSYNC_HINT));
     const Settings& st = GetSettings();
     InitWindow(st.windowWidth, st.windowHeight, "OpenWarband");
     if (st.fullscreen) ToggleFullscreen();

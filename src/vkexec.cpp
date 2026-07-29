@@ -1761,14 +1761,16 @@ bool EnsureNativeTarget(int w, int h) {
     VkPresentModeKHR pms[8];
     if (npm > 8) npm = 8;
     pmFn(g_vk.phys, g_vk.surf, &npm, pms);
-    // MAILBOX: no tearing AND non-blocking - GL's vsynced swap on the parent
-    // window already paces the loop, so the overlay must never block twice.
+    // IMMEDIATE first (V199): a DWM-composited child surface never tears
+    // anyway, and both MAILBOX-acquire and FIFO can BLOCK while the
+    // compositor holds images - which stacked with the GL parent swap into
+    // the ~31 fps battles the user reported. IMMEDIATE never queues.
     VkPresentModeKHR mode = VK_PRESENT_MODE_FIFO_KHR;
     for (uint32_t i = 0; i < npm; ++i)
-        if (pms[i] == VK_PRESENT_MODE_MAILBOX_KHR) mode = VK_PRESENT_MODE_MAILBOX_KHR;
+        if (pms[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
     if (mode == VK_PRESENT_MODE_FIFO_KHR)
         for (uint32_t i = 0; i < npm; ++i)
-            if (pms[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            if (pms[i] == VK_PRESENT_MODE_MAILBOX_KHR) mode = VK_PRESENT_MODE_MAILBOX_KHR;
 
     VkSwapchainCreateInfoKHR sc = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     sc.surface = g_vk.surf;

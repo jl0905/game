@@ -2291,3 +2291,16 @@ over two half-features.
   fix a stream-zeroing double-flatten. Numbers, 1080p 800 men:
   native 2.27 ms / 441 fps vs GL 8.31 ms / 120 fps; 4000 soldiers
   8.32 ms. Suite green; campaign round trip intact.
+
+- [x] **V199. Iteration one-ninety-nine — the cadence.** (user: "still
+  lagging.") The raw draw was 2.3 ms but the DELIVERED frame gap was
+  31.8 ms: the GL parent window's vsynced swap and the overlay
+  swapchain's acquire each blocked a vblank under DWM — two vblanks
+  per frame, ~31 fps battles. New `--pace N` probe measures wall time
+  BETWEEN frames under real play conditions (vsync + 120 cap), which
+  is what stutter actually is. Fixes: no FLAG_VSYNC_HINT when the
+  renderer is vulkan (SetTargetFPS paces; the GL window is a blank
+  clear behind the overlay), and the overlay prefers IMMEDIATE present
+  (a composited child never tears; MAILBOX/FIFO could block while DWM
+  held images). Result: gap p50 31.77 → 8.34 ms, p99 8.94, max 10.0 —
+  steadier than the GL road (p99 10.66, max 17.4). Suite green.
