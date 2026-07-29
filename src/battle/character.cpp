@@ -202,23 +202,87 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                                    (unsigned char)(c.b + (255 - c.b) * fl), c.a };
     };
 
-    // V201 (user call): the ROBLOX FACE — two oval eyes and a smile, tiny
-    // recorded primitives pinned to the head's front. Backend-neutral, every
-    // body style, every troop. `u` = head centre height, `fwd` = how far the
-    // face sits forward of the head centre, `s` scales with head size.
+    // V201/V202 (user calls): the FACE — tiny recorded primitives pinned to
+    // the head's front. Backend-neutral, every body style, every troop.
+    // Pose.face picks the expression: 0 smile, 1 neutral :|, 2 angry,
+    // 3 rage-comic scream, 4 troll grin, 5 :O surprise. `u` = head centre
+    // height, `fwd` = forward offset, `s` scales with head size.
     auto drawFace = [&](float u, float fwd, float s) {
         const Color ink = flashed(Color{ 28, 24, 22, 255 });
-        for (const float side : { -1.0f, 1.0f }) {
-            const Vector3 a = at(side * 0.105f * s, u + 0.030f * s, fwd);
-            const Vector3 b = at(side * 0.105f * s, u + 0.095f * s, fwd);
-            rdr::PushPill(a, b, 0.034f * s, ink);            // oval eye
+        const int v = pose.face;
+        // ---- eyes ----
+        if (v == 3) {
+            // rage scream: squeezed-shut eyes - two angled slits
+            for (const float side : { -1.0f, 1.0f }) {
+                rdr::PushOrientedBox(
+                    at(side * 0.055f * s, u + 0.045f * s, fwd),
+                    at(side * 0.150f * s, u + 0.085f * s, fwd),
+                    0.016f * s, ink);
+            }
+        } else if (v == 5) {
+            for (const float side : { -1.0f, 1.0f }) {   // :O - wide circles
+                const Vector3 e = at(side * 0.105f * s, u + 0.065f * s, fwd);
+                rdr::PushPill(e, e, 0.045f * s, ink);
+            }
+        } else {
+            for (const float side : { -1.0f, 1.0f }) {   // oval eyes
+                const Vector3 a = at(side * 0.105f * s, u + 0.030f * s, fwd);
+                const Vector3 b = at(side * 0.105f * s, u + 0.095f * s, fwd);
+                rdr::PushPill(a, b, 0.034f * s, ink);
+            }
+            if (v == 2)   // angry: brows angled in over the eyes
+                for (const float side : { -1.0f, 1.0f })
+                    rdr::PushOrientedBox(
+                        at(side * 0.045f * s, u + 0.115f * s, fwd),
+                        at(side * 0.160f * s, u + 0.160f * s, fwd),
+                        0.016f * s, ink);
         }
-        rdr::PushOrientedBox(at(-0.075f * s, u - 0.090f * s, fwd),
-                             at( 0.075f * s, u - 0.090f * s, fwd),
-                             0.018f * s, ink);               // the smile bar
-        for (const float side : { -1.0f, 1.0f }) {           // upturned corners
-            const Vector3 cnr = at(side * 0.100f * s, u - 0.068f * s, fwd);
-            rdr::PushPill(cnr, cnr, 0.020f * s, ink);
+        // ---- mouth ----
+        switch (v) {
+            case 1:   // neutral :| - one flat bar, no corners
+                rdr::PushOrientedBox(at(-0.085f * s, u - 0.090f * s, fwd),
+                                     at( 0.085f * s, u - 0.090f * s, fwd),
+                                     0.018f * s, ink);
+                break;
+            case 2: {  // angry frown: bar with corners pulled DOWN
+                rdr::PushOrientedBox(at(-0.070f * s, u - 0.100f * s, fwd),
+                                     at( 0.070f * s, u - 0.100f * s, fwd),
+                                     0.018f * s, ink);
+                for (const float side : { -1.0f, 1.0f }) {
+                    const Vector3 cnr = at(side * 0.095f * s, u - 0.125f * s, fwd);
+                    rdr::PushPill(cnr, cnr, 0.020f * s, ink);
+                }
+                break;
+            }
+            case 3:   // rage scream: the big open FFFUUU mouth
+                rdr::PushOrientedBox(at(0.0f, u - 0.150f * s, fwd),
+                                     at(0.0f, u - 0.040f * s, fwd),
+                                     0.075f * s, ink);
+                break;
+            case 4: {  // troll grin: a WIDE bar with high corners
+                rdr::PushOrientedBox(at(-0.115f * s, u - 0.090f * s, fwd),
+                                     at( 0.115f * s, u - 0.090f * s, fwd),
+                                     0.026f * s, ink);
+                for (const float side : { -1.0f, 1.0f }) {
+                    const Vector3 cnr = at(side * 0.140f * s, u - 0.045f * s, fwd);
+                    rdr::PushPill(cnr, cnr, 0.024f * s, ink);
+                }
+                break;
+            }
+            case 5: {  // :O - a round little mouth
+                const Vector3 m = at(0.0f, u - 0.095f * s, fwd);
+                rdr::PushPill(m, m, 0.042f * s, ink);
+                break;
+            }
+            default:  // the classic smile
+                rdr::PushOrientedBox(at(-0.075f * s, u - 0.090f * s, fwd),
+                                     at( 0.075f * s, u - 0.090f * s, fwd),
+                                     0.018f * s, ink);
+                for (const float side : { -1.0f, 1.0f }) {
+                    const Vector3 cnr = at(side * 0.100f * s, u - 0.068f * s, fwd);
+                    rdr::PushPill(cnr, cnr, 0.020f * s, ink);
+                }
+                break;
         }
     };
 

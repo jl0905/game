@@ -2337,3 +2337,15 @@ over two half-features.
   and circlet raised for the taller head. Combat hitboxes untouched
   (visual-only). Verified by frame captures: the bean silhouette and
   the faces read clearly on approaching enemies. Suite green.
+
+- [x] **V202. Iteration two-hundred-two — a face of one's own.** (user
+  call: random faces — the :|, the angry one, rage-comic faces.) Six
+  expressions in the face lambda: smile, neutral :|, angry (in-angled
+  brows + down-turned frown), rage-comic scream (squeezed-shut slit
+  eyes + the big open FFFUUU mouth), troll grin (wide bar, high
+  corners), and :O (round eyes, round little mouth). Each soldier
+  hashes a stable face of their own — 40% smile / 20% :| / 20% angry /
+  10% troll / 10% :O — and the heat of the moment overrides it: a
+  swinging man goes ANGRY and a routed man wears the scream. The hero
+  emotes too: scream under 30% HP, angry mid-swing, :| behind the
+  guard, smile at ease. Pose.face carries it. Suite green.

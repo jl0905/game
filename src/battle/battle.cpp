@@ -3570,6 +3570,18 @@ void BattleDraw(const Content& c) {
         pose.walkPhase = s.walkPhase;
         pose.weapon = s.activeWeapon;   // draw whichever weapon it's wielding
         pose.accent = c.troops[s.troop].accent;   // rank plume
+        // V202: a face of one's own - hashed per soldier so the line reads
+        // like a crowd, overridden by the heat of the moment: a swinging
+        // man goes angry, a routed man wears the rage-comic scream.
+        {
+            unsigned fh = (unsigned)(&s - &B.soldiers[0]) * 2654435761u;
+            fh ^= fh >> 13;
+            const int roll = (int)(fh % 10);
+            pose.face = roll < 4 ? 0 : roll < 6 ? 1 : roll < 8 ? 2
+                        : roll == 8 ? 4 : 5;
+            if (s.swing > 0.0f) pose.face = 2;
+            if (s.routed) pose.face = 3;
+        }
 
         const bool farTier = camDistSq > LOD_DIST_SQ;   // V149: full lodDistance,
                                                         // and same shape both sides
@@ -3706,6 +3718,11 @@ void BattleDraw(const Content& c) {
     ppose.guardDir = B.blocking && !HeroHasShield(c) ? (int)B.lastAim : -1;   // V143
     ppose.walkPhase = B.walkPhase;
     ppose.weapon = B.setup.heroLoadout.get(EquipSlot::Weapon);
+    // V202: the hero emotes too - rage-comic scream when badly hurt, angry
+    // mid-swing, a flat :| behind the raised guard, a smile otherwise.
+    ppose.face = B.pHp < B.setup.heroMaxHp * 0.3f ? 3
+                 : (B.readying || B.swing > 0.0f) ? 2
+                 : B.blocking                     ? 1 : 0;
     if (!B.heroDown) {
         BlobShadow(B.terrain, B.pPos.x, B.pPos.z, B.mounted ? 0.85f : 0.5f);
         Vector3 heroDraw = B.pPos;

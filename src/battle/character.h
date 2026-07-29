@@ -24,6 +24,9 @@ struct Pose {
     float     flash     = 0.0f;               // 0..1 just-hit feedback (white flare)
     Color     accent    = { 0, 0, 0, 0 };     // troop plume colour; alpha 0 = none
     bool      mounted   = false;              // V181: riders lean into swings
+    int       face      = 0;                  // V202: expression - 0 smile,
+                                              // 1 neutral :|, 2 angry, 3 rage
+                                              // scream, 4 troll grin, 5 :O
 };
 
 // Tessellation tier (V127): 0 = full detail (hero, town NPCs, close ranks),
