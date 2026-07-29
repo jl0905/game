@@ -186,11 +186,18 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
     // Mounted swing lean: computed by the same helper the hitbox uses
     // (SwingLean, V190) - render and combat cannot drift apart.
     const Vector3 lean = SwingLean(content, loadout, pose);
+    // V203: gait bob - the whole figure rises and falls with the stride,
+    // twice per cycle like real footfalls. ZERO during wind-ups and swings
+    // (a striking man plants), which also keeps the strike frames exactly
+    // on the shared BladeWorld hitbox math.
+    const float bob = (pose.windup <= 0.0f && pose.swing <= 0.0f && !pose.mounted)
+                          ? sinf(pose.walkPhase * 2.0f) * 0.035f
+                          : 0.0f;
     auto at = [&](float r, float u, float f) {
         // 0 at the seat, 1 at the shoulders; capped so hand/blade points
         // above the shoulder line don't over-amplify the tilt (V182).
         const float t = fminf(u / 1.64f, 1.2f);
-        return ToWorld(feet, yaw, r + lean.x * t, u, f + lean.z * t);
+        return ToWorld(feet, yaw, r + lean.x * t, u + bob, f + lean.z * t);
     };
 
     // Just-hit feedback: everything flares toward white for a few frames.
@@ -383,38 +390,16 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
 
     // ---- Left arm + shield ----
     // Sword-and-board troops carry the shield always; everyone raises it while
-    // guarding (blocking pulls it up front and centre).
-    const int   whShield  = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
-    const bool  oneHanded = content.weapons.valid(whShield) &&
-                            content.weapons[whShield].wclass == WeaponClass::OneHanded;
-    const float guard = pose.blocking ? 0.6f : 0.0f;
-    // Upper arm to elbow to forearm (V132): a slight natural bend, deeper
-    // when the shield comes up.
-    {
-        const Vector3 shoulderL = at(-0.32f, 1.52f, 0.0f);
-        const Vector3 elbowL    = at(-0.38f, 1.24f + guard * 0.4f, 0.06f + guard * 0.4f);
-        const Vector3 handL     = at(-0.36f, 1.05f + guard, 0.22f + guard);
-        Cap(shoulderL, elbowL, 0.10f, S(7), R(3), bodyC);
-        Cap(elbowL, handL, 0.08f, S(6), R(3), handsC);
-    }
-    if (pose.blocking) {
-        Cyl(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, S(14),
-                       flashed(DARKBROWN));
-        Cyl(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, S(8),
-                       flashed(GRAY));   // boss
-    } else if (oneHanded) {   // carried at the forearm when not raised
-        Cyl(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, S(12),
-                       flashed(DARKBROWN));
-    }
-
-    // ---- Weapon line first (V143): the hand FOLLOWS the blade, so the
-    //      whole arm cocks, guards and sweeps instead of hanging still ----
+    // ---- Weapon line FIRST (V143/V203): the hands FOLLOW the weapon ----
     const int wh = pose.weapon >= 0 ? pose.weapon : loadout.get(EquipSlot::Weapon);
     Vector3 wlHand{ 0.42f, 1.15f, 0.15f };
     Vector3 wlTip { 0.42f, 1.15f, 1.55f };
     const bool haveWeapon = content.weapons.valid(wh);
-    const bool rangedW = haveWeapon &&
-                         content.weapons[wh].wclass == WeaponClass::Ranged;
+    const WeaponClass wc = haveWeapon ? content.weapons[wh].wclass
+                                      : WeaponClass::OneHanded;
+    const bool rangedW = haveWeapon && wc == WeaponClass::Ranged;
+    const bool atRest = pose.windup <= 0.0f && pose.swing <= 0.0f &&
+                        !pose.blocking;
     if (haveWeapon && !rangedW) {
         const float reach = content.weapons[wh].reach > 0.5f
                                 ? content.weapons[wh].reach : 1.4f;
@@ -432,10 +417,72 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 default:               wlHand = {  0.58f, 0.95f, 0.32f };
                                        wlTip  = {  0.52f, 1.98f, 0.22f }; break; // hanging right
             }
+        } else if (atRest) {
+            // V203: CARRY stances — every class holds its weapon its own
+            // way at rest. VISUAL ONLY: the instant a wind-up or swing
+            // begins, the shared BladeLocalLine (V190) drives render and
+            // hitbox from the same math again.
+            Vector3 dir;
+            switch (wc) {
+                case WeaponClass::Polearm:   // shouldered pike, point high
+                    wlHand = { 0.40f, 1.00f, 0.10f };
+                    dir = { 0.10f, 0.92f, 0.36f };
+                    break;
+                case WeaponClass::TwoHanded: // the great blade rests on the
+                    wlHand = { 0.36f, 1.22f, 0.02f };   // right shoulder
+                    dir = { -0.28f, 0.82f, -0.50f };
+                    break;
+                default:                     // sword/axe hangs at the side
+                    wlHand = { 0.45f, 0.92f, 0.10f };
+                    dir = { 0.30f, -0.35f, 0.89f };
+                    break;
+            }
+            wlTip = Vector3Add(wlHand,
+                               Vector3Scale(Vector3Normalize(dir), reach));
         } else {
             // The swinging blade line, shared with the combat hitbox (V190).
             BladeLocalLine(content, loadout, pose, wlHand, wlTip);
         }
+    }
+    if (rangedW) wlHand = { 0.30f, 1.02f, 0.10f };   // right hand by the quiver
+
+    // ---- Left arm (V203): the shield, the two-handed grip on the shaft,
+    //      or out along the BOW — each weapon class carries differently ----
+    const bool oneHanded = haveWeapon && wc == WeaponClass::OneHanded;
+    const bool twoHandGrip = haveWeapon && !rangedW &&
+                             (wc == WeaponClass::Polearm ||
+                              wc == WeaponClass::TwoHanded);
+    const float guard = pose.blocking ? 0.6f : 0.0f;
+    const Vector3 bowHand = { -0.28f, 1.30f, 0.42f };   // where the bow lives
+    {
+        const Vector3 shoulderL = at(-0.32f, 1.52f, 0.0f);
+        Vector3 hl;   // the left hand's local target
+        if (rangedW) {
+            hl = bowHand;   // arm extended on the bow stave
+        } else if (twoHandGrip) {
+            // Both hands on the shaft — the grip rides the weapon line
+            // through carries, guards, wind-ups and swings alike.
+            const Vector3 d = Vector3Normalize(Vector3Subtract(wlTip, wlHand));
+            hl = Vector3Add(wlHand, Vector3Scale(
+                                        d, wc == WeaponClass::Polearm ? 0.45f
+                                                                      : 0.26f));
+        } else {
+            hl = { -0.36f, 1.05f + guard, 0.22f + guard };
+        }
+        const Vector3 elbowL = at(-0.40f, (1.52f + hl.y) * 0.5f - 0.05f,
+                                  hl.z * 0.5f);
+        const Vector3 handL = at(hl.x, hl.y, hl.z);
+        Cap(shoulderL, elbowL, 0.10f, S(7), R(3), bodyC);
+        Cap(elbowL, handL, 0.08f, S(6), R(3), handsC);
+    }
+    if (pose.blocking && !twoHandGrip && !rangedW) {
+        Cyl(at(-0.45f, 1.2f, 0.55f), at(-0.45f, 1.2f, 0.62f), 0.38f, 0.38f, S(14),
+                       flashed(DARKBROWN));
+        Cyl(at(-0.45f, 1.2f, 0.62f), at(-0.45f, 1.2f, 0.66f), 0.10f, 0.10f, S(8),
+                       flashed(GRAY));   // boss
+    } else if (oneHanded) {   // carried at the forearm when not raised
+        Cyl(at(-0.52f, 1.15f, 0.18f), at(-0.46f, 1.15f, 0.18f), 0.30f, 0.30f, S(12),
+                       flashed(DARKBROWN));
     }
 
     // ---- Right arm (weapon side): shoulder to elbow to the weapon hand ----
@@ -484,11 +531,15 @@ void DrawCharacter(const Content& content, Vector3 feet, const Loadout& loadout,
                 break;
             }
             case WeaponClass::Ranged:
-                // A simple bow held vertically in the hand. The string is a
-                // recorded sliver since V198 - visible on every backend.
-                Cyl(at(0.46f, 1.65f, 0.2f), at(0.46f, 0.65f, 0.2f), 0.03f, 0.03f, 6, w.tint);
-                Cyl(at(0.49f, 1.63f, 0.2f), at(0.49f, 0.67f, 0.2f), 0.008f,
-                    0.008f, 3, Fade(RAYWHITE, 0.8f));   // string
+                // V203: the bow lives in the LEFT hand, arm extended - an
+                // archer reads as an archer from across the field. String
+                // is a recorded sliver (V198), visible on every backend.
+                Cyl(at(bowHand.x, bowHand.y + 0.52f, bowHand.z),
+                    at(bowHand.x, bowHand.y - 0.52f, bowHand.z),
+                    0.03f, 0.03f, 6, w.tint);
+                Cyl(at(bowHand.x + 0.03f, bowHand.y + 0.50f, bowHand.z - 0.04f),
+                    at(bowHand.x + 0.03f, bowHand.y - 0.50f, bowHand.z - 0.04f),
+                    0.008f, 0.008f, 3, Fade(RAYWHITE, 0.8f));   // string
                 break;
             case WeaponClass::Axe: {
                 // A haft with a broad head set just below the tip.

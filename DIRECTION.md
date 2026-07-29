@@ -2349,3 +2349,23 @@ over two half-features.
   swinging man goes ANGRY and a routed man wears the scream. The hero
   emotes too: scream under 30% HP, angry mid-swing, :| behind the
   guard, smile at ease. Pose.face carries it. Suite green.
+
+- [x] **V203. Iteration two-hundred-three — every hand knows its
+  weapon.** (user goal: expressive, professional animation, hitboxes
+  intact, performant.) Researched the field: full skeletal (ozz-
+  animation + glTF clips) needs skinned meshes and an art pipeline —
+  wrong fit for primitive-assembled beans; the industry pattern for
+  this shape is PROCEDURAL POSE animation (TABS-style), parametric
+  stances computed per frame on the same primitives. Shipped: (1)
+  CARRY stances per weapon class — pikes shouldered point-high, great
+  blades rested across the right shoulder, swords/axes hanging
+  relaxed at the side — visual-only at rest; the instant a wind-up
+  starts, the shared BladeLocalLine (V190) drives render AND hitbox
+  again, so combat is byte-identical. (2) The LEFT hand works now:
+  both hands grip the shaft on polearms/two-handers (through carries,
+  guards, wind-ups and swings), the bow moved to an extended left arm
+  (archers read as archers across the field) with the right hand at
+  the quiver. (3) Gait bob — the figure rises and falls twice per
+  stride, planting motionless during strikes (which is also what
+  keeps strike frames exactly on the hitbox math). Cost: a few sinf
+  per soldier. Suite green; stance captures verified.
