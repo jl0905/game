@@ -1677,7 +1677,13 @@ void FlushScene(Vector3 sunDir) {
     RaylibInstancedState st{ &g_instCube, &g_instMat, g_instShader,
                              g_instSunLoc, sunDir, &g_instSphere,
                              g_instSkinRectLoc, &g_instCyl };
-    Flush(st);
+    // V200: scene flushes execute through GL ALWAYS. The Vulkan executor is
+    // an explicit per-scene opt-in (battle, via FlushSubmit) because a scene
+    // on that road must also route its sky, HUD and present; sending town or
+    // campaign recordings there uninvited is how the black-town bug
+    // happened - and the old bridge path silently ate town NPCs anyway
+    // (nothing ever composited the offscreen layer outside battle).
+    FlushRaylib(st);
 }
 }  // namespace rdr
 

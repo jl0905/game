@@ -1,1 +1,1 @@
-soldiers=200 frames=600 avg_ms=2.10 p99_ms=45.10 avg_fps=476 p50_ms=1.45 renderer=vulkan bodystyle=pill shadows=on postfx=on res=1280x720
+soldiers=200 frames=600 avg_ms=2.09 p99_ms=44.58 avg_fps=478 p50_ms=1.44 renderer=vulkan bodystyle=pill shadows=on postfx=on res=1280x720

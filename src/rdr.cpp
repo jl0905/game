@@ -236,7 +236,13 @@ int g_fFlags = 0;
 bool g_natPending = false;    // a native frame is being built this frame
 bool g_natEnabled = true;     // capture modes force the bridge
 
-bool FlushVulkanSubmit(const RaylibInstancedState& st) {
+// V200: `wantNative` is an EXPLICIT opt-in from the scene (battle passes it
+// through FlushSubmit). It used to be inferred here - which meant the TOWN's
+// flush also stashed its recording for a native present that only battle
+// knows how to finish: black scene, eaten buckets. Scenes are GL/bridge by
+// default; a scene goes native only when it says so and routes its own
+// sky + HUD like battle does.
+bool FlushVulkanSubmit(const RaylibInstancedState& st, bool wantNative) {
     std::vector<float>& inst = g_fInst;
     std::vector<float>& pills = g_fPills;
     auto flatten = [](BoxBuckets& src, std::vector<float>& out) {
@@ -323,7 +329,7 @@ bool FlushVulkanSubmit(const RaylibInstancedState& st) {
     memcpy(g_fSun, sun, sizeof(g_fSun));
     g_fFlags = flags;
     const bool natThisFrame =
-        g_natEnabled && !g_natPending && VulkanNativeAvailable();
+        wantNative && g_natEnabled && !g_natPending && VulkanNativeAvailable();
     if (!natThisFrame &&
         !VulkanSubmitFrame(vpf.v, sun, lvpf.v, flags, inst.data(), count,
                            pills.data(), pillCount,
@@ -373,7 +379,7 @@ bool FlushVulkanResolve() {
 }
 
 bool FlushVulkan(const RaylibInstancedState& st) {
-    return FlushVulkanSubmit(st) && FlushVulkanResolve();
+    return FlushVulkanSubmit(st, false) && FlushVulkanResolve();
 }
 }  // namespace
 
@@ -501,6 +507,50 @@ bool PushUiTexQuad(const Texture& tex, Rectangle src, Rectangle dst, Color tint,
     return true;
 }
 
+// V200: the FRAME CONTRACT, checked at the end-of-frame chokepoint every
+// screen already passes through. A healthy frame ends with: no recorded
+// buckets waiting (every scene flushed what it pushed), the underlay closed,
+// and no native frame left dangling. Violations are the bugs that used to
+// surface as "the town is black" two screens later - now they log loudly
+// and the state is reset so the NEXT frame starts clean.
+namespace {
+void ValidateFrameContract(const char* where) {
+    size_t leaked = 0;
+    for (auto& [k, m] : g_buckets) leaked += m.size();
+    for (auto& [k, m] : g_pills) leaked += m.size();
+    for (auto& [k, m] : g_cyls) leaked += m.size();
+    for (auto& [k, m] : g_skinBoxes) leaked += m.size();
+    for (auto& [k, m] : g_skinPills) leaked += m.size();
+    for (auto& [k, m] : g_skinCyls) leaked += m.size();
+    static double lastCry = -10.0;
+    const double now = GetTime();
+    if (leaked > 0) {
+        if (now - lastCry > 1.0) {
+            TraceLog(LOG_WARNING,
+                     "rdr: FRAME CONTRACT: %d recorded instances never "
+                     "flushed (%s) - dropped; the scene is missing a Flush",
+                     (int)leaked, where);
+            lastCry = now;
+        }
+        for (auto& [k, m] : g_buckets) m.clear();
+        for (auto& [k, m] : g_pills) m.clear();
+        for (auto& [k, m] : g_cyls) m.clear();
+        for (auto& [k, m] : g_skinBoxes) m.clear();
+        for (auto& [k, m] : g_skinPills) m.clear();
+        for (auto& [k, m] : g_skinCyls) m.clear();
+    }
+    if (g_uiUnderlay) {
+        if (now - lastCry > 1.0) {
+            TraceLog(LOG_WARNING,
+                     "rdr: FRAME CONTRACT: underlay left ON (%s) - reset",
+                     where);
+            lastCry = now;
+        }
+        g_uiUnderlay = false;
+    }
+}
+}  // namespace
+
 void PresentVulkanUi() {
     // V198: the native frame presents HERE - everything is recorded by now
     // (sky underlay, army streams from the 3D flush, HUD overlay).
@@ -539,10 +589,12 @@ void PresentVulkanUi() {
         g_uiVerts.clear();
         g_segTex.clear();
         g_segCount.clear();
+        ValidateFrameContract("native present");
         return;
     }
     VulkanNativeHide();   // any non-native frame pulls the overlay down
     g_bgVerts.clear();    // stragglers from an aborted native frame
+    ValidateFrameContract("frame end");
     if (g_uiVerts.empty()) return;
     const int w = GetScreenWidth(), h = GetScreenHeight();
     const unsigned char* px =
@@ -568,7 +620,7 @@ void PresentVulkanUi() {
 // GL mode (or executor down) - the caller just proceeds to Flush() as ever.
 bool FlushSubmit(const RaylibInstancedState& st) {
     return GetSettings().renderer == 1 && VulkanExecutorReady() &&
-           FlushVulkanSubmit(st);
+           FlushVulkanSubmit(st, true);   // battle's explicit native opt-in
 }
 
 void Flush(const RaylibInstancedState& st) {

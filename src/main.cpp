@@ -267,6 +267,18 @@ int RunTrip(const char* dir) {
 
     for (int i = 0; i < 5; ++i) CampaignDraw(gs);
     shoot("map_after");
+
+    // V200: the TOWN leg - the black-town regression lived exactly here
+    // (battle left renderer state that poisoned the next scene's flush).
+    GameState& g2 = gs;
+    g2.currentSettlement = 0;
+    if (!g2.towns.empty()) {
+        TownInit(g2);
+        for (int i = 0; i < 5; ++i) TownDraw(g2);
+        shoot("town_after");
+    }
+    for (int i = 0; i < 5; ++i) CampaignDraw(gs);
+    shoot("map_final");
     CloseWindow();
     return 0;
 }

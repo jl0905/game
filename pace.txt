@@ -1,1 +1,1 @@
-soldiers=200 frames=600 gap_p50=8.34 gap_p99=8.94 gap_max=10.00 renderer=vulkan
+soldiers=200 frames=600 gap_p50=8.33 gap_p99=9.14 gap_max=19.69 renderer=vulkan

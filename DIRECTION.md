@@ -2304,3 +2304,23 @@ over two half-features.
   (a composited child never tears; MAILBOX/FIFO could block while DWM
   held images). Result: gap p50 31.77 → 8.34 ms, p99 8.94, max 10.0 —
   steadier than the GL road (p99 10.66, max 17.4). Suite green.
+
+- [x] **V200. Iteration two-hundred — the frame contract.** (user bug:
+  towns rendered BLACK after V198; ask: make the pipeline airtight.)
+  Root cause: the native-present detection lived inside the generic
+  flush, so the TOWN's FlushScene also stashed its recording for a
+  native present only battle knows how to finish — buckets eaten, a
+  black overlay frame over the streets. Fixes: (1) native present is
+  an EXPLICIT per-scene opt-in (battle's FlushSubmit passes it;
+  everything else can't trip it by construction); (2) FlushScene
+  executes through GL always — which also fixed a LATENT bug where
+  town NPCs/buildings silently vanished in bridge mode (nothing ever
+  composited the offscreen layer outside battle); (3) a FRAME
+  CONTRACT check at the end-of-frame chokepoint: leaked recorded
+  instances or a dangling sky-underlay log loudly and reset, so a
+  scene that forgets a flush shows a warning — not a black screen two
+  screens later; (4) --shots-trip grew a TOWN leg (campaign → battle
+  → campaign → town → campaign), all captured — scene transitions are
+  regression-tested from now on. Verified: town renders after a
+  battle (buildings, NPCs, menu), zero contract warnings, native
+  battle dump intact, pace p50 8.33 ms, suite green.
