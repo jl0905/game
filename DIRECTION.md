@@ -2220,3 +2220,16 @@ over two half-features.
   restores recording at the end for the screen-space screens. New
   `--shots-trip dir` capture proves the round trip: map_before and
   map_after a full battle are byte-identical (hash-equal PNGs).
+
+- [x] **V195. Iteration one-ninety-five — real sounds, quieter table.**
+  (user call) The sound system goes file-backed and moddable:
+  assets/sounds.cfg maps any effect to a file in assets/sounds/
+  (`<effect> <file> [gain]`, wav/ogg/mp3/flac); a loaded file REPLACES
+  the synthesized voice and a missing one falls back to it, so the
+  soundscape is always complete. Ten CC0 recordings from freesound.org
+  shipped (see sounds/CREDITS.txt): a real medieval horn for the war
+  cry, a distant war horn for the fanfare, sword clash, punch thud,
+  hollow wood block, arrow release, whoosh, loopable gallop, war-drum
+  loop, UI click. The knell keeps its synth bell (no good CC0 toll
+  found). Default master volume 1.0 → 0.7 (settings.h + settings.cfg).
+  Verified: all ten files decode at boot (WASAPI log), suite green.

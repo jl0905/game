@@ -1,0 +1,14 @@
+OpenWarband shipped sounds - all Creative Commons 0 (public domain),
+sourced from freesound.org (HQ preview encodes). CC0 requires no
+attribution, but thank you to the authors all the same. Canonical pages:
+
+warcry.mp3   "medieval horn"              https://freesound.org/s/402753/
+fanfare.mp3  "Distant War Horn"           https://freesound.org/s/512490/
+clang.mp3    "Sword Clash"                https://freesound.org/s/275159/
+thud.mp3     "Punch"                      https://freesound.org/s/517744/
+wood.mp3     "Hit Wood Hollow"            https://freesound.org/s/364704/
+loose.mp3    "42 Disparar Flecha"         https://freesound.org/s/443832/
+swing.mp3    "Whoosh 02"                  https://freesound.org/s/733889/
+gallop.mp3   "Horse Gallop - Loopable"    https://freesound.org/s/197212/
+drums.mp3    "War Drum Loop"              https://freesound.org/s/274223/
+click.mp3    "Mouse 2 Button Fast Click"  https://freesound.org/s/687107/

@@ -13,7 +13,9 @@ struct Settings {
     bool  fullscreen   = false;
     float lodDistance  = 45.0f;   // soldiers beyond this draw as silhouettes
     bool  particles    = true;    // blood / hoof-dust puffs
-    float masterVolume = 1.0f;    // 0..1
+    float masterVolume = 0.7f;    // 0..1 — a bit quiet by default (V195,
+                                  // user call); the settings screen and
+                                  // settings.cfg raise it to taste
     bool  invertY      = false;   // flip vertical mouse look
     float textScale    = 1.4f;    // global lettering size (V72), 1.0–1.6
     float battleSize   = 200.0f;  // field-battle cap per contingent (V75);

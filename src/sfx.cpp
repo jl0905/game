@@ -3,7 +3,9 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
 #include <initializer_list>
+#include <string>
 
 // ---------------------------------------------------------------------------
 // Procedural audio, redesigned (V145, user direction): muted, semi-realistic,
@@ -32,6 +34,12 @@ Sound  g_music = {};      // campaign drone bed (N5)
 Sound  g_thudVar[2] = {}; // extra impact voices — variety in the melee (N5)
 int    g_thudNext = 0;
 bool   g_ready = false;
+// V195: file-backed voices. assets/sounds.cfg maps an effect to a file in
+// assets/sounds/ (mp3/ogg/wav/flac) with an optional gain; a loaded file
+// REPLACES the synthesized voice, a missing one falls back to it silently —
+// the game always has a full soundscape, files just make it better.
+float  g_gain[NSFX] = {};      // per-effect gain from sounds.cfg (default 1)
+bool   g_thudIsFile = false;   // file thud: skip the synth sibling rotation
 
 // Per-effect minimum seconds between plays (V145): melee spam is the main
 // source of self-layering; impacts repeat no faster than the ear resolves.
@@ -59,6 +67,58 @@ int RecentVoices(double now) {
 }
 
 float Noise() { return (float)rand() / RAND_MAX * 2.0f - 1.0f; }
+
+// V195: overlay assets/sounds.cfg onto the synthesized set. Lines are
+//   <effect> <file> [gain]     e.g.  warcry warcry.mp3 0.8
+// Effects: thud clang loose swing gallop click fanfare knell warcry wood
+// plus the beds: drums wind rain lute music. Unknown names are skipped.
+void LoadSoundFiles() {
+    const std::string dir = std::string(GetApplicationDirectory()) + "assets/";
+    char* cfg = LoadFileText((dir + "sounds.cfg").c_str());
+    if (!cfg) return;
+    const char* oneShots[NSFX] = { "thud", "clang", "loose", "swing", "gallop",
+                                   "click", "fanfare", "knell", "warcry",
+                                   "wood" };
+    std::string line;
+    for (char* p = cfg;; ++p) {
+        if (*p && *p != '\n') { line += *p; continue; }
+        // one full line gathered
+        const size_t h = line.find('#');
+        if (h != std::string::npos) line.resize(h);
+        char name[64] = {}, file[128] = {};
+        float gain = 1.0f;
+        if (std::sscanf(line.c_str(), "%63s %127s %f", name, file, &gain) >= 2) {
+            const Sound s = LoadSound((dir + "sounds/" + file).c_str());
+            if (s.frameCount > 0) {
+                auto replace = [&](Sound& slot) {
+                    UnloadSound(slot);
+                    slot = s;
+                };
+                bool used = true;
+                if      (!std::strcmp(name, "drums")) replace(g_drums);
+                else if (!std::strcmp(name, "wind"))  replace(g_wind);
+                else if (!std::strcmp(name, "rain"))  replace(g_rain);
+                else if (!std::strcmp(name, "lute"))  replace(g_lute);
+                else if (!std::strcmp(name, "music")) replace(g_music);
+                else {
+                    used = false;
+                    for (int i = 0; i < NSFX; ++i)
+                        if (!std::strcmp(name, oneShots[i])) {
+                            replace(g_sounds[i]);
+                            g_gain[i] = gain;
+                            if (i == (int)Sfx::Thud) g_thudIsFile = true;
+                            used = true;
+                            break;
+                        }
+                }
+                if (!used) UnloadSound(s);
+            }
+        }
+        line.clear();
+        if (!*p) break;
+    }
+    UnloadFileText(cfg);
+}
 
 // Build a 16-bit mono wave from a generator f(t seconds), then run the
 // mastering chain described above. `cutoff` is the low-pass corner in Hz —
@@ -124,6 +184,7 @@ void SfxInit() {
     if (!IsAudioDeviceReady()) return;
     srand(1234);   // deterministic waves
     SetMasterVolume(0.85f);   // headroom under the mix (V145)
+    for (float& g : g_gain) g = 1.0f;   // V195: neutral until sounds.cfg says
 
     // Thud: a dull body blow — low noise knock over a 70 Hz bump. No sine
     // sweep whistle any more; it reads as flesh and padding, not a synth.
@@ -262,6 +323,7 @@ void SfxInit() {
         return v;
     });
 
+    LoadSoundFiles();   // V195: real recordings override the synths
     g_ready = true;
 }
 
@@ -322,9 +384,11 @@ void SfxPlay(Sfx s, float volume) {
 
     g_lastPlay[i] = now;
     g_voiceTimes[g_voiceNext++ % VOICE_RING] = now;
+    volume *= g_gain[i];   // V195: per-effect gain from sounds.cfg
 
-    // Impact variety (N5): thuds rotate through sibling voices.
-    if (s == Sfx::Thud) {
+    // Impact variety (N5): synth thuds rotate through sibling voices; a
+    // file-backed thud is one real recording and plays as itself.
+    if (s == Sfx::Thud && !g_thudIsFile) {
         Sound& v = (g_thudNext++ % 3 == 0) ? g_sounds[i]
                                            : g_thudVar[g_thudNext % 2];
         SetSoundVolume(v, volume);
