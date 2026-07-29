@@ -2369,3 +2369,21 @@ over two half-features.
   stride, planting motionless during strikes (which is also what
   keeps strike frames exactly on the hitbox math). Cost: a few sinf
   per soldier. Suite green; stance captures verified.
+
+- [x] **V204. Iteration two-hundred-four — THE game log.** (user call:
+  one place for every notification.) The notify rail moved to the
+  TOP-LEFT (below every screen's status block) and became the single
+  log: newest line first, 8 lines max, per-line colour AND font size,
+  fading tails, global state that survives screen transitions — a
+  battle's kill feed is still scrolling when you land back on the
+  map. Feeding it: battle kills/loot/yields (already routed), and NEW
+  — the campaign news line (U13) and its V89 fading feed are GONE,
+  replaced by a main-loop pump that pushes every gs.resultText change
+  into the log as a gold 20px headline no matter which screen wrote
+  it (map events, gate-menu clicks, market refusals); the town gate
+  menu's inline click-feedback line removed; Refuse() no longer
+  double-pushes. NOT unified on purpose: centre-screen battle cries
+  (cinematic), BLOCKED crosshair captions and floating damage numbers
+  (world/combat-anchored), and town NPC speech bubbles (diegetic
+  gossip, not notifications). Suite green; town + trip captures
+  verified.

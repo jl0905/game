@@ -175,11 +175,11 @@ struct BarHit { int x, w, id; };
 std::vector<BarHit> g_barHits;
 
 // One rail for refusals (V189, user call: no silent buttons EVER). The
-// harness keeps reading resultText; the player reads the notify stack -
-// every refused press says exactly why, in the same place every time.
+// harness keeps reading resultText; the player reads the game log, which
+// the main loop pumps from resultText (V204) - pushing here too would
+// print every refusal twice.
 void Refuse(GameState& gs, const std::string& msg) {
     gs.resultText = msg;
-    notify::Push(msg.c_str(), Color{ 255, 208, 120, 255 }, 4.0f);
 }
 
 // The market grid (V146): a GUI shop, not a text list. Draw records every
@@ -4075,38 +4075,9 @@ void CampaignDraw(const GameState& gs) {
     ui::Text(clock, GetScreenWidth() - ui::Measure(clock, 20) - 12, 8, 20,
              gs.timeFlowing ? LIME : Fade(GOLD, 0.9f));
 
-    // News rides its own line (U13): below the what-now line, never on it.
-    if (!gs.resultText.empty()) {
-        ui::Rect(0, 62, ui::Measure(gs.resultText.c_str(), 20) + 20, 30,
-                      Fade(BLACK, 0.7f));
-        ui::Text(gs.resultText.c_str(), 10, 66, 20, GOLD);
-    }
-
-    // The news keeps a short memory (V89): dawns fire several events at
-    // once and each used to overwrite the last — now every change to the
-    // news line also stacks into a fading feed, so nothing is lost to the
-    // next announcement. Windowed-only presentation state.
-    {
-        struct OldNews { std::string text; float age; };
-        static std::vector<OldNews> feed;
-        static std::string          prev;
-        if (gs.resultText != prev) {
-            if (!prev.empty()) {
-                feed.insert(feed.begin(), { prev, 0.0f });
-                if (feed.size() > 4) feed.pop_back();
-            }
-            prev = gs.resultText;
-        }
-        int ny = 196;   // below the status-chip stack (merc/hunger/task/debt)
-        for (auto& n : feed) {
-            n.age += GetFrameTime();
-            const float a = Clamp(1.0f - n.age / 12.0f, 0.0f, 1.0f);
-            if (a <= 0) continue;
-            ui::Text(n.text.c_str(), 10, ny, 16, Fade(RAYWHITE, 0.6f * a));
-            ny += 20;
-        }
-        while (!feed.empty() && feed.back().age > 12.0f) feed.pop_back();
-    }
+    // V204 (user call): the news has NO line of its own any more - every
+    // change to gs.resultText is pumped into the one top-left game log by
+    // the main loop, whatever screen wrote it.
 
     // Prompt to join a nearby clash.
     if (nearSkirmish >= 0 && PartyFights(gs)) {

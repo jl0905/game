@@ -9,6 +9,7 @@
 #include "battle/battle.h"
 #include "town/town.h"
 #include "manualview.h"
+#include "notify.h"
 #include "rdr.h"
 #include <algorithm>
 #include <cstdio>
@@ -528,6 +529,19 @@ int main(int argc, char** argv) {
             }
             quitArm = 2.0f;
             gs.resultText = "Press Esc again to quit (autosaves).";
+        }
+        // V204 (user call): THE game log. Whatever screen wrote news this
+        // frame - campaign events, gate-menu clicks, market refusals - one
+        // pump feeds it into the top-left notify stack, where the battle
+        // kill feed and every alert already lives. Nothing announces
+        // anywhere else; entries differ only by colour and size.
+        {
+            static std::string lastNews;
+            if (gs.resultText != lastNews) {
+                lastNews = gs.resultText;
+                if (!lastNews.empty())
+                    notify::Push(lastNews.c_str(), GOLD, 9.0f, 20);
+            }
         }
     }
 

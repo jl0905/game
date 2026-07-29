@@ -1753,9 +1753,8 @@ void TownDraw(const GameState& gs) {
             y += townmenu::ROW_H;
         }
         ui::Text("Ride on  (Esc)", x0, y + 4, 17, Fade(RAYWHITE, 0.6f));
-        // Click feedback (V2): the last thing that happened, right here.
-        if (!gs.resultText.empty())
-            ui::Text(gs.resultText.c_str(), x0, y + 30, 17, GOLD);
+        // V204: click feedback moved to the one top-left game log - the
+        // main loop pumps resultText there for every screen alike.
     }
     notify::Draw();           // the one message rail (V189)
     rdr::PresentVulkanUi();   // Vulkan HUD composite (V173)
